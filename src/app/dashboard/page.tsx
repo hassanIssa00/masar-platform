@@ -1,156 +1,201 @@
 import Link from 'next/link';
+import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
 
 const stats = [
-  { label: 'طلاب نشطون', value: '142', note: '18 يحتاجون مراجعة خطة' },
-  { label: 'جلسات اليوم', value: '18', note: '6 قراءة، 4 رياضيات، 8 تدخل' },
-  { label: 'خطط فردية', value: '37', note: '12 خطة تنتهي هذا الأسبوع' },
-  { label: 'تحسن متوسط', value: '24%', note: 'آخر 6 أسابيع' },
+  { label: 'طلاب نشطون', value: '142', note: '18 يحتاجون مراجعة خطة', icon: Gauge },
+  { label: 'جلسات اليوم', value: '18', note: 'موزعة حسب مهارة الهدف', icon: CalendarClock },
+  { label: 'اختبارات مكتملة', value: '64', note: 'منها 11 تحتاج إعادة قياس', icon: ClipboardCheck },
+  { label: 'تحسن متوسط', value: '24%', note: 'آخر 6 أسابيع', icon: TrendingUp },
 ];
 
 const students = [
-  { name: 'أحمد محمود', grade: 'الصف الثاني', program: 'القراءة والكتابة', risk: 'خلط حروف متشابهة', progress: 62 },
-  { name: 'ليان عبدالله', grade: 'الصف الأول', program: 'طيف التوحد', risk: 'انتقالات وروتين بصري', progress: 71 },
-  { name: 'عمر خالد', grade: 'الصف الرابع', program: 'الرياضيات', risk: 'قيمة مكانية ومسائل لفظية', progress: 48 },
-  { name: 'سارة محمد', grade: 'الروضة', program: 'التخاطب والنطق', risk: 'صوت س/ص داخل الكلمات', progress: 57 },
+  { name: 'أحمد محمود', grade: 'الصف الثاني', program: 'القراءة والكتابة', risk: 'وعي صوتي وفك ترميز', progress: 62, decision: 'تدريب مركز' },
+  { name: 'ليان عبدالله', grade: 'الصف الأول', program: 'طيف التوحد', risk: 'انتقال وروتين بصري', progress: 71, decision: 'تعميم' },
+  { name: 'عمر خالد', grade: 'الصف الرابع', program: 'الرياضيات', risk: 'قيمة مكانية ومسائل لفظية', progress: 48, decision: 'إعادة تدريس' },
+  { name: 'سارة محمد', grade: 'الروضة', program: 'التخاطب والنطق', risk: 'صوت مستهدف داخل كلمات', progress: 57, decision: 'جلسات صوت' },
 ];
 
 const sessions = [
-  ['09:00', 'قراءة علاجية', 'إملاء المدود والسكون'],
-  ['10:30', 'رياضيات محسوسة', 'تكوين عشرة بالمكعبات'],
-  ['12:00', 'تعديل سلوك', 'طلب الاستراحة بدل الانسحاب'],
-  ['02:00', 'تخاطب', 'إنتاج صوت الراء داخل كلمات'],
+  ['09:00', 'وعي صوتي', 'تمييز الصوت الأول قبل عرض الحرف'],
+  ['10:30', 'رياضيات محسوسة', 'تمثيل العدد بالمكعبات ثم الرمز'],
+  ['12:00', 'سلوك وظيفي', 'طلب المساعدة بدل الانسحاب'],
+  ['02:00', 'تخاطب', 'إنتاج الصوت داخل كلمات قصيرة'],
 ];
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+    <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="min-w-0 flex-1 px-5 py-8 lg:px-10">
-          <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-black text-stone-500">مركز التشغيل</p>
-              <h1 className="text-3xl font-black text-stone-950">لوحة متابعة التعلم العلاجي</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-stone-600">
-                هنا تظهر حالة الطلاب والخطط والجلسات بناء على قياس فعلي: دقة، استقلالية، نوع مساعدة، وانتقال المهارة للبيت.
-              </p>
+        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
+          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-sm font-black text-teal-800">مركز التشغيل العلاجي</p>
+                <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">قرارات مبنية على قياس، لا على الانطباع</h1>
+                <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
+                  تابع الطلاب حسب المهارة الحالية، دقة الأداء، نوع المساعدة، وقرار الجلسة التالية. الواجهة مصممة للاستخدام اليومي السريع على المكتب والموبايل.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                  <UserRoundPlus size={17} />
+                  إضافة طالب
+                </Link>
+                <Link href="/assessment/reading" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
+                  <ClipboardCheck size={17} />
+                  اختبار سريع
+                </Link>
+              </div>
             </div>
-            <Link href="/student/new" className="rounded-lg bg-stone-950 px-5 py-3 text-sm font-black text-white transition hover:bg-stone-800">
-              إضافة وتقييم طالب
-            </Link>
-            <Link href="/assessment/reading" className="rounded-lg border border-black/10 bg-white px-5 py-3 text-sm font-black text-stone-800 transition hover:bg-stone-50">
-              اختبار سريع
-            </Link>
-          </div>
+          </header>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <section key={stat.label} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
-                <p className="text-sm font-black text-stone-500">{stat.label}</p>
-                <p className="mt-3 text-4xl font-black text-stone-950">{stat.value}</p>
-                <p className="mt-2 text-sm leading-6 text-stone-600">{stat.note}</p>
-              </section>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {stats.map(({ label, value, note, icon: Icon }) => (
+              <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-500">{label}</p>
+                    <p className="mt-3 text-4xl font-black text-slate-950">{value}</p>
+                  </div>
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-teal-50 text-teal-800">
+                    <Icon size={22} />
+                  </span>
+                </div>
+                <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{note}</p>
+              </article>
             ))}
-          </div>
+          </section>
 
-          <div className="mt-8 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-            <section className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+          <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-black text-stone-500">متابعة الطلاب</p>
-                  <h2 className="text-xl font-black text-stone-950">حالات تحتاج قرارا تعليميا</h2>
+                  <p className="text-sm font-black text-slate-500">حالات تحتاج متابعة</p>
+                  <h2 className="text-xl font-black text-slate-950">أولوية الجلسة التالية</h2>
                 </div>
-                <Link href="/reports" className="text-sm font-black text-[#1f6f63]">عرض التقارير</Link>
+                <Link href="/reports" className="inline-flex items-center gap-1 text-sm font-black text-teal-800">
+                  التقارير
+                  <ArrowLeft size={15} />
+                </Link>
               </div>
+
               <div className="grid gap-3 md:hidden">
                 {students.map((student) => (
-                  <article key={student.name} className="rounded-lg bg-stone-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-black text-stone-950">{student.name}</h3>
-                        <p className="text-sm text-stone-500">{student.grade} · {student.program}</p>
-                      </div>
-                      <span className="text-sm font-black text-stone-700">{student.progress}%</span>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-stone-600">{student.risk}</p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                      <div className="h-full rounded-full bg-[#1f6f63]" style={{ width: `${student.progress}%` }} />
-                    </div>
-                  </article>
+                  <StudentRowCard key={student.name} student={student} />
                 ))}
               </div>
+
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[720px] text-right">
+                <table className="w-full min-w-[760px] text-right">
                   <thead>
-                    <tr className="border-b border-black/10 text-xs font-black text-stone-500">
+                    <tr className="border-b border-slate-200 text-xs font-black text-slate-500">
                       <th className="py-3">الطالب</th>
-                      <th className="py-3">البرنامج</th>
-                      <th className="py-3">نقطة التدخل</th>
+                      <th className="py-3">المسار</th>
+                      <th className="py-3">أولوية التدخل</th>
+                      <th className="py-3">القرار</th>
                       <th className="py-3">التقدم</th>
                     </tr>
                   </thead>
                   <tbody>
                     {students.map((student) => (
-                      <tr key={student.name} className="border-b border-black/5 last:border-0">
+                      <tr key={student.name} className="border-b border-slate-100 last:border-0">
                         <td className="py-4">
-                          <p className="font-black text-stone-950">{student.name}</p>
-                          <p className="text-sm text-stone-500">{student.grade}</p>
+                          <p className="font-black text-slate-950">{student.name}</p>
+                          <p className="text-sm font-bold text-slate-500">{student.grade}</p>
                         </td>
-                        <td className="py-4 text-sm font-bold text-stone-800">{student.program}</td>
-                        <td className="py-4 text-sm text-stone-600">{student.risk}</td>
+                        <td className="py-4 text-sm font-bold text-slate-800">{student.program}</td>
+                        <td className="py-4 text-sm font-bold text-slate-600">{student.risk}</td>
                         <td className="py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-2 w-32 overflow-hidden rounded-full bg-stone-100">
-                              <div className="h-full rounded-full bg-[#1f6f63]" style={{ width: `${student.progress}%` }} />
-                            </div>
-                            <span className="text-sm font-black text-stone-700">{student.progress}%</span>
-                          </div>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{student.decision}</span>
+                        </td>
+                        <td className="py-4">
+                          <Progress value={student.progress} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </section>
+            </div>
 
-            <section className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
-              <p className="text-sm font-black text-stone-500">جدول اليوم</p>
-              <h2 className="mb-5 text-xl font-black text-stone-950">جلسات قابلة للتنفيذ</h2>
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white">
+                  <Target size={20} />
+                </span>
+                <div>
+                  <p className="text-sm font-black text-slate-500">جلسات اليوم</p>
+                  <h2 className="text-xl font-black text-slate-950">هدف واحد لكل جلسة</h2>
+                </div>
+              </div>
               <div className="space-y-3">
                 {sessions.map(([time, title, goal]) => (
-                  <div key={time} className="rounded-lg bg-stone-50 p-4">
+                  <article key={time} className="rounded-lg bg-slate-50 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-black text-stone-950">{title}</h3>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-stone-700 ring-1 ring-black/10">{time}</span>
+                      <h3 className="font-black text-slate-950">{title}</h3>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{time}</span>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-stone-600">{goal}</p>
-                  </div>
+                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{goal}</p>
+                  </article>
                 ))}
               </div>
-            </section>
-          </div>
+            </div>
+          </section>
 
-          <section className="mt-8 rounded-lg border border-black/10 bg-white p-5 shadow-sm">
-            <div className="mb-5">
-              <p className="text-sm font-black text-stone-500">جودة المناهج</p>
-              <h2 className="text-xl font-black text-stone-950">كل برنامج له تشخيص، جلسة، بيت، وقياس</h2>
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-black text-slate-500">مكتبة المسارات</p>
+                <h2 className="text-xl font-black text-slate-950">كل مسار مرتبط باختبار وتدريب وتقرير</h2>
+              </div>
+              <FileText className="text-slate-400" size={22} />
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {curriculumPrograms.map((program) => (
-                <Link key={program.slug} href={`/programs/${program.slug}`} className="rounded-lg border border-black/10 p-4 transition hover:bg-stone-50">
+                <Link key={program.slug} href={`/programs/${program.slug}`} className="rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50">
                   <span className="mb-3 block h-2 rounded-full" style={{ backgroundColor: program.color }} />
-                  <h3 className="font-black text-stone-950">{program.shortTitle}</h3>
-                  <p className="mt-2 text-sm leading-6 text-stone-600">{program.modules.length} مراحل، {program.measures.length} مؤشرات قياس</p>
+                  <h3 className="font-black text-slate-950">{program.shortTitle}</h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{program.modules.length} مراحل، {program.measures.length} مؤشرات قياس</p>
                 </Link>
               ))}
             </div>
           </section>
         </main>
       </div>
+    </div>
+  );
+}
+
+function StudentRowCard({ student }: { student: (typeof students)[number] }) {
+  return (
+    <article className="rounded-lg bg-slate-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-black text-slate-950">{student.name}</h3>
+          <p className="text-sm font-bold text-slate-500">{student.grade} · {student.program}</p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{student.decision}</span>
+      </div>
+      <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{student.risk}</p>
+      <div className="mt-3">
+        <Progress value={student.progress} />
+      </div>
+    </article>
+  );
+}
+
+function Progress({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-2 w-full min-w-28 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-teal-700" style={{ width: `${value}%` }} />
+      </div>
+      <span className="w-10 text-sm font-black text-slate-700">{value}%</span>
     </div>
   );
 }
