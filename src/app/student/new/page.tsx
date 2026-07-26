@@ -1,165 +1,152 @@
-"use client";
-import { useState } from 'react';
+'use client';
+
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 
+const steps = ['بيانات', 'فحص سريع', 'اختيار مسار', 'خطة أول أسبوع'];
+
+const screening = [
+  { area: 'قراءة', skill: 'يميز أصوات الحروف قبل شكلها', risk: 'خلط صوتي أو تخمين قراءة' },
+  { area: 'كتابة', skill: 'يكتب كلمة بعد تقطيعها أصواتا', risk: 'إملاء بصري بلا قاعدة' },
+  { area: 'رياضيات', skill: 'يربط الرقم بكمية محسوسة', risk: 'حفظ رمز دون معنى' },
+  { area: 'انتباه', skill: 'ينفذ تعليمات من خطوتين', risk: 'ذاكرة عاملة ضعيفة' },
+  { area: 'تخاطب', skill: 'ينطق الصوت داخل كلمة قصيرة', risk: 'صعوبة مخرج أو طلاقة' },
+  { area: 'سلوك', skill: 'يطلب مساعدة بدل الانسحاب', risk: 'سلوك هروب من المهمة' },
+];
+
+const programChoices = [
+  { title: 'القراءة والكتابة', href: '/programs/reading', reason: 'وعي صوتي، مقاطع، إملاء، طلاقة' },
+  { title: 'الرياضيات', href: '/programs/math', reason: 'محسوس، مرسوم، رمز، مسائل' },
+  { title: 'صعوبات التعلم', href: '/programs/learning-difficulties', reason: 'خطة فردية ومهارات تنفيذية' },
+];
+
 export default function NewStudentWizard() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [selectedRisks, setSelectedRisks] = useState<string[]>(['قراءة', 'انتباه']);
+
+  const recommended = useMemo(() => {
+    if (selectedRisks.includes('رياضيات')) return 'الرياضيات';
+    if (selectedRisks.includes('تخاطب')) return 'التخاطب والنطق';
+    if (selectedRisks.includes('سلوك')) return 'تعديل السلوك';
+    return 'القراءة والكتابة';
+  }, [selectedRisks]);
+
+  const toggleRisk = (area: string) => {
+    setSelectedRisks((items) => (items.includes(area) ? items.filter((item) => item !== area) : [...items, area]));
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
       <Navbar />
-      <div className="container mx-auto px-4 py-10 max-w-4xl">
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-          
-          {/* Progress Header */}
-          <div className="bg-[#1E6FBF] p-6 text-white">
-            <h1 className="text-2xl font-bold mb-6 text-center">إضافة طالب جديد</h1>
-            <div className="flex justify-between items-center relative">
-              <div className="absolute top-1/2 left-0 right-0 h-1 bg-white/30 -z-0 transform -translate-y-1/2 rounded"></div>
-              {[1, 2, 3, 4].map((s) => (
-                <div key={s} className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-500 ${step >= s ? 'bg-[#F5A623] text-white shadow-lg' : 'bg-gray-300 text-gray-500'}`}>
-                  {s}
-                </div>
+      <main className="mx-auto max-w-6xl px-5 py-8">
+        <div className="mb-6">
+          <p className="text-sm font-black text-stone-500">تسكين طالب جديد</p>
+          <h1 className="text-3xl font-black text-stone-950">تشخيص قصير ينتج خطة قابلة للتنفيذ</h1>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+          <aside className="rounded-lg border border-black/10 bg-white p-4 shadow-sm">
+            <div className="space-y-2">
+              {steps.map((label, index) => (
+                <button
+                  key={label}
+                  onClick={() => setStep(index)}
+                  className={`w-full rounded-lg p-3 text-right text-sm font-black transition ${
+                    step === index ? 'bg-stone-950 text-white' : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <span className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/15">{index + 1}</span>
+                  {label}
+                </button>
               ))}
             </div>
-            <div className="flex justify-between mt-2 text-sm font-semibold opacity-90">
-              <span>البيانات</span>
-              <span>الاستبيان</span>
-              <span>التقييم</span>
-              <span>الخطة</span>
-            </div>
-          </div>
+          </aside>
 
-          {/* Form Content */}
-          <div className="p-8">
+          <section className="rounded-lg border border-black/10 bg-white p-5 shadow-sm md:p-7">
+            {step === 0 && (
+              <div className="grid gap-5 md:grid-cols-2">
+                {['اسم الطالب', 'تاريخ الميلاد', 'الصف الدراسي', 'ولي الأمر'].map((label) => (
+                  <label key={label} className="block">
+                    <span className="mb-2 block text-sm font-black text-stone-700">{label}</span>
+                    <input className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 outline-none focus:border-stone-950" placeholder={label} />
+                  </label>
+                ))}
+              </div>
+            )}
+
             {step === 1 && (
-              <div className="animate-fade-in space-y-6">
-                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">1. بيانات الطالب الأساسية</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">اسم الطالب</label>
-                    <input type="text" className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#1E6FBF] outline-none" placeholder="الاسم الرباعي" />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">الرقم القومي / الهوية</label>
-                    <input type="text" className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#1E6FBF] outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">تاريخ الميلاد</label>
-                    <input type="date" className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#1E6FBF] outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">الصف الدراسي</label>
-                    <select className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#1E6FBF] outline-none bg-white">
-                      <option>الروضة</option>
-                      <option>الصف الأول</option>
-                      <option>الصف الثاني</option>
-                      <option>الصف الثالث</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">صورة الطالب</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer">
-                    <span className="text-4xl mb-2 block">📸</span>
-                    <span className="text-gray-500 font-semibold">اضغط لرفع صورة</span>
-                  </div>
+              <div>
+                <h2 className="text-2xl font-black text-stone-950">فحص مهارات سريع</h2>
+                <p className="mt-2 text-sm leading-7 text-stone-600">اختار المهارات الضعيفة. النظام يقترح مسارا أوليا، والأخصائي يراجع بعد أول جلستين.</p>
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  {screening.map((item) => (
+                    <button
+                      key={item.area}
+                      onClick={() => toggleRisk(item.area)}
+                      className={`rounded-lg border p-4 text-right transition ${
+                        selectedRisks.includes(item.area) ? 'border-[#1f6f63] bg-emerald-50' : 'border-black/10 bg-white hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-black text-stone-950">{item.area}</h3>
+                        <span className="rounded-full bg-stone-950 px-3 py-1 text-xs font-black text-white">{selectedRisks.includes(item.area) ? 'مختار' : 'فحص'}</span>
+                      </div>
+                      <p className="mt-2 text-sm font-bold text-stone-700">{item.skill}</p>
+                      <p className="mt-2 text-xs leading-6 text-stone-500">{item.risk}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
             {step === 2 && (
-              <div className="animate-fade-in space-y-6">
-                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">2. استبيان الأهل المبدئي</h2>
-                <div className="space-y-4">
-                  {[
-                    "هل يعاني الطفل من تأخر في النطق؟",
-                    "هل يواجه الطفل صعوبة في حفظ الحروف والأرقام؟",
-                    "هل يتشتت انتباه الطفل بسهولة أثناء المذاكرة؟",
-                    "هل يوجد تاريخ عائلي لصعوبات التعلم؟"
-                  ].map((q, idx) => (
-                    <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                      <p className="font-semibold text-gray-700 mb-3">{idx + 1}. {q}</p>
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2"><input type="radio" name={`q${idx}`} className="w-4 h-4 text-[#1E6FBF]" /> نعم</label>
-                        <label className="flex items-center gap-2"><input type="radio" name={`q${idx}`} className="w-4 h-4 text-[#1E6FBF]" /> لا</label>
-                        <label className="flex items-center gap-2"><input type="radio" name={`q${idx}`} className="w-4 h-4 text-[#1E6FBF]" /> أحياناً</label>
-                      </div>
-                    </div>
+              <div>
+                <h2 className="text-2xl font-black text-stone-950">المسار المقترح: {recommended}</h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {programChoices.map((program) => (
+                    <Link key={program.href} href={program.href} className="rounded-lg border border-black/10 bg-stone-50 p-4 transition hover:bg-white hover:shadow-sm">
+                      <h3 className="font-black text-stone-950">{program.title}</h3>
+                      <p className="mt-2 text-sm leading-7 text-stone-600">{program.reason}</p>
+                    </Link>
                   ))}
                 </div>
               </div>
             )}
 
             {step === 3 && (
-              <div className="animate-fade-in space-y-6">
-                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">3. التقييم الأولي (للأخصائي)</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-                    <h3 className="font-bold text-[#1E6FBF] mb-3">اختبار القراءة</h3>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يعرف الحروف منفصلة</label>
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يقرأ كلمات ثلاثية</label>
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يخلط بين الحروف المتشابهة</label>
+              <div>
+                <h2 className="text-2xl font-black text-stone-950">خطة أول أسبوع</h2>
+                <div className="mt-5 grid gap-3">
+                  {[
+                    ['هدف واحد', 'تثبيت مهارة واحدة فقط قبل إضافة مهارة جديدة.'],
+                    ['جلسة قصيرة', '5 دقائق تهيئة، 15 دقيقة تدريب، 5 دقائق قياس خروج.'],
+                    ['واجب بيت', 'نشاط 7 دقائق يوميا، بدون ضغط أو شرح طويل.'],
+                    ['قرار الانتقال', 'الانتقال بعد 80% دقة مع مساعدة قليلة.'],
+                  ].map(([title, body]) => (
+                    <div key={title} className="rounded-lg bg-stone-50 p-4">
+                      <h3 className="font-black text-stone-950">{title}</h3>
+                      <p className="mt-1 text-sm leading-7 text-stone-600">{body}</p>
                     </div>
-                  </div>
-                  <div className="bg-orange-50 p-5 rounded-xl border border-orange-100">
-                    <h3 className="font-bold text-[#F5A623] mb-3">اختبار الرياضيات</h3>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يميز الأرقام 1-10</label>
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يجمع أعداد بسيطة</label>
-                      <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" /> يفهم مدلول الرقم</label>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">ملاحظات السلوك والانتباه</label>
-                  <textarea className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#1E6FBF] outline-none h-24" placeholder="اكتب ملاحظاتك هنا..."></textarea>
-                </div>
+                <Link href={`/learn/${recommended === 'الرياضيات' ? 'math' : 'reading'}`} className="mt-6 inline-flex rounded-lg bg-stone-950 px-6 py-3 text-sm font-black text-white hover:bg-stone-800">
+                  افتح أول نشاط للطفل
+                </Link>
               </div>
             )}
 
-            {step === 4 && (
-              <div className="animate-fade-in space-y-6 text-center">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">✨</div>
-                <h2 className="text-2xl font-bold text-gray-800">تم التقييم بنجاح!</h2>
-                <p className="text-gray-600">بناءً على التقييم الأولي، يوصى بالبرامج التالية للطالب:</p>
-                <div className="flex flex-wrap justify-center gap-4 mt-6">
-                  <span className="px-6 py-3 bg-[#1E6FBF] text-white rounded-full font-bold shadow-md">برنامج القراءة والكتابة</span>
-                  <span className="px-6 py-3 bg-[#2ECC71] text-white rounded-full font-bold shadow-md">برنامج تعديل السلوك</span>
-                </div>
-              </div>
-            )}
-
-            {/* Navigation */}
-            <div className="flex justify-between items-center mt-10 pt-6 border-t">
-              <button 
-                onClick={() => setStep(step > 1 ? step - 1 : 1)}
-                className={`px-6 py-2 rounded-xl font-bold transition ${step === 1 ? 'opacity-0 cursor-default' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                disabled={step === 1}
-              >
+            <div className="mt-8 flex items-center justify-between border-t border-black/10 pt-5">
+              <button onClick={() => setStep(Math.max(step - 1, 0))} className="rounded-lg border border-black/10 px-5 py-3 text-sm font-black text-stone-700 hover:bg-stone-50">
                 السابق
               </button>
-              
-              {step < 4 ? (
-                <button 
-                  onClick={() => setStep(step + 1)}
-                  className="px-8 py-2 bg-[#1E6FBF] text-white rounded-xl font-bold hover:bg-[#0A3D7A] transition shadow-md"
-                >
-                  التالي
-                </button>
-              ) : (
-                <button 
-                  onClick={() => window.location.href = '/dashboard'}
-                  className="px-8 py-2 bg-[#F5A623] text-white rounded-xl font-bold hover:bg-[#e0961b] transition shadow-md"
-                >
-                  حفظ وإنهاء
-                </button>
-              )}
+              <button onClick={() => setStep(Math.min(step + 1, steps.length - 1))} className="rounded-lg bg-[#1f6f63] px-6 py-3 text-sm font-black text-white hover:bg-[#18584f]">
+                التالي
+              </button>
             </div>
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
