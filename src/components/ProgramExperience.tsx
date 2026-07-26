@@ -29,6 +29,9 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
                   <Link href={`/learn/${program.slug}`} className="rounded-lg px-6 py-3 text-sm font-black text-white transition hover:brightness-95" style={{ backgroundColor: program.color }}>
                     افتح واجهة الطفل
                   </Link>
+                  <Link href={`/assessment/${program.slug}`} className="rounded-lg bg-stone-950 px-6 py-3 text-sm font-black text-white hover:bg-stone-800">
+                    ابدأ اختبار تفاعلي
+                  </Link>
                   <Link href="/student/new" className="rounded-lg border border-black/15 bg-white px-6 py-3 text-sm font-black text-stone-900 hover:bg-stone-50">
                     تقييم وتسكين طالب
                   </Link>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { LearningStudioProgram } from '@/data/learningStudio';
 
@@ -16,6 +17,12 @@ export default function LearningStudio({ program }: LearningStudioProps) {
   const [correct, setCorrect] = useState(0);
   const stage = program.stages[stageIndex];
   const activity = stage.activities[activityIndex];
+  const heroImage =
+    program.slug === 'math'
+      ? '/learning/math-lab.png'
+      : program.slug === 'reading' || program.slug === 'speech'
+        ? '/learning/literacy-lab.png'
+        : '/learning/communication-lab.png';
 
   const progress = useMemo(() => {
     const total = program.stages.reduce((sum, item) => sum + item.activities.length, 0);
@@ -122,11 +129,14 @@ export default function LearningStudio({ program }: LearningStudioProps) {
               </button>
             </div>
 
-            <div className="grid flex-1 place-items-center py-8">
-              <div className="w-full max-w-3xl text-center">
+            <div className="grid flex-1 gap-6 py-6 xl:grid-cols-[0.85fr_1.15fr]">
+              <div className="relative min-h-56 overflow-hidden rounded-lg bg-stone-100">
+                <Image src={heroImage} alt="" fill sizes="(max-width: 768px) 100vw, 40vw" className="object-cover" priority />
+              </div>
+              <div className="w-full text-center">
                 <p className="text-lg font-bold leading-9 text-stone-700">{activity.prompt}</p>
                 <div
-                  className="mx-auto mt-6 flex min-h-40 w-full max-w-xl items-center justify-center rounded-lg border-2 border-dashed bg-stone-50 px-6 py-8 text-5xl font-black leading-tight text-stone-950 md:text-7xl"
+                  className="mx-auto mt-6 flex min-h-36 w-full max-w-xl items-center justify-center rounded-lg border-2 border-dashed bg-stone-50 px-6 py-8 text-5xl font-black leading-tight text-stone-950 md:text-7xl"
                   style={{ borderColor: program.color }}
                 >
                   {activity.target}

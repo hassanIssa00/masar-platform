@@ -42,6 +42,9 @@ export default function DashboardPage() {
             <Link href="/student/new" className="rounded-lg bg-stone-950 px-5 py-3 text-sm font-black text-white transition hover:bg-stone-800">
               إضافة وتقييم طالب
             </Link>
+            <Link href="/assessment/reading" className="rounded-lg border border-black/10 bg-white px-5 py-3 text-sm font-black text-stone-800 transition hover:bg-stone-50">
+              اختبار سريع
+            </Link>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

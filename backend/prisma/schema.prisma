@@ -1,0 +1,321 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantType {
+  SCHOOL
+  CENTER
+  CLINIC
+  INDIVIDUAL
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SPECIALIST
+  TEACHER
+  PARENT
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssessmentType {
+  READING
+  WRITING
+  MATH
+  BEHAVIOR
+  SPEECH
+  AUTISM_SUPPORT
+}
+
+enum ProgramType {
+  READING
+  MATH
+  LEARNING_DIFFICULTIES
+  BEHAVIOR
+  SPEECH
+  AUTISM_SUPPORT
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum SessionType {
+  IN_PERSON
+  ONLINE
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum MasteryStatus {
+  NOT_STARTED
+  PRACTICING
+  MASTERED
+  NEEDS_RETEACH
+}
+
+enum ActivityType {
+  LISTEN
+  CHOOSE
+  BLEND
+  BUILD
+  READ
+  ROUTINE
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  type      TenantType
+  plan      String
+  createdAt DateTime @default(now())
+  users     User[]
+  students  Student[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String?
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  parentsStudents    Student[] @relation("ParentStudents")
+  specialistStudents Student[] @relation("SpecialistStudents")
+  surveys            Survey[]
+  assessments        Assessment[]
+  reports            Report[]
+  sessions           Session[]
+  notifications      Notification[]
+}
+
+model Student {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime
+  gender       String
+  grade        Int
+  photoUrl     String?
+  nationalId   String?
+  parentId     String?
+  parent       User?    @relation("ParentStudents", fields: [parentId], references: [id])
+  specialistId String?
+  specialist   User?    @relation("SpecialistStudents", fields: [specialistId], references: [id])
+  status       StudentStatus
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      StudentProfile?
+  surveys      Survey[]
+  assessments  Assessment[]
+  programs     StudentProgram[]
+  reports      Report[]
+  sessions     Session[]
+}
+
+model StudentProfile {
+  id             String   @id @default(uuid())
+  studentId      String   @unique
+  student        Student  @relation(fields: [studentId], references: [id])
+  learningStyle  Json
+  cognitiveLevel String?
+  primaryLanguage String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Survey {
+  id           String   @id @default(uuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  respondentId String
+  respondent   User     @relation(fields: [respondentId], references: [id])
+  answers      Json
+  submittedAt  DateTime @default(now())
+}
+
+model Assessment {
+  id           String   @id @default(uuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  conductedById String
+  conductedBy  User     @relation(fields: [conductedById], references: [id])
+  type         AssessmentType
+  results      Json
+  score        Float?
+  notes        String?
+  conductedAt  DateTime @default(now())
+}
+
+model Program {
+  id          String   @id @default(uuid())
+  name        String
+  type        ProgramType
+  description String
+  teachingModel String?
+  evidenceBasis Json?
+  level       Int
+  gradeMin    Int
+  gradeMax    Int
+  students    StudentProgram[]
+  lessons     Lesson[]
+  skills      CurriculumSkill[]
+}
+
+model StudentProgram {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  programId  String
+  program    Program  @relation(fields: [programId], references: [id])
+  enrolledAt DateTime @default(now())
+  status     EnrollmentStatus
+  progress   Int      @default(0)
+  currentSkillId String?
+  currentSkill   CurriculumSkill? @relation("CurrentEnrollmentSkill", fields: [currentSkillId], references: [id])
+  masteryProfile Json?
+  notes      String?
+  skillProgress SkillProgress[]
+  attempts      ActivityAttempt[]
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  programId String
+  program   Program  @relation(fields: [programId], references: [id])
+  title     String
+  content   Json
+  order     Int
+  level     Int
+  printable Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model CurriculumSkill {
+  id              String   @id @default(uuid())
+  programId       String
+  program         Program  @relation(fields: [programId], references: [id])
+  code            String
+  title           String
+  studentGoal     String
+  teacherStrategy String
+  sequence        Int
+  masteryCriteria Json
+  prerequisites   Json?
+  activities      LearningActivity[]
+  currentEnrollments StudentProgram[] @relation("CurrentEnrollmentSkill")
+  progress        SkillProgress[]
+
+  @@unique([programId, code])
+  @@index([programId, sequence])
+}
+
+model LearningActivity {
+  id             String          @id @default(uuid())
+  skillId        String
+  skill          CurriculumSkill @relation(fields: [skillId], references: [id])
+  type           ActivityType
+  title          String
+  prompt         String
+  speechText     String
+  target         String
+  choices        Json?
+  correctAnswer  String?
+  scaffold       String
+  order          Int
+  attempts       ActivityAttempt[]
+
+  @@index([skillId, order])
+}
+
+model SkillProgress {
+  id             String          @id @default(uuid())
+  enrollmentId   String
+  enrollment     StudentProgram  @relation(fields: [enrollmentId], references: [id])
+  skillId        String
+  skill          CurriculumSkill @relation(fields: [skillId], references: [id])
+  status         MasteryStatus   @default(NOT_STARTED)
+  accuracy       Float           @default(0)
+  attemptsCount  Int             @default(0)
+  correctCount   Int             @default(0)
+  lastPracticedAt DateTime?
+  notes          String?
+
+  @@unique([enrollmentId, skillId])
+}
+
+model ActivityAttempt {
+  id            String           @id @default(uuid())
+  enrollmentId  String
+  enrollment    StudentProgram   @relation(fields: [enrollmentId], references: [id])
+  activityId    String
+  activity      LearningActivity @relation(fields: [activityId], references: [id])
+  answer        String?
+  correct       Boolean
+  responseTimeMs Int?
+  supportLevel  String?
+  createdAt     DateTime         @default(now())
+
+  @@index([enrollmentId, createdAt])
+  @@index([activityId])
+}
+
+model Report {
+  id             String   @id @default(uuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  generatedById  String
+  generatedBy    User     @relation(fields: [generatedById], references: [id])
+  type           String
+  summary        String
+  details        Json
+  recommendations String
+  generatedAt    DateTime @default(now())
+  printedAt      DateTime?
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  specialistId String
+  specialist   User     @relation(fields: [specialistId], references: [id])
+  scheduledAt  DateTime
+  duration     Int      // in minutes
+  type         SessionType
+  notes        String?
+  status       SessionStatus
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  type      String
+  createdAt DateTime @default(now())
+}
