@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileCheck2, UserRound } from 'lucide-react';
+import { Camera, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileCheck2, Gauge, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { assessmentPrinciples, getRiskLabel, getRiskLevel } from '@/data/assessmentModel';
 
 const steps = [
   { id: 1, label: 'البيانات', icon: UserRound },
@@ -20,6 +21,17 @@ const parentQuestions = [
 
 export default function NewStudentWizard() {
   const [step, setStep] = useState(1);
+  const [parentAnswers, setParentAnswers] = useState<Record<number, string>>({});
+  const [readingChecks, setReadingChecks] = useState<Record<string, boolean>>({});
+  const [mathChecks, setMathChecks] = useState<Record<string, boolean>>({});
+
+  const parentRisk = Object.values(parentAnswers).reduce((total, answer) => total + (answer === 'نعم' ? 20 : answer === 'أحياناً' ? 10 : 0), 0);
+  const readingDone = Object.values(readingChecks).filter(Boolean).length;
+  const mathDone = Object.values(mathChecks).filter(Boolean).length;
+  const skillRisk = (3 - readingDone) * 10 + (3 - mathDone) * 10;
+  const riskScore = Math.min(parentRisk + skillRisk, 100);
+  const riskLevel = getRiskLevel(riskScore);
+  const recommendation = mathDone < readingDone ? 'برنامج الرياضيات' : 'برنامج القراءة والكتابة';
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
@@ -33,25 +45,26 @@ export default function NewStudentWizard() {
           </p>
         </header>
 
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 p-4">
-            <div className="grid grid-cols-4 gap-2">
-              {steps.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setStep(id)}
-                  className={`focus-ring rounded-lg p-3 text-center transition ${
-                    step === id ? 'bg-slate-950 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Icon className="mx-auto" size={20} />
-                  <span className="mt-2 block text-xs font-black md:text-sm">{label}</span>
-                </button>
-              ))}
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 bg-slate-50 p-4">
+              <div className="grid grid-cols-4 gap-2">
+                {steps.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setStep(id)}
+                    className={`focus-ring min-h-20 rounded-lg p-3 text-center transition ${
+                      step === id ? 'bg-slate-950 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Icon className="mx-auto" size={20} />
+                    <span className="mt-2 block text-xs font-black leading-5 md:text-sm">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="p-5 md:p-7">
+            <div className="p-5 md:p-7">
             {step === 1 && (
               <div className="space-y-6">
                 <SectionTitle title="بيانات الطالب الأساسية" />
@@ -84,10 +97,23 @@ export default function NewStudentWizard() {
                   {parentQuestions.map((question, index) => (
                     <article key={question} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <p className="font-black text-slate-900">{index + 1}. {question}</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
                         {['نعم', 'لا', 'أحياناً'].map((answer) => (
-                          <label key={answer} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-700 ring-1 ring-slate-200">
-                            <input type="radio" name={`q${index}`} className="accent-teal-700" />
+                          <label
+                            key={answer}
+                            className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black ring-1 transition ${
+                              parentAnswers[index] === answer
+                                ? 'bg-slate-950 text-white ring-slate-950'
+                                : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q${index}`}
+                              className="sr-only"
+                              checked={parentAnswers[index] === answer}
+                              onChange={() => setParentAnswers((current) => ({ ...current, [index]: answer }))}
+                            />
                             {answer}
                           </label>
                         ))}
@@ -105,10 +131,14 @@ export default function NewStudentWizard() {
                   <AssessmentBox
                     title="اختبار القراءة"
                     items={['يعرف الحروف منفصلة', 'يقرأ كلمات ثلاثية', 'يخلط بين الحروف المتشابهة']}
+                    values={readingChecks}
+                    onChange={setReadingChecks}
                   />
                   <AssessmentBox
                     title="اختبار الرياضيات"
                     items={['يميز الأرقام 1-10', 'يجمع أعداد بسيطة', 'يفهم مدلول الرقم']}
+                    values={mathChecks}
+                    onChange={setMathChecks}
                   />
                 </div>
                 <label className="block">
@@ -126,23 +156,48 @@ export default function NewStudentWizard() {
                 <h2 className="mt-5 text-2xl font-black text-slate-950">تم التقييم بنجاح</h2>
                 <p className="mt-2 text-sm font-bold leading-7 text-slate-600">بناءً على التقييم الأولي، يوصى بالبرامج التالية للطالب:</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
-                  <span className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">برنامج القراءة والكتابة</span>
+                  <span className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">{recommendation}</span>
                   <span className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">برنامج تعديل السلوك</span>
                 </div>
               </div>
             )}
 
             <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5">
-              <button onClick={() => setStep(Math.max(step - 1, 1))} disabled={step === 1} className="focus-ring inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 disabled:opacity-40">
+              <button onClick={() => setStep(Math.max(step - 1, 1))} disabled={step === 1} className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 disabled:opacity-40">
                 <ChevronRight size={17} />
                 السابق
               </button>
-              <button onClick={() => setStep(Math.min(step + 1, 4))} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
+              <button onClick={() => setStep(Math.min(step + 1, 4))} className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
                 {step < 4 ? 'التالي' : 'حفظ وإنهاء'}
                 <ChevronLeft size={17} />
               </button>
             </div>
+            </div>
           </div>
+
+          <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-32 lg:self-start">
+            <div className="flex items-center gap-3">
+              <span className="grid h-11 w-11 place-items-center rounded-lg bg-teal-50 text-teal-800">
+                <Gauge size={22} />
+              </span>
+              <div>
+                <p className="text-xs font-black text-slate-500">تحليل فوري</p>
+                <h2 className="font-black text-slate-950">{getRiskLabel(riskLevel)}</h2>
+              </div>
+            </div>
+            <div className="mt-5 rounded-lg bg-slate-950 p-5 text-center text-white">
+              <p className="text-5xl font-black">{riskScore}%</p>
+              <p className="mt-2 text-sm font-bold text-white/70">مؤشر الاحتياج</p>
+            </div>
+            <div className="mt-5 space-y-3">
+              {assessmentPrinciples.map((principle) => (
+                <div key={principle.title} className="rounded-lg bg-slate-50 p-3">
+                  <h3 className="text-sm font-black text-slate-950">{principle.title}</h3>
+                  <p className="mt-1 text-xs font-bold leading-6 text-slate-600">{principle.detail}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
         </section>
       </main>
     </div>
@@ -162,14 +217,34 @@ function Field({ label, placeholder, type = 'text' }: { label: string; placehold
   );
 }
 
-function AssessmentBox({ title, items }: { title: string; items: string[] }) {
+function AssessmentBox({
+  title,
+  items,
+  values,
+  onChange,
+}: {
+  title: string;
+  items: string[];
+  values: Record<string, boolean>;
+  onChange: (value: Record<string, boolean>) => void;
+}) {
   return (
     <section className="rounded-lg border border-slate-200 bg-slate-50 p-5">
       <h3 className="font-black text-slate-950">{title}</h3>
       <div className="mt-4 space-y-3">
         {items.map((item) => (
-          <label key={item} className="flex items-center gap-3 text-sm font-bold text-slate-700">
-            <input type="checkbox" className="accent-teal-700" />
+          <label
+            key={item}
+            className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-bold transition ${
+              values[item] ? 'border-teal-700 bg-teal-50 text-teal-950' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <input
+              type="checkbox"
+              className="accent-teal-700"
+              checked={Boolean(values[item])}
+              onChange={(event) => onChange({ ...values, [item]: event.target.checked })}
+            />
             {item}
           </label>
         ))}

@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Printer } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, Printer, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { decisionRules, getDecisionFromScore } from '@/data/assessmentModel';
 
 const reports = [
   {
@@ -68,6 +69,8 @@ export default function ReportsPage() {
   };
 
   if (selected) {
+    const decision = getDecisionFromScore(selected.score);
+
     return (
       <div className="min-h-screen bg-[var(--background)] text-slate-950">
         <Navbar />
@@ -108,10 +111,25 @@ export default function ReportsPage() {
                   ))}
                 </div>
 
-                <section className="mt-6 rounded-lg bg-slate-50 p-5">
-                  <h2 className="text-lg font-black text-slate-950">الدرجة الكلية للتقييم</h2>
-                  <p className="mt-3 text-5xl font-black" style={{ color: getScoreColor(selected.score) }}>{selected.score}%</p>
-                  <p className="mt-2 text-sm font-bold text-slate-600">{selected.score >= 75 ? 'مستوى جيد' : selected.score >= 50 ? 'يحتاج متابعة' : 'يحتاج تدخلاً فورياً'}</p>
+                <section className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                  <div className="rounded-lg bg-slate-50 p-5">
+                    <h2 className="text-lg font-black text-slate-950">الدرجة الكلية للتقييم</h2>
+                    <p className="mt-3 text-5xl font-black" style={{ color: getScoreColor(selected.score) }}>{selected.score}%</p>
+                    <p className="mt-2 text-sm font-bold text-slate-600">{selected.score >= 75 ? 'مستوى جيد' : selected.score >= 50 ? 'يحتاج متابعة' : 'يحتاج تدخلاً فورياً'}</p>
+                  </div>
+                  <div className="rounded-lg border border-teal-100 bg-teal-50 p-5">
+                    <div className="flex items-start gap-3">
+                      <span className="grid h-11 w-11 place-items-center rounded-lg bg-white text-teal-800 ring-1 ring-teal-100">
+                        <Target size={21} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-black text-teal-800">قاعدة القرار</p>
+                        <h2 className="mt-1 text-xl font-black text-slate-950">{decision.label}</h2>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm font-bold leading-7 text-slate-700">{decision.action}</p>
+                    <p className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-teal-900 ring-1 ring-teal-100">{decision.range}</p>
+                  </div>
                 </section>
 
                 <section className="mt-6">
@@ -128,6 +146,27 @@ export default function ReportsPage() {
                       'إعادة التقييم بعد 6 أسابيع لقياس التقدم.',
                     ].map((item, index) => (
                       <p key={item} className="rounded-lg bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-900">{index + 1}. {item}</p>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white">
+                      <ClipboardCheck size={20} />
+                    </span>
+                    <div>
+                      <p className="text-sm font-black text-slate-500">سلم اتخاذ القرار</p>
+                      <h2 className="text-xl font-black text-slate-950">متى نعيد التدريس ومتى ننتقل؟</h2>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {decisionRules.map((rule) => (
+                      <article key={rule.label} className="rounded-lg bg-slate-50 p-4">
+                        <p className="text-xs font-black text-teal-800">{rule.range}</p>
+                        <h3 className="mt-2 font-black text-slate-950">{rule.label}</h3>
+                        <p className="mt-2 text-xs font-bold leading-6 text-slate-600">{rule.action}</p>
+                      </article>
                     ))}
                   </div>
                 </section>
@@ -165,26 +204,33 @@ export default function ReportsPage() {
           </div>
 
           <section className="grid gap-4 md:grid-cols-2">
-            {filtered.map((report) => (
-              <article key={report.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                <div className="h-2" style={{ backgroundColor: report.programColor }} />
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl font-black text-slate-950">{report.studentName}</h2>
-                      <p className="mt-1 text-sm font-bold text-slate-500">{report.grade} · {report.date}</p>
+            {filtered.map((report) => {
+              const decision = getDecisionFromScore(report.score);
+
+              return (
+                <article key={report.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <div className="h-2" style={{ backgroundColor: report.programColor }} />
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-950">{report.studentName}</h2>
+                        <p className="mt-1 text-sm font-bold text-slate-500">{report.grade} · {report.date}</p>
+                      </div>
+                      <p className="text-3xl font-black" style={{ color: getScoreColor(report.score) }}>{report.score}%</p>
                     </div>
-                    <p className="text-3xl font-black" style={{ color: getScoreColor(report.score) }}>{report.score}%</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="inline-block rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: report.programColor }}>{report.program}</span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{decision.label}</span>
+                    </div>
+                    <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{report.summary}</p>
+                    <div className="mt-5 flex gap-3">
+                      <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
+                      <button onClick={() => window.print()} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
+                    </div>
                   </div>
-                  <span className="mt-4 inline-block rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: report.programColor }}>{report.program}</span>
-                  <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{report.summary}</p>
-                  <div className="mt-5 flex gap-3">
-                    <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
-                    <button onClick={() => window.print()} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </section>
         </main>
       </div>
