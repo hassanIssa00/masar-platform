@@ -1,152 +1,179 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { Camera, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileCheck2, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
-const steps = ['بيانات', 'فحص سريع', 'اختيار مسار', 'خطة أول أسبوع'];
-
-const screening = [
-  { area: 'قراءة', skill: 'يميز أصوات الحروف قبل شكلها', risk: 'خلط صوتي أو تخمين قراءة' },
-  { area: 'كتابة', skill: 'يكتب كلمة بعد تقطيعها أصواتا', risk: 'إملاء بصري بلا قاعدة' },
-  { area: 'رياضيات', skill: 'يربط الرقم بكمية محسوسة', risk: 'حفظ رمز دون معنى' },
-  { area: 'انتباه', skill: 'ينفذ تعليمات من خطوتين', risk: 'ذاكرة عاملة ضعيفة' },
-  { area: 'تخاطب', skill: 'ينطق الصوت داخل كلمة قصيرة', risk: 'صعوبة مخرج أو طلاقة' },
-  { area: 'سلوك', skill: 'يطلب مساعدة بدل الانسحاب', risk: 'سلوك هروب من المهمة' },
+const steps = [
+  { id: 1, label: 'البيانات', icon: UserRound },
+  { id: 2, label: 'الاستبيان', icon: ClipboardList },
+  { id: 3, label: 'التقييم', icon: FileCheck2 },
+  { id: 4, label: 'الخطة', icon: CheckCircle2 },
 ];
 
-const programChoices = [
-  { title: 'القراءة والكتابة', href: '/programs/reading', reason: 'وعي صوتي، مقاطع، إملاء، طلاقة' },
-  { title: 'الرياضيات', href: '/programs/math', reason: 'محسوس، مرسوم، رمز، مسائل' },
-  { title: 'صعوبات التعلم', href: '/programs/learning-difficulties', reason: 'خطة فردية ومهارات تنفيذية' },
+const parentQuestions = [
+  'هل يعاني الطفل من تأخر في النطق؟',
+  'هل يواجه الطفل صعوبة في حفظ الحروف والأرقام؟',
+  'هل يتشتت انتباه الطفل بسهولة أثناء المذاكرة؟',
+  'هل يوجد تاريخ عائلي لصعوبات التعلم؟',
 ];
 
 export default function NewStudentWizard() {
-  const [step, setStep] = useState(0);
-  const [selectedRisks, setSelectedRisks] = useState<string[]>(['قراءة', 'انتباه']);
-
-  const recommended = useMemo(() => {
-    if (selectedRisks.includes('رياضيات')) return 'الرياضيات';
-    if (selectedRisks.includes('تخاطب')) return 'التخاطب والنطق';
-    if (selectedRisks.includes('سلوك')) return 'تعديل السلوك';
-    return 'القراءة والكتابة';
-  }, [selectedRisks]);
-
-  const toggleRisk = (area: string) => {
-    setSelectedRisks((items) => (items.includes(area) ? items.filter((item) => item !== area) : [...items, area]));
-  };
+  const [step, setStep] = useState(1);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+    <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-5 py-8">
-        <div className="mb-6">
-          <p className="text-sm font-black text-stone-500">تسكين طالب جديد</p>
-          <h1 className="text-3xl font-black text-stone-950">تشخيص قصير ينتج خطة قابلة للتنفيذ</h1>
-        </div>
+      <main className="mx-auto max-w-6xl px-4 py-6 lg:px-8">
+        <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-black text-teal-800">إضافة طالب جديد</p>
+          <h1 className="mt-2 text-3xl font-black text-slate-950">نفس خطوات النظام الأصلية بشكل أوضح</h1>
+          <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
+            أدخل البيانات، اجمع استبيان الأهل، سجل تقييم الأخصائي، ثم احفظ توصية البرامج المناسبة.
+          </p>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <aside className="rounded-lg border border-black/10 bg-white p-4 shadow-sm">
-            <div className="space-y-2">
-              {steps.map((label, index) => (
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 p-4">
+            <div className="grid grid-cols-4 gap-2">
+              {steps.map(({ id, label, icon: Icon }) => (
                 <button
-                  key={label}
-                  onClick={() => setStep(index)}
-                  className={`w-full rounded-lg p-3 text-right text-sm font-black transition ${
-                    step === index ? 'bg-stone-950 text-white' : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                  key={id}
+                  onClick={() => setStep(id)}
+                  className={`focus-ring rounded-lg p-3 text-center transition ${
+                    step === id ? 'bg-slate-950 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/15">{index + 1}</span>
-                  {label}
+                  <Icon className="mx-auto" size={20} />
+                  <span className="mt-2 block text-xs font-black md:text-sm">{label}</span>
                 </button>
               ))}
             </div>
-          </aside>
+          </div>
 
-          <section className="rounded-lg border border-black/10 bg-white p-5 shadow-sm md:p-7">
-            {step === 0 && (
-              <div className="grid gap-5 md:grid-cols-2">
-                {['اسم الطالب', 'تاريخ الميلاد', 'الصف الدراسي', 'ولي الأمر'].map((label) => (
-                  <label key={label} className="block">
-                    <span className="mb-2 block text-sm font-black text-stone-700">{label}</span>
-                    <input className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 outline-none focus:border-stone-950" placeholder={label} />
-                  </label>
-                ))}
-              </div>
-            )}
-
+          <div className="p-5 md:p-7">
             {step === 1 && (
-              <div>
-                <h2 className="text-2xl font-black text-stone-950">فحص مهارات سريع</h2>
-                <p className="mt-2 text-sm leading-7 text-stone-600">اختار المهارات الضعيفة. النظام يقترح مسارا أوليا، والأخصائي يراجع بعد أول جلستين.</p>
-                <div className="mt-5 grid gap-3 md:grid-cols-2">
-                  {screening.map((item) => (
-                    <button
-                      key={item.area}
-                      onClick={() => toggleRisk(item.area)}
-                      className={`rounded-lg border p-4 text-right transition ${
-                        selectedRisks.includes(item.area) ? 'border-[#1f6f63] bg-emerald-50' : 'border-black/10 bg-white hover:bg-stone-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="font-black text-stone-950">{item.area}</h3>
-                        <span className="rounded-full bg-stone-950 px-3 py-1 text-xs font-black text-white">{selectedRisks.includes(item.area) ? 'مختار' : 'فحص'}</span>
-                      </div>
-                      <p className="mt-2 text-sm font-bold text-stone-700">{item.skill}</p>
-                      <p className="mt-2 text-xs leading-6 text-stone-500">{item.risk}</p>
-                    </button>
-                  ))}
+              <div className="space-y-6">
+                <SectionTitle title="بيانات الطالب الأساسية" />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field label="اسم الطالب" placeholder="الاسم الرباعي" />
+                  <Field label="الرقم القومي / الهوية" />
+                  <Field label="تاريخ الميلاد" type="date" />
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-black text-slate-700">الصف الدراسي</span>
+                    <select className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                      <option>الروضة</option>
+                      <option>الصف الأول</option>
+                      <option>الصف الثاني</option>
+                      <option>الصف الثالث</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                  <Camera className="mx-auto text-slate-500" size={32} />
+                  <p className="mt-3 text-sm font-black text-slate-700">رفع صورة الطالب</p>
+                  <p className="mt-1 text-xs font-bold text-slate-500">اختياري، ويظهر في ملف الطالب فقط.</p>
                 </div>
               </div>
             )}
 
             {step === 2 && (
-              <div>
-                <h2 className="text-2xl font-black text-stone-950">المسار المقترح: {recommended}</h2>
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                  {programChoices.map((program) => (
-                    <Link key={program.href} href={program.href} className="rounded-lg border border-black/10 bg-stone-50 p-4 transition hover:bg-white hover:shadow-sm">
-                      <h3 className="font-black text-stone-950">{program.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-stone-600">{program.reason}</p>
-                    </Link>
+              <div className="space-y-6">
+                <SectionTitle title="استبيان الأهل المبدئي" />
+                <div className="grid gap-4">
+                  {parentQuestions.map((question, index) => (
+                    <article key={question} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="font-black text-slate-900">{index + 1}. {question}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {['نعم', 'لا', 'أحياناً'].map((answer) => (
+                          <label key={answer} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-700 ring-1 ring-slate-200">
+                            <input type="radio" name={`q${index}`} className="accent-teal-700" />
+                            {answer}
+                          </label>
+                        ))}
+                      </div>
+                    </article>
                   ))}
                 </div>
               </div>
             )}
 
             {step === 3 && (
-              <div>
-                <h2 className="text-2xl font-black text-stone-950">خطة أول أسبوع</h2>
-                <div className="mt-5 grid gap-3">
-                  {[
-                    ['هدف واحد', 'تثبيت مهارة واحدة فقط قبل إضافة مهارة جديدة.'],
-                    ['جلسة قصيرة', '5 دقائق تهيئة، 15 دقيقة تدريب، 5 دقائق قياس خروج.'],
-                    ['واجب بيت', 'نشاط 7 دقائق يوميا، بدون ضغط أو شرح طويل.'],
-                    ['قرار الانتقال', 'الانتقال بعد 80% دقة مع مساعدة قليلة.'],
-                  ].map(([title, body]) => (
-                    <div key={title} className="rounded-lg bg-stone-50 p-4">
-                      <h3 className="font-black text-stone-950">{title}</h3>
-                      <p className="mt-1 text-sm leading-7 text-stone-600">{body}</p>
-                    </div>
-                  ))}
+              <div className="space-y-6">
+                <SectionTitle title="التقييم الأولي للأخصائي" />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <AssessmentBox
+                    title="اختبار القراءة"
+                    items={['يعرف الحروف منفصلة', 'يقرأ كلمات ثلاثية', 'يخلط بين الحروف المتشابهة']}
+                  />
+                  <AssessmentBox
+                    title="اختبار الرياضيات"
+                    items={['يميز الأرقام 1-10', 'يجمع أعداد بسيطة', 'يفهم مدلول الرقم']}
+                  />
                 </div>
-                <Link href={`/learn/${recommended === 'الرياضيات' ? 'math' : 'reading'}`} className="mt-6 inline-flex rounded-lg bg-stone-950 px-6 py-3 text-sm font-black text-white hover:bg-stone-800">
-                  افتح أول نشاط للطفل
-                </Link>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-black text-slate-700">ملاحظات السلوك والانتباه</span>
+                  <textarea className="min-h-28 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder="اكتب ملاحظاتك هنا..." />
+                </label>
               </div>
             )}
 
-            <div className="mt-8 flex items-center justify-between border-t border-black/10 pt-5">
-              <button onClick={() => setStep(Math.max(step - 1, 0))} className="rounded-lg border border-black/10 px-5 py-3 text-sm font-black text-stone-700 hover:bg-stone-50">
+            {step === 4 && (
+              <div className="mx-auto max-w-2xl text-center">
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <CheckCircle2 size={34} />
+                </div>
+                <h2 className="mt-5 text-2xl font-black text-slate-950">تم التقييم بنجاح</h2>
+                <p className="mt-2 text-sm font-bold leading-7 text-slate-600">بناءً على التقييم الأولي، يوصى بالبرامج التالية للطالب:</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <span className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">برنامج القراءة والكتابة</span>
+                  <span className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">برنامج تعديل السلوك</span>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5">
+              <button onClick={() => setStep(Math.max(step - 1, 1))} disabled={step === 1} className="focus-ring inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 disabled:opacity-40">
+                <ChevronRight size={17} />
                 السابق
               </button>
-              <button onClick={() => setStep(Math.min(step + 1, steps.length - 1))} className="rounded-lg bg-[#1f6f63] px-6 py-3 text-sm font-black text-white hover:bg-[#18584f]">
-                التالي
+              <button onClick={() => setStep(Math.min(step + 1, 4))} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
+                {step < 4 ? 'التالي' : 'حفظ وإنهاء'}
+                <ChevronLeft size={17} />
               </button>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
     </div>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <h2 className="text-xl font-black text-slate-950">{title}</h2>;
+}
+
+function Field({ label, placeholder, type = 'text' }: { label: string; placeholder?: string; type?: string }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
+      <input type={type} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder={placeholder} />
+    </label>
+  );
+}
+
+function AssessmentBox({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+      <h3 className="font-black text-slate-950">{title}</h3>
+      <div className="mt-4 space-y-3">
+        {items.map((item) => (
+          <label key={item} className="flex items-center gap-3 text-sm font-bold text-slate-700">
+            <input type="checkbox" className="accent-teal-700" />
+            {item}
+          </label>
+        ))}
+      </div>
+    </section>
   );
 }

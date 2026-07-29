@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { Activity, BarChart3, BookOpen, ClipboardCheck, LogIn, UserPlus } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, LogIn, UserPlus } from 'lucide-react';
 
 const links = [
   { label: 'الرئيسية', href: '/', icon: Activity },
   { label: 'المناهج', href: '/programs/reading', icon: BookOpen },
-  { label: 'الاختبارات', href: '/assessment/reading', icon: ClipboardCheck },
+  { label: 'إضافة طالب', href: '/student/new', icon: UserPlus },
   { label: 'التقارير', href: '/reports', icon: BarChart3 },
 ];
 

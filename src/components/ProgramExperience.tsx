@@ -1,18 +1,16 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardCheck, Gauge, Layers3, Play, Route, Target } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Gauge, Layers3, Route, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
-import { getLearningStudio } from '@/data/learningStudio';
 
 type ProgramExperienceProps = {
   program: CurriculumProgram;
 };
 
 export default function ProgramExperience({ program }: ProgramExperienceProps) {
-  const studio = getLearningStudio(program.slug);
   const topModules = program.modules.slice(0, 4);
   const image =
     program.slug === 'math'
@@ -34,13 +32,9 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
                 <h1 className="max-w-3xl text-3xl font-black leading-tight text-slate-950 md:text-5xl">{program.title}</h1>
                 <p className="mt-4 max-w-3xl text-base font-bold leading-8 text-slate-600">{program.promise}</p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link href={`/learn/${program.slug}`} className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-95" style={{ backgroundColor: program.color }}>
-                    <Play size={17} />
-                    واجهة الطالب
-                  </Link>
-                  <Link href={`/assessment/${program.slug}`} className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-slate-800">
+                  <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-95" style={{ backgroundColor: program.color }}>
                     <ClipboardCheck size={17} />
-                    اختبار المسار
+                    تقييم الطالب
                   </Link>
                   <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-6 py-3 text-sm font-black text-slate-900 hover:bg-slate-50">
                     <Route size={17} />
@@ -93,7 +87,7 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
 
               <div className="space-y-4">
                 <Panel title="قاعدة التدريس">
-                  <p className="text-sm font-bold leading-7 text-slate-700">{studio?.method ?? 'تقييم، تدريب قصير، قياس، ثم تعديل الخطة حسب الأداء.'}</p>
+                  <p className="text-sm font-bold leading-7 text-slate-700">تقييم، تدريب قصير، قياس، ثم تعديل الخطة حسب أداء الطالب داخل نفس المسار.</p>
                 </Panel>
 
                 <Panel title="قبل البداية">

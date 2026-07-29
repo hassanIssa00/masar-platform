@@ -46,7 +46,7 @@ export default function DashboardPage() {
                   <UserRoundPlus size={17} />
                   إضافة طالب
                 </Link>
-                <Link href="/assessment/reading" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
+                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
                   <ClipboardCheck size={17} />
                   اختبار سريع
                 </Link>

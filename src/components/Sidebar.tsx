@@ -5,7 +5,7 @@ import { curriculumPrograms } from '@/data/curriculum';
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
   { name: 'التقارير', path: '/reports', icon: FileText },
-  { name: 'اختبار سريع', path: '/assessment/reading', icon: ClipboardList },
+  { name: 'إضافة طالب', path: '/student/new', icon: ClipboardList },
 ];
 
 export default function Sidebar() {

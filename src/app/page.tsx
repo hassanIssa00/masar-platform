@@ -1,13 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, BookOpenCheck, ClipboardCheck, LineChart, Play, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, BarChart3, BookOpenCheck, ClipboardCheck, LineChart, MonitorPlay, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { curriculumPrograms } from '@/data/curriculum';
 
 const workflow = [
   { title: 'قياس تشخيصي', body: 'اختبار قصير يقيس مهارات دقيقة بدل درجة عامة.', icon: ClipboardCheck },
   { title: 'تسكين علاجي', body: 'اختيار مهارة البداية حسب الفجوة، العمر، ونوع المساعدة.', icon: BookOpenCheck },
-  { title: 'تدريب تفاعلي', body: 'نشاط بصري وصوت واضح واستجابة فورية للطالب.', icon: Play },
+  { title: 'تدريب تفاعلي', body: 'نشاط بصري وصوت واضح واستجابة فورية للطالب.', icon: MonitorPlay },
   { title: 'قرار بالتقدم', body: 'تقرير يحدد: إتقان، إعادة تدريس، أو انتقال للمهارة التالية.', icon: LineChart },
 ];
 
@@ -47,13 +47,13 @@ export default function Home() {
                 منصة تجمع الاختبار، الخطة الفردية، نشاط الطفل، وتقرير القرار في تجربة واحدة: أقل كلام زائد، أكثر تدريب قابل للقياس.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/assessment/reading" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-950/30 transition hover:bg-teal-500">
+                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-950/30 transition hover:bg-teal-500">
                   ابدأ اختبار تحديد المستوى
                   <ArrowLeft size={18} />
                 </Link>
-                <Link href="/learn/reading" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-white/24 bg-white/10 px-6 py-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/16">
-                  عرض تجربة الطالب
-                  <Play size={18} />
+                <Link href="/programs/reading" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-white/24 bg-white/10 px-6 py-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/16">
+                  تصفح البرامج العلاجية
+                  <BookOpenCheck size={18} />
                 </Link>
               </div>
             </div>
