@@ -1,6 +1,25 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { LogIn, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  const loginAsDoctor = () => {
+    localStorage.setItem(
+      'masar-user',
+      JSON.stringify({
+        id: 'dr-ismail',
+        name: 'د. إسماعيل عيسى',
+        role: 'specialist',
+        email: 'dr.ismail@masar.local',
+      }),
+    );
+    router.push('/dashboard');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1E6FBF] to-[#0A3D7A] p-4">
       <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-slide-up">
@@ -41,6 +60,27 @@ export default function LoginPage() {
             دخول
           </button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-bold text-gray-400">تجربة محلية</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={loginAsDoctor}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 font-bold text-white shadow-lg transition hover:bg-slate-800"
+        >
+          <ShieldCheck size={18} />
+          دخول مباشر بحساب د. إسماعيل
+          <LogIn size={18} />
+        </button>
+
+        <p className="mt-3 text-center text-xs font-semibold leading-6 text-gray-500">
+          هذا الزر مخصص للتجربة المحلية عند عدم تشغيل قاعدة البيانات.
+        </p>
+
         <div className="mt-8 text-center text-gray-600">
           ليس لديك حساب؟{' '}
           <Link href="/auth/register" className="text-[#F5A623] font-bold hover:underline">
