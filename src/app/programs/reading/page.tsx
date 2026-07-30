@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Headphones, Printer, Volume2 } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Headphones, Lock, Printer, Volume2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { speakWithMasarVoice } from '@/lib/voicePackage';
 
 const letters = [
   ['أ', 'ألف', 'أسد'], ['ب', 'باء', 'بيت'], ['ت', 'تاء', 'تفاح'], ['ث', 'ثاء', 'ثوب'],
@@ -31,17 +33,33 @@ const sentences = [
   'رَامِي فَتَحَ بَابَ الدَّارِ.',
 ];
 
-export default function ReadingProgramPage() {
-  const [level, setLevel] = useState<'letters' | 'words' | 'sentences'>('letters');
-  const [selectedLetter, setSelectedLetter] = useState(letters[0]);
+const guidedReading = [
+  { title: 'أصوات البداية', letters: ['أ', 'ب', 'ت', 'ث'], words: ['أب', 'باب', 'تمر', 'ثوب'], goal: 'يميز الطالب صوت الحرف في بداية الكلمة.' },
+  { title: 'حروف الحلق والصور', letters: ['ج', 'ح', 'خ', 'د'], words: ['جمل', 'حليب', 'خبز', 'دار'], goal: 'يربط الصوت بصورة مألوفة من بيئة الطفل.' },
+  { title: 'تمييز الحروف المتقاربة', letters: ['ذ', 'ر', 'ز', 'س'], words: ['ذهب', 'رمان', 'زيتون', 'سمك'], goal: 'يفرق بين الأصوات المتقاربة دون تخمين.' },
+  { title: 'المقاطع المفتوحة', letters: ['ش', 'ص', 'ض', 'ط'], words: ['شا', 'صا', 'ضا', 'طا'], goal: 'يقرأ مقطعًا مفتوحًا بصوت واضح.' },
+  { title: 'كلمات من البيئة السعودية', letters: ['ظ', 'ع', 'غ', 'ف'], words: ['علم', 'غيم', 'فنجان', 'ظل'], goal: 'يقرأ كلمات مرتبطة بالبيت والمدرسة والمجتمع.' },
+  { title: 'المدود والكلمات', letters: ['ق', 'ك', 'ل', 'م'], words: ['قلم', 'كتاب', 'ليمون', 'ماء'], goal: 'يميز المد القصير والطويل داخل الكلمة.' },
+  { title: 'الجمل القصيرة', letters: ['ن', 'هـ', 'و', 'ي'], words: ['نخلة', 'هلال', 'ورد', 'يد'], goal: 'ينتقل من كلمة مفردة إلى جملة قصيرة مفهومة.' },
+];
 
-  const speak = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 0.75;
-    window.speechSynthesis.speak(utterance);
+export default function ReadingProgramPage() {
+  const [level, setLevel] = useState<'guided' | 'letters' | 'words' | 'sentences'>('guided');
+  const [selectedLetter, setSelectedLetter] = useState(letters[0]);
+  const [openStep, setOpenStep] = useState(0);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setOpenStep(Number(localStorage.getItem('masar.reading.openStep') ?? 0));
+    });
+  }, []);
+
+  const speak = (text: string) => void speakWithMasarVoice(text, { lang: 'ar-SA', rate: 0.78 });
+  const currentGuided = guidedReading[Math.min(openStep, guidedReading.length - 1)];
+  const completeStep = () => {
+    const next = Math.min(openStep + 1, guidedReading.length - 1);
+    setOpenStep(next);
+    localStorage.setItem('masar.reading.openStep', String(next));
   };
 
   return (
@@ -68,6 +86,7 @@ export default function ReadingProgramPage() {
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {[
+              ['guided', 'المسار الموجه'],
               ['letters', 'مستوى أول: الحروف'],
               ['words', 'مستوى ثاني: الكلمات'],
               ['sentences', 'مستوى ثالث: الجمل'],
@@ -77,6 +96,66 @@ export default function ReadingProgramPage() {
               </button>
             ))}
           </div>
+
+          {level === 'guided' && (
+            <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="relative min-h-52 bg-slate-950 p-6 text-white">
+                  <Image src="/learning/literacy-lab.png" alt="" fill className="object-cover opacity-35" sizes="100vw" />
+                  <div className="relative">
+                    <p className="text-sm font-black text-teal-200">الدرس المفتوح الآن</p>
+                    <h2 className="mt-2 text-3xl font-black">{currentGuided.title}</h2>
+                    <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-white/80">{currentGuided.goal}</p>
+                  </div>
+                </div>
+
+                <div className="p-5 md:p-7">
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    {currentGuided.letters.map((letter) => (
+                      <button key={letter} onClick={() => speak(`حرف ${letter}`)} className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-center">
+                        <span className="block text-6xl font-black text-teal-800">{letter}</span>
+                        <span className="mt-2 block text-xs font-black text-slate-500">اضغط للاستماع</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    {currentGuided.words.map((word) => (
+                      <button key={word} onClick={() => speak(word)} className="rounded-lg border border-slate-200 bg-white p-4 text-right shadow-sm hover:bg-slate-50">
+                        <span className="text-2xl font-black text-slate-950">{word}</span>
+                        <span className="mt-1 block text-xs font-bold text-slate-500">استماع ثم قراءة</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button onClick={completeStep} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
+                    <CheckCircle2 size={18} />
+                    أتقن الطالب الدرس وافتح التالي
+                  </button>
+                </div>
+              </article>
+
+              <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="font-black text-slate-950">خريطة الفتح التلقائي</h3>
+                <div className="mt-4 space-y-3">
+                  {guidedReading.map((item, index) => {
+                    const isOpen = index <= openStep;
+                    return (
+                      <button
+                        key={item.title}
+                        disabled={!isOpen}
+                        onClick={() => setOpenStep(index)}
+                        className={`flex w-full items-center gap-3 rounded-lg p-3 text-right ${isOpen ? 'bg-slate-50 text-slate-950' : 'bg-slate-100 text-slate-400'}`}
+                      >
+                        {isOpen ? <CheckCircle2 size={18} className="text-teal-700" /> : <Lock size={18} />}
+                        <span className="text-sm font-black">{index + 1}. {item.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+            </section>
+          )}
 
           {level === 'letters' && (
             <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_340px]">

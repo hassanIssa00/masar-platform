@@ -13,6 +13,9 @@ const SECTIONS = [
       { id: 'q2', text: 'ما الصف الدراسي الحالي؟', type: 'select', options: ['ما قبل المدرسة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس'] },
       { id: 'q3', text: 'هل الطفل من ذوي الاحتياجات الخاصة؟', type: 'radio', options: ['نعم', 'لا', 'غير مؤكد'] },
       { id: 'q4', text: 'هل توجد إصابات أو أمراض مزمنة؟', type: 'radio', options: ['نعم', 'لا'] },
+      { id: 'q21', text: 'هل ينام الطفل عدد ساعات كافياً قبل يوم الدراسة؟', type: 'radio', options: ['غالباً', 'أحياناً', 'نادراً'] },
+      { id: 'q22', text: 'هل يستخدم الطفل الأجهزة لفترات طويلة يومياً؟', type: 'radio', options: ['أكثر من ساعتين', 'ساعة تقريباً', 'قليل جداً'] },
+      { id: 'q23', text: 'ما اللغة الأكثر استخداماً في البيت؟', type: 'select', options: ['العربية', 'العربية والإنجليزية', 'الإنجليزية غالباً', 'لغة أخرى'] },
     ],
   },
   {
@@ -24,6 +27,9 @@ const SECTIONS = [
       { id: 'q6', text: 'هل يتلعثم أو يتأتئ عند الكلام؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'نادراً', 'لا'] },
       { id: 'q7', text: 'هل يستطيع قراءة جمل بسيطة؟', type: 'radio', options: ['نعم بطلاقة', 'نعم ببطء', 'بصعوبة', 'لا'] },
       { id: 'q8', text: 'كيف تقيّم ثروته اللغوية مقارنة بأقرانه؟', type: 'scale' },
+      { id: 'q24', text: 'هل يفهم التعليمات الشفهية من خطوتين؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q25', text: 'هل يحكي ما حدث في المدرسة بجمل واضحة؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q26', text: 'هل يخلط بين أصوات حروف مثل س/ص أو ت/ط؟', type: 'radio', options: ['دائماً', 'أحياناً', 'نادراً', 'لا'] },
     ],
   },
   {
@@ -35,6 +41,9 @@ const SECTIONS = [
       { id: 'q10', text: 'هل يفضل اللعب بمفرده؟', type: 'radio', options: ['دائماً', 'أحياناً', 'نادراً'] },
       { id: 'q11', text: 'هل يعاني من صعوبة في التعبير عن مشاعره؟', type: 'radio', options: ['نعم', 'أحياناً', 'لا'] },
       { id: 'q12', text: 'هل يحافظ على التواصل البصري أثناء الحديث؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q27', text: 'هل يشارك في أنشطة جماعية داخل المدرسة؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q28', text: 'هل يستطيع انتظار دوره في اللعب أو الحديث؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q29', text: 'هل يتقبل توجيهات المعلم أو الأخصائي؟', type: 'radio', options: ['غالباً', 'أحياناً', 'بصعوبة', 'يرفض'] },
     ],
   },
   {
@@ -46,6 +55,9 @@ const SECTIONS = [
       { id: 'q14', text: 'هل يصدر سلوكيات متكررة (حركات، أصوات)؟', type: 'radio', options: ['نعم', 'أحياناً', 'لا'] },
       { id: 'q15', text: 'كيف يكون تصرفه عند تغيير الروتين اليومي؟', type: 'radio', options: ['هادئ ومرن', 'قليل الانزعاج', 'منزعج جداً', 'عدوانية أو بكاء شديد'] },
       { id: 'q16', text: 'قيّم مستوى الانتباه والتركيز (1 أضعف - 5 أقوى):', type: 'scale' },
+      { id: 'q30', text: 'هل يتأثر الطفل بالأصوات العالية أو الازدحام؟', type: 'radio', options: ['كثيراً', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q31', text: 'هل يحتاج حركة كثيرة أثناء الجلوس للمذاكرة؟', type: 'radio', options: ['دائماً', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q32', text: 'هل يستطيع إنهاء مهمة قصيرة دون تركها؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
     ],
   },
   {
@@ -57,11 +69,94 @@ const SECTIONS = [
       { id: 'q18', text: 'هل يواجه صعوبة في الرياضيات؟', type: 'radio', options: ['نعم', 'أحياناً', 'لا'] },
       { id: 'q19', text: 'هل يواجه صعوبة في الكتابة (إمساك القلم، الترتيب)؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'لا'] },
       { id: 'q20', text: 'قيّم مستواه الأكاديمي العام مقارنة بأقرانه:', type: 'scale' },
+      { id: 'q33', text: 'هل يحضر واجباته المدرسية في الوقت المحدد؟', type: 'radio', options: ['غالباً', 'أحياناً', 'نادراً', 'لا'] },
+      { id: 'q34', text: 'ما أكثر مادة يحتاج فيها دعماً؟', type: 'select', options: ['القراءة', 'الكتابة', 'الرياضيات', 'العلوم', 'الإنجليزية', 'السلوك والانتباه'] },
+      { id: 'q35', text: 'هل يوجد تواصل منتظم بين الأسرة والمدرسة؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
     ],
   },
 ];
 
 type Answers = Record<string, string | number>;
+
+const answerScores: Record<string, Record<string, number>> = {
+  q3: { نعم: 40, لا: 100, 'غير مؤكد': 60 },
+  q4: { نعم: 55, لا: 100 },
+  q5: { 'نعم دائماً': 25, أحياناً: 55, نادراً: 80, لا: 100 },
+  q6: { 'نعم دائماً': 25, أحياناً: 55, نادراً: 80, لا: 100 },
+  q7: { 'نعم بطلاقة': 100, 'نعم ببطء': 75, بصعوبة: 35, لا: 15 },
+  q9: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q10: { دائماً: 30, أحياناً: 60, نادراً: 85 },
+  q11: { نعم: 30, أحياناً: 60, لا: 100 },
+  q12: { 'نعم دائماً': 100, أحياناً: 65, نادراً: 35, لا: 15 },
+  q13: { 'نعم دائماً': 25, أحياناً: 55, نادراً: 80, لا: 100 },
+  q14: { نعم: 35, أحياناً: 65, لا: 100 },
+  q15: { 'هادئ ومرن': 100, 'قليل الانزعاج': 75, 'منزعج جداً': 35, 'عدوانية أو بكاء شديد': 15 },
+  q17: { 'باستقلالية تامة': 100, 'بمساعدة بسيطة': 75, 'يحتاج مساعدة كبيرة': 40, 'يرفض تماماً': 15 },
+  q18: { نعم: 30, أحياناً: 60, لا: 100 },
+  q19: { 'نعم دائماً': 25, أحياناً: 60, لا: 100 },
+  q21: { غالباً: 100, أحياناً: 65, نادراً: 35 },
+  q22: { 'أكثر من ساعتين': 45, 'ساعة تقريباً': 75, 'قليل جداً': 100 },
+  q24: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q25: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q26: { دائماً: 25, أحياناً: 55, نادراً: 80, لا: 100 },
+  q27: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q28: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q29: { غالباً: 100, أحياناً: 70, بصعوبة: 40, يرفض: 20 },
+  q30: { كثيراً: 30, أحياناً: 60, نادراً: 85, لا: 100 },
+  q31: { دائماً: 35, أحياناً: 65, نادراً: 85, لا: 100 },
+  q32: { نعم: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q33: { غالباً: 100, أحياناً: 70, نادراً: 40, لا: 20 },
+  q35: { نعم: 100, أحياناً: 75, نادراً: 45, لا: 25 },
+};
+
+function getSurveyQuestionScore(questionId: string, answer: string | number | undefined) {
+  if (answer === undefined || answer === '') return null;
+
+  if (['q8', 'q16', 'q20'].includes(questionId)) {
+    return Math.max(20, Math.min(100, Number(answer) * 20));
+  }
+
+  return answerScores[questionId]?.[String(answer)] ?? null;
+}
+
+function getSurveyAnalysis(answers: Answers) {
+  const domains = SECTIONS.map((sectionItem) => {
+    const scores = sectionItem.questions
+      .map((question) => getSurveyQuestionScore(question.id, answers[question.id]))
+      .filter((score): score is number => score !== null);
+    const score = scores.length ? Math.round(scores.reduce((total, item) => total + item, 0) / scores.length) : 0;
+    const answered = sectionItem.questions.filter((question) => answers[question.id]).length;
+    const note =
+      score >= 80
+        ? 'مؤشرات مطمئنة مع متابعة دورية.'
+        : score >= 60
+          ? 'احتياج متوسط يحتاج تدريباً منظماً.'
+          : 'أولوية تدخل ومراجعة أخصائي.';
+
+    return {
+      name: sectionItem.title,
+      score,
+      note: `${answered} من ${sectionItem.questions.length} إجابات. ${note}`,
+    };
+  });
+  const scoredDomains = domains.filter((domain) => domain.score > 0);
+  const score = scoredDomains.length ? Math.round(scoredDomains.reduce((total, item) => total + item.score, 0) / scoredDomains.length) : 0;
+  const priorities = [...scoredDomains].sort((first, second) => first.score - second.score).slice(0, 2);
+  const priorityNames = priorities.map((item) => item.name).join(' و ') || 'المجالات الأساسية';
+
+  return {
+    score,
+    domains,
+    summary: `تحليل الاستبيان يشير إلى مؤشر جاهزية ${score}%. المجالات التي تحتاج متابعة أولاً: ${priorityNames}. هذه النتيجة لا تمثل تشخيصاً طبياً نهائياً، لكنها توجه جلسة التقييم المباشر.`,
+    recommendations: [
+      `ابدأ المقابلة التشخيصية بمراجعة ${priorityNames} وربطها بأداء الطالب داخل الفصل والبيت.`,
+      'حوّل كل مجال ضعيف إلى هدف قابل للقياس: دقة الأداء، زمن الاستجابة، ونوع المساعدة.',
+      'استخدم أنشطة قصيرة بصوت واضح وصورة قبل السؤال، خصوصاً مع الطلاب الذين يظهر عليهم تشتت أو حساسية حسية.',
+      'أرسل لولي الأمر مهمة منزلية بسيطة من البيئة السعودية لمدة 5 دقائق يومياً وسجل الاستجابة.',
+      'أعد الاستبيان بعد 4 أسابيع وقارن المجال الأضعف قبل وبعد الخطة.',
+    ],
+  };
+}
 
 export default function SurveyPage() {
   const [currentSection, setCurrentSection] = useState(0);
@@ -72,6 +167,7 @@ export default function SurveyPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const section = SECTIONS[currentSection];
+  const totalQuestions = SECTIONS.reduce((total, item) => total + item.questions.length, 0);
   const progress = Math.round(((currentSection) / SECTIONS.length) * 100);
 
   const setAnswer = (qid: string, val: string | number) => {
@@ -79,6 +175,7 @@ export default function SurveyPage() {
   };
 
   const handleSubmit = () => {
+    const analysis = getSurveyAnalysis(answers);
     const savedStudent = saveStudent({
       fullName: studentName.trim() || 'طالب من الاستبيان',
       grade,
@@ -100,29 +197,18 @@ export default function SurveyPage() {
       grade,
       program: 'تحليل الاستبيان',
       programColor: '#0f766e',
-      score: Math.round((Object.keys(answers).length / 20) * 100),
+      score: analysis.score,
       status: 'pending',
       type: 'survey-analysis',
-      summary: 'تم استلام الاستبيان ويحتاج مراجعة الأخصائي لتحويل الإجابات إلى خطة علاجية مفصلة.',
-      recommendations: [
-        'مراجعة إجابات ولي الأمر قبل تحديد المسار العلاجي.',
-        'تحديد موعد تقييم مباشر للمهارات اللغوية والأكاديمية.',
-        'ربط الاستبيان بتقرير تشخيصي بعد المقابلة الأولى.',
-      ],
+      summary: analysis.summary,
+      recommendations: analysis.recommendations,
       answers: SECTIONS.flatMap((sectionItem) =>
         sectionItem.questions.map((question) => ({
           question: question.text,
           answer: String(answers[question.id] ?? 'لم يتم تسجيل إجابة'),
         })),
       ),
-      domains: SECTIONS.map((sectionItem) => {
-        const answered = sectionItem.questions.filter((question) => answers[question.id]).length;
-        return {
-          name: sectionItem.title,
-          score: Math.round((answered / sectionItem.questions.length) * 100),
-          note: `${answered} من ${sectionItem.questions.length} إجابات`,
-        };
-      }),
+      domains: analysis.domains,
     });
 
     setSubmitted(true);
@@ -138,7 +224,7 @@ export default function SurveyPage() {
             <p className="text-gray-600 mb-8">سيقوم فريق د. إسماعيل عيسى بمراجعة إجاباتك وإعداد تقرير شامل خلال 24 ساعة.</p>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 text-right space-y-3">
               <h2 className="font-bold text-green-700 text-xl text-center mb-4">ملخص الاستبيان</h2>
-              <p className="text-gray-700"><strong>عدد الأسئلة المجاب عليها:</strong> {Object.keys(answers).length} / 20</p>
+              <p className="text-gray-700"><strong>عدد الأسئلة المجاب عليها:</strong> {Object.keys(answers).length} / {totalQuestions}</p>
               <p className="text-gray-700"><strong>الأقسام المكتملة:</strong> {SECTIONS.length} أقسام</p>
               <p className="text-gray-700"><strong>الحالة:</strong> قيد المراجعة من قِبل الأخصائي</p>
             </div>

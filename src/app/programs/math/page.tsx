@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Headphones, RefreshCw } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { Check, CheckCircle2, Headphones, Lock, RefreshCw } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { speakWithMasarVoice } from '@/lib/voicePackage';
 
 const numbers = [
   [1, 'وَاحِد'], [2, 'اثْنَان'], [3, 'ثَلَاثَة'], [4, 'أَرْبَعَة'], [5, 'خَمْسَة'],
@@ -16,6 +18,7 @@ const shapes = [
 ] as const;
 
 const sections = [
+  ['guided', 'المسار الموجه'],
   ['numbers', 'الأعداد'],
   ['addition', 'الجمع'],
   ['subtraction', 'الطرح'],
@@ -28,20 +31,35 @@ type Section = (typeof sections)[number][0];
 function genAdd() { return { a: Math.floor(Math.random() * 5) + 1, b: Math.floor(Math.random() * 5) + 1 }; }
 function genSub() { const a = Math.floor(Math.random() * 8) + 2; return { a, b: Math.floor(Math.random() * (a - 1)) + 1 }; }
 
+const guidedMath = [
+  { title: 'الكمية قبل الرمز', goal: 'يمثل الطالب العدد بقطع محسوسة قبل قراءة الرقم.', task: 'عد 5 قطع ثم اختر الرقم الصحيح.', visual: 5 },
+  { title: 'الأكبر والأصغر', goal: 'يقارن الطالب بين كميتين بصريًا ثم يقرأ الرمز.', task: 'قارن بين 7 و3 باستخدام النقاط.', visual: 7 },
+  { title: 'تكوين عشرة', goal: 'يبني الطالب العدد من جزأين ويفهم علاقة الجزء بالكل.', task: 'كوّن 10 من 6 و4.', visual: 10 },
+  { title: 'الجمع بالمحسوس', goal: 'ينتقل من جمع الأشياء إلى كتابة العملية.', task: 'اجمع 2 + 3 باستخدام النقاط.', visual: 5 },
+  { title: 'الطرح كإزالة', goal: 'يفهم الطرح كإزالة كمية وليس حفظ إجراء.', task: 'ابدأ بـ 6 واحذف 2.', visual: 6 },
+  { title: 'المسألة اللفظية', goal: 'يقرأ موقفًا سعوديًا بسيطًا من البيت أو المدرسة ويحدد المطلوب.', task: 'مع سالم 4 تمرات وأخذ 2. كم بقي؟', visual: 4 },
+];
+
 export default function MathProgramPage() {
-  const [section, setSection] = useState<Section>('numbers');
+  const [section, setSection] = useState<Section>('guided');
+  const [openStep, setOpenStep] = useState(0);
   const [add, setAdd] = useState(genAdd());
   const [sub, setSub] = useState(genSub());
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
 
-  const speak = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 0.8;
-    window.speechSynthesis.speak(utterance);
+  const speak = (text: string) => void speakWithMasarVoice(text, { lang: 'ar-SA', rate: 0.8 });
+  const currentGuided = guidedMath[Math.min(openStep, guidedMath.length - 1)];
+  useEffect(() => {
+    queueMicrotask(() => {
+      setOpenStep(Number(localStorage.getItem('masar.math.openStep') ?? 0));
+    });
+  }, []);
+
+  const completeStep = () => {
+    const next = Math.min(openStep + 1, guidedMath.length - 1);
+    setOpenStep(next);
+    localStorage.setItem('masar.math.openStep', String(next));
   };
 
   const check = (correct: number) => setFeedback(Number(answer) === correct ? 'correct' : 'wrong');
@@ -67,6 +85,56 @@ export default function MathProgramPage() {
               </button>
             ))}
           </div>
+
+          {section === 'guided' && (
+            <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="relative min-h-52 bg-slate-950 p-6 text-white">
+                  <Image src="/learning/math-lab.png" alt="" fill className="object-cover opacity-35" sizes="100vw" />
+                  <div className="relative">
+                    <p className="text-sm font-black text-amber-200">الدرس المفتوح الآن</p>
+                    <h2 className="mt-2 text-3xl font-black">{currentGuided.title}</h2>
+                    <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-white/80">{currentGuided.goal}</p>
+                  </div>
+                </div>
+                <div className="p-5 md:p-7">
+                  <div className="rounded-lg bg-slate-50 p-5 text-center">
+                    <p className="text-sm font-black text-slate-500">مهمة الطالب</p>
+                    <h3 className="mt-2 text-2xl font-black text-slate-950">{currentGuided.task}</h3>
+                    <div className="mx-auto mt-5 flex max-w-sm flex-wrap justify-center gap-2">
+                      {Array.from({ length: currentGuided.visual }).map((_, index) => (
+                        <span key={index} className="h-8 w-8 rounded-full bg-teal-700" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button onClick={() => speak(`${currentGuided.title}. ${currentGuided.task}`)} className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800">
+                      اسمع المهمة
+                    </button>
+                    <button onClick={completeStep} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-6 py-3 text-sm font-black text-white hover:bg-amber-800">
+                      <CheckCircle2 size={18} />
+                      أتقن الطالب وافتح التالي
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="font-black text-slate-950">خريطة الرياضيات</h3>
+                <div className="mt-4 space-y-3">
+                  {guidedMath.map((item, index) => {
+                    const isOpen = index <= openStep;
+                    return (
+                      <button key={item.title} disabled={!isOpen} onClick={() => setOpenStep(index)} className={`flex w-full items-center gap-3 rounded-lg p-3 text-right ${isOpen ? 'bg-slate-50 text-slate-950' : 'bg-slate-100 text-slate-400'}`}>
+                        {isOpen ? <CheckCircle2 size={18} className="text-amber-700" /> : <Lock size={18} />}
+                        <span className="text-sm font-black">{index + 1}. {item.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+            </section>
+          )}
 
           {section === 'numbers' && (
             <section className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

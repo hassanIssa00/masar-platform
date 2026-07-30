@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
-import { getDecisionFromScore } from '@/data/assessmentModel';
+import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
 import { saveReport, saveStudent } from '@/lib/localDb';
+import { speakWithMasarVoice } from '@/lib/voicePackage';
 
 type ResponseRecord = {
   question: PlacementQuestion;
@@ -44,7 +45,7 @@ export default function PlacementAssessmentPage() {
       grouped.set(key, [...(grouped.get(key) ?? []), response]);
     });
 
-    return Array.from(grouped.entries()).map(([name, items]) => {
+    const baseDomains = Array.from(grouped.entries()).map(([name, items]) => {
       const domainScore = Math.round((items.filter((item) => item.correct).length / items.length) * 100);
       return {
         name,
@@ -52,16 +53,10 @@ export default function PlacementAssessmentPage() {
         note: `${items.filter((item) => item.correct).length} من ${items.length} إجابات صحيحة`,
       };
     });
+    return enrichDomains(baseDomains);
   }, [responses]);
 
-  const speak = (text: string) => {
-    if (typeof window === 'undefined') return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = /[a-zA-Z]/.test(text) ? 'en-US' : 'ar-EG';
-    utterance.rate = 0.85;
-    window.speechSynthesis.speak(utterance);
-  };
+  const speak = (text: string) => void speakWithMasarVoice(text, { lang: /[a-zA-Z]/.test(text) ? 'en-US' : 'ar-SA', rate: 0.84 });
 
   const choose = (answer: string) => {
     setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: answer }));
@@ -91,12 +86,14 @@ export default function PlacementAssessmentPage() {
       score,
       status: 'completed',
       type: 'placement',
-      summary: `${assessment.title}: حصل الطالب على ${score}%، والقرار الحالي هو ${decision.label}.`,
-      recommendations: [
-        decision.action,
-        score < 60 ? 'بدء برنامج تأسيس مكثف قبل إعادة الاختبار.' : 'تدريب مركز على المجالات الأقل من 70%.',
-        'مراجعة جدول الإجابات لتحديد المهارات الدقيقة التي تحتاج تدخلًا.',
-      ],
+      summary: buildPlacementSummary({
+        assessmentTitle: assessment.title,
+        score,
+        domains,
+        correctCount,
+        total: assessment.questions.length,
+      }),
+      recommendations: buildPlacementRecommendations(score, domains),
       answers: responses.map((response) => ({
         question: response.question.prompt,
         answer: response.answer || 'لم يجب',
