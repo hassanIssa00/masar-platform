@@ -4,6 +4,8 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
+import { saveCredential } from '@/lib/auth';
 import { saveAccount, setSession, UserRole } from '@/lib/localDb';
 
 export default function RegisterPage() {
@@ -24,7 +26,7 @@ export default function RegisterPage() {
     });
 
     setSession(account);
-    localStorage.setItem('masar.last-password-set', password ? new Date().toISOString() : '');
+    saveCredential(account, password);
     router.push('/dashboard');
   };
 
@@ -34,8 +36,8 @@ export default function RegisterPage() {
 
       <main className="relative w-full max-w-lg rounded-lg border border-white/10 bg-white p-6 shadow-2xl sm:p-8">
         <div className="text-center">
-          <Link href="/" className="mx-auto grid h-12 w-12 place-items-center rounded-lg bg-slate-950 text-lg font-black text-white">
-            م
+          <Link href="/" className="mx-auto inline-flex justify-center">
+            <BrandMark size="lg" showText={false} />
           </Link>
           <h1 className="mt-5 text-3xl font-black text-slate-950">إنشاء حساب جديد</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">الحساب يتحفظ محليًا ويظهر في تجربة المنصة مباشرة.</p>

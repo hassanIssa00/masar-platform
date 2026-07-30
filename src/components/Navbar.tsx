@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Activity, BarChart3, BookOpen, ClipboardCheck, Gamepad2, LogIn, LogOut, UserPlus } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import { clearSession } from '@/lib/localDb';
 
 const links = [
@@ -35,11 +36,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/92 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
         <Link href="/" className="focus-ring flex min-w-0 items-center gap-3 rounded-lg">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-slate-950 text-sm font-black text-white">م</span>
-          <span className="min-w-0">
-            <span className="block text-base font-black leading-5 text-slate-950 md:text-xl">منصة مسار التأهيل</span>
-            <span className="hidden text-xs font-bold text-slate-500 sm:block">تقييم، تدخل، متابعة تقدم</span>
-          </span>
+          <BrandMark size="sm" />
         </Link>
 
         <div className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 lg:flex">

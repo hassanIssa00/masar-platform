@@ -3,8 +3,10 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
-import { getAccounts, saveAccount, setSession } from '@/lib/localDb';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
+import { authenticate, ensureDemoAccount, getDemoPassword } from '@/lib/auth';
+import { setSession } from '@/lib/localDb';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,50 +16,57 @@ export default function LoginPage() {
   const [otpStep, setOtpStep] = useState<1 | 2 | 3>(1);
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginMessage, setLoginMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginAsDoctor = () => {
-    const account = saveAccount({
-      name: 'د. إسماعيل عيسى',
-      email: 'dr.ismail@masar.com',
-      phone: '01000000000',
-      role: 'doctor',
-    });
+    const account = ensureDemoAccount('dr.ismail@masar.com');
+    if (!account) return;
 
     setSession(account);
     router.push('/dashboard');
   };
 
   const loginAsParent = () => {
-    const account = saveAccount({
-      name: 'ولي أمر طالب',
-      email: 'parent@masar.com',
-      phone: '01000000001',
-      role: 'parent',
-    });
+    const account = ensureDemoAccount('parent@masar.com');
+    if (!account) return;
 
     setSession(account);
     router.push('/dashboard');
   };
 
+  const fillDemo = (type: 'doctor' | 'parent') => {
+    const demoEmail = type === 'doctor' ? 'dr.ismail@masar.com' : 'parent@masar.com';
+    setEmail(demoEmail);
+    setPassword(getDemoPassword(demoEmail));
+    setLoginError('');
+    setLoginMessage('تم تعبئة بيانات الدخول التجريبية. اضغط دخول للمتابعة.');
+  };
+
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    const existing = getAccounts().find((account) => account.email.toLowerCase() === cleanEmail);
+    setLoginError('');
+    setLoginMessage('');
 
-    if (existing) {
-      setSession(existing);
+    if (password.trim().length < 6) {
+      setLoginError('كلمة المرور يجب ألا تقل عن 6 أحرف.');
+      return;
+    }
+
+    const result = authenticate(email, password);
+
+    if (result.ok) {
+      setSession(result.account);
       router.push('/dashboard');
       return;
     }
 
-    const isDoctor = cleanEmail.includes('ismail') || cleanEmail.includes('admin') || cleanEmail.includes('dr');
-    const account = saveAccount({
-      name: isDoctor ? 'د. إسماعيل عيسى' : cleanEmail.split('@')[0] || 'ولي أمر',
-      email: cleanEmail || 'parent@masar.local',
-      role: isDoctor ? 'doctor' : 'parent',
-    });
-    setSession(account);
-    router.push('/dashboard');
+    setLoginError(
+      result.reason === 'missing'
+        ? 'الحساب غير موجود. أنشئ حساب جديد أو استخدم بيانات الدكتور التجريبية.'
+        : 'كلمة المرور غير صحيحة. جرّب استعادة كلمة المرور أو زر بيانات الدكتور.',
+    );
   };
 
   const handleOtp = (event: FormEvent<HTMLFormElement>) => {
@@ -90,25 +99,35 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4 text-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,0.25),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(37,99,235,0.22),transparent_30%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,0.18),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(37,99,235,0.16),transparent_30%)]" />
 
       <main className="relative grid w-full max-w-5xl overflow-hidden rounded-lg border border-white/10 bg-white shadow-2xl lg:grid-cols-[0.95fr_1.05fr]">
         <section className="hidden bg-slate-950 p-8 text-white lg:flex lg:flex-col lg:justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-lg bg-teal-600 text-lg font-black">م</span>
-            <span className="font-black">منصة مسار التأهيل</span>
+            <BrandMark size="md" dark />
           </Link>
           <div>
-            <p className="text-sm font-black text-teal-200">دخول آمن للتجربة المحلية</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight">كل حساب يدخل لمساره بدون اختلاط أدوار</h1>
+            <p className="text-sm font-black text-teal-200">بوابة تشغيل المنصة</p>
+            <h1 className="mt-3 text-4xl font-black leading-tight">دخول واضح لكل دور قبل رفع النظام على السيرفر</h1>
             <p className="mt-4 text-sm font-bold leading-7 text-white/70">
-              حساب الدكتور يدخل لوحة التشغيل، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب والاستبيانات.
+              حساب الدكتور يدخل لوحة التشغيل والتقارير، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب والاستبيانات بدون خلط صلاحيات.
             </p>
+            <div className="mt-6 grid gap-3">
+              {['جلسة محفوظة محلياً', 'تحقق من الحساب وكلمة المرور', 'تجربة جاهزة للدكتور وولي الأمر'].map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-lg bg-white/8 px-4 py-3 text-sm font-bold text-white/80 ring-1 ring-white/10">
+                  <CheckCircle2 size={17} className="text-teal-300" />
+                  {item}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         <section className="p-6 sm:p-8">
           <div className="text-center">
+            <Link href="/" className="mb-5 inline-flex justify-center">
+              <BrandMark size="lg" showText={false} />
+            </Link>
             <h1 className="text-3xl font-black text-slate-950">تسجيل الدخول</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
@@ -116,13 +135,29 @@ export default function LoginPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <button onClick={loginAsDoctor} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
               <ShieldCheck size={18} />
-              د. إسماعيل
+              دخول د. إسماعيل
             </button>
             <button onClick={loginAsParent} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 text-sm font-black text-white hover:bg-teal-800">
               <UserRound size={18} />
-              ولي أمر
+              دخول ولي أمر
             </button>
           </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => fillDemo('doctor')} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-700 hover:bg-white">
+              تعبئة بيانات الدكتور
+            </button>
+            <button type="button" onClick={() => fillDemo('parent')} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-700 hover:bg-white">
+              تعبئة بيانات ولي الأمر
+            </button>
+          </div>
+
+          {(loginError || loginMessage) && (
+            <div className={`mt-5 flex items-start gap-3 rounded-lg p-4 text-sm font-bold leading-7 ${loginError ? 'bg-rose-50 text-rose-900 ring-1 ring-rose-100' : 'bg-teal-50 text-teal-950 ring-1 ring-teal-100'}`}>
+              {loginError ? <AlertCircle size={18} className="mt-1 shrink-0" /> : <CheckCircle2 size={18} className="mt-1 shrink-0" />}
+              <span>{loginError || loginMessage}</span>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <label className="block">
@@ -138,14 +173,19 @@ export default function LoginPage() {
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-black text-slate-700">كلمة المرور</span>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
-                placeholder="اكتب كلمة المرور"
-                required
-              />
+              <span className="flex rounded-lg border border-slate-200 bg-slate-50 focus-within:border-teal-700">
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type={showPassword ? 'text' : 'password'}
+                  className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none"
+                  placeholder="اكتب كلمة المرور"
+                  required
+                />
+                <button type="button" onClick={() => setShowPassword((current) => !current)} className="grid w-12 place-items-center text-slate-500">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </span>
             </label>
             <div className="flex items-center justify-between gap-3 text-sm">
               <label className="flex items-center gap-2 font-bold text-slate-600">

@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, BookOpenCheck, ClipboardCheck, LineChart, MonitorPlay, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, BarChart3, BookOpenCheck, ClipboardCheck, FileText, LineChart, MonitorPlay, Volume2 } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import { curriculumPrograms } from '@/data/curriculum';
 
@@ -12,10 +13,16 @@ const workflow = [
 ];
 
 const metrics = [
-  ['6', 'مسارات تدخل'],
-  ['80%', 'معيار انتقال'],
-  ['5+', 'محاولات قبل القرار'],
-  ['6', 'جلسات قبل إعادة القياس'],
+  ['7', 'اختبارات تحديد مستوى'],
+  ['35', 'سؤال استبيان أسري'],
+  ['80%', 'معيار فتح المهارة التالية'],
+  ['4', 'مستويات قرار علاجي'],
+];
+
+const systemHighlights = [
+  { title: 'الطالب لا يختار عشوائياً', body: 'المسار الموجه يفتح الدرس التالي بعد تسجيل الإتقان، مع بقاء التابات الأصلية للمعلم والأخصائي.', icon: BookOpenCheck },
+  { title: 'صوت وصورة داخل النشاط', body: 'أزرار الاستماع موحدة عبر باكدج صوت ElevenLabs مع بديل عربي محلي عند عدم وجود مفاتيح الإنتاج.', icon: Volume2 },
+  { title: 'تقرير قابل للطباعة', body: 'كل اختبار يحفظ المجالات، الإجابات، القرار، وخطة تدخل عملية تناسب متابعة الطالب في السعودية.', icon: FileText },
 ];
 
 export default function Home() {
@@ -36,15 +43,16 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.94),rgba(15,23,42,0.78),rgba(15,23,42,0.34))]" />
           <div className="relative mx-auto flex min-h-[calc(100svh-128px)] max-w-7xl flex-col justify-center px-5 py-12 lg:min-h-[calc(100svh-70px)] lg:px-8">
             <div className="max-w-3xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm font-black text-white/90 backdrop-blur">
-                <ShieldCheck size={17} />
-                برنامج تأهيلي مبني على قياس مهاري مستمر
+              <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm font-black text-white/90 backdrop-blur">
+                <BrandMark size="sm" showText={false} />
+                منصة سعودية للتقييم والتعليم العلاجي
               </div>
               <h1 className="text-4xl font-black leading-[1.18] text-white md:text-6xl lg:text-7xl">
-                مسار تأهيل واضح لطفل يحتاج طريقة تعلم مختلفة
+                مسار MASAR
               </h1>
+              <h2 className="mt-3 text-2xl font-black leading-10 text-teal-100 md:text-4xl">نظام يقيس ثم يعلّم ثم يقرر الخطوة التالية</h2>
               <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-white/82 md:text-xl md:leading-10">
-                منصة تجمع الاختبار، الخطة الفردية، نشاط الطفل، وتقرير القرار في تجربة واحدة: أقل كلام زائد، أكثر تدريب قابل للقياس.
+                منصة تجمع اختبارات القبول، المناهج الموجهة، صوت النطق، الألعاب، وتقرير القرار في تجربة واحدة مصممة للأطفال ذوي صعوبات التعلم.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/assessment" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-950/30 transition hover:bg-teal-500">
@@ -79,6 +87,29 @@ export default function Home() {
                   </div>
                   <h2 className="mt-4 text-lg font-black text-slate-950">{title}</h2>
                   <p className="mt-2 text-sm font-bold leading-7 text-slate-600">{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 bg-slate-950 text-white">
+          <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+            <div>
+              <p className="text-sm font-black text-teal-200">داخل النظام بعد تسجيل الدخول</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight md:text-4xl">كل خطوة مربوطة بالتي بعدها</h2>
+              <p className="mt-4 text-sm font-bold leading-8 text-white/70">
+                الهدف مش شكل جميل فقط؛ الهدف إن الطالب ما يتوهش، والأخصائي يعرف لماذا فتحنا مهارة أو أعدنا تدريسها.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {systemHighlights.map(({ title, body, icon: Icon }) => (
+                <article key={title} className="rounded-lg border border-white/10 bg-white/8 p-5">
+                  <div className="grid h-11 w-11 place-items-center rounded-lg bg-teal-400/14 text-teal-200">
+                    <Icon size={22} strokeWidth={2.4} />
+                  </div>
+                  <h3 className="mt-4 text-lg font-black text-white">{title}</h3>
+                  <p className="mt-2 text-sm font-bold leading-7 text-white/68">{body}</p>
                 </article>
               ))}
             </div>

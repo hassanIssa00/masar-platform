@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ClipboardCheck, FilePlus2, Printer, Target } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { decisionRules, getDecisionFromScore } from '@/data/assessmentModel';
@@ -47,9 +48,12 @@ export default function ReportsPage() {
             <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <header className="border-b border-slate-200 bg-slate-950 p-6 text-white">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h1 className="text-3xl font-black">تقرير تقييم شامل</h1>
-                    <p className="mt-2 text-sm font-bold text-white/70">منصة مسار التأهيل للتعليم وعلاج صعوبات التعلم</p>
+                  <div className="flex items-center gap-4">
+                    <BrandMark size="lg" showText={false} />
+                    <div>
+                      <h1 className="text-3xl font-black">تقرير تقييم شامل</h1>
+                      <p className="mt-2 text-sm font-bold text-white/70">منصة مسار التأهيل للتعليم وعلاج صعوبات التعلم</p>
+                    </div>
                   </div>
                   <button onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-5 py-3 text-sm font-black text-white ring-1 ring-white/20">
                     <Printer size={17} />
