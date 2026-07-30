@@ -1,65 +1,27 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ClipboardCheck, Printer, Target } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, FilePlus2, Printer, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { decisionRules, getDecisionFromScore } from '@/data/assessmentModel';
+import { getReports, ReportRecord } from '@/lib/localDb';
 
-const reports = [
-  {
-    id: 'r001',
-    studentName: 'عمر خالد',
-    grade: 'الصف الثالث',
-    program: 'القراءة والكتابة',
-    programColor: '#1f6f63',
-    date: '2024-07-15',
-    summary: 'يُعاني الطالب من صعوبات في التمييز بين الحروف المتشابهة وقراءة الكلمات المركّبة. يُوصى ببرنامج الوعي الصوتي متعدد الحواس.',
-    status: 'completed',
-    score: 65,
-  },
-  {
-    id: 'r002',
-    studentName: 'لينا محمد',
-    grade: 'الصف الأول',
-    program: 'طيف التوحد',
-    programColor: '#2d708f',
-    date: '2024-07-10',
-    summary: 'تُظهر الطالبة تحسناً في مهارات التواصل البصري. لا تزال تحتاج دعماً في المهارات الاجتماعية والروتين البصري.',
-    status: 'completed',
-    score: 72,
-  },
-  {
-    id: 'r003',
-    studentName: 'ياسين علي',
-    grade: 'الصف الرابع',
-    program: 'التخاطب والنطق',
-    programColor: '#63508f',
-    date: '2024-07-08',
-    summary: 'يُعاني الطالب من تأتأة عند بداية الجمل وصعوبة في نطق حرفي ص وض. يستجيب لتمارين التنفس وإيقاع الكلام.',
-    status: 'pending',
-    score: 58,
-  },
-  {
-    id: 'r004',
-    studentName: 'سارة أحمد',
-    grade: 'الصف الثاني',
-    program: 'الرياضيات',
-    programColor: '#a6532c',
-    date: '2024-07-05',
-    summary: 'تُواجه الطالبة صعوبة في إدراك مفهوم الأرقام وربطها بالكميات. أداء جيد في الأشكال الهندسية.',
-    status: 'completed',
-    score: 70,
-  },
-];
-
-const filters = ['all', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
+const filters = ['all', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد', 'تحليل الاستبيان'];
 
 export default function ReportsPage() {
+  const [reports, setReports] = useState<ReportRecord[]>([]);
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const filtered = useMemo(() => (filter === 'all' ? reports : reports.filter((report) => report.program.includes(filter))), [filter]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setReports(getReports());
+    });
+  }, []);
+
+  const filtered = useMemo(() => (filter === 'all' ? reports : reports.filter((report) => report.program.includes(filter))), [filter, reports]);
   const selected = reports.find((report) => report.id === selectedId);
 
   const getScoreColor = (score: number) => {
@@ -140,13 +102,41 @@ export default function ReportsPage() {
                 <section className="mt-6">
                   <h2 className="text-xl font-black text-slate-950">التوصيات والخطة العلاجية</h2>
                   <div className="mt-3 grid gap-3">
-                    {[
-                      'البدء بتدخل قصير ومحدد حسب مجال الضعف الأعلى أثراً.',
-                      'تخصيص واجب منزلي لا يتجاوز 10 دقائق يومياً.',
-                      'إعادة التقييم بعد 6 أسابيع لقياس التقدم.',
-                    ].map((item, index) => (
+                    {selected.recommendations.map((item, index) => (
                       <p key={item} className="rounded-lg bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-900">{index + 1}. {item}</p>
                     ))}
+                  </div>
+                </section>
+
+                <section className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                  <div className="rounded-lg border border-slate-200 bg-white p-5">
+                    <h2 className="text-xl font-black text-slate-950">تحليل المجالات</h2>
+                    <div className="mt-4 space-y-3">
+                      {selected.domains.map((domain) => (
+                        <div key={domain.name} className="rounded-lg bg-slate-50 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <h3 className="font-black text-slate-950">{domain.name}</h3>
+                            <span className="text-sm font-black text-teal-800">{domain.score}%</span>
+                          </div>
+                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                            <div className="h-full rounded-full bg-teal-700" style={{ width: `${domain.score}%` }} />
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-6 text-slate-600">{domain.note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-5">
+                    <h2 className="text-xl font-black text-slate-950">الإجابات المسجلة</h2>
+                    <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                      {selected.answers.map((answer, index) => (
+                        <article key={`${answer.question}-${index}`} className="rounded-lg bg-slate-50 p-3">
+                          <p className="text-xs font-black leading-6 text-slate-500">{answer.question}</p>
+                          <p className="mt-1 text-sm font-black text-slate-950">{answer.answer}</p>
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 </section>
 
@@ -203,8 +193,22 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          <section className="grid gap-4 md:grid-cols-2">
-            {filtered.map((report) => {
+          {filtered.length === 0 ? (
+            <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-slate-100 text-slate-600">
+                <FilePlus2 size={26} />
+              </div>
+              <h2 className="mt-4 text-2xl font-black text-slate-950">لا توجد تقارير محفوظة بعد</h2>
+              <p className="mx-auto mt-2 max-w-xl text-sm font-bold leading-7 text-slate-600">
+                لن تظهر أي أسماء أو نتائج وهمية هنا. أنشئ طالبًا أو استبيانًا، وبعد الحفظ سيظهر التقرير الحقيقي في هذه القائمة.
+              </p>
+              <Link href="/student/new" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">
+                إضافة طالب وتقرير
+              </Link>
+            </section>
+          ) : (
+            <section className="grid gap-4 md:grid-cols-2">
+              {filtered.map((report) => {
               const decision = getDecisionFromScore(report.score);
 
               return (
@@ -230,8 +234,9 @@ export default function ReportsPage() {
                   </div>
                 </article>
               );
-            })}
-          </section>
+              })}
+            </section>
+          )}
         </main>
       </div>
     </div>

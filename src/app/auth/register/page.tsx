@@ -1,73 +1,107 @@
+'use client';
+
+import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { UserPlus } from 'lucide-react';
+import { saveAccount, setSession, UserRole } from '@/lib/localDb';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('parent');
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const account = saveAccount({
+      name,
+      email,
+      phone,
+      role,
+    });
+
+    setSession(account);
+    localStorage.setItem('masar.last-password-set', password ? new Date().toISOString() : '');
+    router.push('/dashboard');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1E6FBF] to-[#0A3D7A] p-4 py-12">
-      <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1E6FBF] mb-2">إنشاء حساب جديد</h1>
-          <p className="text-gray-500">انضم إلى المنصة الأولى عربياً للتعليم والتأهيل</p>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4 py-10">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(20,184,166,0.24),transparent_30%),radial-gradient(circle_at_15%_70%,rgba(37,99,235,0.18),transparent_32%)]" />
+
+      <main className="relative w-full max-w-lg rounded-lg border border-white/10 bg-white p-6 shadow-2xl sm:p-8">
+        <div className="text-center">
+          <Link href="/" className="mx-auto grid h-12 w-12 place-items-center rounded-lg bg-slate-950 text-lg font-black text-white">
+            م
+          </Link>
+          <h1 className="mt-5 text-3xl font-black text-slate-950">إنشاء حساب جديد</h1>
+          <p className="mt-2 text-sm font-bold text-slate-500">الحساب يتحفظ محليًا ويظهر في تجربة المنصة مباشرة.</p>
         </div>
-        <form className="space-y-5">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">الاسم الكامل</label>
-            <input 
-              type="text" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="الاسم الثلاثي"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">البريد الإلكتروني</label>
-            <input 
-              type="email" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="name@example.com"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">رقم الهاتف</label>
-            <input 
-              type="tel" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="+966 5X XXX XXXX"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">كلمة المرور</label>
-            <input 
-              type="password" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">نوع الحساب</label>
-            <select className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] bg-white transition">
-              <option value="parent">أحد الوالدين</option>
+
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+          <Field label="الاسم الكامل" value={name} onChange={setName} placeholder="الاسم الثلاثي" />
+          <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" />
+          <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="01000000000" type="tel" />
+          <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة المرور" type="password" />
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-black text-slate-700">نوع الحساب</span>
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as UserRole)}
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+            >
+              <option value="parent">ولي أمر / طالب</option>
               <option value="specialist">أخصائي</option>
               <option value="teacher">معلم</option>
+              <option value="doctor">د. إسماعيل / أدمن</option>
             </select>
-          </div>
-          
-          <button 
-            type="submit" 
-            className="w-full bg-[#F5A623] hover:bg-[#e0961b] text-white font-bold py-3 px-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 mt-4"
-          >
-            تسجيل
+          </label>
+
+          <button type="submit" className="focus-ring flex w-full min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 font-black text-white hover:bg-teal-800">
+            <UserPlus size={18} />
+            تسجيل وإنشاء جلسة
           </button>
         </form>
-        <div className="mt-8 text-center text-gray-600">
+
+        <p className="mt-6 text-center text-sm font-bold text-slate-600">
           لديك حساب بالفعل؟{' '}
-          <Link href="/auth/login" className="text-[#1E6FBF] font-bold hover:underline">
+          <Link href="/auth/login" className="font-black text-teal-800 hover:underline">
             تسجيل الدخول
           </Link>
-        </div>
-      </div>
+        </p>
+      </main>
     </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+        placeholder={placeholder}
+        required
+      />
+    </label>
   );
 }

@@ -1,31 +1,40 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
-
-const stats = [
-  { label: 'طلاب نشطون', value: '142', note: '18 يحتاجون مراجعة خطة', icon: Gauge },
-  { label: 'جلسات اليوم', value: '18', note: 'موزعة حسب مهارة الهدف', icon: CalendarClock },
-  { label: 'اختبارات مكتملة', value: '64', note: 'منها 11 تحتاج إعادة قياس', icon: ClipboardCheck },
-  { label: 'تحسن متوسط', value: '24%', note: 'آخر 6 أسابيع', icon: TrendingUp },
-];
-
-const students = [
-  { name: 'أحمد محمود', grade: 'الصف الثاني', program: 'القراءة والكتابة', risk: 'وعي صوتي وفك ترميز', progress: 62, decision: 'تدريب مركز' },
-  { name: 'ليان عبدالله', grade: 'الصف الأول', program: 'طيف التوحد', risk: 'انتقال وروتين بصري', progress: 71, decision: 'تعميم' },
-  { name: 'عمر خالد', grade: 'الصف الرابع', program: 'الرياضيات', risk: 'قيمة مكانية ومسائل لفظية', progress: 48, decision: 'إعادة تدريس' },
-  { name: 'سارة محمد', grade: 'الروضة', program: 'التخاطب والنطق', risk: 'صوت مستهدف داخل كلمات', progress: 57, decision: 'جلسات صوت' },
-];
-
-const sessions = [
-  ['09:00', 'وعي صوتي', 'تمييز الصوت الأول قبل عرض الحرف'],
-  ['10:30', 'رياضيات محسوسة', 'تمثيل العدد بالمكعبات ثم الرمز'],
-  ['12:00', 'سلوك وظيفي', 'طلب المساعدة بدل الانسحاب'],
-  ['02:00', 'تخاطب', 'إنتاج الصوت داخل كلمات قصيرة'],
-];
+import { getReports, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function DashboardPage() {
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [surveysCount, setSurveysCount] = useState(0);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setStudents(getStudents());
+      setReports(getReports());
+      setSurveysCount(getSurveys().length);
+    });
+  }, []);
+
+  const averageScore = useMemo(() => {
+    if (reports.length === 0) return 0;
+    return Math.round(reports.reduce((total, report) => total + report.score, 0) / reports.length);
+  }, [reports]);
+
+  const stats = [
+    { label: 'طلاب محفوظون', value: String(students.length), note: students.length ? 'من بياناتك الفعلية' : 'ابدأ بإضافة أول طالب', icon: Gauge },
+    { label: 'جلسات اليوم', value: '0', note: 'لم يتم إنشاء جدول جلسات بعد', icon: CalendarClock },
+    { label: 'تقارير مكتملة', value: String(reports.length), note: `${surveysCount} استبيان محفوظ`, icon: ClipboardCheck },
+    { label: 'متوسط الأداء', value: reports.length ? `${averageScore}%` : '0%', note: reports.length ? 'محسوب من التقارير المحفوظة' : 'لا توجد درجات بعد', icon: TrendingUp },
+  ];
+
+  const latestReports = reports.slice(0, 5);
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
@@ -85,11 +94,20 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid gap-3 md:hidden">
-                {students.map((student) => (
-                  <StudentRowCard key={student.name} student={student} />
+                {latestReports.map((report) => (
+                  <StudentRowCard key={report.id} report={report} />
                 ))}
               </div>
 
+              {latestReports.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                  <p className="font-black text-slate-950">لا توجد حالات محفوظة بعد</p>
+                  <p className="mt-2 text-sm font-bold leading-7 text-slate-600">الداشبورد لا يعرض بيانات وهمية. أضف طالبًا أو استبيانًا وسيظهر هنا تلقائيًا.</p>
+                  <Link href="/student/new" className="mt-4 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    إضافة أول طالب
+                  </Link>
+                </div>
+              ) : (
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[760px] text-right">
                   <thead>
@@ -102,25 +120,26 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((student) => (
-                      <tr key={student.name} className="border-b border-slate-100 last:border-0">
+                    {latestReports.map((report) => (
+                      <tr key={report.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-4">
-                          <p className="font-black text-slate-950">{student.name}</p>
-                          <p className="text-sm font-bold text-slate-500">{student.grade}</p>
+                          <p className="font-black text-slate-950">{report.studentName}</p>
+                          <p className="text-sm font-bold text-slate-500">{report.grade}</p>
                         </td>
-                        <td className="py-4 text-sm font-bold text-slate-800">{student.program}</td>
-                        <td className="py-4 text-sm font-bold text-slate-600">{student.risk}</td>
+                        <td className="py-4 text-sm font-bold text-slate-800">{report.program}</td>
+                        <td className="py-4 text-sm font-bold text-slate-600">{report.summary}</td>
                         <td className="py-4">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{student.decision}</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{report.status === 'completed' ? 'مكتمل' : 'قيد المراجعة'}</span>
                         </td>
                         <td className="py-4">
-                          <Progress value={student.progress} />
+                          <Progress value={report.score} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -133,16 +152,9 @@ export default function DashboardPage() {
                   <h2 className="text-xl font-black text-slate-950">هدف واحد لكل جلسة</h2>
                 </div>
               </div>
-              <div className="space-y-3">
-                {sessions.map(([time, title, goal]) => (
-                  <article key={time} className="rounded-lg bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-black text-slate-950">{title}</h3>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{time}</span>
-                    </div>
-                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{goal}</p>
-                  </article>
-                ))}
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5">
+                <p className="font-black text-slate-950">لا توجد جلسات مجدولة اليوم</p>
+                <p className="mt-2 text-sm font-bold leading-7 text-slate-600">عند إضافة نظام الجلسات الحقيقي سيظهر هنا هدف الجلسة والوقت والطالب.</p>
               </div>
             </div>
           </section>
@@ -171,19 +183,19 @@ export default function DashboardPage() {
   );
 }
 
-function StudentRowCard({ student }: { student: (typeof students)[number] }) {
+function StudentRowCard({ report }: { report: ReportRecord }) {
   return (
     <article className="rounded-lg bg-slate-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-black text-slate-950">{student.name}</h3>
-          <p className="text-sm font-bold text-slate-500">{student.grade} · {student.program}</p>
+          <h3 className="font-black text-slate-950">{report.studentName}</h3>
+          <p className="text-sm font-bold text-slate-500">{report.grade} · {report.program}</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{student.decision}</span>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{report.score}%</span>
       </div>
-      <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{student.risk}</p>
+      <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{report.summary}</p>
       <div className="mt-3">
-        <Progress value={student.progress} />
+        <Progress value={report.score} />
       </div>
     </article>
   );

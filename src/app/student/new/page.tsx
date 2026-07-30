@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Camera, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileCheck2, Gauge, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { assessmentPrinciples, getRiskLabel, getRiskLevel } from '@/data/assessmentModel';
+import { saveReport, saveStudent } from '@/lib/localDb';
 
 const steps = [
   { id: 1, label: 'البيانات', icon: UserRound },
@@ -20,7 +22,18 @@ const parentQuestions = [
 ];
 
 export default function NewStudentWizard() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
+  const [saved, setSaved] = useState(false);
+  const [student, setStudent] = useState({
+    fullName: '',
+    nationalId: '',
+    dateOfBirth: '',
+    grade: 'الصف الأول',
+    parentName: '',
+    parentPhone: '',
+    notes: '',
+  });
   const [parentAnswers, setParentAnswers] = useState<Record<number, string>>({});
   const [readingChecks, setReadingChecks] = useState<Record<string, boolean>>({});
   const [mathChecks, setMathChecks] = useState<Record<string, boolean>>({});
@@ -32,6 +45,60 @@ export default function NewStudentWizard() {
   const riskScore = Math.min(parentRisk + skillRisk, 100);
   const riskLevel = getRiskLevel(riskScore);
   const recommendation = mathDone < readingDone ? 'برنامج الرياضيات' : 'برنامج القراءة والكتابة';
+  const answeredQuestions = parentQuestions.map((question, index) => ({
+    question,
+    answer: parentAnswers[index] ?? 'لم يتم تسجيل إجابة',
+  }));
+
+  const handleFieldChange = (key: keyof typeof student, value: string) => {
+    setStudent((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleFinish = () => {
+    const savedStudent = saveStudent({
+      fullName: student.fullName.trim() || 'طالب بدون اسم',
+      nationalId: student.nationalId,
+      dateOfBirth: student.dateOfBirth,
+      grade: student.grade,
+      parentName: student.parentName,
+      parentPhone: student.parentPhone,
+      source: 'student-wizard',
+    });
+
+    saveReport({
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade: savedStudent.grade,
+      program: recommendation,
+      programColor: recommendation.includes('رياض') ? '#a6532c' : '#1f6f63',
+      score: Math.max(0, 100 - riskScore),
+      status: 'completed',
+      type: 'initial-assessment',
+      summary:
+        riskScore >= 70
+          ? 'الطالب يحتاج تدخلاً مركزاً يبدأ بمهارات صغيرة وواضحة مع متابعة أسبوعية.'
+          : riskScore >= 35
+            ? 'الطالب يحتاج تدريباً منظماً على المهارات التي ظهرت أقل ثباتاً في التقييم.'
+            : 'الطالب يظهر احتياجاً بسيطاً ويمكن البدء بخطة تأسيس ومراجعة دورية.',
+      recommendations: [
+        `البدء بـ ${recommendation} حسب نتيجة التقييم الأولي.`,
+        'تحديد هدف واحد لكل جلسة وتسجيل الدقة ونوع المساعدة.',
+        'إعادة القياس بعد 6 جلسات أو عند الوصول إلى 80% إتقان.',
+      ],
+      answers: [
+        ...answeredQuestions,
+        ...Object.entries(readingChecks).map(([question, answer]) => ({ question: `قراءة: ${question}`, answer: answer ? 'متقن' : 'غير متقن' })),
+        ...Object.entries(mathChecks).map(([question, answer]) => ({ question: `رياضيات: ${question}`, answer: answer ? 'متقن' : 'غير متقن' })),
+      ],
+      domains: [
+        { name: 'استبيان الأهل', score: Math.max(0, 100 - parentRisk), note: getRiskLabel(riskLevel) },
+        { name: 'القراءة', score: Math.round((readingDone / 3) * 100), note: `${readingDone} من 3 مهارات` },
+        { name: 'الرياضيات', score: Math.round((mathDone / 3) * 100), note: `${mathDone} من 3 مهارات` },
+      ],
+    });
+
+    setSaved(true);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
@@ -69,16 +136,21 @@ export default function NewStudentWizard() {
               <div className="space-y-6">
                 <SectionTitle title="بيانات الطالب الأساسية" />
                 <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="اسم الطالب" placeholder="الاسم الرباعي" />
-                  <Field label="الرقم القومي / الهوية" />
-                  <Field label="تاريخ الميلاد" type="date" />
+                  <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} />
+                  <Field label="الرقم القومي / الهوية" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
+                  <Field label="تاريخ الميلاد" type="date" value={student.dateOfBirth} onChange={(value) => handleFieldChange('dateOfBirth', value)} />
+                  <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
+                  <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
                   <label className="block">
                     <span className="mb-2 block text-sm font-black text-slate-700">الصف الدراسي</span>
-                    <select className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                    <select value={student.grade} onChange={(event) => handleFieldChange('grade', event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
                       <option>الروضة</option>
                       <option>الصف الأول</option>
                       <option>الصف الثاني</option>
                       <option>الصف الثالث</option>
+                      <option>الصف الرابع</option>
+                      <option>الصف الخامس</option>
+                      <option>الصف السادس</option>
                     </select>
                   </label>
                 </div>
@@ -143,7 +215,7 @@ export default function NewStudentWizard() {
                 </div>
                 <label className="block">
                   <span className="mb-2 block text-sm font-black text-slate-700">ملاحظات السلوك والانتباه</span>
-                  <textarea className="min-h-28 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder="اكتب ملاحظاتك هنا..." />
+                  <textarea value={student.notes} onChange={(event) => handleFieldChange('notes', event.target.value)} className="min-h-28 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder="اكتب ملاحظاتك هنا..." />
                 </label>
               </div>
             )}
@@ -153,12 +225,17 @@ export default function NewStudentWizard() {
                 <div className="mx-auto grid h-16 w-16 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
                   <CheckCircle2 size={34} />
                 </div>
-                <h2 className="mt-5 text-2xl font-black text-slate-950">تم التقييم بنجاح</h2>
+                <h2 className="mt-5 text-2xl font-black text-slate-950">{saved ? 'تم حفظ الطالب والتقرير' : 'مراجعة الخطة قبل الحفظ'}</h2>
                 <p className="mt-2 text-sm font-bold leading-7 text-slate-600">بناءً على التقييم الأولي، يوصى بالبرامج التالية للطالب:</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <span className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">{recommendation}</span>
                   <span className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">برنامج تعديل السلوك</span>
                 </div>
+                {saved && (
+                  <button onClick={() => router.push('/reports')} className="mt-6 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
+                    فتح التقارير
+                  </button>
+                )}
               </div>
             )}
 
@@ -167,8 +244,8 @@ export default function NewStudentWizard() {
                 <ChevronRight size={17} />
                 السابق
               </button>
-              <button onClick={() => setStep(Math.min(step + 1, 4))} className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
-                {step < 4 ? 'التالي' : 'حفظ وإنهاء'}
+              <button onClick={() => (step < 4 ? setStep(step + 1) : handleFinish())} className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800">
+                {step < 4 ? 'التالي' : saved ? 'تم الحفظ' : 'حفظ وإنهاء'}
                 <ChevronLeft size={17} />
               </button>
             </div>
@@ -208,11 +285,23 @@ function SectionTitle({ title }: { title: string }) {
   return <h2 className="text-xl font-black text-slate-950">{title}</h2>;
 }
 
-function Field({ label, placeholder, type = 'text' }: { label: string; placeholder?: string; type?: string }) {
+function Field({
+  label,
+  placeholder,
+  type = 'text',
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder?: string;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
-      <input type={type} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder={placeholder} />
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder={placeholder} />
     </label>
   );
 }

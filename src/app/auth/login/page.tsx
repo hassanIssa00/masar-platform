@@ -1,93 +1,211 @@
 'use client';
 
+import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, ShieldCheck } from 'lucide-react';
+import { KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
+import { getAccounts, saveAccount, setSession } from '@/lib/localDb';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [otpStep, setOtpStep] = useState<1 | 2 | 3>(1);
+  const [otp, setOtp] = useState('');
+  const [message, setMessage] = useState('');
 
   const loginAsDoctor = () => {
-    localStorage.setItem(
-      'masar-user',
-      JSON.stringify({
-        id: 'dr-ismail',
-        name: 'د. إسماعيل عيسى',
-        role: 'specialist',
-        email: 'dr.ismail@masar.local',
-      }),
-    );
+    const account = saveAccount({
+      name: 'د. إسماعيل عيسى',
+      email: 'dr.ismail@masar.com',
+      phone: '01000000000',
+      role: 'doctor',
+    });
+
+    setSession(account);
     router.push('/dashboard');
   };
 
+  const loginAsParent = () => {
+    const account = saveAccount({
+      name: 'ولي أمر طالب',
+      email: 'parent@masar.com',
+      phone: '01000000001',
+      role: 'parent',
+    });
+
+    setSession(account);
+    router.push('/dashboard');
+  };
+
+  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = getAccounts().find((account) => account.email.toLowerCase() === cleanEmail);
+
+    if (existing) {
+      setSession(existing);
+      router.push('/dashboard');
+      return;
+    }
+
+    const isDoctor = cleanEmail.includes('ismail') || cleanEmail.includes('admin') || cleanEmail.includes('dr');
+    const account = saveAccount({
+      name: isDoctor ? 'د. إسماعيل عيسى' : cleanEmail.split('@')[0] || 'ولي أمر',
+      email: cleanEmail || 'parent@masar.local',
+      role: isDoctor ? 'doctor' : 'parent',
+    });
+    setSession(account);
+    router.push('/dashboard');
+  };
+
+  const handleOtp = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (otpStep === 1) {
+      setMessage('تم تجهيز رمز التحقق التجريبي: 4829');
+      setOtpStep(2);
+      return;
+    }
+
+    if (otpStep === 2) {
+      if (otp !== '4829') {
+        setMessage('رمز التحقق غير صحيح. استخدم 4829 للتجربة المحلية.');
+        return;
+      }
+      setMessage('تم التحقق. أدخل كلمة مرور جديدة ثم احفظ.');
+      setOtpStep(3);
+      return;
+    }
+
+    setMessage('تم حفظ كلمة المرور الجديدة محليًا.');
+    setTimeout(() => {
+      setForgotOpen(false);
+      setOtpStep(1);
+      setOtp('');
+      setMessage('');
+    }, 900);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1E6FBF] to-[#0A3D7A] p-4">
-      <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-slide-up">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1E6FBF] mb-2">تسجيل الدخول</h1>
-          <p className="text-gray-500">مرحباً بك مجدداً في منصة د. إسماعيل عيسى</p>
-        </div>
-        <form className="space-y-6">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">البريد الإلكتروني</label>
-            <input 
-              type="email" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="name@example.com"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">كلمة المرور</label>
-            <input 
-              type="password" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1E6FBF] focus:border-transparent transition"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <label className="flex items-center gap-2 cursor-pointer text-gray-600">
-              <input type="checkbox" className="w-4 h-4 text-[#1E6FBF]" />
-              تذكرني
-            </label>
-            <a href="#" className="text-[#1E6FBF] hover:underline font-semibold">نسيت كلمة المرور؟</a>
-          </div>
-          <button 
-            type="submit" 
-            className="w-full bg-[#1E6FBF] hover:bg-[#0A3D7A] text-white font-bold py-3 px-4 rounded-xl shadow-lg transition transform hover:-translate-y-1"
-          >
-            دخول
-          </button>
-        </form>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4 text-slate-950">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,0.25),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(37,99,235,0.22),transparent_30%)]" />
 
-        <div className="my-6 flex items-center gap-3">
-          <span className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs font-bold text-gray-400">تجربة محلية</span>
-          <span className="h-px flex-1 bg-gray-200" />
-        </div>
-
-        <button
-          type="button"
-          onClick={loginAsDoctor}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 font-bold text-white shadow-lg transition hover:bg-slate-800"
-        >
-          <ShieldCheck size={18} />
-          دخول مباشر بحساب د. إسماعيل
-          <LogIn size={18} />
-        </button>
-
-        <p className="mt-3 text-center text-xs font-semibold leading-6 text-gray-500">
-          هذا الزر مخصص للتجربة المحلية عند عدم تشغيل قاعدة البيانات.
-        </p>
-
-        <div className="mt-8 text-center text-gray-600">
-          ليس لديك حساب؟{' '}
-          <Link href="/auth/register" className="text-[#F5A623] font-bold hover:underline">
-            إنشاء حساب جديد
+      <main className="relative grid w-full max-w-5xl overflow-hidden rounded-lg border border-white/10 bg-white shadow-2xl lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="hidden bg-slate-950 p-8 text-white lg:flex lg:flex-col lg:justify-between">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <span className="grid h-12 w-12 place-items-center rounded-lg bg-teal-600 text-lg font-black">م</span>
+            <span className="font-black">منصة مسار التأهيل</span>
           </Link>
+          <div>
+            <p className="text-sm font-black text-teal-200">دخول آمن للتجربة المحلية</p>
+            <h1 className="mt-3 text-4xl font-black leading-tight">كل حساب يدخل لمساره بدون اختلاط أدوار</h1>
+            <p className="mt-4 text-sm font-bold leading-7 text-white/70">
+              حساب الدكتور يدخل لوحة التشغيل، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب والاستبيانات.
+            </p>
+          </div>
+        </section>
+
+        <section className="p-6 sm:p-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-black text-slate-950">تسجيل الدخول</h1>
+            <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button onClick={loginAsDoctor} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
+              <ShieldCheck size={18} />
+              د. إسماعيل
+            </button>
+            <button onClick={loginAsParent} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 text-sm font-black text-white hover:bg-teal-800">
+              <UserRound size={18} />
+              ولي أمر
+            </button>
+          </div>
+
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-black text-slate-700">البريد الإلكتروني أو رقم الهاتف</span>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="text"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+                placeholder="dr.ismail@masar.com"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-black text-slate-700">كلمة المرور</span>
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+                placeholder="اكتب كلمة المرور"
+                required
+              />
+            </label>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <label className="flex items-center gap-2 font-bold text-slate-600">
+                <input type="checkbox" className="accent-teal-700" />
+                تذكرني
+              </label>
+              <button type="button" onClick={() => setForgotOpen(true)} className="font-black text-teal-800 hover:underline">
+                نسيت كلمة المرور؟
+              </button>
+            </div>
+            <button type="submit" className="focus-ring flex w-full min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 font-black text-white hover:bg-teal-800">
+              <LogIn size={18} />
+              دخول
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm font-bold text-slate-600">
+            ليس لديك حساب؟{' '}
+            <Link href="/auth/register" className="font-black text-teal-800 hover:underline">
+              إنشاء حساب جديد
+            </Link>
+          </p>
+        </section>
+      </main>
+
+      {forgotOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <form onSubmit={handleOtp} className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-black text-teal-800">استعادة كلمة المرور</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">رمز تحقق محلي</h2>
+              </div>
+              <button type="button" onClick={() => setForgotOpen(false)} className="rounded-lg px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100">
+                إغلاق
+              </button>
+            </div>
+
+            {message && <p className="mt-4 rounded-lg bg-teal-50 p-3 text-sm font-bold leading-7 text-teal-950">{message}</p>}
+
+            <label className="mt-5 block">
+              <span className="mb-2 block text-sm font-black text-slate-700">
+                {otpStep === 1 ? 'البريد أو الهاتف' : otpStep === 2 ? 'رمز التحقق' : 'كلمة المرور الجديدة'}
+              </span>
+              <input
+                value={otp}
+                onChange={(event) => setOtp(event.target.value)}
+                type={otpStep === 3 ? 'password' : 'text'}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+                placeholder={otpStep === 2 ? '4829' : ''}
+                required
+              />
+            </label>
+            <button type="submit" className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 font-black text-white">
+              <KeyRound size={18} />
+              {otpStep === 1 ? 'إرسال الرمز' : otpStep === 2 ? 'تأكيد الرمز' : 'حفظ كلمة المرور'}
+            </button>
+          </form>
         </div>
-      </div>
+      )}
     </div>
   );
 }

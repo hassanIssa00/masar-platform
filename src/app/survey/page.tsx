@@ -1,12 +1,13 @@
 "use client";
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
+import { saveReport, saveStudent, saveSurvey } from '@/lib/localDb';
 
 const SECTIONS = [
   {
     id: 'general',
     title: 'معلومات عامة',
-    icon: '👤',
+    icon: '1',
     questions: [
       { id: 'q1', text: 'ما هو عمر الطفل؟', type: 'select', options: ['3 سنوات', '4 سنوات', '5 سنوات', '6 سنوات', '7 سنوات', '8 سنوات', '9 سنوات', '10 سنوات', '11 سنوات', '12 سنوات'] },
       { id: 'q2', text: 'ما الصف الدراسي الحالي؟', type: 'select', options: ['ما قبل المدرسة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس'] },
@@ -17,7 +18,7 @@ const SECTIONS = [
   {
     id: 'language',
     title: 'المهارات اللغوية',
-    icon: '🗣️',
+    icon: '2',
     questions: [
       { id: 'q5', text: 'هل يواجه الطفل صعوبة في نطق الحروف بشكل صحيح؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'نادراً', 'لا'] },
       { id: 'q6', text: 'هل يتلعثم أو يتأتئ عند الكلام؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'نادراً', 'لا'] },
@@ -28,7 +29,7 @@ const SECTIONS = [
   {
     id: 'social',
     title: 'المهارات الاجتماعية',
-    icon: '👫',
+    icon: '3',
     questions: [
       { id: 'q9', text: 'هل يستطيع التفاعل مع أقرانه بشكل طبيعي؟', type: 'radio', options: ['نعم', 'أحياناً', 'نادراً', 'لا'] },
       { id: 'q10', text: 'هل يفضل اللعب بمفرده؟', type: 'radio', options: ['دائماً', 'أحياناً', 'نادراً'] },
@@ -39,7 +40,7 @@ const SECTIONS = [
   {
     id: 'behavior',
     title: 'السلوك والانتباه',
-    icon: '🧠',
+    icon: '4',
     questions: [
       { id: 'q13', text: 'هل يجد صعوبة في الجلوس هادئاً لفترة؟', type: 'radio', options: ['نعم دائماً', 'أحياناً', 'نادراً', 'لا'] },
       { id: 'q14', text: 'هل يصدر سلوكيات متكررة (حركات، أصوات)؟', type: 'radio', options: ['نعم', 'أحياناً', 'لا'] },
@@ -50,7 +51,7 @@ const SECTIONS = [
   {
     id: 'academic',
     title: 'المهارات الأكاديمية',
-    icon: '📚',
+    icon: '5',
     questions: [
       { id: 'q17', text: 'كيف يؤدي واجباته المدرسية؟', type: 'radio', options: ['باستقلالية تامة', 'بمساعدة بسيطة', 'يحتاج مساعدة كبيرة', 'يرفض تماماً'] },
       { id: 'q18', text: 'هل يواجه صعوبة في الرياضيات؟', type: 'radio', options: ['نعم', 'أحياناً', 'لا'] },
@@ -65,6 +66,9 @@ type Answers = Record<string, string | number>;
 export default function SurveyPage() {
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [studentName, setStudentName] = useState('');
+  const [grade, setGrade] = useState('الصف الأول');
+  const [parentPhone, setParentPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const section = SECTIONS[currentSection];
@@ -75,6 +79,52 @@ export default function SurveyPage() {
   };
 
   const handleSubmit = () => {
+    const savedStudent = saveStudent({
+      fullName: studentName.trim() || 'طالب من الاستبيان',
+      grade,
+      parentPhone,
+      source: 'survey',
+    });
+
+    saveSurvey({
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade,
+      parentPhone,
+      answers,
+    });
+
+    saveReport({
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade,
+      program: 'تحليل الاستبيان',
+      programColor: '#0f766e',
+      score: Math.round((Object.keys(answers).length / 20) * 100),
+      status: 'pending',
+      type: 'survey-analysis',
+      summary: 'تم استلام الاستبيان ويحتاج مراجعة الأخصائي لتحويل الإجابات إلى خطة علاجية مفصلة.',
+      recommendations: [
+        'مراجعة إجابات ولي الأمر قبل تحديد المسار العلاجي.',
+        'تحديد موعد تقييم مباشر للمهارات اللغوية والأكاديمية.',
+        'ربط الاستبيان بتقرير تشخيصي بعد المقابلة الأولى.',
+      ],
+      answers: SECTIONS.flatMap((sectionItem) =>
+        sectionItem.questions.map((question) => ({
+          question: question.text,
+          answer: String(answers[question.id] ?? 'لم يتم تسجيل إجابة'),
+        })),
+      ),
+      domains: SECTIONS.map((sectionItem) => {
+        const answered = sectionItem.questions.filter((question) => answers[question.id]).length;
+        return {
+          name: sectionItem.title,
+          score: Math.round((answered / sectionItem.questions.length) * 100),
+          note: `${answered} من ${sectionItem.questions.length} إجابات`,
+        };
+      }),
+    });
+
     setSubmitted(true);
   };
 
@@ -84,14 +134,13 @@ export default function SurveyPage() {
         <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center animate-slide-up">
-            <div className="text-7xl mb-6">🎉</div>
             <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">شكراً! تم استلام الاستبيان</h1>
             <p className="text-gray-600 mb-8">سيقوم فريق د. إسماعيل عيسى بمراجعة إجاباتك وإعداد تقرير شامل خلال 24 ساعة.</p>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 text-right space-y-3">
               <h2 className="font-bold text-green-700 text-xl text-center mb-4">ملخص الاستبيان</h2>
-              <p className="text-gray-700">✅ <strong>عدد الأسئلة المجاب عليها:</strong> {Object.keys(answers).length} / 20</p>
-              <p className="text-gray-700">📋 <strong>الأقسام المكتملة:</strong> {SECTIONS.length} أقسام</p>
-              <p className="text-gray-700">🔄 <strong>الحالة:</strong> قيد المراجعة من قِبل الأخصائي</p>
+              <p className="text-gray-700"><strong>عدد الأسئلة المجاب عليها:</strong> {Object.keys(answers).length} / 20</p>
+              <p className="text-gray-700"><strong>الأقسام المكتملة:</strong> {SECTIONS.length} أقسام</p>
+              <p className="text-gray-700"><strong>الحالة:</strong> قيد المراجعة من قِبل الأخصائي</p>
             </div>
             <button onClick={() => { setSubmitted(false); setCurrentSection(0); setAnswers({}); }}
               className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
@@ -114,6 +163,29 @@ export default function SurveyPage() {
           <p className="text-gray-500">يُرجى الإجابة بصدق — ستساعدنا إجاباتك في تقديم أفضل خدمة لطفلك</p>
         </div>
 
+        <div className="mb-8 grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:grid-cols-3">
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-gray-700">اسم الطالب</span>
+            <input value={studentName} onChange={(event) => setStudentName(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]" placeholder="اسم الطالب" />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-gray-700">الصف</span>
+            <select value={grade} onChange={(event) => setGrade(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]">
+              <option>الروضة</option>
+              <option>الصف الأول</option>
+              <option>الصف الثاني</option>
+              <option>الصف الثالث</option>
+              <option>الصف الرابع</option>
+              <option>الصف الخامس</option>
+              <option>الصف السادس</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-gray-700">هاتف ولي الأمر</span>
+            <input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]" placeholder="01000000000" />
+          </label>
+        </div>
+
         {/* Overall Progress */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
           <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
@@ -128,7 +200,7 @@ export default function SurveyPage() {
               <button key={s.id} onClick={() => setCurrentSection(i)}
                 className={`flex flex-col items-center gap-1 text-xs font-bold transition-all ${i === currentSection ? 'text-[#1E6FBF] scale-110' : i < currentSection ? 'text-[#2ECC71]' : 'text-gray-300'}`}>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center ${i === currentSection ? 'bg-[#1E6FBF] text-white' : i < currentSection ? 'bg-[#2ECC71] text-white' : 'bg-gray-100'}`}>
-                  {i < currentSection ? '✓' : s.icon}
+                  {i < currentSection ? 'تم' : s.icon}
                 </span>
                 <span className="hidden md:block">{s.title}</span>
               </button>
@@ -196,12 +268,12 @@ export default function SurveyPage() {
           {currentSection < SECTIONS.length - 1 ? (
             <button onClick={() => setCurrentSection(currentSection + 1)}
               className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition shadow-md">
-              التالي ←
+              التالي
             </button>
           ) : (
             <button onClick={handleSubmit}
               className="bg-[#2ECC71] text-white px-8 py-3 rounded-xl font-bold hover:bg-green-600 transition shadow-md">
-              إرسال الاستبيان ✅
+              إرسال الاستبيان
             </button>
           )}
         </div>
