@@ -8,7 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import { decisionRules, getDecisionFromScore } from '@/data/assessmentModel';
 import { getReports, ReportRecord } from '@/lib/localDb';
 
-const filters = ['all', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد', 'تحليل الاستبيان'];
+const filters = ['all', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد', 'تحليل الاستبيان'];
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<ReportRecord[]>([]);

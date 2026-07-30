@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Activity, BarChart3, BookOpen, LogIn, LogOut, UserPlus } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, ClipboardCheck, Gamepad2, LogIn, LogOut, UserPlus } from 'lucide-react';
 import { clearSession } from '@/lib/localDb';
 
 const links = [
   { label: 'الرئيسية', href: '/', icon: Activity },
   { label: 'المناهج', href: '/programs/reading', icon: BookOpen },
+  { label: 'الاختبارات', href: '/assessment', icon: ClipboardCheck },
+  { label: 'الألعاب', href: '/kids', icon: Gamepad2 },
   { label: 'إضافة طالب', href: '/student/new', icon: UserPlus },
   { label: 'التقارير', href: '/reports', icon: BarChart3 },
 ];

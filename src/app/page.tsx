@@ -47,7 +47,7 @@ export default function Home() {
                 منصة تجمع الاختبار، الخطة الفردية، نشاط الطفل، وتقرير القرار في تجربة واحدة: أقل كلام زائد، أكثر تدريب قابل للقياس.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-950/30 transition hover:bg-teal-500">
+                <Link href="/assessment" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-950/30 transition hover:bg-teal-500">
                   ابدأ اختبار تحديد المستوى
                   <ArrowLeft size={18} />
                 </Link>

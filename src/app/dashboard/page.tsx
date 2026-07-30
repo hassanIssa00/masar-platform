@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -55,9 +55,13 @@ export default function DashboardPage() {
                   <UserRoundPlus size={17} />
                   إضافة طالب
                 </Link>
-                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
+                <Link href="/assessment" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
                   <ClipboardCheck size={17} />
-                  اختبار سريع
+                  اختبارات المستوى
+                </Link>
+                <Link href="/kids" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
+                  <Gamepad2 size={17} />
+                  ألعاب الطالب
                 </Link>
               </div>
             </div>

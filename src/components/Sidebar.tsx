@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import { BarChart3, ClipboardList, FileText, Layers3 } from 'lucide-react';
+import { BarChart3, ClipboardCheck, ClipboardList, FileText, Gamepad2, Layers3 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
+  { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
   { name: 'التقارير', path: '/reports', icon: FileText },
+  { name: 'ألعاب الطالب', path: '/kids', icon: Gamepad2 },
   { name: 'إضافة طالب', path: '/student/new', icon: ClipboardList },
 ];
 
