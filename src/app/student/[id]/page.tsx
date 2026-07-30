@@ -1,54 +1,95 @@
-"use client";
-import { useState } from 'react';
+'use client';
+
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
+import { getReports, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
 
-export default function StudentProfilePage({ params }: { params: { id: string } }) {
+export default function StudentProfilePage() {
+  const params = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('profile');
-  const studentId = params.id;
+  const [student, setStudent] = useState<StudentRecord | null>(null);
+  const [reports, setReports] = useState<ReportRecord[]>([]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const found = getStudents().find((item) => item.id === params.id) ?? null;
+      setStudent(found);
+      setReports(getReports().filter((report) => report.studentId === params.id));
+    });
+  }, [params.id]);
 
   const tabs = [
     { id: 'profile', name: 'البروفايل' },
     { id: 'plan', name: 'خطة التعلم' },
     { id: 'reports', name: 'التقارير' },
-    { id: 'progress', name: 'التقدم' }
+    { id: 'progress', name: 'التقدم' },
   ];
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFB]">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header Profile Card */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#1E6FBF] opacity-5 rounded-bl-full"></div>
-          
-          <div className="w-32 h-32 bg-gray-200 rounded-full border-4 border-[#1E6FBF] overflow-hidden shrink-0 shadow-lg">
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-5xl bg-white">👤</div>
-          </div>
-          
-          <div className="flex-1 text-center md:text-right z-10">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">أحمد محمود عبدالسلام</h1>
-            <div className="flex flex-wrap justify-center md:justify-start gap-3 text-sm mb-4">
-              <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-full font-semibold border border-gray-100">ملف #{studentId}</span>
-              <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-semibold border border-blue-100">الصف الثاني</span>
-              <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full font-semibold border border-green-100">نشط</span>
-              <span className="bg-orange-50 text-orange-700 px-3 py-1 rounded-full font-semibold border border-orange-100">الأخصائي: د. محمد</span>
-            </div>
-            <button className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2 mx-auto md:mx-0">
-              🖨️ طباعة الملف
-            </button>
-          </div>
-        </div>
+  if (!student) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] text-slate-950">
+        <Navbar />
+        <main className="mx-auto grid min-h-[70svh] max-w-2xl place-items-center px-4 py-8">
+          <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+            <UserRound className="mx-auto text-slate-400" size={44} />
+            <h1 className="mt-4 text-2xl font-black text-slate-950">ملف الطالب غير موجود</h1>
+            <p className="mt-2 text-sm font-bold leading-7 text-slate-600">لا توجد بيانات محفوظة لهذا الرابط. أضف الطالب أولًا من صفحة إضافة طالب.</p>
+            <Link href="/student/new" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+              إضافة طالب
+            </Link>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
-        {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-x-auto">
-          <div className="flex border-b">
-            {tabs.map(tab => (
+  const averageScore = reports.length ? Math.round(reports.reduce((total, report) => total + report.score, 0) / reports.length) : 0;
+
+  return (
+    <div className="min-h-screen bg-[var(--background)] text-slate-950">
+      <Navbar />
+      <main className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
+        <Link href="/reports" className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+          <ArrowRight size={17} />
+          العودة للتقارير
+        </Link>
+
+        <section className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[260px_1fr]">
+            <div className="grid place-items-center bg-slate-950 p-6 text-white">
+              {student.photoUrl ? (
+                <Image src={student.photoUrl} alt={student.fullName} width={144} height={144} unoptimized className="h-36 w-36 rounded-lg object-cover ring-4 ring-white/20" />
+              ) : (
+                <div className="grid h-36 w-36 place-items-center rounded-lg bg-white/10">
+                  <UserRound size={62} />
+                </div>
+              )}
+            </div>
+            <div className="p-6">
+              <p className="text-sm font-black text-teal-800">ملف طالب حقيقي</p>
+              <h1 className="mt-2 text-3xl font-black text-slate-950">{student.fullName}</h1>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{student.grade}</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-800">{reports.length} تقرير</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-800">متوسط {averageScore}%</span>
+              </div>
+              <p className="mt-4 text-sm font-bold leading-7 text-slate-600">آخر تحديث: {new Date(student.updatedAt).toLocaleDateString('ar-EG')}</p>
+            </div>
+          </div>
+        </section>
+
+        <div className="mb-6 overflow-x-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+          <div className="flex gap-2">
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-4 px-6 text-center font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'text-[#1E6FBF] border-b-4 border-[#1E6FBF] bg-blue-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                className={`shrink-0 rounded-lg px-5 py-3 text-sm font-black transition ${activeTab === tab.id ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 {tab.name}
               </button>
@@ -56,60 +97,67 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
           </div>
         </div>
 
-        {/* Tab Content */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 min-h-[400px]">
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-7">
           {activeTab === 'profile' && (
-            <div className="animate-fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">المعلومات الشخصية</h3>
-                <ul className="space-y-4">
-                  <li className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500">تاريخ الميلاد</span> <span className="font-semibold">12 مايو 2016</span></li>
-                  <li className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500">الجنس</span> <span className="font-semibold">ذكر</span></li>
-                  <li className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500">تاريخ الانضمام</span> <span className="font-semibold">1 سبتمبر 2023</span></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">ملاحظات الأخصائي</h3>
-                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-gray-700 leading-relaxed text-sm">
-                  الطالب يظهر تحسناً ملحوظاً في التمييز بين الحروف المتشابهة. يحتاج إلى مزيد من التركيز في العمليات الحسابية البسيطة. الاستجابة لبرنامج تعديل السلوك ممتازة.
-                </div>
-              </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Info label="الاسم" value={student.fullName} />
+              <Info label="الصف" value={student.grade} />
+              <Info label="الرقم القومي / الهوية" value={student.nationalId || 'غير مسجل'} />
+              <Info label="تاريخ الميلاد" value={student.dateOfBirth || 'غير مسجل'} />
+              <Info label="ولي الأمر" value={student.parentName || 'غير مسجل'} />
+              <Info label="هاتف ولي الأمر" value={student.parentPhone || 'غير مسجل'} />
             </div>
           )}
 
-          {activeTab === 'progress' && (
-            <div className="animate-fade-in">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">التقدم في البرامج</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <ProgressBar label="القراءة والكتابة" percentage={75} colorClass="bg-[#1E6FBF]" />
-                  <ProgressBar label="الرياضيات" percentage={45} colorClass="bg-[#F5A623]" />
-                  <ProgressBar label="صعوبات التعلم" percentage={60} colorClass="bg-[#2ECC71]" />
-                </div>
-                <div className="space-y-6">
-                  <ProgressBar label="تعديل السلوك" percentage={90} colorClass="bg-[#E74C3C]" />
-                  <ProgressBar label="التخاطب والنطق" percentage={30} colorClass="bg-[#8E44AD]" />
-                  <ProgressBar label="طيف التوحد" percentage={0} colorClass="bg-gray-300" />
-                </div>
-              </div>
-              
-              <h3 className="text-xl font-bold text-gray-800 mt-10 mb-6">التطور الشهري (نموذج بياني)</h3>
-              <div className="h-64 flex items-end gap-4 border-b-2 border-l-2 border-gray-200 pb-2 pl-2">
-                {[40, 55, 60, 75, 80].map((val, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center group">
-                    <div className="w-full bg-[#1E6FBF] rounded-t-md transition-all group-hover:bg-[#F5A623]" style={{ height: `${val}%` }}></div>
-                    <span className="text-xs text-gray-500 mt-2 font-bold">شهر {i+1}</span>
-                  </div>
+          {activeTab === 'plan' && (
+            <div>
+              <h2 className="text-xl font-black text-slate-950">خطة التعلم المقترحة</h2>
+              <div className="mt-4 grid gap-3">
+                {(reports[0]?.recommendations ?? ['ابدأ بتقييم تحديد مستوى أو استبيان حتى تتولد الخطة تلقائيًا.']).map((item, index) => (
+                  <p key={item} className="rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">{index + 1}. {item}</p>
                 ))}
               </div>
             </div>
           )}
-          
-          {/* Plan & Reports placeholders for brevity */}
-          {activeTab === 'plan' && <div className="animate-fade-in text-center text-gray-500 py-10">محتوى خطة التعلم قيد التطوير...</div>}
-          {activeTab === 'reports' && <div className="animate-fade-in text-center text-gray-500 py-10">سجل التقارير يظهر هنا...</div>}
-        </div>
-      </div>
+
+          {activeTab === 'reports' && (
+            <div className="grid gap-3">
+              {reports.length === 0 ? (
+                <p className="rounded-lg bg-slate-50 p-5 text-sm font-bold text-slate-600">لا توجد تقارير محفوظة لهذا الطالب بعد.</p>
+              ) : (
+                reports.map((report) => (
+                  <Link key={report.id} href="/reports" className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-4 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <FileText className="text-slate-500" size={20} />
+                      <div>
+                        <h3 className="font-black text-slate-950">{report.program}</h3>
+                        <p className="text-xs font-bold text-slate-500">{report.date}</p>
+                      </div>
+                    </div>
+                    <span className="text-xl font-black text-teal-800">{report.score}%</span>
+                  </Link>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'progress' && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <ProgressBar label="متوسط الأداء" percentage={averageScore} colorClass="bg-teal-700" />
+              <ProgressBar label="اكتمال التقارير" percentage={reports.length ? 100 : 0} colorClass="bg-blue-700" />
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-4">
+      <p className="text-xs font-black text-slate-500">{label}</p>
+      <p className="mt-2 font-black text-slate-950">{value}</p>
     </div>
   );
 }

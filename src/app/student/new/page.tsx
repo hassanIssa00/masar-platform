@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Camera, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FileCheck2, Gauge, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -32,6 +33,7 @@ export default function NewStudentWizard() {
     grade: 'الصف الأول',
     parentName: '',
     parentPhone: '',
+    photoUrl: '',
     notes: '',
   });
   const [parentAnswers, setParentAnswers] = useState<Record<number, string>>({});
@@ -62,6 +64,7 @@ export default function NewStudentWizard() {
       grade: student.grade,
       parentName: student.parentName,
       parentPhone: student.parentPhone,
+      photoUrl: student.photoUrl,
       source: 'student-wizard',
     });
 
@@ -155,9 +158,27 @@ export default function NewStudentWizard() {
                   </label>
                 </div>
                 <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                  <Camera className="mx-auto text-slate-500" size={32} />
-                  <p className="mt-3 text-sm font-black text-slate-700">رفع صورة الطالب</p>
-                  <p className="mt-1 text-xs font-bold text-slate-500">اختياري، ويظهر في ملف الطالب فقط.</p>
+                  {student.photoUrl ? (
+                    <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-lg object-cover ring-2 ring-white" />
+                  ) : (
+                    <Camera className="mx-auto text-slate-500" size={32} />
+                  )}
+                  <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
+                    رفع صورة الطالب
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => handleFieldChange('photoUrl', String(reader.result));
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                  <p className="mt-2 text-xs font-bold text-slate-500">اختياري، وتحفظ الصورة داخل ملف الطالب المحلي.</p>
                 </div>
               </div>
             )}
