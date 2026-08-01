@@ -37,8 +37,8 @@ const categoryLabels: Record<PlacementCategory, string> = {
   math: 'الرياضيات',
   science: 'العلوم',
   social: 'الدراسات الاجتماعية',
-  cognitive: 'القدرات الذهنية',
-  visualMotor: 'التآزر البصري الحركي',
+  cognitive: 'القدرات والذكاء / معلومات عامة',
+  visualMotor: 'الرسم والتوصيل والتآزر البصري',
 };
 
 function q(
@@ -158,7 +158,7 @@ export const placementAssessments: PlacementAssessment[] = [
     shortTitle: 'عام',
     subtitle: 'قياس سريع للقدرات الأساسية قبل تحديد مسار الطالب.',
     questionCount: 25,
-    subjects: ['قدرات ذهنية', 'قراءة وكتابة', 'رياضيات', 'تآزر بصري حركي'],
+    subjects: ['قدرات عقلية وذكاء', 'قراءة وكتابة', 'رياضيات', 'رسم وتوصيل خطوط'],
     questions: lowerQuestions('general', 0),
   },
   {
@@ -192,9 +192,9 @@ export const placementAssessments: PlacementAssessment[] = [
     key: 'g4',
     title: 'اختبار قبول وتحديد مستوى الصف الرابع',
     shortTitle: 'الصف الرابع',
-    subtitle: '30 سؤالًا في عربي، إنجليزي، رياضيات، علوم، دراسات، وقدرات.',
+    subtitle: '30 سؤالًا في عربي، إنجليزي، رياضيات، علوم، اجتماعيات، ومعلومات عامة.',
     questionCount: 30,
-    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'دراسات', 'قدرات'],
+    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'اجتماعيات', 'معلومات عامة'],
     questions: upperQuestions('g4', 4),
   },
   {
@@ -203,7 +203,7 @@ export const placementAssessments: PlacementAssessment[] = [
     shortTitle: 'الصف الخامس',
     subtitle: 'قياس أعمق للمواد الأساسية والتفكير التحليلي.',
     questionCount: 30,
-    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'دراسات', 'قدرات'],
+    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'اجتماعيات', 'معلومات عامة'],
     questions: upperQuestions('g5', 5),
   },
   {
@@ -212,7 +212,7 @@ export const placementAssessments: PlacementAssessment[] = [
     shortTitle: 'الصف السادس',
     subtitle: 'قياس نهائي شامل قبل الانتقال للمرحلة التالية.',
     questionCount: 30,
-    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'دراسات', 'قدرات'],
+    subjects: ['عربي', 'English', 'رياضيات', 'علوم', 'اجتماعيات', 'معلومات عامة'],
     questions: upperQuestions('g6', 6),
   },
 ];

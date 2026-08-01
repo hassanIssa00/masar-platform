@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, U
 import BrandMark from '@/components/BrandMark';
 import { authenticate, ensureDemoAccount, getDemoPassword } from '@/lib/auth';
 import { setSession } from '@/lib/localDb';
+import { entryGradeOptions, getAssessmentHref, saveEntryGrade } from '@/lib/placementFlow';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [entryGrade, setEntryGrade] = useState('g1');
 
   const loginAsDoctor = () => {
     const account = ensureDemoAccount('dr.ismail@masar.com');
@@ -33,7 +35,8 @@ export default function LoginPage() {
     if (!account) return;
 
     setSession(account);
-    router.push('/dashboard');
+    const assessmentKey = saveEntryGrade(entryGrade);
+    router.push(`/assessment?level=${assessmentKey}`);
   };
 
   const fillDemo = (type: 'doctor' | 'parent') => {
@@ -58,7 +61,13 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
-      router.push('/dashboard');
+      if (result.account.role === 'doctor' || result.account.role === 'specialist' || result.account.role === 'teacher') {
+        router.push('/dashboard');
+        return;
+      }
+
+      saveEntryGrade(entryGrade);
+      router.push(getAssessmentHref(entryGrade));
       return;
     }
 
@@ -186,6 +195,21 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </span>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-black text-slate-700">الصف أو المسار المطلوب</span>
+              <select
+                value={entryGrade}
+                onChange={(event) => {
+                  setEntryGrade(event.target.value);
+                  saveEntryGrade(event.target.value);
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+              >
+                {entryGradeOptions.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
             </label>
             <div className="flex items-center justify-between gap-3 text-sm">
               <label className="flex items-center gap-2 font-bold text-slate-600">

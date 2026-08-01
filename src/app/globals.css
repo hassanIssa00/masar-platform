@@ -77,4 +77,18 @@ a {
   body {
     background: white;
   }
+
+  .clinical-report {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    border: 0 !important;
+    box-shadow: none !important;
+    page-break-after: always;
+  }
+
+  .clinical-report * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

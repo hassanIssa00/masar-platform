@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
@@ -16,6 +17,15 @@ type ResponseRecord = {
 };
 
 export default function PlacementAssessmentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <PlacementAssessmentContent />
+    </Suspense>
+  );
+}
+
+function PlacementAssessmentContent() {
+  const searchParams = useSearchParams();
   const [gradeKey, setGradeKey] = useState<PlacementGradeKey>('general');
   const [studentName, setStudentName] = useState('');
   const [studentAge, setStudentAge] = useState('');
@@ -38,6 +48,20 @@ export default function PlacementAssessmentPage() {
   const progress = Math.round((answeredCount / assessment.questions.length) * 100);
   const decision = getDecisionFromScore(score);
 
+  useEffect(() => {
+    const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
+    const stored = typeof window !== 'undefined' ? (localStorage.getItem('masar.assessment.gradeKey') as PlacementGradeKey | null) : null;
+    const next = placementAssessments.some((item) => item.key === fromUrl)
+      ? fromUrl
+      : placementAssessments.some((item) => item.key === stored)
+        ? stored
+        : null;
+
+    if (next) {
+      queueMicrotask(() => setGradeKey(next));
+    }
+  }, [searchParams]);
+
   const domains = useMemo(() => {
     const grouped = new Map<string, ResponseRecord[]>();
     responses.forEach((response) => {
@@ -55,6 +79,7 @@ export default function PlacementAssessmentPage() {
     });
     return enrichDomains(baseDomains);
   }, [responses]);
+  const recommendedProgram = getRecommendedProgram(domains);
 
   const speak = (text: string) => void speakWithMasarVoice(text, { lang: /[a-zA-Z]/.test(text) ? 'en-US' : 'ar-SA', rate: 0.84 });
 
@@ -96,7 +121,7 @@ export default function PlacementAssessmentPage() {
       recommendations: buildPlacementRecommendations(score, domains),
       answers: responses.map((response) => ({
         question: response.question.prompt,
-        answer: response.answer || 'لم يجب',
+        answer: `${response.answer || 'لم يجب'} | الإجابة الصحيحة: ${response.question.correct} | ${response.correct ? 'صحيح' : 'يحتاج مراجعة'} | المهارة: ${response.question.skill}`,
       })),
       domains,
     });
@@ -109,8 +134,10 @@ export default function PlacementAssessmentPage() {
         studentAge,
         correctCount,
         total: assessment.questions.length,
+        recommendedProgram,
       }),
     );
+    localStorage.setItem('masar.recommended-program', recommendedProgram.href);
     setSavedReportId(report.id);
     setFinished(true);
   };
@@ -232,10 +259,15 @@ export default function PlacementAssessmentPage() {
               <article className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-center">
                 <CheckCircle2 className="mx-auto text-emerald-700" size={42} />
                 <h2 className="mt-4 text-2xl font-black text-slate-950">تم حفظ اختبار تحديد المستوى</h2>
-                <p className="mt-2 text-sm font-bold leading-7 text-slate-700">النتيجة {score}%، القرار: {decision.label}. تم حفظ التقرير داخل صفحة التقارير.</p>
-                <Link href="/reports" className="mt-5 inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
-                  عرض التقرير
-                </Link>
+                <p className="mt-2 text-sm font-bold leading-7 text-slate-700">النتيجة {score}%، القرار: {decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.</p>
+                <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
+                    عرض التقرير الرسمي
+                  </Link>
+                  <Link href={recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    فتح {recommendedProgram.label}
+                  </Link>
+                </div>
                 <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>
               </article>
             )}
@@ -271,4 +303,18 @@ export default function PlacementAssessmentPage() {
       </main>
     </div>
   );
+}
+
+function getRecommendedProgram(domains: Array<{ name: string; score: number }>) {
+  const weakest = [...domains].sort((first, second) => first.score - second.score)[0]?.name ?? '';
+
+  if (weakest.includes('رياض')) {
+    return { href: '/programs/math', label: 'برنامج الرياضيات المحسوسة' };
+  }
+
+  if (weakest.includes('العربية') || weakest.includes('الإنجليزية')) {
+    return { href: '/programs/reading', label: 'برنامج القراءة والكتابة' };
+  }
+
+  return { href: '/programs/learning-difficulties', label: 'برنامج صعوبات التعلم والخطة الفردية' };
 }
