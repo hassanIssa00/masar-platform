@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardCheck, FileText, Home, UserRoundPlus } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
-import { getReports, getSession, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function ParentDashboard() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [parentName, setParentName] = useState('ولي الأمر');
   const [selectedStudentId, setSelectedStudentId] = useState('');
 
@@ -19,6 +20,7 @@ export default function ParentDashboard() {
       const nextStudents = getStudents();
       setStudents(nextStudents);
       setReports(getReports());
+      setMessages(getMessages());
       setParentName(getSession()?.name ?? 'ولي الأمر');
       setSelectedStudentId(nextStudents[0]?.id ?? '');
     });
@@ -30,6 +32,7 @@ export default function ParentDashboard() {
     [reports, selectedStudent],
   );
   const latestReport = studentReports[0];
+  const studentMessages = messages.filter((message) => selectedStudent && message.studentId === selectedStudent.id).slice(0, 4);
   const assignedProgram = curriculumPrograms.find((program) => program.slug === selectedStudent?.assignedProgram);
   const isUnderDoctorReview = selectedStudent?.reviewStatus === 'awaiting-doctor-review' || latestReport?.status === 'pending';
   const parentReportText = isUnderDoctorReview
@@ -123,6 +126,53 @@ export default function ParentDashboard() {
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-teal-800">تقارير الطفل</p>
+                    <h2 className="text-xl font-black text-slate-950">الملفات التي يرسلها د. إسماعيل</h2>
+                  </div>
+                  {selectedStudent && (
+                    <Link href={`/messages?student=${selectedStudent.id}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700">
+                      <MessageSquareText size={17} />
+                      الرسائل
+                    </Link>
+                  )}
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {getParentReportSlots(studentReports).map((slot) => (
+                    <article key={slot.title} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <FileText className={slot.report ? 'text-teal-700' : 'text-slate-400'} size={22} />
+                      <h3 className="mt-3 font-black text-slate-950">{slot.title}</h3>
+                      <p className="mt-2 min-h-12 text-xs font-bold leading-6 text-slate-500">{slot.description}</p>
+                      {slot.report ? (
+                        <Link href={`/reports?report=${slot.report.id}&mode=parent`} className="mt-4 inline-flex w-full justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white">
+                          فتح التقرير
+                        </Link>
+                      ) : (
+                        <span className="mt-4 inline-flex w-full justify-center rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-400 ring-1 ring-slate-200">
+                          لم يرسل بعد
+                        </span>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-xl font-black text-slate-950">آخر الرسائل</h2>
+                <div className="mt-4 grid gap-3">
+                  {studentMessages.length ? studentMessages.map((message) => (
+                    <article key={message.id} className="rounded-lg bg-slate-50 p-4">
+                      <p className="text-xs font-black text-slate-500">{message.from === 'doctor' ? 'د. إسماعيل' : 'ولي الأمر'}</p>
+                      <p className="mt-2 text-sm font-bold leading-7 text-slate-700">{message.body}</p>
+                    </article>
+                  )) : (
+                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">لا توجد رسائل بعد.</p>
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">واجب المنزل لهذا الأسبوع</h2>
                 <div className="mt-4 grid gap-3">
                   {(isUnderDoctorReview
@@ -142,4 +192,24 @@ export default function ParentDashboard() {
       </main>
     </div>
   );
+}
+
+function getParentReportSlots(reports: ReportRecord[]) {
+  return [
+    {
+      title: 'إجابات ولي الأمر',
+      description: 'نسخة الأسئلة والإجابات التي سجلها ولي الأمر.',
+      report: reports.find((report) => report.type === 'survey-answers'),
+    },
+    {
+      title: 'إجابات الطالب',
+      description: 'نتيجة اختبار الطالب التفصيلية كما راجعها الدكتور.',
+      report: reports.find((report) => report.type === 'student-assessment-answers'),
+    },
+    {
+      title: 'التقرير التحليلي',
+      description: 'الخطة والملاحظات التي يعتمدها د. إسماعيل.',
+      report: reports.find((report) => report.type === 'student-assessment-analysis') ?? reports.find((report) => report.type === 'clinical-analysis'),
+    },
+  ];
 }

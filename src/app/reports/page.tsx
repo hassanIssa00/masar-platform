@@ -3,15 +3,15 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, FilePlus2, Printer } from 'lucide-react';
+import { ArrowRight, FilePlus2, Printer, Trash2, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
-import { getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { deleteReport, getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 
-const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التحليل الإكلينيكي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
+const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التقرير التحليلي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 
 export default function ReportsPage() {
   return (
@@ -28,6 +28,7 @@ function ReportsContent() {
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [assignMessage, setAssignMessage] = useState('');
+  const parentMode = searchParams.get('mode') === 'parent';
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -41,7 +42,13 @@ function ReportsContent() {
     });
   }, [searchParams]);
 
-  const filtered = useMemo(() => (filter === 'all' ? reports : reports.filter((report) => report.program.includes(filter))), [filter, reports]);
+  const filtered = useMemo(
+    () =>
+      filter === 'all'
+        ? reports
+        : reports.filter((report) => report.program.includes(filter) || (filter === 'التقرير التحليلي' && ['clinical-analysis', 'student-assessment-analysis'].includes(report.type))),
+    [filter, reports],
+  );
   const selected = reports.find((report) => report.id === selectedId);
   const selectedStudent = selected ? students.find((student) => student.id === selected.studentId || student.fullName === selected.studentName) : null;
 
@@ -83,17 +90,22 @@ function ReportsContent() {
       setStudents(getStudents());
       setAssignMessage(`تم اعتماد ${program?.shortTitle ?? 'المسار'} للطالب ${selectedStudent.fullName}.`);
     };
+    const removeSelectedReport = () => {
+      deleteReport(selected.id);
+      setReports(getReports());
+      setSelectedId(null);
+    };
 
     return (
       <div className="min-h-screen bg-[var(--background)] text-slate-950">
-        <Navbar />
+        {!parentMode && <Navbar />}
         <div className="flex">
-          <Sidebar />
-          <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
-            <button onClick={() => setSelectedId(null)} className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
+          {!parentMode && <Sidebar />}
+          <main className={`min-w-0 flex-1 px-4 py-6 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
+            {!parentMode && <button onClick={() => setSelectedId(null)} className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
               <ArrowRight size={17} />
               العودة إلى التقارير
-            </button>
+            </button>}
 
             <article className="clinical-report overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="p-5 md:p-7">
@@ -101,7 +113,7 @@ function ReportsContent() {
                   <div className="order-2 md:order-1">
                     <div className="inline-flex rounded-lg bg-indigo-950 px-5 py-3 text-center text-white">
                       <div>
-                        <p className="text-xs font-black text-white/70">رقم الملف الطبي</p>
+                        <p className="text-xs font-black text-white/70">رقم ملف الطالب</p>
                         <p className="mt-1 text-xl font-black tracking-wide">{fileNumber}</p>
                       </div>
                     </div>
@@ -118,21 +130,32 @@ function ReportsContent() {
                 </header>
 
                 <div className="mt-5 rounded-lg bg-gradient-to-l from-indigo-950 to-blue-800 p-5 text-center text-white">
-                  <p className="text-xs font-black text-amber-300">وثيقة سريرية تعليمية معتمدة</p>
-                  <h2 className="mt-2 text-2xl font-black">التقرير السريري والتحليلي الشامل</h2>
+                  <p className="text-xs font-black text-amber-300">وثيقة تعليمية علاجية معتمدة</p>
+                  <h2 className="mt-2 text-2xl font-black">{getReportPrintTitle(selected)}</h2>
                 </div>
 
                 <section className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="grid gap-3 md:grid-cols-[100px_1fr_1fr_1fr]">
                     <div className="grid place-items-center rounded-lg border-2 border-indigo-200 bg-white p-3 text-center">
-                      <BrandMark size="md" showText={false} />
+                      {selectedStudent?.photoUrl ? (
+                        <span
+                          role="img"
+                          aria-label={selectedStudent.fullName}
+                          className="h-20 w-20 rounded-lg bg-cover bg-center ring-2 ring-indigo-100"
+                          style={{ backgroundImage: `url(${selectedStudent.photoUrl})` }}
+                        />
+                      ) : (
+                        <span className="grid h-20 w-20 place-items-center rounded-lg bg-slate-100 text-slate-500">
+                          <UserRound size={34} />
+                        </span>
+                      )}
                       <p className="mt-2 text-xs font-black text-indigo-700">صورة الطالب</p>
                     </div>
                     {[
                       ['اسم الطالب', selected.studentName],
                       ['الصف الدراسي', selected.grade],
                       [isAnswersReport ? 'نسبة اكتمال الإجابات' : 'نسبة الأداء الكلي', `${selected.score}%`],
-                      ['البرنامج', selected.program],
+                      ['البرنامج', cleanReportText(selected.program)],
                       ['تاريخ التقرير', selected.date],
                       ['حالة التقرير', selected.status === 'completed' ? 'مكتمل ومعتمد' : 'قيد مراجعة الأخصائي'],
                     ].map(([label, value]) => (
@@ -147,10 +170,10 @@ function ReportsContent() {
                 <section className="mt-5 grid gap-4 lg:grid-cols-2">
                   <div className={`${isAnswersReport ? 'border-slate-200 bg-slate-50' : 'border-rose-200 bg-rose-50'} rounded-lg border p-5`}>
                     <p className={`text-xs font-black ${isAnswersReport ? 'text-slate-600' : 'text-rose-700'}`}>
-                      {isAnswersReport ? 'نوع التقرير' : 'التشخيص السريري المعتمد'}
+                      {isAnswersReport ? 'نوع التقرير' : 'التحليل التعليمي المعتمد'}
                     </p>
                     <h3 className={`mt-2 text-xl font-black ${isAnswersReport ? 'text-slate-950' : 'text-rose-950'}`}>{clinicalLabel}</h3>
-                    <p className={`mt-3 text-sm font-bold leading-7 ${isAnswersReport ? 'text-slate-700' : 'text-rose-900'}`}>{selected.summary}</p>
+                    <p className={`mt-3 text-sm font-bold leading-7 ${isAnswersReport ? 'text-slate-700' : 'text-rose-900'}`}>{cleanReportText(selected.summary)}</p>
                   </div>
                   {!isAnswersReport ? (
                     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
@@ -168,7 +191,7 @@ function ReportsContent() {
                   )}
                 </section>
 
-                {!isAnswersReport && <section className="mt-5 rounded-lg border border-teal-200 bg-teal-50 p-5">
+                {!parentMode && !isAnswersReport && <section className="mt-5 rounded-lg border border-teal-200 bg-teal-50 p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-xs font-black text-teal-800">قرار د. إسماعيل قبل فتح المنهج للطالب</p>
@@ -296,11 +319,11 @@ function ReportsContent() {
 
                 <footer className="mt-8 grid gap-6 border-t border-slate-200 pt-6 md:grid-cols-[1fr_180px]">
                   <div className="text-right">
-                    <p className="text-sm font-bold text-slate-500">يعتمد هذا التقرير السريري رسمياً من:</p>
+                    <p className="text-sm font-bold text-slate-500">يعتمد هذا التقرير رسمياً من:</p>
                     <h3 className="mt-3 text-2xl font-black text-indigo-950">د. إسماعيل عيسى</h3>
                     <p className="mt-1 font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
                     <div className="mt-4 h-px w-56 bg-slate-300" />
-                    <p className="mt-2 text-xs font-bold text-slate-400">التوقيع السريري المعتمد</p>
+                    <p className="mt-2 text-xs font-bold text-slate-400">التوقيع المعتمد</p>
                   </div>
                   <div className="rounded-lg border-2 border-dashed border-indigo-400 p-4 text-center">
                     <BrandMark size="lg" showText={false} />
@@ -309,10 +332,16 @@ function ReportsContent() {
                   </div>
                 </footer>
 
-                <button onClick={() => window.print()} className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-950 px-5 py-3 text-sm font-black text-white">
-                  <Printer size={17} />
-                  طباعة التقرير / PDF
-                </button>
+                <div className="no-print mt-6 flex flex-col gap-3 sm:flex-row">
+                  <button onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-950 px-5 py-3 text-sm font-black text-white">
+                    <Printer size={17} />
+                    طباعة PDF
+                  </button>
+                  {!parentMode && <button onClick={removeSelectedReport} className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-black text-rose-800">
+                    <Trash2 size={17} />
+                    حذف التقرير
+                  </button>}
+                </div>
               </div>
             </article>
           </main>
@@ -376,13 +405,23 @@ function ReportsContent() {
                       <p className="text-3xl font-black" style={{ color: getScoreColor(report.score) }}>{report.score}%</p>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="inline-block rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: report.programColor }}>{report.program}</span>
+                      <span className="inline-block rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: report.programColor }}>{cleanReportText(report.program)}</span>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{decision.label}</span>
                     </div>
-                    <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{report.summary}</p>
+                    <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{cleanReportText(report.summary)}</p>
                     <div className="mt-5 flex gap-3">
                       <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
                       <button onClick={() => window.print()} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
+                      <button
+                        onClick={() => {
+                          deleteReport(report.id);
+                          setReports(getReports());
+                        }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700"
+                        title="حذف التقرير"
+                      >
+                        <Trash2 size={17} />
+                      </button>
                     </div>
                   </div>
                 </article>
@@ -460,4 +499,20 @@ function getGoalForDomain(domain: string) {
 
 function getPlanMonth(index: number) {
   return ['سبتمبر 2026', 'أكتوبر 2026', 'نوفمبر 2026', 'ديسمبر 2026'][index] ?? 'ديسمبر 2026';
+}
+
+function getReportPrintTitle(report: ReportRecord) {
+  if (report.type === 'survey-answers') return 'تقرير إجابات ولي الأمر التفصيلية';
+  if (report.type === 'student-assessment-answers') return 'تقرير إجابات اختبار الطالب التفصيلية';
+  return 'التقرير التحليلي وخطة التدخل';
+}
+
+function cleanReportText(value: string) {
+  return value
+    .replaceAll('التحليل الإكلينيكي الشامل', 'التقرير التحليلي الشامل')
+    .replaceAll('الإكلينيكية', 'التخصصية')
+    .replaceAll('إكلينيكي', 'تعليمي علاجي')
+    .replaceAll('السريري', 'التعليمي العلاجي')
+    .replaceAll('سريري', 'تعليمي علاجي')
+    .replaceAll('طبي', 'تعليمي');
 }

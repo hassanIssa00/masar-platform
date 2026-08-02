@@ -73,6 +73,16 @@ export type ActivityRecord = {
   createdAt: string;
 };
 
+export type MessageRecord = {
+  id: string;
+  studentId?: string;
+  from: 'doctor' | 'parent';
+  to: 'doctor' | 'parent';
+  body: string;
+  createdAt: string;
+  read?: boolean;
+};
+
 const KEYS = {
   accounts: 'masar.accounts.v1',
   students: 'masar.students.v1',
@@ -80,6 +90,7 @@ const KEYS = {
   surveys: 'masar.surveys.v1',
   session: 'masar.session.v1',
   activity: 'masar.activity.v1',
+  messages: 'masar.messages.v1',
 };
 
 function readList<T>(key: string): T[] {
@@ -241,6 +252,20 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
   return next;
 }
 
+export function deleteReport(reportId: string) {
+  const reports = getReports();
+  const report = reports.find((item) => item.id === reportId);
+  writeList(KEYS.reports, reports.filter((item) => item.id !== reportId));
+  if (report) {
+    saveActivity({
+      type: 'report',
+      refId: reportId,
+      title: 'حذف تقرير',
+      detail: `${report.studentName} - ${report.program}`,
+    });
+  }
+}
+
 export function getSurveys() {
   return readList<SurveySubmission>(KEYS.surveys);
 }
@@ -265,6 +290,28 @@ export function saveSurvey(survey: Omit<SurveySubmission, 'id' | 'submittedAt'>)
 
 export function getActivities() {
   return readList<ActivityRecord>(KEYS.activity);
+}
+
+export function getMessages() {
+  return readList<MessageRecord>(KEYS.messages);
+}
+
+export function saveMessage(message: Omit<MessageRecord, 'id' | 'createdAt'>) {
+  const messages = getMessages();
+  const next: MessageRecord = {
+    ...message,
+    id: createId('message'),
+    createdAt: new Date().toISOString(),
+  };
+
+  writeList(KEYS.messages, [next, ...messages]);
+  saveActivity({
+    type: 'account',
+    refId: next.studentId,
+    title: 'رسالة جديدة',
+    detail: `${next.from === 'doctor' ? 'د. إسماعيل' : 'ولي الأمر'}: ${next.body.slice(0, 70)}`,
+  });
+  return next;
 }
 
 export function getSyncSnapshot() {

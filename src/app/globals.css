@@ -324,7 +324,7 @@ button {
 @media print {
   nav,
   aside,
-  button {
+  .no-print {
     display: none !important;
   }
 
@@ -344,5 +344,13 @@ button {
   .clinical-report * {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  .clinical-report section,
+  .clinical-report article,
+  .clinical-report table,
+  .clinical-report footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

@@ -317,12 +317,12 @@ function SurveyContent() {
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
-      program: 'التحليل الإكلينيكي الشامل',
+      program: 'التقرير التحليلي الشامل',
       programColor: '#4f46e5',
       score: Math.round(clinicalDomains.reduce((total, domain) => total + domain.score, 0) / clinicalDomains.length),
       status: 'pending',
       type: 'clinical-analysis',
-      summary: `تم استقبال الاستبيان وتحليل المؤشرات الأولية. أولويات المراجعة الإكلينيكية: ${priorityText}. لا يتم فتح أي منهج للطالب قبل اعتماد د. إسماعيل للمسار المناسب.`,
+      summary: `تم استقبال الاستبيان وتحليل المؤشرات الأولية. أولويات المراجعة التخصصية: ${priorityText}. لا يتم فتح أي منهج للطالب قبل اعتماد د. إسماعيل للمسار المناسب.`,
       recommendations: buildClinicalRecommendations(priorityDomains),
       answers: SECTIONS.flatMap((sectionItem) =>
         sectionItem.questions.map((question) => ({
