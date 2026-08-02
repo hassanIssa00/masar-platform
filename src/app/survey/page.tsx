@@ -348,16 +348,16 @@ function SurveyContent() {
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center animate-slide-up">
             <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">أحسنت، وصلت للنهاية</h1>
-            <p className="text-gray-600 mb-8">تم إرسال إجابات ولي الأمر لد. إسماعيل. الخطوة التالية أن يجاوب الطالب على اختبار قصير مناسب للصف حتى يكتمل ملف التقييم.</p>
+            <p className="text-gray-600 mb-8">تم إرسال إجابات ولي الأمر لد. إسماعيل. الطالب سيدخل الآن صفحته الخاصة للألعاب التفاعلية، والمسار التعليمي يفتحه الدكتور بعد المراجعة.</p>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 text-right space-y-3">
               <h2 className="font-bold text-green-700 text-xl text-center mb-4">ما الذي حدث الآن؟</h2>
               <p className="text-gray-700"><strong>تم حفظ الإجابات:</strong> {Object.keys(answers).length} / {totalQuestions}</p>
               <p className="text-gray-700"><strong>تم إرسال تقريرين للدكتور:</strong> تقرير إجابات خام + تقرير تحليل شامل</p>
-              <p className="text-gray-700"><strong>الخطوة التالية:</strong> اختبار الطالب المباشر حسب الصف</p>
+              <p className="text-gray-700"><strong>الخطوة التالية:</strong> صفحة الطالب والألعاب التفاعلية حتى اعتماد المسار</p>
             </div>
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href={`/assessment?student=${submittedStudentId}`} className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
-                بدء اختبار الطالب
+              <Link href={`/kids?student=${submittedStudentId}`} className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
+                دخول صفحة الطالب
               </Link>
               <button onClick={() => router.push('/parent')} className="rounded-xl border border-gray-200 bg-white px-8 py-3 font-bold text-gray-700 transition hover:bg-gray-50">
                 متابعة ولي الأمر

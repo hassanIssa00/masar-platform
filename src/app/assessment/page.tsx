@@ -220,11 +220,11 @@ function PlacementAssessmentContent() {
         <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار الطالب بعد استبيان ولي الأمر' : 'اختبارات القبول وتحديد المستوى'}</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار مباشر مناسب لصف الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
+              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار طالب مباشر عند طلب الدكتور' : 'اختبارات القبول وتحديد المستوى'}</p>
+              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار إضافي مناسب لصف الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
                 {isStudentFlow
-                  ? 'يجيب الطالب على الأسئلة بصوت وصورة، ويتم إرسال تقرير الإجابات والتحليل إلى د. إسماعيل بدون عرض درجة أو تشخيص للطالب.'
+                  ? 'هذه أداة تقييم إضافية يمكن للدكتور استخدامها عند الحاجة. التدفق الأساسي بعد الاستبيان يذهب للطالب إلى صفحة الألعاب حتى اعتماد المسار.'
                   : 'اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.'}
               </p>
             </div>
