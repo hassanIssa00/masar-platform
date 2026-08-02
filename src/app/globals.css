@@ -140,6 +140,10 @@ button {
   transform: rotate(18deg);
 }
 
+.hero-image-drift {
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   nav {
     animation: nav-drop 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -191,6 +195,10 @@ button {
 
   .shine-sweep::after {
     animation: shine 4.8s ease-in-out infinite;
+  }
+
+  .hero-image-drift {
+    animation: hero-drift 16s ease-in-out infinite alternate;
   }
 
   .stagger > * {
@@ -288,6 +296,15 @@ button {
   0%, 55% { transform: translateX(0) rotate(18deg); opacity: 0; }
   68% { opacity: 1; }
   100% { transform: translateX(430%) rotate(18deg); opacity: 0; }
+}
+
+@keyframes hero-drift {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(-1.6%, 1.2%, 0);
+  }
 }
 
 @media print {
