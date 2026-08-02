@@ -7,16 +7,21 @@ type BrandMarkProps = {
 };
 
 const sizes = {
-  sm: 'h-10 w-10',
-  md: 'h-12 w-12',
-  lg: 'h-16 w-16',
+  sm: 40,
+  md: 48,
+  lg: 64,
 };
 
 export default function BrandMark({ size = 'md', showText = true, dark = false }: BrandMarkProps) {
+  const markSize = sizes[size];
+
   return (
     <span className="inline-flex min-w-0 items-center gap-3">
-      <span className={`${sizes[size]} relative shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200`}>
-        <Image src="/brand/masar-logo.png" alt="شعار منصة مسار" fill className="object-cover" sizes="64px" priority={size === 'lg'} />
+      <span
+        className="relative inline-block shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200"
+        style={{ width: markSize, height: markSize }}
+      >
+        <Image src="/brand/masar-logo.png" alt="شعار منصة مسار" fill className="object-contain" sizes={`${markSize}px`} priority={size === 'lg'} />
       </span>
       {showText && (
         <span className="min-w-0">
