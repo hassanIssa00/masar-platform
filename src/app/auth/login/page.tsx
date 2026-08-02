@@ -104,148 +104,197 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4 text-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,0.18),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(37,99,235,0.16),transparent_30%)]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50/80 via-slate-50 to-emerald-50/70 p-4 text-slate-900 font-sans" dir="rtl">
+      
+      {/* Background Soft Glows */}
+      <div className="fixed top-10 right-10 w-96 h-96 bg-teal-200/40 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-10 left-10 w-96 h-96 bg-emerald-200/30 rounded-full blur-[120px] pointer-events-none" />
 
-      <main className="relative grid w-full max-w-5xl overflow-hidden rounded-lg border border-white/10 bg-white shadow-2xl lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="hidden bg-slate-950 p-8 text-white lg:flex lg:flex-col lg:justify-between">
+      <main className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl lg:grid-cols-[0.95fr_1.05fr]">
+        
+        {/* Left Side Info Panel - Pure Bright Light Theme */}
+        <section className="hidden bg-gradient-to-br from-teal-50 via-emerald-50/80 to-slate-50 border-l border-slate-200 p-8 text-slate-900 lg:flex lg:flex-col lg:justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
-            <BrandMark size="md" dark />
+            <BrandMark size="md" />
           </Link>
-          <div>
-            <p className="text-sm font-black text-teal-200">بوابة تشغيل المنصة</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight">دخول واضح لكل دور قبل رفع النظام على السيرفر</h1>
-            <p className="mt-4 text-sm font-bold leading-7 text-white/70">
-              حساب الدكتور يدخل لوحة التشغيل والتقارير، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب والاستبيانات بدون خلط صلاحيات.
+
+          <div className="space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-100/70 px-3.5 py-1.5 text-xs font-black text-teal-800">
+              بوابة تشغيل المنصة
+            </span>
+            
+            <h1 className="text-3xl font-black leading-tight text-slate-900">
+              دخول مباشر لكل حساب بدون تعقيد
+            </h1>
+
+            <p className="text-sm font-bold leading-relaxed text-slate-600">
+              حساب الدكتور يدخل لوحة التشغيل والتقارير الإكلينيكية، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب واختبارات المستوى.
             </p>
-            <div className="mt-6 grid gap-3">
-              {['جلسة محفوظة محلياً', 'تحقق من الحساب وكلمة المرور', 'تجربة جاهزة للدكتور وولي الأمر'].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-lg bg-white/8 px-4 py-3 text-sm font-bold text-white/80 ring-1 ring-white/10">
-                  <CheckCircle2 size={17} className="text-teal-300" />
-                  {item}
+
+            <div className="grid gap-3 pt-2">
+              {[
+                'جلسة محفوظة محلياً بأمان',
+                'تحقق فوري من الحساب وكلمة المرور',
+                'أزرار تجربة سريعة للدكتور وولي الأمر'
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 text-xs sm:text-sm font-bold text-slate-800 border border-slate-200/80 shadow-sm">
+                  <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
+                  <span>{item}</span>
                 </div>
               ))}
             </div>
           </div>
+
+          <div className="border-t border-slate-200/80 pt-4 text-xs font-bold text-slate-500">
+            منصة مسار التأهيل © {new Date().getFullYear()} - د. إسماعيل عيسى
+          </div>
         </section>
 
-        <section className="p-6 sm:p-8">
+        {/* Right Side Form Panel */}
+        <section className="p-6 sm:p-10 flex flex-col justify-center">
           <div className="text-center">
-            <Link href="/" className="mb-5 inline-flex justify-center">
+            <Link href="/" className="mb-4 inline-flex justify-center">
               <BrandMark size="lg" showText={false} />
             </Link>
-            <h1 className="text-3xl font-black text-slate-950">تسجيل الدخول</h1>
+            <h1 className="text-3xl font-black text-slate-900">تسجيل الدخول</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
 
+          {/* Quick Demo Login Buttons */}
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <button onClick={loginAsDoctor} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
+            <button 
+              type="button" 
+              onClick={loginAsDoctor} 
+              className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-xs sm:text-sm font-black text-white hover:bg-teal-800 transition shadow-sm active:scale-95"
+            >
               <ShieldCheck size={18} />
               دخول د. إسماعيل
             </button>
-            <button onClick={loginAsParent} className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 text-sm font-black text-white hover:bg-teal-800">
+            <button 
+              type="button" 
+              onClick={loginAsParent} 
+              className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs sm:text-sm font-black text-white hover:bg-slate-800 transition shadow-sm active:scale-95"
+            >
               <UserRound size={18} />
               دخول ولي أمر
             </button>
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => fillDemo('doctor')} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-700 hover:bg-white">
+            <button 
+              type="button" 
+              onClick={() => fillDemo('doctor')} 
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
+            >
               تعبئة بيانات الدكتور
             </button>
-            <button type="button" onClick={() => fillDemo('parent')} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-700 hover:bg-white">
+            <button 
+              type="button" 
+              onClick={() => fillDemo('parent')} 
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
+            >
               تعبئة بيانات ولي الأمر
             </button>
           </div>
 
           {(loginError || loginMessage) && (
-            <div className={`mt-5 flex items-start gap-3 rounded-lg p-4 text-sm font-bold leading-7 ${loginError ? 'bg-rose-50 text-rose-900 ring-1 ring-rose-100' : 'bg-teal-50 text-teal-950 ring-1 ring-teal-100'}`}>
-              {loginError ? <AlertCircle size={18} className="mt-1 shrink-0" /> : <CheckCircle2 size={18} className="mt-1 shrink-0" />}
+            <div className={`mt-5 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
+              loginError ? 'bg-rose-50 text-rose-900 border border-rose-200' : 'bg-teal-50 text-teal-950 border border-teal-200'
+            }`}>
+              {loginError ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}
               <span>{loginError || loginMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form onSubmit={handleLogin} className="mt-6 space-y-4 text-right">
             <label className="block">
-              <span className="mb-2 block text-sm font-black text-slate-700">البريد الإلكتروني أو رقم الهاتف</span>
+              <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">البريد الإلكتروني أو رقم الهاتف</span>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 type="text"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
                 placeholder="dr.ismail@masar.com"
                 required
               />
             </label>
+
             <label className="block">
-              <span className="mb-2 block text-sm font-black text-slate-700">كلمة المرور</span>
-              <span className="flex rounded-lg border border-slate-200 bg-slate-50 focus-within:border-teal-700">
+              <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">كلمة المرور</span>
+              <span className="flex rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition">
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   type={showPassword ? 'text' : 'password'}
-                  className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none"
+                  className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold text-slate-900 outline-none"
                   placeholder="اكتب كلمة المرور"
                   required
                 />
-                <button type="button" onClick={() => setShowPassword((current) => !current)} className="grid w-12 place-items-center text-slate-500">
+                <button type="button" onClick={() => setShowPassword((current) => !current)} className="grid w-12 place-items-center text-slate-400 hover:text-slate-600">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </span>
             </label>
-            <div className="flex items-center justify-between gap-3 text-sm">
+
+            <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
               <label className="flex items-center gap-2 font-bold text-slate-600">
-                <input type="checkbox" className="accent-teal-700" />
+                <input type="checkbox" className="accent-teal-600 rounded" />
                 تذكرني
               </label>
-              <button type="button" onClick={() => setForgotOpen(true)} className="font-black text-teal-800 hover:underline">
+              <button type="button" onClick={() => setForgotOpen(true)} className="font-black text-teal-700 hover:underline">
                 نسيت كلمة المرور؟
               </button>
             </div>
-            <button type="submit" className="focus-ring flex w-full min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 font-black text-white hover:bg-teal-800">
+
+            <button 
+              type="submit" 
+              className="focus-ring flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95"
+            >
               <LogIn size={18} />
-              دخول
+              تسجيل الدخول
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm font-bold text-slate-600">
+          <p className="mt-6 text-center text-xs sm:text-sm font-bold text-slate-600">
             ليس لديك حساب؟{' '}
-            <Link href="/auth/register" className="font-black text-teal-800 hover:underline">
+            <Link href="/auth/register" className="font-black text-teal-700 hover:underline">
               إنشاء حساب جديد
             </Link>
           </p>
         </section>
       </main>
 
+      {/* Forgot Password Modal */}
       {forgotOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <form onSubmit={handleOtp} className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <form onSubmit={handleOtp} className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 text-right">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-black text-teal-800">استعادة كلمة المرور</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-950">رمز تحقق محلي</h2>
+                <p className="text-xs font-black text-teal-700">استعادة كلمة المرور</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-900">رمز تحقق محلي</h2>
               </div>
-              <button type="button" onClick={() => setForgotOpen(false)} className="rounded-lg px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100">
+              <button type="button" onClick={() => setForgotOpen(false)} className="rounded-xl px-3 py-1.5 text-xs font-black text-slate-500 hover:bg-slate-100">
                 إغلاق
               </button>
             </div>
 
-            {message && <p className="mt-4 rounded-lg bg-teal-50 p-3 text-sm font-bold leading-7 text-teal-950">{message}</p>}
+            {message && <p className="mt-4 rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs font-bold leading-relaxed text-teal-900">{message}</p>}
 
             <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-black text-slate-700">
+              <span className="mb-2 block text-xs font-black text-slate-700">
                 {otpStep === 1 ? 'البريد أو الهاتف' : otpStep === 2 ? 'رمز التحقق' : 'كلمة المرور الجديدة'}
               </span>
               <input
                 value={otp}
                 onChange={(event) => setOtp(event.target.value)}
                 type={otpStep === 3 ? 'password' : 'text'}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white"
                 placeholder={otpStep === 2 ? '4829' : ''}
                 required
               />
             </label>
-            <button type="submit" className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 font-black text-white">
+
+            <button type="submit" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition">
               <KeyRound size={18} />
               {otpStep === 1 ? 'إرسال الرمز' : otpStep === 2 ? 'تأكيد الرمز' : 'حفظ كلمة المرور'}
             </button>
