@@ -1,11 +1,35 @@
 'use client';
 
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Gamepad2, Play, Trophy } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
+import { getStudents, StudentRecord } from '@/lib/localDb';
 
 export default function KidsDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <KidsDashboardContent />
+    </Suspense>
+  );
+}
+
+function KidsDashboardContent() {
+  const searchParams = useSearchParams();
+  const [student, setStudent] = useState<StudentRecord | null>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
+      setStudent(getStudents().find((item) => item.id === studentId) ?? null);
+    });
+  }, [searchParams]);
+
+  const assignedProgram = curriculumPrograms.find((program) => program.slug === student?.assignedProgram);
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
@@ -15,11 +39,21 @@ export default function KidsDashboard() {
             <div className="p-6 md:p-8">
               <p className="text-sm font-black text-teal-800">بوابة ألعاب الطالب</p>
               <h1 className="mt-2 text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-                ألعاب متصفح حقيقية للتركيز والذاكرة والتآزر
+                أهلاً {student?.fullName ?? 'يا بطل'}، وقت اللعب والتدريب
               </h1>
               <p className="mt-4 max-w-2xl text-sm font-bold leading-8 text-slate-600">
-                ليست أسئلة مذاكرة. كل لعبة لها منطق لعب مستقل، نقاط، وقت، وحركة مباشرة مناسبة للطفل على الموبايل والكمبيوتر.
+                د. إسماعيل سيراجع ملفك ويختار المسار المناسب. إلى ذلك الوقت يمكنك استخدام الألعاب التفاعلية للتدريب بدون ظهور نتيجة أو تشخيص.
               </p>
+              <div className="mt-5 rounded-lg border border-teal-100 bg-teal-50 p-4">
+                <p className="text-sm font-black text-teal-950">
+                  {assignedProgram ? `المسار المعتمد من د. إسماعيل: ${assignedProgram.shortTitle}` : 'حالة الملف: في انتظار مراجعة د. إسماعيل واعتماد المسار.'}
+                </p>
+                {assignedProgram && (
+                  <Link href={`/programs/${assignedProgram.slug}`} className="mt-3 inline-flex rounded-lg bg-teal-700 px-4 py-2 text-sm font-black text-white">
+                    فتح المسار المعتمد
+                  </Link>
+                )}
+              </div>
             </div>
             <div className="grid min-h-56 place-items-center bg-slate-950 p-6 text-white">
               <div className="text-center">

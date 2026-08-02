@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardCheck, FileText, Home, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
-import { getReports, getSession, getStudents, getSurveys, ReportRecord, StudentRecord, SurveySubmission } from '@/lib/localDb';
+import { curriculumPrograms } from '@/data/curriculum';
+import { getReports, getSession, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function ParentDashboard() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
-  const [surveys, setSurveys] = useState<SurveySubmission[]>([]);
   const [parentName, setParentName] = useState('ولي الأمر');
   const [selectedStudentId, setSelectedStudentId] = useState('');
 
@@ -19,7 +19,6 @@ export default function ParentDashboard() {
       const nextStudents = getStudents();
       setStudents(nextStudents);
       setReports(getReports());
-      setSurveys(getSurveys());
       setParentName(getSession()?.name ?? 'ولي الأمر');
       setSelectedStudentId(nextStudents[0]?.id ?? '');
     });
@@ -31,7 +30,11 @@ export default function ParentDashboard() {
     [reports, selectedStudent],
   );
   const latestReport = studentReports[0];
-  const latestSurvey = surveys.find((survey) => !selectedStudent || survey.studentId === selectedStudent.id || survey.studentName === selectedStudent.fullName);
+  const assignedProgram = curriculumPrograms.find((program) => program.slug === selectedStudent?.assignedProgram);
+  const isUnderDoctorReview = selectedStudent?.reviewStatus === 'awaiting-doctor-review' || latestReport?.status === 'pending';
+  const parentReportText = isUnderDoctorReview
+    ? 'تم استلام ملف الطالب وإرساله إلى د. إسماعيل. سيتم اعتماد المسار المناسب بعد مراجعة التقرير والإجابات التفصيلية.'
+    : latestReport?.summary ?? 'أكمل بيانات الطالب والاستبيان حتى تظهر حالة المتابعة هنا.';
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
@@ -48,7 +51,7 @@ export default function ParentDashboard() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link href="/auth/login" className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">تبديل الحساب</Link>
-              <Link href="/assessment" className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">بدء اختبار جديد</Link>
+              <Link href="/student/new" className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">إضافة طالب جديد</Link>
             </div>
           </div>
         </header>
@@ -60,10 +63,10 @@ export default function ParentDashboard() {
             <UserRoundPlus className="mx-auto text-slate-500" size={36} />
             <h2 className="mt-4 text-2xl font-black text-slate-950">لا يوجد طالب محفوظ بعد</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm font-bold leading-7 text-slate-600">
-              بعد تسجيل الطالب أو إنهاء اختبار تحديد المستوى ستظهر هنا الخطة والتوصيات المنزلية تلقائياً.
+              أضف بيانات الطفل أولاً، ثم سيظهر استبيان ولي الأمر الشامل ويرسل التقريرين إلى د. إسماعيل للمراجعة.
             </p>
-            <Link href="/assessment" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-              إجراء اختبار تحديد المستوى
+            <Link href="/student/new" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+              إضافة بيانات الطالب
             </Link>
           </section>
         ) : (
@@ -87,9 +90,9 @@ export default function ParentDashboard() {
             <div className="grid gap-6">
               <section className="grid gap-4 md:grid-cols-3">
                 {[
-                  { label: 'آخر نتيجة', value: latestReport ? `${latestReport.score}%` : 'لم يبدأ', icon: ClipboardCheck },
+                  { label: 'حالة التقرير', value: latestReport ? 'قيد مراجعة الدكتور' : 'لم يبدأ', icon: ClipboardCheck },
                   { label: 'التقارير', value: String(studentReports.length), icon: FileText },
-                  { label: 'الاستبيانات', value: latestSurvey ? 'مستلم' : 'غير مستلم', icon: Home },
+                  { label: 'المسار', value: assignedProgram ? assignedProgram.shortTitle : 'قيد مراجعة الدكتور', icon: Home },
                 ].map(({ label, value, icon: Icon }) => (
                   <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <Icon className="text-teal-700" size={22} />
@@ -102,10 +105,12 @@ export default function ParentDashboard() {
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-sm font-black text-teal-800">آخر تقرير علاجي</p>
-                    <h2 className="mt-1 text-2xl font-black text-slate-950">{latestReport ? latestReport.program : 'لم يتم إصدار تقرير بعد'}</h2>
+                    <p className="text-sm font-black text-teal-800">حالة ملف الطالب</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-950">
+                      {assignedProgram ? `تم اعتماد ${assignedProgram.shortTitle}` : latestReport ? 'قيد مراجعة د. إسماعيل' : 'لم يتم إرسال الاستبيان بعد'}
+                    </h2>
                   </div>
-                  {latestReport && (
+                  {latestReport && !isUnderDoctorReview && (
                     <Link href={`/reports?report=${latestReport.id}`} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
                       فتح التقرير
                       <ArrowLeft size={16} />
@@ -113,14 +118,20 @@ export default function ParentDashboard() {
                   )}
                 </div>
                 <p className="mt-4 text-sm font-bold leading-8 text-slate-600">
-                  {latestReport ? latestReport.summary : 'أكمل اختبار تحديد المستوى حتى تظهر الخطة العلاجية والتقرير الرسمي هنا.'}
+                  {parentReportText}
                 </p>
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">واجب المنزل لهذا الأسبوع</h2>
                 <div className="mt-4 grid gap-3">
-                  {(latestReport?.recommendations.slice(0, 4) ?? ['ابدأ باختبار تحديد المستوى لتوليد توصيات منزلية مخصصة.']).map((item) => (
+                  {(isUnderDoctorReview
+                    ? [
+                      'اقرأ مع الطفل قصة قصيرة لمدة 5 دقائق بدون تصحيح زائد أو ضغط.',
+                      'استخدم لعبة صوتية بسيطة: اسمع الحرف ثم ابحث عن شيء في البيت يبدأ بنفس الصوت.',
+                      'سجل ملاحظة واحدة يومياً عن التركيز أو القراءة أو الكتابة لإضافتها في المتابعة.',
+                    ]
+                    : latestReport?.recommendations.slice(0, 4) ?? ['أضف بيانات الطالب وأكمل الاستبيان حتى تظهر توصيات منزلية مناسبة.']).map((item) => (
                     <p key={item} className="rounded-lg bg-slate-50 p-4 text-sm font-bold leading-7 text-slate-700">{item}</p>
                   ))}
                 </div>

@@ -25,8 +25,8 @@ export default function GamePage() {
           <h1 className="text-lg font-black md:text-2xl">{game.title}</h1>
           <p className="hidden text-xs font-bold text-white/60 sm:block">{game.skill}</p>
         </div>
-        <Link href="/assessment" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-black text-white hover:bg-teal-500">
-          اختبار
+        <Link href="/kids" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-black text-white hover:bg-teal-500">
+          صفحتي
         </Link>
       </header>
 

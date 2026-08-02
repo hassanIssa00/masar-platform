@@ -7,7 +7,6 @@ import { UserPlus } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
 import { saveAccount, setSession, UserRole } from '@/lib/localDb';
-import { entryGradeOptions, getAssessmentHref, saveEntryGrade } from '@/lib/placementFlow';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,7 +15,6 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('parent');
-  const [entryGrade, setEntryGrade] = useState('g1');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,8 +32,7 @@ export default function RegisterPage() {
       return;
     }
 
-    saveEntryGrade(entryGrade);
-    router.push(getAssessmentHref(entryGrade));
+    router.push('/student/new');
   };
 
   return (
@@ -56,19 +53,6 @@ export default function RegisterPage() {
           <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" />
           <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="01000000000" type="tel" />
           <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة المرور" type="password" />
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">الصف أو المسار المطلوب</span>
-            <select
-              value={entryGrade}
-              onChange={(event) => setEntryGrade(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
-            >
-              {entryGradeOptions.map((option) => (
-                <option key={option.key} value={option.key}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-
           <label className="block">
             <span className="mb-2 block text-sm font-black text-slate-700">نوع الحساب</span>
             <select

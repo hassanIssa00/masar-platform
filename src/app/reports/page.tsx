@@ -8,9 +8,10 @@ import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getDecisionFromScore } from '@/data/assessmentModel';
-import { getReports, ReportRecord } from '@/lib/localDb';
+import { curriculumPrograms } from '@/data/curriculum';
+import { getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 
-const filters = ['all', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد', 'تحليل الاستبيان'];
+const filters = ['all', 'اختبار قبول', 'إجابات الاستبيان', 'التحليل الإكلينيكي', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 
 export default function ReportsPage() {
   return (
@@ -23,13 +24,16 @@ export default function ReportsPage() {
 function ReportsContent() {
   const searchParams = useSearchParams();
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [assignMessage, setAssignMessage] = useState('');
 
   useEffect(() => {
     queueMicrotask(() => {
       const nextReports = getReports();
       setReports(nextReports);
+      setStudents(getStudents());
       const reportId = searchParams.get('report');
       if (reportId && nextReports.some((report) => report.id === reportId)) {
         setSelectedId(reportId);
@@ -39,6 +43,7 @@ function ReportsContent() {
 
   const filtered = useMemo(() => (filter === 'all' ? reports : reports.filter((report) => report.program.includes(filter))), [filter, reports]);
   const selected = reports.find((report) => report.id === selectedId);
+  const selectedStudent = selected ? students.find((student) => student.id === selected.studentId || student.fullName === selected.studentName) : null;
 
   const getScoreColor = (score: number) => {
     if (score >= 75) return '#15803d';
@@ -47,13 +52,16 @@ function ReportsContent() {
   };
 
   if (selected) {
+    const isAnswersReport = selected.type === 'survey-answers';
     const decision = getDecisionFromScore(selected.score);
     const fileNumber = `MASAR-${selected.id.slice(-6).toUpperCase()}`;
     const sortedDomains = [...selected.domains].sort((first, second) => first.score - second.score);
     const supportDomains = sortedDomains.filter((domain) => domain.score < 70);
     const strengthDomains = [...selected.domains].sort((first, second) => second.score - first.score).slice(0, 2);
     const clinicalLabel =
-      selected.score >= 85
+      isAnswersReport
+        ? 'تقرير إجابات تفصيلية بدون تشخيص'
+        : selected.score >= 85
         ? 'مؤشرات تعلم مستقرة مع احتياج متابعة دورية'
         : selected.score >= 70
           ? 'صعوبات تعلم نمائية وأكاديمية خفيفة إلى متوسطة'
@@ -63,6 +71,18 @@ function ReportsContent() {
     const homeRecommendations = selected.recommendations.slice(0, 3);
     const schoolRecommendations = selected.recommendations.slice(3, 6).length ? selected.recommendations.slice(3, 6) : selected.recommendations.slice(0, 3);
     const iepRows = (supportDomains.length ? supportDomains : sortedDomains).slice(0, 4);
+    const approveProgram = (slug: string) => {
+      if (!selectedStudent) return;
+      const program = curriculumPrograms.find((item) => item.slug === slug);
+      updateStudent(selectedStudent.id, {
+        assignedProgram: slug,
+        assignedBy: 'د. إسماعيل عيسى',
+        assignedAt: new Date().toISOString(),
+        reviewStatus: 'program-assigned',
+      });
+      setStudents(getStudents());
+      setAssignMessage(`تم اعتماد ${program?.shortTitle ?? 'المسار'} للطالب ${selectedStudent.fullName}.`);
+    };
 
     return (
       <div className="min-h-screen bg-[var(--background)] text-slate-950">
@@ -111,7 +131,7 @@ function ReportsContent() {
                     {[
                       ['اسم الطالب', selected.studentName],
                       ['الصف الدراسي', selected.grade],
-                      ['نسبة الأداء الكلي', `${selected.score}%`],
+                      [isAnswersReport ? 'نسبة اكتمال الإجابات' : 'نسبة الأداء الكلي', `${selected.score}%`],
                       ['البرنامج', selected.program],
                       ['تاريخ التقرير', selected.date],
                       ['حالة التقرير', selected.status === 'completed' ? 'مكتمل ومعتمد' : 'قيد مراجعة الأخصائي'],
@@ -125,18 +145,57 @@ function ReportsContent() {
                 </section>
 
                 <section className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-                    <p className="text-xs font-black text-rose-700">التشخيص السريري المعتمد</p>
-                    <h3 className="mt-2 text-xl font-black text-rose-950">{clinicalLabel}</h3>
-                    <p className="mt-3 text-sm font-bold leading-7 text-rose-900">{selected.summary}</p>
+                  <div className={`${isAnswersReport ? 'border-slate-200 bg-slate-50' : 'border-rose-200 bg-rose-50'} rounded-lg border p-5`}>
+                    <p className={`text-xs font-black ${isAnswersReport ? 'text-slate-600' : 'text-rose-700'}`}>
+                      {isAnswersReport ? 'نوع التقرير' : 'التشخيص السريري المعتمد'}
+                    </p>
+                    <h3 className={`mt-2 text-xl font-black ${isAnswersReport ? 'text-slate-950' : 'text-rose-950'}`}>{clinicalLabel}</h3>
+                    <p className={`mt-3 text-sm font-bold leading-7 ${isAnswersReport ? 'text-slate-700' : 'text-rose-900'}`}>{selected.summary}</p>
                   </div>
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
-                    <p className="text-xs font-black text-indigo-700">المسار العلاجي الموصى به</p>
-                    <h3 className="mt-2 text-xl font-black text-indigo-950">{decision.label}</h3>
-                    <p className="mt-3 text-sm font-bold leading-7 text-indigo-900">{decision.action}</p>
-                    <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-indigo-900 ring-1 ring-indigo-200">{decision.range}</span>
-                  </div>
+                  {!isAnswersReport ? (
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
+                      <p className="text-xs font-black text-indigo-700">المسار العلاجي الموصى به</p>
+                      <h3 className="mt-2 text-xl font-black text-indigo-950">{decision.label}</h3>
+                      <p className="mt-3 text-sm font-bold leading-7 text-indigo-900">{decision.action}</p>
+                      <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-indigo-900 ring-1 ring-indigo-200">{decision.range}</span>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
+                      <p className="text-xs font-black text-indigo-700">استخدام التقرير</p>
+                      <h3 className="mt-2 text-xl font-black text-indigo-950">مراجعة إجابات ولي الأمر سؤالاً بسؤال</h3>
+                      <p className="mt-3 text-sm font-bold leading-7 text-indigo-900">هذا التقرير مخصص للدكتور فقط ويُقرأ بجانب تقرير التحليل قبل اعتماد المسار.</p>
+                    </div>
+                  )}
                 </section>
+
+                {!isAnswersReport && <section className="mt-5 rounded-lg border border-teal-200 bg-teal-50 p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-xs font-black text-teal-800">قرار د. إسماعيل قبل فتح المنهج للطالب</p>
+                      <h3 className="mt-1 text-xl font-black text-slate-950">
+                        {selectedStudent?.assignedProgram
+                          ? `المسار المعتمد حالياً: ${curriculumPrograms.find((program) => program.slug === selectedStudent.assignedProgram)?.shortTitle ?? selectedStudent.assignedProgram}`
+                          : 'لم يتم اعتماد مسار علاجي بعد'}
+                      </h3>
+                      <p className="mt-2 text-sm font-bold leading-7 text-slate-700">
+                        الطالب يرى الألعاب ورسائل التشجيع فقط. المنهج لا يظهر له إلا بعد اختيار المسار من هنا.
+                      </p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {curriculumPrograms.map((program) => (
+                        <button
+                          key={program.slug}
+                          onClick={() => approveProgram(program.slug)}
+                          disabled={!selectedStudent}
+                          className="rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-800 ring-1 ring-teal-100 hover:bg-teal-100 disabled:opacity-40"
+                        >
+                          {program.shortTitle}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {assignMessage && <p className="mt-4 rounded-lg bg-white p-3 text-sm font-black text-teal-900 ring-1 ring-teal-100">{assignMessage}</p>}
+                </section>}
 
                 <ReportSection number="1" title="تحليل نقاط القوة والاحتياج">
                   <div className="grid gap-3 md:grid-cols-2">
@@ -388,6 +447,11 @@ function RecommendationBox({ title, items, tone }: { title: string; items: strin
 
 function getGoalForDomain(domain: string) {
   if (domain.includes('رياض')) return 'تنفيذ الجمع والطرح المحسوس حتى 10 بالعدادات ثم بالرمز.';
+  if (domain.includes('قراءة') || domain.includes('الصوتي')) return 'تمييز الأصوات القصيرة والطويلة وقراءة كلمات من مقطعين بدقة متدرجة.';
+  if (domain.includes('كتابة') || domain.includes('الحركي')) return 'نسخ كلمات قصيرة داخل سطر واضح مع تقليل المساعدة الحركية تدريجياً.';
+  if (domain.includes('نطق') || domain.includes('لغة') || domain.includes('سمع')) return 'نطق الأصوات المستهدفة داخل كلمات مألوفة ثم جمل قصيرة بصوت واضح.';
+  if (domain.includes('اجتماعي') || domain.includes('التوحد')) return 'المشاركة في تبادل دوري قصير مع تواصل بصري مناسب واستجابة لتوجيه مباشر.';
+  if (domain.includes('انتباه') || domain.includes('سلوك') || domain.includes('حسي')) return 'إكمال مهمة تدريبية قصيرة مع فواصل حسية منظمة وتعزيز فوري.';
   if (domain.includes('العربية') || domain.includes('الإنجليزية')) return 'ربط 20 حرفاً/صوتاً بصرياً وسمعياً وقراءة كلمات قصيرة.';
   if (domain.includes('بصري') || domain.includes('حركي')) return 'تحسين التتبع البصري والتحكم بالقلم داخل مسارات قصيرة.';
   if (domain.includes('ذهنية') || domain.includes('قدرات')) return 'تنفيذ تعليمات من خطوتين وحل نمط بصري أو عددي بسيط.';

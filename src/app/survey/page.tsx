@@ -1,7 +1,9 @@
 "use client";
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { saveReport, saveStudent, saveSurvey } from '@/lib/localDb';
+import { getStudents, saveReport, saveStudent, saveSurvey, updateStudent } from '@/lib/localDb';
 
 const SECTIONS = [
   {
@@ -158,17 +160,110 @@ function getSurveyAnalysis(answers: Answers) {
   };
 }
 
+function averageQuestionScores(questionIds: string[], answers: Answers) {
+  const scores = questionIds
+    .map((questionId) => getSurveyQuestionScore(questionId, answers[questionId]))
+    .filter((score): score is number => score !== null);
+
+  if (!scores.length) return 0;
+  return Math.round(scores.reduce((total, score) => total + score, 0) / scores.length);
+}
+
+function getClinicalDomains(answers: Answers) {
+  const preferredSupport = String(answers.q34 ?? '');
+  const domains = [
+    {
+      name: 'القراءة والوعي الصوتي',
+      score: averageQuestionScores(['q5', 'q7', 'q24', 'q26'], answers),
+      note: 'يفحص مؤشرات القراءة الأولية، الوعي الصوتي، وفهم التعليمات الشفهية.',
+    },
+    {
+      name: 'الكتابة والتآزر الحركي',
+      score: averageQuestionScores(['q19', 'q32', 'q33'], answers),
+      note: 'يفحص إمساك القلم، تحمل المهمة، وتنظيم الواجبات.',
+    },
+    {
+      name: 'الرياضيات ومفهوم العدد',
+      score: averageQuestionScores(['q18', 'q20', 'q17'], answers),
+      note: preferredSupport.includes('رياض') ? 'ولي الأمر أشار أن الرياضيات هي أكثر مجال يحتاج دعماً.' : 'يفحص الاستقلال الأكاديمي ومؤشرات صعوبة الرياضيات.',
+    },
+    {
+      name: 'السمع والنطق واللغة',
+      score: averageQuestionScores(['q5', 'q6', 'q8', 'q25', 'q26'], answers),
+      note: 'يفحص النطق، الطلاقة، الثروة اللغوية، وحكي الأحداث بجمل واضحة.',
+    },
+    {
+      name: 'التواصل الاجتماعي ومؤشرات طيف التوحد',
+      score: averageQuestionScores(['q9', 'q10', 'q11', 'q12', 'q27', 'q28', 'q29'], answers),
+      note: 'يفحص التفاعل الاجتماعي، التواصل البصري، انتظار الدور، وتقبل التوجيه.',
+    },
+    {
+      name: 'الانتباه والسلوك والتنظيم الحسي',
+      score: averageQuestionScores(['q13', 'q14', 'q15', 'q16', 'q30', 'q31', 'q32'], answers),
+      note: 'يفحص الانتباه، الحركة الزائدة، الحساسية للأصوات، والمرونة مع الروتين.',
+    },
+  ];
+
+  return domains.map((domain) => ({
+    ...domain,
+    note:
+      domain.score >= 80
+        ? `${domain.note} المؤشر الحالي مطمئن مع متابعة دورية.`
+        : domain.score >= 60
+          ? `${domain.note} يوجد احتياج متوسط يتطلب قياساً مباشراً.`
+          : `${domain.note} أولوية مراجعة مرتفعة قبل اعتماد المسار.`,
+  }));
+}
+
+function buildClinicalRecommendations(priorityDomains: Array<{ name: string; score: number }>) {
+  const priorities = priorityDomains.map((domain) => domain.name).join('، ');
+
+  return [
+    `يبدأ د. إسماعيل بمراجعة المجالات الأقل في الاستبيان: ${priorities}.`,
+    'لا يتم إبلاغ الطالب بدرجة أو تشخيص؛ تعرض له رسائل تشجيعية فقط حتى لا يتكون لديه وسم سلبي.',
+    'إجراء مقابلة قصيرة للتحقق من القراءة والكتابة والرياضيات مع ملاحظة السلوك والانتباه أثناء المهمة.',
+    'عند وجود مؤشرات سمع/نطق أو تواصل اجتماعي منخفضة، يوصى بفحص متخصص أو ملاحظة إكلينيكية مباشرة قبل اعتماد الخطة.',
+    'بعد اعتماد الدكتور، يفتح للطالب مسار واحد فقط مناسب: تهجي بسيط، رياضيات محسوسة، تخاطب، سلوك، أو ألعاب تدريبية موجهة.',
+  ];
+}
+
 export default function SurveyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <SurveyContent />
+    </Suspense>
+  );
+}
+
+function SurveyContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [studentName, setStudentName] = useState('');
   const [grade, setGrade] = useState('الصف الأول');
   const [parentPhone, setParentPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submittedStudentId, setSubmittedStudentId] = useState('');
 
   const section = SECTIONS[currentSection];
   const totalQuestions = SECTIONS.reduce((total, item) => total + item.questions.length, 0);
-  const progress = Math.round(((currentSection) / SECTIONS.length) * 100);
+  const answeredCount = SECTIONS.flatMap((item) => item.questions).filter((question) => answers[question.id] !== undefined && answers[question.id] !== '').length;
+  const sectionAnsweredCount = section.questions.filter((question) => answers[question.id] !== undefined && answers[question.id] !== '').length;
+  const isCurrentSectionComplete = sectionAnsweredCount === section.questions.length;
+  const progress = Math.round((answeredCount / totalQuestions) * 100);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
+      const existing = getStudents().find((student) => student.id === studentId);
+      if (!existing) return;
+
+      setStudentName(existing.fullName);
+      setGrade(existing.grade);
+      setParentPhone(existing.parentPhone ?? '');
+    });
+  }, [searchParams]);
 
   const setAnswer = (qid: string, val: string | number) => {
     setAnswers(prev => ({ ...prev, [qid]: val }));
@@ -176,10 +271,16 @@ export default function SurveyPage() {
 
   const handleSubmit = () => {
     const analysis = getSurveyAnalysis(answers);
+    const clinicalDomains = getClinicalDomains(answers);
+    const priorityDomains = [...clinicalDomains].sort((first, second) => first.score - second.score).slice(0, 3);
+    const priorityText = priorityDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ');
+    const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id') ?? undefined;
     const savedStudent = saveStudent({
+      id: studentId,
       fullName: studentName.trim() || 'طالب من الاستبيان',
       grade,
       parentPhone,
+      reviewStatus: 'awaiting-doctor-review',
       source: 'survey',
     });
 
@@ -195,13 +296,16 @@ export default function SurveyPage() {
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
-      program: 'تحليل الاستبيان',
-      programColor: '#0f766e',
-      score: analysis.score,
+      program: 'إجابات الاستبيان التفصيلية',
+      programColor: '#334155',
+      score: Math.round((Object.keys(answers).length / totalQuestions) * 100),
       status: 'pending',
-      type: 'survey-analysis',
-      summary: analysis.summary,
-      recommendations: analysis.recommendations,
+      type: 'survey-answers',
+      summary: 'ملف إجابات خام مخصص لد. إسماعيل لمراجعة كل إجابة قبل اعتماد المسار العلاجي.',
+      recommendations: [
+        'مراجعة الإجابات الخام بجانب المقابلة الإكلينيكية قبل اعتماد أي مسار.',
+        'مطابقة إجابات ولي الأمر مع أداء الطالب داخل مهمة قصيرة عند أول مقابلة.',
+      ],
       answers: SECTIONS.flatMap((sectionItem) =>
         sectionItem.questions.map((question) => ({
           question: question.text,
@@ -211,6 +315,29 @@ export default function SurveyPage() {
       domains: analysis.domains,
     });
 
+    saveReport({
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade,
+      program: 'التحليل الإكلينيكي الشامل',
+      programColor: '#4f46e5',
+      score: Math.round(clinicalDomains.reduce((total, domain) => total + domain.score, 0) / clinicalDomains.length),
+      status: 'pending',
+      type: 'clinical-analysis',
+      summary: `تم استقبال الاستبيان وتحليل المؤشرات الأولية. أولويات المراجعة الإكلينيكية: ${priorityText}. لا يتم فتح أي منهج للطالب قبل اعتماد د. إسماعيل للمسار المناسب.`,
+      recommendations: buildClinicalRecommendations(priorityDomains),
+      answers: SECTIONS.flatMap((sectionItem) =>
+        sectionItem.questions.map((question) => ({
+          question: question.text,
+          answer: String(answers[question.id] ?? 'لم يتم تسجيل إجابة'),
+        })),
+      ),
+      domains: clinicalDomains,
+    });
+
+    updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
+    localStorage.setItem('masar.current-student-id', savedStudent.id);
+    setSubmittedStudentId(savedStudent.id);
     setSubmitted(true);
   };
 
@@ -220,18 +347,22 @@ export default function SurveyPage() {
         <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center animate-slide-up">
-            <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">شكراً! تم استلام الاستبيان</h1>
-            <p className="text-gray-600 mb-8">سيقوم فريق د. إسماعيل عيسى بمراجعة إجاباتك وإعداد تقرير شامل خلال 24 ساعة.</p>
+            <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">أحسنت، وصلت للنهاية</h1>
+            <p className="text-gray-600 mb-8">تم إرسال إجاباتك لد. إسماعيل. أنت الآن بطل جاهز لمرحلة اللعب والتدريب، والدكتور سيختار المسار المناسب بعد المراجعة.</p>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 text-right space-y-3">
-              <h2 className="font-bold text-green-700 text-xl text-center mb-4">ملخص الاستبيان</h2>
-              <p className="text-gray-700"><strong>عدد الأسئلة المجاب عليها:</strong> {Object.keys(answers).length} / {totalQuestions}</p>
-              <p className="text-gray-700"><strong>الأقسام المكتملة:</strong> {SECTIONS.length} أقسام</p>
-              <p className="text-gray-700"><strong>الحالة:</strong> قيد المراجعة من قِبل الأخصائي</p>
+              <h2 className="font-bold text-green-700 text-xl text-center mb-4">ما الذي حدث الآن؟</h2>
+              <p className="text-gray-700"><strong>تم حفظ الإجابات:</strong> {Object.keys(answers).length} / {totalQuestions}</p>
+              <p className="text-gray-700"><strong>تم إرسال تقريرين للدكتور:</strong> تقرير إجابات خام + تقرير تحليل شامل</p>
+              <p className="text-gray-700"><strong>المسار التعليمي:</strong> في انتظار اعتماد د. إسماعيل</p>
             </div>
-            <button onClick={() => { setSubmitted(false); setCurrentSection(0); setAnswers({}); }}
-              className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
-              إعادة الاستبيان
-            </button>
+            <div className="flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href={`/kids?student=${submittedStudentId}`} className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
+                دخول صفحة الطالب
+              </Link>
+              <button onClick={() => router.push('/parent')} className="rounded-xl border border-gray-200 bg-white px-8 py-3 font-bold text-gray-700 transition hover:bg-gray-50">
+                متابعة ولي الأمر
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -264,6 +395,7 @@ export default function SurveyPage() {
               <option>الصف الرابع</option>
               <option>الصف الخامس</option>
               <option>الصف السادس</option>
+              <option>صعوبات التعلم</option>
             </select>
           </label>
           <label className="block">
@@ -276,7 +408,7 @@ export default function SurveyPage() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
           <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
             <span>التقدم الكلي</span>
-            <span>{progress}%</span>
+            <span>{answeredCount} / {totalQuestions}</span>
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
             <div className="h-full bg-[#1E6FBF] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -300,7 +432,7 @@ export default function SurveyPage() {
             <h2 className="text-2xl font-bold flex items-center gap-3">
               <span>{section.icon}</span> {section.title}
             </h2>
-            <p className="text-white/70 text-sm mt-1">القسم {currentSection + 1} من {SECTIONS.length}</p>
+            <p className="text-white/70 text-sm mt-1">القسم {currentSection + 1} من {SECTIONS.length} · تم تسجيل {sectionAnsweredCount} من {section.questions.length}</p>
           </div>
 
           <div className="p-8 space-y-8">
@@ -353,16 +485,21 @@ export default function SurveyPage() {
           <span className="text-sm font-bold text-gray-500">{currentSection + 1} / {SECTIONS.length}</span>
           {currentSection < SECTIONS.length - 1 ? (
             <button onClick={() => setCurrentSection(currentSection + 1)}
-              className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition shadow-md">
+              disabled={!isCurrentSectionComplete}
+              className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition shadow-md disabled:cursor-not-allowed disabled:opacity-40">
               التالي
             </button>
           ) : (
             <button onClick={handleSubmit}
-              className="bg-[#2ECC71] text-white px-8 py-3 rounded-xl font-bold hover:bg-green-600 transition shadow-md">
+              disabled={answeredCount < totalQuestions}
+              className="bg-[#2ECC71] text-white px-8 py-3 rounded-xl font-bold hover:bg-green-600 transition shadow-md disabled:cursor-not-allowed disabled:opacity-40">
               إرسال الاستبيان
             </button>
           )}
         </div>
+        {!isCurrentSectionComplete && (
+          <p className="mt-3 text-center text-sm font-bold text-amber-700">أكمل أسئلة هذا القسم حتى نقدر نبني تقريراً دقيقاً للدكتور.</p>
+        )}
       </div>
     </div>
   );

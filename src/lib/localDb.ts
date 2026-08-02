@@ -20,6 +20,11 @@ export type StudentRecord = {
   parentName?: string;
   parentPhone?: string;
   photoUrl?: string;
+  notes?: string;
+  reviewStatus?: 'awaiting-survey' | 'awaiting-doctor-review' | 'program-assigned';
+  assignedProgram?: string;
+  assignedBy?: string;
+  assignedAt?: string;
   source: 'student-wizard' | 'survey' | 'import';
   createdAt: string;
   updatedAt: string;
@@ -35,7 +40,7 @@ export type ReportRecord = {
   date: string;
   score: number;
   status: 'completed' | 'pending';
-  type: 'initial-assessment' | 'placement' | 'survey-analysis';
+  type: 'initial-assessment' | 'placement' | 'survey-analysis' | 'survey-answers' | 'clinical-analysis';
   summary: string;
   recommendations: string[];
   answers: Array<{ question: string; answer: string }>;
@@ -165,10 +170,12 @@ export function getStudents() {
 export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
   const students = getStudents();
   const now = new Date().toISOString();
+  const existing = students.find((item) => item.id === student.id);
   const next: StudentRecord = {
+    ...existing,
     ...student,
-    id: student.id ?? createId('student'),
-    createdAt: students.find((item) => item.id === student.id)?.createdAt ?? now,
+    id: existing?.id ?? student.id ?? createId('student'),
+    createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 
@@ -178,6 +185,29 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     refId: next.id,
     title: 'تحديث ملف طالب',
     detail: `${next.fullName} - ${next.grade}`,
+  });
+  return next;
+}
+
+export function updateStudent(studentId: string, updates: Partial<Omit<StudentRecord, 'id' | 'createdAt'>>) {
+  const students = getStudents();
+  const existing = students.find((item) => item.id === studentId);
+  if (!existing) return null;
+
+  const next: StudentRecord = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+
+  writeList(KEYS.students, [next, ...students.filter((item) => item.id !== studentId)]);
+  saveActivity({
+    type: 'student',
+    refId: next.id,
+    title: 'تحديث حالة طالب',
+    detail: `${next.fullName} - ${next.reviewStatus ?? 'بدون حالة'}${next.assignedProgram ? ` - ${next.assignedProgram}` : ''}`,
   });
   return next;
 }
