@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Brain, FileSearch, Hand, LockKeyhole, Shapes, ShieldCheck,
-  Sparkles, CheckCircle2, Award, ChevronDown,
+  ArrowLeft, Brain, FileSearch, Hand, LockKeyhole, Shapes, ShieldCheck, 
+  Sparkles, CheckCircle2, Award, ChevronDown, GraduationCap, Volume2, Star
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 
@@ -132,24 +132,24 @@ export default function Home() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans overflow-x-hidden selection:bg-teal-400 selection:text-slate-950" dir="rtl">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
       
       {/* HEADER */}
-      <header className="absolute inset-x-0 top-0 z-50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-all shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <Link href="/" className="focus-ring rounded-lg">
-            <BrandMark size="md" dark />
+            <BrandMark size="md" />
           </Link>
           <div className="flex items-center gap-3">
             <Link 
               href="/auth/login" 
-              className="focus-ring rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-black text-white backdrop-blur hover:bg-white/15 transition active:scale-95"
+              className="focus-ring rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95 shadow-sm"
             >
               تسجيل الدخول
             </Link>
             <Link 
               href="/auth/register" 
-              className="focus-ring rounded-xl bg-teal-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg shadow-teal-950/30 hover:bg-teal-300 transition active:scale-95 flex items-center gap-1.5"
+              className="focus-ring rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition active:scale-95 flex items-center gap-1.5"
             >
               <span>ابدأ التقييم الآن</span>
               <ArrowLeft size={16} />
@@ -160,47 +160,50 @@ export default function Home() {
 
       <main>
         
-        {/* HERO SECTION WITH DRIFTING IMAGE */}
-        <section className="relative isolate min-h-screen overflow-hidden flex items-center pt-24 pb-16">
-          <Image 
-            src="/learning/communication-lab.png" 
-            alt="معمل التأهيل والتعلم د. إسماعيل عيسى" 
-            fill 
-            priority 
-            sizes="100vw" 
-            className="hero-image-drift object-cover opacity-60 pointer-events-none" 
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.98)_0%,rgba(2,6,23,0.88)_45%,rgba(2,6,23,0.55)_100%)] pointer-events-none" />
-          <div className="animated-grid absolute inset-0 opacity-40 pointer-events-none" />
+        {/* HERO SECTION WITH LIGHT BACKGROUND & SLIGHT IMAGE OVERLAY */}
+        <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/70 via-white to-slate-50 pt-16 pb-20 lg:pt-24 lg:pb-32">
+          
+          {/* Subtle background drift image with light overlay */}
+          <div className="absolute inset-0 z-0 pointer-events-none opacity-25">
+            <Image 
+              src="/learning/communication-lab.png" 
+              alt="معمل التأهيل والتعلم د. إسماعيل عيسى" 
+              fill 
+              priority 
+              sizes="100vw" 
+              className="hero-image-drift object-cover" 
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-50/95 via-white/90 to-teal-50/80 z-0 pointer-events-none" />
 
-          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
             
             {/* Left Main Hero Text */}
-            <div className="motion-fade-up space-y-6">
+            <div className="motion-fade-up space-y-6 text-right">
               
-              <div className="inline-flex items-center gap-3 rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-sm font-black text-teal-300 backdrop-blur">
-                <Sparkles size={16} className="text-teal-400 animate-pulse" />
-                <span>بإشراف د. إسماعيل عيسى</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-400" />
-                <span>منصة مسار التأهيل</span>
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-teal-200 bg-teal-50/90 px-4 py-2 text-xs sm:text-sm font-black text-teal-800 shadow-sm backdrop-blur">
+                <Sparkles size={16} className="text-teal-600 animate-pulse" />
+                <span>بإشراف الخبير د. إسماعيل عيسى</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
+                <span>منصة مسار التأهيل الأولى</span>
               </div>
 
-              <h1 className="text-4xl font-black leading-[1.15] text-white sm:text-5xl md:text-6xl lg:text-7xl tracking-tight">
+              <h1 className="text-4xl font-black leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl tracking-tight">
                 علاج صعوبات التعلم.
                 <br />
-                <span className="bg-gradient-to-r from-teal-300 via-emerald-300 to-cyan-200 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-teal-700 via-emerald-600 to-cyan-700 bg-clip-text text-transparent">
                   بطريقة تقيس ثم تعالج.
                 </span>
               </h1>
 
-              <p className="max-w-2xl text-base font-bold leading-relaxed text-slate-200 sm:text-lg md:text-2xl md:leading-[1.4]">
+              <p className="max-w-2xl text-base font-bold leading-relaxed text-slate-600 sm:text-lg md:text-2xl md:leading-[1.4]">
                 قراءة، كتابة، رياضيات، نطق، وتخاطب. بخطة علاجية فردية مبنية على تقييم تشخيصي دقيق لكل طالب.
               </p>
 
               {/* Therapy Badges */}
               <div className="flex flex-wrap gap-2 pt-2">
                 {therapyAreas.map((area) => (
-                  <span key={area} className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs sm:text-sm font-black text-white/90 backdrop-blur">
+                  <span key={area} className="rounded-xl border border-teal-100 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-black text-teal-950 shadow-sm">
                     ✓ {area}
                   </span>
                 ))}
@@ -210,7 +213,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Link 
                   href="/auth/register" 
-                  className="focus-ring shine-sweep inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-teal-400 px-8 py-4 text-base font-black text-slate-950 shadow-2xl shadow-teal-950/40 hover:bg-teal-300 transition active:scale-95"
+                  className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-8 py-4 text-base font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition active:scale-95"
                 >
                   <span>ابدأ تقييم تحديد المستوى</span>
                   <ArrowLeft size={18} />
@@ -218,9 +221,9 @@ export default function Home() {
                 
                 <Link 
                   href="/auth/login" 
-                  className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/22 bg-white/10 px-8 py-4 text-base font-black text-white backdrop-blur hover:bg-white/16 transition active:scale-95"
+                  className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-8 py-4 text-base font-black text-slate-800 shadow-sm hover:bg-slate-100 transition active:scale-95"
                 >
-                  <LockKeyhole size={18} className="text-teal-300" />
+                  <LockKeyhole size={18} className="text-teal-600" />
                   <span>دخول د. إسماعيل (الأدمن)</span>
                 </Link>
               </div>
@@ -229,28 +232,28 @@ export default function Home() {
 
             {/* Right Side Method Console Panel */}
             <div className="motion-slide-left hidden lg:block">
-              <div className="landing-console rounded-3xl border border-white/16 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-2xl space-y-5">
+              <div className="landing-console rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl space-y-5 backdrop-blur">
                 
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <div>
-                    <p className="text-xs font-black text-teal-300 uppercase tracking-wider">MASAR Method</p>
-                    <h2 className="mt-1 text-2xl font-black text-white">أساليب علاج حديثة ومعتمدة</h2>
+                    <p className="text-xs font-black text-teal-700 uppercase tracking-wider">MASAR Method</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-900">أساليب علاج حديثة ومعتمدة</h2>
                   </div>
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-teal-400/15 text-teal-300 border border-teal-400/20">
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-200">
                     <ShieldCheck size={26} />
                   </span>
                 </div>
 
                 <div className="grid gap-3">
                   {methods.map(({ title, body, icon: Icon }) => (
-                    <article key={title} className="rounded-2xl bg-slate-950/70 p-4 ring-1 ring-white/10 hover:ring-teal-400/40 transition">
+                    <article key={title} className="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 hover:border-teal-500/40 transition">
                       <div className="flex items-start gap-3.5">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-400/15 text-teal-300 mt-0.5">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 mt-0.5 font-bold">
                           <Icon size={20} />
                         </span>
                         <div>
-                          <h3 className="font-black text-white text-sm sm:text-base">{title}</h3>
-                          <p className="mt-1 text-xs font-bold leading-relaxed text-slate-300">{body}</p>
+                          <h3 className="font-black text-slate-900 text-sm sm:text-base">{title}</h3>
+                          <p className="mt-1 text-xs font-bold leading-relaxed text-slate-600">{body}</p>
                         </div>
                       </div>
                     </article>
@@ -264,17 +267,17 @@ export default function Home() {
         </section>
 
         {/* VISUAL LEARNING LABS SHOWCASE */}
-        <section className="py-20 border-t border-white/10 bg-slate-950 relative">
+        <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
             <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <span className="px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-black">
+              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
                 بيئة التأهيل البصري والحسي
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white">
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
                 معامل تعلم وتدريب مصممة خصيصاً للطفل
               </h2>
-              <p className="text-slate-400 font-bold text-sm sm:text-base">
+              <p className="text-slate-600 font-bold text-sm sm:text-base">
                 دمج التقنيات البصرية والحسية لتثبيت المفاهيم وبناء المهارات الأساسية
               </p>
             </div>
@@ -283,25 +286,25 @@ export default function Home() {
               {labs.map((lab) => (
                 <div 
                   key={lab.title} 
-                  className="group rounded-3xl border border-white/12 bg-slate-900/80 overflow-hidden shadow-xl hover:border-teal-400/40 hover:translate-y-[-4px] transition duration-300 backdrop-blur-xl flex flex-col"
+                  className="group rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-md hover:shadow-xl hover:border-teal-500/40 hover:translate-y-[-4px] transition duration-300 flex flex-col"
                 >
-                  <div className="relative h-56 w-full overflow-hidden">
+                  <div className="relative h-56 w-full overflow-hidden bg-slate-100">
                     <Image 
                       src={lab.image} 
                       alt={lab.title} 
                       fill 
                       className="object-cover group-hover:scale-105 transition duration-500" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
                   </div>
                   <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
                     <div>
-                      <h3 className="text-xl font-black text-white leading-snug">{lab.title}</h3>
-                      <p className="mt-2 text-xs font-bold text-slate-300 leading-relaxed">{lab.subtitle}</p>
+                      <h3 className="text-xl font-black text-slate-900 leading-snug">{lab.title}</h3>
+                      <p className="mt-2 text-xs font-bold text-slate-600 leading-relaxed">{lab.subtitle}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
                       {lab.tags.map((tag) => (
-                        <span key={tag} className="px-2.5 py-1 rounded-lg bg-teal-400/10 border border-teal-400/20 text-teal-300 text-[11px] font-bold">
+                        <span key={tag} className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-bold">
                           {tag}
                         </span>
                       ))}
@@ -315,17 +318,17 @@ export default function Home() {
         </section>
 
         {/* 7 PLACEMENT LEVELS SELECTOR */}
-        <section className="py-20 border-t border-white/10 bg-slate-900/60 relative">
+        <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
             <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <span className="px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-black">
+              <span className="px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black">
                 اختبارات تحديد المستوى الـ 7
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white">
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
                 اختر المستوى الدراسي لمعاينة تفاصيل الاختبار
               </h2>
-              <p className="text-slate-400 font-bold text-sm sm:text-base">
+              <p className="text-slate-600 font-bold text-sm sm:text-base">
                 اختبارات قبول وقياس دقيقة مصممة لتحديد جاهزية الطفل الأكاديمية
               </p>
             </div>
@@ -338,8 +341,8 @@ export default function Home() {
                   onClick={() => setSelectedLevel(lvl)}
                   className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition ${
                     selectedLevel.id === lvl.id
-                      ? 'bg-teal-400 text-slate-950 shadow-lg shadow-teal-400/20'
-                      : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   {lvl.title}
@@ -348,32 +351,32 @@ export default function Home() {
             </div>
 
             {/* Selected Level Detail Card */}
-            <div className="bg-slate-950/90 border border-white/15 rounded-3xl p-6 sm:p-10 grid lg:grid-cols-12 gap-8 items-center backdrop-blur-xl">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 grid lg:grid-cols-12 gap-8 items-center shadow-lg">
               
-              <div className="lg:col-span-7 space-y-6">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-400/20 text-teal-300 text-xs font-black">
+              <div className="lg:col-span-7 space-y-6 text-right">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
                   <span>{selectedLevel.gradeText}</span>
                 </div>
-                <h3 className="text-3xl font-black text-white">{selectedLevel.title}</h3>
-                <p className="text-slate-300 font-bold text-sm leading-relaxed">{selectedLevel.description}</p>
+                <h3 className="text-3xl font-black text-slate-900">{selectedLevel.title}</h3>
+                <p className="text-slate-600 font-bold text-sm leading-relaxed">{selectedLevel.description}</p>
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="bg-slate-900 p-4 rounded-2xl border border-white/10">
-                    <p className="text-xs font-bold text-slate-400">عدد الأسئلة</p>
-                    <p className="text-2xl font-black text-teal-300 mt-1">{selectedLevel.questionsCount} سؤالاً</p>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <p className="text-xs font-bold text-slate-500">عدد الأسئلة</p>
+                    <p className="text-2xl font-black text-teal-700 mt-1">{selectedLevel.questionsCount} سؤالاً</p>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-2xl border border-white/10">
-                    <p className="text-xs font-bold text-slate-400">المدة الموصى بها</p>
-                    <p className="text-2xl font-black text-emerald-300 mt-1">{selectedLevel.duration}</p>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <p className="text-xs font-bold text-slate-500">المدة الموصى بها</p>
+                    <p className="text-2xl font-black text-emerald-700 mt-1">{selectedLevel.duration}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 pt-2">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-wider">المهارات المشمولة بالاختبار:</p>
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">المهارات المشمولة بالاختبار:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {selectedLevel.skills.map((skill) => (
-                      <div key={skill} className="flex items-center gap-2 text-xs font-bold text-slate-200">
-                        <CheckCircle2 size={16} className="text-teal-400 shrink-0" />
+                      <div key={skill} className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <CheckCircle2 size={16} className="text-teal-600 shrink-0" />
                         <span>{skill}</span>
                       </div>
                     ))}
@@ -383,7 +386,7 @@ export default function Home() {
                 <div className="pt-4">
                   <Link 
                     href="/auth/register" 
-                    className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 font-black text-sm shadow-xl hover:scale-105 transition"
+                    className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl bg-teal-600 text-white font-black text-sm shadow-md hover:bg-teal-700 transition"
                   >
                     <span>البدء في اختبار {selectedLevel.title}</span>
                     <ArrowLeft size={16} />
@@ -391,26 +394,26 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="lg:col-span-5 bg-slate-900/90 border border-white/10 rounded-2xl p-6 space-y-4">
-                <h4 className="font-black text-white text-base flex items-center gap-2">
-                  <Award className="text-teal-400" size={20} />
+              <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 text-right">
+                <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
+                  <Award className="text-teal-600" size={20} />
                   <span>طريقة التقييم والتقرير</span>
                 </h4>
-                <ul className="space-y-3.5 text-xs font-bold text-slate-300 leading-relaxed">
+                <ul className="space-y-3.5 text-xs font-bold text-slate-600 leading-relaxed">
                   <li className="flex items-start gap-2.5">
-                    <span className="text-teal-400 font-black">1.</span>
+                    <span className="text-teal-600 font-black">1.</span>
                     <span>تظهر الأسئلة بشكل تفاعلي مدعوم بالصور والأصوات للطفل.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <span className="text-teal-400 font-black">2.</span>
+                    <span className="text-teal-600 font-black">2.</span>
                     <span>تُحفظ كل إجابة يختارها الطفل في سجل الطالب الخاص به.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <span className="text-teal-400 font-black">3.</span>
+                    <span className="text-teal-600 font-black">3.</span>
                     <span>يتم إصدار تقرير تحليلي يحدد مستوى التحكم والصعوبات.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <span className="text-teal-400 font-black">4.</span>
+                    <span className="text-teal-600 font-black">4.</span>
                     <span>تصل النتائج تلقائياً للوحة تحكم د. إسماعيل لمتابعتها.</span>
                   </li>
                 </ul>
@@ -422,34 +425,34 @@ export default function Home() {
         </section>
 
         {/* FAQS SECTION */}
-        <section className="py-20 border-t border-white/10 bg-slate-950 relative">
+        <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-4xl px-5 lg:px-8 space-y-10">
             
             <div className="text-center space-y-4">
-              <span className="px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-black">
+              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
                 إجابات واستفسارات
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white">الأسئلة الشائعة حول المنصة</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">الأسئلة الشائعة حول المنصة</h2>
             </div>
 
             <div className="space-y-4">
               {faqs.map((faq, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-slate-900/80 border border-white/10 rounded-2xl overflow-hidden transition"
+                  className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden transition"
                 >
                   <button
                     onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                    className="w-full p-5 text-right font-black text-base text-white flex items-center justify-between gap-4"
+                    className="w-full p-5 text-right font-black text-base text-slate-900 flex items-center justify-between gap-4"
                   >
                     <span>{faq.q}</span>
                     <ChevronDown 
                       size={18} 
-                      className={`text-teal-400 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180' : ''}`} 
+                      className={`text-teal-600 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180' : ''}`} 
                     />
                   </button>
                   {activeFaq === idx && (
-                    <div className="p-5 pt-0 text-xs sm:text-sm font-bold text-slate-300 leading-relaxed border-t border-white/5">
+                    <div className="p-5 pt-0 text-xs sm:text-sm font-bold text-slate-600 leading-relaxed border-t border-slate-200/60">
                       {faq.a}
                     </div>
                   )}
@@ -461,24 +464,24 @@ export default function Home() {
         </section>
 
         {/* FINAL CALL TO ACTION */}
-        <section className="py-20 border-t border-white/10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 relative overflow-hidden">
+        <section className="py-20 border-t border-slate-200 bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white relative overflow-hidden">
           <div className="mx-auto max-w-5xl px-5 text-center space-y-6">
             <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
               جاهز للبدء في تقييم وتأسيس طفلك؟
             </h2>
-            <p className="text-slate-300 font-bold text-sm sm:text-lg max-w-2xl mx-auto">
+            <p className="text-teal-100 font-bold text-sm sm:text-lg max-w-2xl mx-auto">
               سجل الآن وابدأ اختبار تحديد المستوى للحصول على تقرير تشخيصي فوري وخطة علاجية مخصصة.
             </p>
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link 
                 href="/auth/register" 
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-teal-400 hover:bg-teal-300 text-slate-950 font-black text-base shadow-xl shadow-teal-500/25 transition active:scale-95"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white hover:bg-slate-100 text-teal-950 font-black text-base shadow-xl transition active:scale-95"
               >
                 إنشاء حساب جديد وابدأ التقييم
               </Link>
               <Link 
                 href="/auth/login" 
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/20 bg-white/10 hover:bg-white/15 text-white font-black text-base backdrop-blur transition active:scale-95"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/30 bg-white/10 hover:bg-white/20 text-white font-black text-base backdrop-blur transition active:scale-95"
               >
                 تسجيل الدخول للحساب الحالي
               </Link>
@@ -489,13 +492,13 @@ export default function Home() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/10 bg-slate-950 py-8 text-center text-xs font-bold text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs font-bold text-slate-500">
         <div className="mx-auto max-w-7xl px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>جميع الحقوق محفوظة © {new Date().getFullYear()} - منصة مسار التأهيل د. إسماعيل عيسى</p>
-          <div className="flex items-center gap-4 text-slate-400">
-            <Link href="/auth/login" className="hover:text-white transition">تسجيل الدخول</Link>
+          <div className="flex items-center gap-4 text-slate-600">
+            <Link href="/auth/login" className="hover:text-slate-900 transition">تسجيل الدخول</Link>
             <span>•</span>
-            <Link href="/auth/register" className="hover:text-white transition">التسجيل</Link>
+            <Link href="/auth/register" className="hover:text-slate-900 transition">التسجيل</Link>
           </div>
         </div>
       </footer>
