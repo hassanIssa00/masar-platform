@@ -15,7 +15,6 @@ import {
   Volume2,
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import Navbar from '@/components/Navbar';
 import { curriculumPrograms } from '@/data/curriculum';
 
 const trustPoints = ['تقييم أولي من ولي الأمر', 'تقرير إكلينيكي للدكتور', 'ألعاب آمنة للطالب', 'مسار لا يفتح إلا باعتماد'];
@@ -44,7 +43,21 @@ const reportRows = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-950">
-      <Navbar />
+      <header className="absolute inset-x-0 top-0 z-50">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 lg:px-8">
+          <Link href="/" className="focus-ring rounded-lg">
+            <BrandMark size="md" dark />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/auth/login" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-lg border border-white/18 bg-white/10 px-4 text-sm font-black text-white backdrop-blur hover:bg-white/16">
+              دخول
+            </Link>
+            <Link href="/auth/register" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-400 px-4 text-sm font-black text-slate-950 shadow-lg shadow-teal-950/20 hover:bg-teal-300">
+              ابدأ الآن
+            </Link>
+          </div>
+        </div>
+      </header>
 
       <main>
         <section className="relative isolate overflow-hidden bg-slate-950 text-white">
@@ -60,21 +73,21 @@ export default function Home() {
           <div className="animated-grid absolute inset-0 opacity-55" />
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#f5f7fb] via-slate-950/40 to-transparent" />
 
-          <div className="relative mx-auto flex min-h-[calc(100svh-96px)] max-w-7xl flex-col justify-center px-5 py-12 lg:min-h-[calc(100svh-118px)] lg:px-8">
+          <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-5 pb-12 pt-28 lg:px-8">
             <div className="motion-fade-up max-w-4xl">
               <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm font-black text-white/90 backdrop-blur">
                 <BrandMark size="sm" showText={false} />
-                منصة د. إسماعيل عيسى لصعوبات التعلم والتأهيل الأكاديمي
+                منصة تأهيل وتعليم علاجي بإشراف د. إسماعيل عيسى
               </div>
 
-              <h1 className="max-w-4xl text-5xl font-black leading-[1.08] text-white md:text-7xl lg:text-8xl">
-                مسار MASAR
+              <h1 className="max-w-5xl text-5xl font-black leading-[1.08] text-white md:text-7xl lg:text-8xl">
+                مسار لتقييم وتأهيل صعوبات التعلم
               </h1>
               <p className="mt-5 max-w-3xl text-2xl font-black leading-10 text-teal-100 md:text-4xl md:leading-[1.35]">
-                نظام يقرأ حالة الطفل، يحميه من التشتت، ويضع قرار المسار في يد المختص.
+                ولي الأمر يجاوب. الدكتور يحلل. الطالب يلعب ويتدرب بدون تشخيص ظاهر.
               </p>
               <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-white/78 md:text-xl md:leading-10">
-                تجربة واحدة تبدأ من ولي الأمر، تنتقل إلى تقرير دقيق لد. إسماعيل، ثم صفحة طالب بسيطة مليئة بالألعاب حتى يتم اعتماد البرنامج المناسب.
+                صفحة عامة واضحة لبداية المنصة: إنشاء حساب ولي أمر، تسجيل بيانات الطفل، استبيان شامل، ثم ملف مراجعة يصل إلى د. إسماعيل قبل فتح أي مسار علاجي.
               </p>
 
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -83,7 +96,7 @@ export default function Home() {
                   <ArrowLeft size={18} />
                 </Link>
                 <Link href="/auth/login" className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-lg border border-white/24 bg-white/10 px-7 py-4 text-sm font-black text-white backdrop-blur hover:bg-white/16">
-                  دخول لوحة النظام
+                  تسجيل الدخول
                   <LockKeyhole size={18} />
                 </Link>
               </div>
@@ -200,15 +213,15 @@ export default function Home() {
                 <p className="text-sm font-black text-teal-200">المسارات العلاجية</p>
                 <h2 className="mt-2 text-3xl font-black leading-tight md:text-5xl">مناهج تظهر عندما يقرر المختص</h2>
               </div>
-              <Link href="/kids" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-950 hover:bg-teal-50">
-                معاينة صفحة الطالب
+              <div className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/14 bg-white/10 px-5 py-3 text-sm font-black text-white/82">
+                صفحة الطالب تفتح بعد التسجيل
                 <Gamepad2 size={17} />
-              </Link>
+              </div>
             </div>
 
             <div className="stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {curriculumPrograms.slice(0, 6).map((program) => (
-                <Link key={program.slug} href={`/programs/${program.slug}`} className="hover-lift group rounded-lg border border-white/10 bg-white/8 p-5 backdrop-blur">
+                <article key={program.slug} className="hover-lift rounded-lg border border-white/10 bg-white/8 p-5 backdrop-blur">
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <span className="h-2 w-24 rounded-full" style={{ backgroundColor: program.color }} />
                     <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/70">{program.duration}</span>
@@ -218,12 +231,12 @@ export default function Home() {
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-7 text-white/64">{program.promise}</p>
                   <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
                     <span className="text-xs font-black text-white/50">{program.modules.length} مراحل قياس</span>
-                    <span className="inline-flex items-center gap-1 text-sm font-black text-white group-hover:-translate-x-1">
-                      فتح المسار
-                      <ArrowLeft size={16} />
+                    <span className="inline-flex items-center gap-1 text-sm font-black text-teal-200">
+                      يفتح بعد اعتماد الدكتور
+                      <LockKeyhole size={16} />
                     </span>
                   </div>
-                </Link>
+                </article>
               ))}
             </div>
           </div>
