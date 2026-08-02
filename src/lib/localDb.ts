@@ -52,12 +52,22 @@ export type SurveySubmission = {
   submittedAt: string;
 };
 
+export type ActivityRecord = {
+  id: string;
+  title: string;
+  detail: string;
+  type: 'account' | 'student' | 'report' | 'survey';
+  refId?: string;
+  createdAt: string;
+};
+
 const KEYS = {
   accounts: 'masar.accounts.v1',
   students: 'masar.students.v1',
   reports: 'masar.reports.v1',
   surveys: 'masar.surveys.v1',
   session: 'masar.session.v1',
+  activity: 'masar.activity.v1',
 };
 
 function readList<T>(key: string): T[] {
@@ -73,6 +83,18 @@ function readList<T>(key: string): T[] {
 
 function writeList<T>(key: string, value: T[]) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {
+  const activities = getActivities();
+  const next: ActivityRecord = {
+    ...activity,
+    id: createId('activity'),
+    createdAt: new Date().toISOString(),
+  };
+
+  writeList(KEYS.activity, [next, ...activities].slice(0, 80));
+  return next;
 }
 
 export function createId(prefix: string) {
@@ -100,6 +122,12 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
   };
 
   writeList(KEYS.accounts, [next, ...accounts.filter((item) => item.id !== next.id)]);
+  saveActivity({
+    type: 'account',
+    refId: next.id,
+    title: 'تحديث حساب مستخدم',
+    detail: `${next.name} - ${next.role}`,
+  });
   return next;
 }
 
@@ -109,6 +137,17 @@ export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' 
   localStorage.setItem('masar_logged_in', 'true');
   localStorage.setItem('user_role', account.role);
   localStorage.setItem('user_name', account.name);
+}
+
+export function getSession() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem(KEYS.session);
+    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role'>) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function clearSession() {
@@ -134,6 +173,12 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   };
 
   writeList(KEYS.students, [next, ...students.filter((item) => item.id !== next.id)]);
+  saveActivity({
+    type: 'student',
+    refId: next.id,
+    title: 'تحديث ملف طالب',
+    detail: `${next.fullName} - ${next.grade}`,
+  });
   return next;
 }
 
@@ -150,6 +195,12 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
   };
 
   writeList(KEYS.reports, [next, ...reports.filter((item) => item.id !== next.id)]);
+  saveActivity({
+    type: 'report',
+    refId: next.id,
+    title: 'حفظ تقرير سريري',
+    detail: `${next.studentName} - ${next.program} - ${next.score}%`,
+  });
   return next;
 }
 
@@ -166,5 +217,26 @@ export function saveSurvey(survey: Omit<SurveySubmission, 'id' | 'submittedAt'>)
   };
 
   writeList(KEYS.surveys, [next, ...surveys]);
+  saveActivity({
+    type: 'survey',
+    refId: next.id,
+    title: 'استلام استبيان ولي أمر',
+    detail: `${next.studentName} - ${next.grade}`,
+  });
   return next;
+}
+
+export function getActivities() {
+  return readList<ActivityRecord>(KEYS.activity);
+}
+
+export function getSyncSnapshot() {
+  const activities = getActivities();
+  return {
+    students: getStudents().length,
+    reports: getReports().length,
+    surveys: getSurveys().length,
+    activities: activities.length,
+    lastSync: activities[0]?.createdAt ?? null,
+  };
 }

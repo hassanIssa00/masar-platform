@@ -5,18 +5,21 @@ import Link from 'next/link';
 import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
-import { getReports, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { ActivityRecord, getActivities, getReports, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function DashboardPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
   const [surveysCount, setSurveysCount] = useState(0);
 
   useEffect(() => {
     queueMicrotask(() => {
       setStudents(getStudents());
       setReports(getReports());
+      setActivities(getActivities());
       setSurveysCount(getSurveys().length);
     });
   }, []);
@@ -67,7 +70,9 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SyncStatus />
+
+          <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {stats.map(({ label, value, note, icon: Icon }) => (
               <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -152,14 +157,26 @@ export default function DashboardPage() {
                   <Target size={20} />
                 </span>
                 <div>
-                  <p className="text-sm font-black text-slate-500">جلسات اليوم</p>
-                  <h2 className="text-xl font-black text-slate-950">هدف واحد لكل جلسة</h2>
+                  <p className="text-sm font-black text-slate-500">سجل النشاط</p>
+                  <h2 className="text-xl font-black text-slate-950">آخر عمليات المنصة</h2>
                 </div>
               </div>
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5">
-                <p className="font-black text-slate-950">لا توجد جلسات مجدولة اليوم</p>
-                <p className="mt-2 text-sm font-bold leading-7 text-slate-600">عند إضافة نظام الجلسات الحقيقي سيظهر هنا هدف الجلسة والوقت والطالب.</p>
-              </div>
+              {activities.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <p className="font-black text-slate-950">لا توجد عمليات محفوظة بعد</p>
+                  <p className="mt-2 text-sm font-bold leading-7 text-slate-600">كل طالب أو تقرير أو استبيان جديد سيظهر هنا تلقائياً.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {activities.slice(0, 5).map((activity) => (
+                    <article key={activity.id} className="rounded-lg bg-slate-50 p-3">
+                      <p className="text-sm font-black text-slate-950">{activity.title}</p>
+                      <p className="mt-1 text-xs font-bold leading-6 text-slate-600">{activity.detail}</p>
+                      <p className="mt-2 text-[11px] font-bold text-slate-400">{new Date(activity.createdAt).toLocaleString('ar-SA')}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
