@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2 } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
@@ -25,6 +26,7 @@ export default function PlacementAssessmentPage() {
 }
 
 function PlacementAssessmentContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const studentIdParam = searchParams.get('student');
   const [gradeKey, setGradeKey] = useState<PlacementGradeKey>('general');
@@ -35,6 +37,7 @@ function PlacementAssessmentContent() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [finished, setFinished] = useState(false);
   const [savedReportId, setSavedReportId] = useState('');
+  const [savedStudentId, setSavedStudentId] = useState('');
 
   const assessment = placementAssessments.find((item) => item.key === gradeKey) ?? placementAssessments[0];
   const current = assessment.questions[index];
@@ -52,18 +55,16 @@ function PlacementAssessmentContent() {
 
   useEffect(() => {
     const studentId = searchParams.get('student');
-    const existingStudent = studentId ? getStudents().find((item) => item.id === studentId) : null;
-    if (existingStudent) {
-      queueMicrotask(() => {
+    const timeout = window.setTimeout(() => {
+      const existingStudent = studentId ? getStudents().find((item) => item.id === studentId) : null;
+      if (existingStudent) {
         setStudent(existingStudent);
         setStudentName(existingStudent.fullName);
         setGradeKey(getGradeKeyFromStudentGrade(existingStudent.grade));
-      });
-      return;
-    }
+        return;
+      }
 
-    if (studentId) {
-      queueMicrotask(() => {
+      if (studentId) {
         setStudent({
           id: studentId,
           fullName: 'طالب الاختبار',
@@ -73,24 +74,36 @@ function PlacementAssessmentContent() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-      });
-      return;
-    }
+        return;
+      }
 
-    const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
-    const stored = typeof window !== 'undefined' ? (localStorage.getItem('masar.assessment.gradeKey') as PlacementGradeKey | null) : null;
-    const next = placementAssessments.some((item) => item.key === fromUrl)
-      ? fromUrl
-      : placementAssessments.some((item) => item.key === stored)
-        ? stored
-        : null;
+      const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
+      const stored = typeof window !== 'undefined' ? (localStorage.getItem('masar.assessment.gradeKey') as PlacementGradeKey | null) : null;
+      const next = placementAssessments.some((item) => item.key === fromUrl)
+        ? fromUrl
+        : placementAssessments.some((item) => item.key === stored)
+          ? stored
+          : null;
 
-    if (next) {
-      queueMicrotask(() => setGradeKey(next));
-    }
+      if (next) {
+        setGradeKey(next);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [searchParams]);
 
   const isStudentFlow = Boolean(studentIdParam);
+
+  useEffect(() => {
+    if (!finished || !isStudentFlow || !savedStudentId) return;
+
+    const timeout = window.setTimeout(() => {
+      router.push(`/kids?student=${savedStudentId}`);
+    }, 1400);
+
+    return () => window.clearTimeout(timeout);
+  }, [finished, isStudentFlow, router, savedStudentId]);
 
   const domains = useMemo(() => {
     const grouped = new Map<string, ResponseRecord[]>();
@@ -123,6 +136,7 @@ function PlacementAssessmentContent() {
     setAnswers({});
     setFinished(false);
     setSavedReportId('');
+    setSavedStudentId('');
   };
 
   const finish = () => {
@@ -210,28 +224,40 @@ function PlacementAssessmentContent() {
     localStorage.setItem('masar.recommended-program', recommendedProgram.href);
     localStorage.setItem('masar.current-student-id', savedStudent.id);
     setSavedReportId(report.id);
+    setSavedStudentId(savedStudent.id);
     setFinished(true);
   };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
-      <Navbar />
+      {isStudentFlow ? (
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 lg:px-8">
+            <BrandMark size="sm" />
+            <div className="rounded-full bg-blue-50 px-4 py-2 text-xs font-black text-blue-800">
+              اختبار الطالب محفوظ للدكتور فقط
+            </div>
+          </div>
+        </header>
+      ) : (
+        <Navbar />
+      )}
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار طالب مباشر عند طلب الدكتور' : 'اختبارات القبول وتحديد المستوى'}</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار إضافي مناسب لصف الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
+              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار الطالب بعد استبيان ولي الأمر' : 'اختبارات القبول وتحديد المستوى'}</p>
+              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'أجب على الأسئلة بهدوء' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
                 {isStudentFlow
-                  ? 'هذه أداة تقييم إضافية يمكن للدكتور استخدامها عند الحاجة. التدفق الأساسي بعد الاستبيان يذهب للطالب إلى صفحة الألعاب حتى اعتماد المسار.'
+                  ? 'بعد انتهاء الاختبار سيتم إرسال إجاباتك لد. إسماعيل، ثم تفتح لك صفحة الطالب والألعاب بدون عرض درجات أو تشخيص.'
                   : 'اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.'}
               </p>
             </div>
-            <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
+            {!isStudentFlow && <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
               فتح التقارير
               <ArrowLeft size={17} />
-            </Link>
+            </Link>}
           </div>
         </header>
 
@@ -339,18 +365,18 @@ function PlacementAssessmentContent() {
                 <h2 className="mt-4 text-2xl font-black text-slate-950">{isStudentFlow ? 'أحسنت، تم حفظ إجاباتك' : 'تم حفظ اختبار تحديد المستوى'}</h2>
                 <p className="mt-2 text-sm font-bold leading-7 text-slate-700">
                   {isStudentFlow
-                    ? 'تم إرسال إجاباتك وتقرير التحليل إلى د. إسماعيل. ستدخل الآن صفحة الألعاب، والمسار التعليمي يفتحه الدكتور بعد المراجعة.'
+                    ? 'تم إرسال إجاباتك وتقرير التحليل إلى د. إسماعيل. سيتم فتح صفحة الطالب والألعاب الآن حتى يراجع الدكتور الملف ويعتمد المسار المناسب.'
                     : `النتيجة ${score}%، القرار: ${decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.`}
                 </p>
                 <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
                   {!isStudentFlow && <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
                     عرض التقرير الرسمي
                   </Link>}
-                  <Link href={isStudentFlow ? `/kids?student=${student?.id ?? studentIdParam ?? ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-                    {isStudentFlow ? 'دخول صفحة الألعاب' : `فتح ${recommendedProgram.label}`}
+                  <Link href={isStudentFlow ? `/kids?student=${savedStudentId || student?.id || studentIdParam || ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    {isStudentFlow ? 'فتح صفحة الطالب' : `فتح ${recommendedProgram.label}`}
                   </Link>
                 </div>
-                <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>
+                {!isStudentFlow && <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>}
               </article>
             )}
           </div>
@@ -365,21 +391,37 @@ function PlacementAssessmentContent() {
                 <h2 className="font-black text-slate-950">{assessment.shortTitle}</h2>
               </div>
             </div>
-            <div className="mt-5 rounded-lg bg-slate-950 p-5 text-center text-white">
-              <p className="text-5xl font-black">{score}%</p>
-              <p className="mt-2 text-sm font-bold text-white/70">{correctCount} من {assessment.questions.length}</p>
-            </div>
-            <div className="mt-5 space-y-3">
-              {domains.map((domain) => (
-                <div key={domain.name} className="rounded-lg bg-slate-50 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black text-slate-950">{domain.name}</h3>
-                    <span className="text-xs font-black text-blue-800">{domain.score}%</span>
-                  </div>
-                  <p className="mt-1 text-xs font-bold leading-6 text-slate-600">{domain.note}</p>
+            {isStudentFlow ? (
+              <div className="mt-5 space-y-4">
+                <div className="rounded-lg bg-slate-950 p-5 text-center text-white">
+                  <p className="text-4xl font-black">{answeredCount}</p>
+                  <p className="mt-2 text-sm font-bold text-white/70">من {assessment.questions.length} سؤال</p>
                 </div>
-              ))}
-            </div>
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="text-sm font-black leading-7 text-emerald-950">
+                    الإجابات محفوظة للدكتور فقط. ركز في السؤال الحالي، ولا توجد درجة ظاهرة داخل تجربة الطالب.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mt-5 rounded-lg bg-slate-950 p-5 text-center text-white">
+                  <p className="text-5xl font-black">{score}%</p>
+                  <p className="mt-2 text-sm font-bold text-white/70">{correctCount} من {assessment.questions.length}</p>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {domains.map((domain) => (
+                    <div key={domain.name} className="rounded-lg bg-slate-50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-black text-slate-950">{domain.name}</h3>
+                        <span className="text-xs font-black text-blue-800">{domain.score}%</span>
+                      </div>
+                      <p className="mt-1 text-xs font-bold leading-6 text-slate-600">{domain.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </aside>
         </section>
       </main>

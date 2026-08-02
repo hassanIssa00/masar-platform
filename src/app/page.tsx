@@ -4,9 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Brain, Eye, FileSearch, Hand, LockKeyhole, Shapes, ShieldCheck, 
-  Volume2, Sparkles, CheckCircle2, Award, ChevronDown, GraduationCap,
-  Activity, BookOpen
+  ArrowLeft, Brain, FileSearch, Hand, LockKeyhole, Shapes, ShieldCheck,
+  Sparkles, CheckCircle2, Award, ChevronDown,
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 

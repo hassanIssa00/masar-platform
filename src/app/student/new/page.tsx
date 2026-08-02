@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { saveStudent } from '@/lib/localDb';
 
@@ -57,7 +57,14 @@ export default function NewStudentPage() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
-      <Navbar />
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:px-8">
+          <BrandMark size="sm" />
+          <div className="rounded-full bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
+            تسجيل بيانات الطفل
+          </div>
+        </div>
+      </header>
       <main className="mx-auto max-w-6xl px-4 py-6 lg:px-8">
         <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-start gap-4">

@@ -1,8 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import BrandMark from '@/components/BrandMark';
 import { getStudents, saveReport, saveStudent, saveSurvey, updateStudent } from '@/lib/localDb';
 
 const SECTIONS = [
@@ -244,7 +243,6 @@ function SurveyContent() {
   const [grade, setGrade] = useState('الصف الأول');
   const [parentPhone, setParentPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [submittedStudentId, setSubmittedStudentId] = useState('');
 
   const section = SECTIONS[currentSection];
   const totalQuestions = SECTIONS.reduce((total, item) => total + item.questions.length, 0);
@@ -337,32 +335,18 @@ function SurveyContent() {
 
     updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
     localStorage.setItem('masar.current-student-id', savedStudent.id);
-    setSubmittedStudentId(savedStudent.id);
     setSubmitted(true);
+    router.push(`/assessment?student=${savedStudent.id}`);
   };
 
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#F8FAFB] flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center p-8">
-          <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center animate-slide-up">
-            <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">أحسنت، وصلت للنهاية</h1>
-            <p className="text-gray-600 mb-8">تم إرسال إجابات ولي الأمر لد. إسماعيل. الطالب سيدخل الآن صفحته الخاصة للألعاب التفاعلية، والمسار التعليمي يفتحه الدكتور بعد المراجعة.</p>
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 text-right space-y-3">
-              <h2 className="font-bold text-green-700 text-xl text-center mb-4">ما الذي حدث الآن؟</h2>
-              <p className="text-gray-700"><strong>تم حفظ الإجابات:</strong> {Object.keys(answers).length} / {totalQuestions}</p>
-              <p className="text-gray-700"><strong>تم إرسال تقريرين للدكتور:</strong> تقرير إجابات خام + تقرير تحليل شامل</p>
-              <p className="text-gray-700"><strong>الخطوة التالية:</strong> صفحة الطالب والألعاب التفاعلية حتى اعتماد المسار</p>
-            </div>
-            <div className="flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href={`/kids?student=${submittedStudentId}`} className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition">
-                دخول صفحة الطالب
-              </Link>
-              <button onClick={() => router.push('/parent')} className="rounded-xl border border-gray-200 bg-white px-8 py-3 font-bold text-gray-700 transition hover:bg-gray-50">
-                متابعة ولي الأمر
-              </button>
-            </div>
+          <div className="bg-white rounded-3xl shadow-xl p-10 max-w-xl w-full text-center animate-slide-up">
+            <div className="mx-auto mb-6 h-12 w-12 rounded-full border-4 border-blue-100 border-t-[#1E6FBF] animate-spin" />
+            <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">تم حفظ استبيان ولي الأمر</h1>
+            <p className="text-gray-600 leading-8">جاري فتح اختبار الطالب المناسب للصف الآن. لن تظهر أي نتيجة للطالب، وسيتم حفظ تقرير الإجابات والتحليل داخل لوحة د. إسماعيل.</p>
           </div>
         </div>
       </div>
@@ -371,7 +355,14 @@ function SurveyContent() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFB] flex flex-col">
-      <Navbar />
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:px-8">
+          <BrandMark size="sm" />
+          <div className="rounded-full bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
+            استبيان ولي الأمر
+          </div>
+        </div>
+      </header>
       <div className="container mx-auto px-4 py-10 max-w-3xl">
 
         {/* Header */}
