@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
-import { saveAccount, setSession, UserRole } from '@/lib/localDb';
+import { saveAccount, setSession } from '@/lib/localDb';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,24 +14,20 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('parent');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
     const account = saveAccount({
       name,
       email,
       phone,
-      role,
+      role: 'parent',
     });
 
     setSession(account);
     saveCredential(account, password);
-    if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
-      router.push('/dashboard');
-      return;
-    }
-
     router.push('/student/new');
   };
 
@@ -45,7 +41,7 @@ export default function RegisterPage() {
             <BrandMark size="lg" showText={false} />
           </Link>
           <h1 className="mt-5 text-3xl font-black text-slate-950">إنشاء حساب جديد</h1>
-          <p className="mt-2 text-sm font-bold text-slate-500">الحساب يتحفظ محليًا ويظهر في تجربة المنصة مباشرة.</p>
+          <p className="mt-2 text-sm font-bold text-slate-500">إنشاء حساب ولي أمر لمتابعة بيانات الطفل والاستبيان.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
@@ -53,23 +49,14 @@ export default function RegisterPage() {
           <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" />
           <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="01000000000" type="tel" />
           <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة المرور" type="password" />
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-700">نوع الحساب</span>
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value as UserRole)}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
-            >
-              <option value="parent">ولي أمر / طالب</option>
-              <option value="specialist">أخصائي</option>
-              <option value="teacher">معلم</option>
-              <option value="doctor">د. إسماعيل / أدمن</option>
-            </select>
-          </label>
 
-          <button type="submit" className="focus-ring flex w-full min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 font-black text-white hover:bg-teal-800">
+          <div className="rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
+            هذه الصفحة مخصصة لولي الأمر فقط. حسابات الدكتور والأخصائي لا تُنشأ من التسجيل العام.
+          </div>
+
+          <button type="submit" disabled={loading} className="focus-ring flex w-full min-h-14 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 font-black text-white hover:bg-teal-800 disabled:opacity-60">
             <UserPlus size={18} />
-            تسجيل وإنشاء جلسة
+            {loading ? 'جاري تجهيز ملف ولي الأمر...' : 'تسجيل وإنشاء جلسة'}
           </button>
         </form>
 
@@ -80,6 +67,15 @@ export default function RegisterPage() {
           </Link>
         </p>
       </main>
+      {loading && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/82 text-white backdrop-blur-md">
+          <div className="motion-scale-in rounded-lg border border-white/15 bg-white/10 p-7 text-center shadow-2xl">
+            <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-teal-300" />
+            <p className="mt-4 text-lg font-black">جاري نقلك لتسجيل بيانات الطفل</p>
+            <p className="mt-1 text-sm font-bold text-white/70">لحظات بسيطة ونكمل المسار بشكل منظم.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

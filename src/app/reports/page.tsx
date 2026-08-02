@@ -11,7 +11,7 @@ import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
 import { getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 
-const filters = ['all', 'اختبار قبول', 'إجابات الاستبيان', 'التحليل الإكلينيكي', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
+const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التحليل الإكلينيكي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 
 export default function ReportsPage() {
   return (
@@ -52,7 +52,7 @@ function ReportsContent() {
   };
 
   if (selected) {
-    const isAnswersReport = selected.type === 'survey-answers';
+    const isAnswersReport = selected.type === 'survey-answers' || selected.type === 'student-assessment-answers';
     const decision = getDecisionFromScore(selected.score);
     const fileNumber = `MASAR-${selected.id.slice(-6).toUpperCase()}`;
     const sortedDomains = [...selected.domains].sort((first, second) => first.score - second.score);

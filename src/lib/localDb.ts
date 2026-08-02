@@ -40,7 +40,14 @@ export type ReportRecord = {
   date: string;
   score: number;
   status: 'completed' | 'pending';
-  type: 'initial-assessment' | 'placement' | 'survey-analysis' | 'survey-answers' | 'clinical-analysis';
+  type:
+    | 'initial-assessment'
+    | 'placement'
+    | 'survey-analysis'
+    | 'survey-answers'
+    | 'clinical-analysis'
+    | 'student-assessment-answers'
+    | 'student-assessment-analysis';
   summary: string;
   recommendations: string[];
   answers: Array<{ question: string; answer: string }>;

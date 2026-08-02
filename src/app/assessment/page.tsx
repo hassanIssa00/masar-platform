@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
-import { saveReport, saveStudent } from '@/lib/localDb';
+import { getStudents, saveReport, saveStudent, StudentRecord, updateStudent } from '@/lib/localDb';
 import { speakWithMasarVoice } from '@/lib/voicePackage';
 
 type ResponseRecord = {
@@ -26,7 +26,9 @@ export default function PlacementAssessmentPage() {
 
 function PlacementAssessmentContent() {
   const searchParams = useSearchParams();
+  const studentIdParam = searchParams.get('student');
   const [gradeKey, setGradeKey] = useState<PlacementGradeKey>('general');
+  const [student, setStudent] = useState<StudentRecord | null>(null);
   const [studentName, setStudentName] = useState('');
   const [studentAge, setStudentAge] = useState('');
   const [index, setIndex] = useState(0);
@@ -49,6 +51,32 @@ function PlacementAssessmentContent() {
   const decision = getDecisionFromScore(score);
 
   useEffect(() => {
+    const studentId = searchParams.get('student');
+    const existingStudent = studentId ? getStudents().find((item) => item.id === studentId) : null;
+    if (existingStudent) {
+      queueMicrotask(() => {
+        setStudent(existingStudent);
+        setStudentName(existingStudent.fullName);
+        setGradeKey(getGradeKeyFromStudentGrade(existingStudent.grade));
+      });
+      return;
+    }
+
+    if (studentId) {
+      queueMicrotask(() => {
+        setStudent({
+          id: studentId,
+          fullName: 'طالب الاختبار',
+          grade: 'عام',
+          reviewStatus: 'awaiting-doctor-review',
+          source: 'student-wizard',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      });
+      return;
+    }
+
     const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
     const stored = typeof window !== 'undefined' ? (localStorage.getItem('masar.assessment.gradeKey') as PlacementGradeKey | null) : null;
     const next = placementAssessments.some((item) => item.key === fromUrl)
@@ -61,6 +89,8 @@ function PlacementAssessmentContent() {
       queueMicrotask(() => setGradeKey(next));
     }
   }, [searchParams]);
+
+  const isStudentFlow = Boolean(studentIdParam);
 
   const domains = useMemo(() => {
     const grouped = new Map<string, ResponseRecord[]>();
@@ -96,21 +126,60 @@ function PlacementAssessmentContent() {
   };
 
   const finish = () => {
-    const student = saveStudent({
-      fullName: studentName.trim() || 'طالب اختبار تحديد مستوى',
+    const fallbackStudent: StudentRecord = {
+      id: studentIdParam ?? 'student_assessment',
+      fullName: studentName.trim() || 'طالب الاختبار',
       grade: assessment.shortTitle,
+      reviewStatus: 'awaiting-doctor-review',
       source: 'student-wizard',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const savedStudent = student
+      ? updateStudent(student.id, {
+        fullName: studentName.trim() || student.fullName,
+        grade: student.grade,
+        reviewStatus: 'awaiting-doctor-review',
+      }) ?? student
+      : isStudentFlow
+        ? saveStudent(fallbackStudent)
+      : saveStudent({
+        fullName: studentName.trim() || 'طالب اختبار تحديد مستوى',
+        grade: assessment.shortTitle,
+        reviewStatus: 'awaiting-doctor-review',
+        source: 'student-wizard',
+      });
+
+    const rawReport = saveReport({
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade: savedStudent.grade || assessment.shortTitle,
+      program: 'إجابات اختبار الطالب التفصيلية',
+      programColor: '#334155',
+      score: Math.round((answeredCount / assessment.questions.length) * 100),
+      status: 'pending',
+      type: 'student-assessment-answers',
+      summary: 'تقرير خام يحتوي على إجابات الطالب في اختبار تحديد المستوى المباشر، مخصص لمراجعة د. إسماعيل قبل اعتماد المسار.',
+      recommendations: [
+        'مراجعة الأسئلة غير الصحيحة بجانب إجابات ولي الأمر في الاستبيان.',
+        'ملاحظة سرعة الاستجابة واحتياج الطالب للصوت أو الصورة قبل اعتماد المسار.',
+      ],
+      answers: responses.map((response) => ({
+        question: `${response.question.categoryLabel}: ${response.question.prompt}`,
+        answer: `${response.answer || 'لم يجب'} | الإجابة الصحيحة: ${response.question.correct} | ${response.correct ? 'صحيح' : 'يحتاج مراجعة'} | المهارة: ${response.question.skill}`,
+      })),
+      domains,
     });
 
     const report = saveReport({
-      studentId: student.id,
-      studentName: student.fullName,
-      grade: assessment.shortTitle,
-      program: 'اختبار قبول وتحديد مستوى',
+      studentId: savedStudent.id,
+      studentName: savedStudent.fullName,
+      grade: savedStudent.grade || assessment.shortTitle,
+      program: isStudentFlow ? 'تحليل اختبار الطالب المباشر' : 'اختبار قبول وتحديد مستوى',
       programColor: '#2563eb',
       score,
-      status: 'completed',
-      type: 'placement',
+      status: isStudentFlow ? 'pending' : 'completed',
+      type: isStudentFlow ? 'student-assessment-analysis' : 'placement',
       summary: buildPlacementSummary({
         assessmentTitle: assessment.title,
         score,
@@ -130,6 +199,7 @@ function PlacementAssessmentContent() {
       'masar.last-placement-result',
       JSON.stringify({
         reportId: report.id,
+        rawReportId: rawReport.id,
         gradeKey,
         studentAge,
         correctCount,
@@ -138,6 +208,7 @@ function PlacementAssessmentContent() {
       }),
     );
     localStorage.setItem('masar.recommended-program', recommendedProgram.href);
+    localStorage.setItem('masar.current-student-id', savedStudent.id);
     setSavedReportId(report.id);
     setFinished(true);
   };
@@ -149,10 +220,12 @@ function PlacementAssessmentContent() {
         <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-black text-blue-700">اختبارات القبول وتحديد المستوى</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">7 اختبارات مختلفة بتقرير تحليلي كامل</h1>
+              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار الطالب بعد استبيان ولي الأمر' : 'اختبارات القبول وتحديد المستوى'}</p>
+              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار مباشر مناسب لصف الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
-                اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.
+                {isStudentFlow
+                  ? 'يجيب الطالب على الأسئلة بصوت وصورة، ويتم إرسال تقرير الإجابات والتحليل إلى د. إسماعيل بدون عرض درجة أو تشخيص للطالب.'
+                  : 'اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.'}
               </p>
             </div>
             <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
@@ -162,7 +235,7 @@ function PlacementAssessmentContent() {
           </div>
         </header>
 
-        <section className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {!isStudentFlow && <section className="mb-5 flex gap-2 overflow-x-auto pb-1">
           {placementAssessments.map((item) => (
             <button
               key={item.key}
@@ -174,14 +247,14 @@ function PlacementAssessmentContent() {
               {item.shortTitle}
             </button>
           ))}
-        </section>
+        </section>}
 
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-5 grid gap-4 md:grid-cols-3">
               <label className="block">
                 <span className="mb-2 block text-sm font-black text-slate-700">اسم الطالب</span>
-                <input value={studentName} onChange={(event) => setStudentName(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-blue-700" placeholder="اسم الطالب" />
+                <input value={studentName} onChange={(event) => setStudentName(event.target.value)} readOnly={isStudentFlow} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-blue-700 read-only:text-slate-500" placeholder="اسم الطالب" />
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-black text-slate-700">العمر</span>
@@ -221,7 +294,12 @@ function PlacementAssessmentContent() {
                   {current.options.map((option) => (
                     <button
                       key={option}
+                      type="button"
                       onClick={() => choose(option)}
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        choose(option);
+                      }}
                       className={`min-h-16 rounded-lg border px-4 py-4 text-right text-base font-black transition ${
                         selected === option
                           ? 'border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-200'
@@ -258,14 +336,18 @@ function PlacementAssessmentContent() {
             ) : (
               <article className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-center">
                 <CheckCircle2 className="mx-auto text-emerald-700" size={42} />
-                <h2 className="mt-4 text-2xl font-black text-slate-950">تم حفظ اختبار تحديد المستوى</h2>
-                <p className="mt-2 text-sm font-bold leading-7 text-slate-700">النتيجة {score}%، القرار: {decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.</p>
+                <h2 className="mt-4 text-2xl font-black text-slate-950">{isStudentFlow ? 'أحسنت، تم حفظ إجاباتك' : 'تم حفظ اختبار تحديد المستوى'}</h2>
+                <p className="mt-2 text-sm font-bold leading-7 text-slate-700">
+                  {isStudentFlow
+                    ? 'تم إرسال إجاباتك وتقرير التحليل إلى د. إسماعيل. ستدخل الآن صفحة الألعاب، والمسار التعليمي يفتحه الدكتور بعد المراجعة.'
+                    : `النتيجة ${score}%، القرار: ${decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.`}
+                </p>
                 <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-                  <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
+                  {!isStudentFlow && <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
                     عرض التقرير الرسمي
-                  </Link>
-                  <Link href={recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-                    فتح {recommendedProgram.label}
+                  </Link>}
+                  <Link href={isStudentFlow ? `/kids?student=${student?.id ?? studentIdParam ?? ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    {isStudentFlow ? 'دخول صفحة الألعاب' : `فتح ${recommendedProgram.label}`}
                   </Link>
                 </div>
                 <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>
@@ -317,4 +399,14 @@ function getRecommendedProgram(domains: Array<{ name: string; score: number }>) 
   }
 
   return { href: '/programs/learning-difficulties', label: 'برنامج صعوبات التعلم والخطة الفردية' };
+}
+
+function getGradeKeyFromStudentGrade(grade: string): PlacementGradeKey {
+  if (grade.includes('الأول')) return 'g1';
+  if (grade.includes('الثاني')) return 'g2';
+  if (grade.includes('الثالث')) return 'g3';
+  if (grade.includes('الرابع')) return 'g4';
+  if (grade.includes('الخامس')) return 'g5';
+  if (grade.includes('السادس')) return 'g6';
+  return 'general';
 }

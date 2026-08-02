@@ -9,6 +9,9 @@ import SyncStatus from '@/components/SyncStatus';
 import { saveStudent } from '@/lib/localDb';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
+const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
+const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
+const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFullYear() - 3 - index));
 
 export default function NewStudentPage() {
   const router = useRouter();
@@ -22,6 +25,10 @@ export default function NewStudentPage() {
     photoUrl: '',
     notes: '',
   });
+  const [birthDay, setBirthDay] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleFieldChange = (key: keyof typeof student, value: string) => {
     setStudent((current) => ({ ...current, [key]: value }));
@@ -29,10 +36,12 @@ export default function NewStudentPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
+    const dateOfBirth = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : '';
     const savedStudent = saveStudent({
       fullName: student.fullName.trim() || 'طالب جديد',
       nationalId: student.nationalId,
-      dateOfBirth: student.dateOfBirth,
+      dateOfBirth,
       grade: student.grade,
       parentName: student.parentName,
       parentPhone: student.parentPhone,
@@ -73,7 +82,23 @@ export default function NewStudentPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} />
               <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
-              <Field label="تاريخ الميلاد" type="date" value={student.dateOfBirth} onChange={(value) => handleFieldChange('dateOfBirth', value)} />
+              <div className="block">
+                <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <select value={birthDay} onChange={(event) => setBirthDay(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                    <option value="">اليوم</option>
+                    {days.map((day) => <option key={day} value={day}>{day}</option>)}
+                  </select>
+                  <select value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                    <option value="">الشهر</option>
+                    {months.map((month) => <option key={month} value={month}>{month}</option>)}
+                  </select>
+                  <select value={birthYear} onChange={(event) => setBirthYear(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                    <option value="">السنة</option>
+                    {years.map((year) => <option key={year} value={year}>{year}</option>)}
+                  </select>
+                </div>
+              </div>
               <label className="block">
                 <span className="mb-2 block text-sm font-black text-slate-700">الصف أو المسار</span>
                 <select value={student.grade} onChange={(event) => handleFieldChange('grade', event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
@@ -116,13 +141,22 @@ export default function NewStudentPage() {
               <ClipboardList className="mb-2 text-teal-800" size={22} />
               الخطوة التالية هي الاستبيان الشامل لتحديد مؤشرات القراءة، الكتابة، الرياضيات، السمع والنطق، التواصل، الانتباه، والسلوك.
             </div>
-            <button type="submit" className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">
+            <button type="submit" disabled={loading} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60">
               <Save size={17} />
-              حفظ والانتقال للاستبيان
+              {loading ? 'جاري فتح الاستبيان...' : 'حفظ والانتقال للاستبيان'}
             </button>
           </aside>
         </form>
       </main>
+      {loading && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/82 text-white backdrop-blur-md">
+          <div className="motion-scale-in rounded-lg border border-white/15 bg-white/10 p-7 text-center shadow-2xl">
+            <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-teal-300" />
+            <p className="mt-4 text-lg font-black">تم حفظ البيانات</p>
+            <p className="mt-1 text-sm font-bold text-white/70">جاري فتح استبيان ولي الأمر الشامل.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
