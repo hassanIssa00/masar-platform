@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Sparkles, Shield, RefreshCw, Lock, Check } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { getStudents, StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
 
 export default function Navbar() {
   const router = useRouter();
@@ -20,8 +20,9 @@ export default function Navbar() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      const name = localStorage.getItem('user_name') || 'ولي الأمر';
-      const role = localStorage.getItem('user_role') || 'parent';
+      const session = getSession();
+      const name = session?.name || localStorage.getItem('user_name') || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
+      const role = session?.role || localStorage.getItem('user_role') || 'parent';
       const savedMode = (localStorage.getItem('masar_active_mode') as 'parent' | 'student') || 'parent';
       const savedStudentId = localStorage.getItem('masar_active_student_id') || '';
 
@@ -40,9 +41,10 @@ export default function Navbar() {
     });
   }, []);
 
+  const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
+
   const switchMode = (targetMode: 'parent' | 'student') => {
     if (targetMode === 'parent' && mode === 'student') {
-      // Require simple parent PIN confirmation (1234)
       setShowPinModal(true);
       return;
     }
@@ -85,34 +87,43 @@ export default function Navbar() {
           <BrandMark size="sm" />
         </Link>
 
-        {/* Unified Family Profile Switcher Bar */}
+        {/* Profile Header Bar */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Linked Active Child Selector (if multiple children exist) */}
-          {students.length > 0 && (
-            <div className="hidden md:flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold">
-              <span className="text-slate-400">الطفل:</span>
-              <select
-                value={activeStudentId}
-                onChange={(e) => selectStudent(e.target.value)}
-                className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
-              >
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>👦 {s.fullName} ({s.grade})</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-
-          {/* Active Account Pill — only show for parent accounts, not doctor/admin */}
-          {userRole !== 'doctor' && userRole !== 'specialist' && userRole !== 'teacher' && (
-            <div className="hidden sm:flex min-w-0 rounded-xl bg-slate-50 px-3 py-1.5 text-right border border-slate-200">
+          {isStaff ? (
+            /* Staff / Doctor Badge */
+            <div className="hidden sm:flex min-w-0 items-center gap-2 rounded-xl bg-teal-50 px-3.5 py-1.5 text-right border border-teal-200">
+              <Shield size={16} className="text-teal-600 shrink-0" />
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">حساب العائلة</p>
-                <p className="truncate text-xs font-black text-slate-900">{userName || 'ولي الأمر'}</p>
+                <p className="text-[10px] font-black text-teal-700 uppercase tracking-wider">لوحة تشغيل الاستشاري</p>
+                <p className="truncate text-xs font-black text-slate-900">{userName || 'د. إسماعيل عيسى'}</p>
               </div>
             </div>
+          ) : (
+            /* Family & Child Switcher Bar — Parent Account Only */
+            <>
+              {students.length > 0 && (
+                <div className="hidden md:flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold">
+                  <span className="text-slate-400">الطفل:</span>
+                  <select
+                    value={activeStudentId}
+                    onChange={(e) => selectStudent(e.target.value)}
+                    className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
+                  >
+                    {students.map((s) => (
+                      <option key={s.id} value={s.id}>👦 {s.fullName} ({s.grade})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="hidden sm:flex min-w-0 rounded-xl bg-slate-50 px-3 py-1.5 text-right border border-slate-200">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">حساب العائلة</p>
+                  <p className="truncate text-xs font-black text-slate-900">{userName || 'ولي الأمر'}</p>
+                </div>
+              </div>
+            </>
           )}
 
         </div>
