@@ -307,9 +307,9 @@ function ReportsContent() {
                 </ReportSection>
 
                 <ReportSection number="6" title="الإجابات التفصيلية المحفوظة">
-                  <div className="max-h-[520px] space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 print:max-h-none print:overflow-visible">
                     {selected.answers.map((answer, index) => (
-                      <article key={`${answer.question}-${index}`} className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
+                      <article key={`${answer.question}-${index}`} className="rounded-xl bg-white p-3.5 border border-slate-200 shadow-sm print:break-inside-avoid">
                         <p className="text-xs font-black leading-6 text-slate-500">سؤال {index + 1}: {answer.question}</p>
                         <p className="mt-1 text-sm font-black leading-7 text-slate-950">{answer.answer}</p>
                       </article>
