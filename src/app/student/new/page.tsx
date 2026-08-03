@@ -1,12 +1,12 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { saveStudent } from '@/lib/localDb';
+import { getStudents, saveStudent, updateStudent } from '@/lib/localDb';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
@@ -15,6 +15,7 @@ const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFull
 
 export default function NewStudentPage() {
   const router = useRouter();
+  const [existingStudentId, setExistingStudentId] = useState('');
   const [student, setStudent] = useState({
     fullName: '',
     nationalId: '',
@@ -30,6 +31,28 @@ export default function NewStudentPage() {
   const [birthYear, setBirthYear] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Pre-fill from registration if a student record already exists
+  useEffect(() => {
+    const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
+    if (!savedStudentId) return;
+
+    const allStudents = getStudents();
+    const found = allStudents.find((s) => s.id === savedStudentId);
+    if (!found) return;
+
+    setExistingStudentId(found.id);
+    setStudent((prev) => ({
+      ...prev,
+      fullName: found.fullName || prev.fullName,
+      grade: found.grade || prev.grade,
+      parentName: found.parentName || prev.parentName,
+      parentPhone: found.parentPhone || prev.parentPhone,
+      photoUrl: found.photoUrl || prev.photoUrl,
+      notes: found.notes || prev.notes,
+      nationalId: found.nationalId || prev.nationalId,
+    }));
+  }, []);
+
   const handleFieldChange = (key: keyof typeof student, value: string) => {
     setStudent((current) => ({ ...current, [key]: value }));
   };
@@ -38,21 +61,55 @@ export default function NewStudentPage() {
     event.preventDefault();
     setLoading(true);
     const dateOfBirth = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : '';
-    const savedStudent = saveStudent({
-      fullName: student.fullName.trim() || 'طالب جديد',
-      nationalId: student.nationalId,
-      dateOfBirth,
-      grade: student.grade,
-      parentName: student.parentName,
-      parentPhone: student.parentPhone,
-      photoUrl: student.photoUrl,
-      notes: student.notes,
-      reviewStatus: 'awaiting-survey',
-      source: 'student-wizard',
-    });
 
-    localStorage.setItem('masar.current-student-id', savedStudent.id);
-    router.push(`/survey?student=${savedStudent.id}`);
+    let savedStudent;
+    if (existingStudentId) {
+      // Update the student record that was already created at registration
+      savedStudent = updateStudent(existingStudentId, {
+        fullName: student.fullName.trim() || 'طالب جديد',
+        nationalId: student.nationalId,
+        dateOfBirth,
+        grade: student.grade,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        photoUrl: student.photoUrl,
+        notes: student.notes,
+        reviewStatus: 'awaiting-survey',
+        source: 'student-wizard',
+      });
+      if (!savedStudent) {
+        // Fallback: create new
+        savedStudent = saveStudent({
+          fullName: student.fullName.trim() || 'طالب جديد',
+          nationalId: student.nationalId,
+          dateOfBirth,
+          grade: student.grade,
+          parentName: student.parentName,
+          parentPhone: student.parentPhone,
+          photoUrl: student.photoUrl,
+          notes: student.notes,
+          reviewStatus: 'awaiting-survey',
+          source: 'student-wizard',
+        });
+      }
+    } else {
+      savedStudent = saveStudent({
+        fullName: student.fullName.trim() || 'طالب جديد',
+        nationalId: student.nationalId,
+        dateOfBirth,
+        grade: student.grade,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        photoUrl: student.photoUrl,
+        notes: student.notes,
+        reviewStatus: 'awaiting-survey',
+        source: 'student-wizard',
+      });
+    }
+
+    localStorage.setItem('masar.current-student-id', savedStudent!.id);
+    localStorage.setItem('masar_active_student_id', savedStudent!.id);
+    router.push(`/survey?student=${savedStudent!.id}`);
   };
 
   return (

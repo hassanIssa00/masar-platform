@@ -126,13 +126,16 @@ export default function RegisterPage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('masar_active_student_id', matchingStudent.id);
       localStorage.setItem('masar_active_mode', accountType === 'parent' ? 'parent' : 'student');
+      // Store the student id so /student/new can pre-fill if needed
+      localStorage.setItem('masar.current-student-id', matchingStudent.id);
     }
 
     setTimeout(() => {
       if (accountType === 'parent') {
-        router.push('/parent');
+        // Go to student data entry → then survey → then assessment
+        router.push('/student/new');
       } else {
-        router.push('/kids');
+        router.push('/assessment');
       }
     }, 600);
   };
