@@ -28,12 +28,12 @@ export default function BrandMark({ size = 'md', showText = true, dark = false }
       {/* Plus Connector & Nexus Badge */}
       <span className="text-teal-600 font-black text-xs sm:text-sm select-none">×</span>
 
-      {/* Nexus Logo Badge */}
+      {/* Nexus Logo */}
       <span
-        className="relative inline-flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 text-white font-black shadow-xs ring-1 ring-teal-400/30"
-        style={{ width: markSize, height: markSize, fontSize: markSize * 0.4 }}
+        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-slate-900 ring-1 ring-slate-800 shadow-xs"
+        style={{ width: markSize, height: markSize }}
       >
-        <span>N</span>
+        <Image src="/brand/nexus-logo.webp" alt="شعار نظام نكسس" fill className="object-contain p-0.5" sizes={`${markSize}px`} priority={size === 'lg'} />
       </span>
 
       {showText && (
