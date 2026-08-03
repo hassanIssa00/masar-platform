@@ -230,6 +230,27 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   return next;
 }
 
+export function deleteStudent(studentId: string) {
+  const students = getStudents();
+  const student = students.find((item) => item.id === studentId);
+  // Remove student
+  writeList(KEYS.students, students.filter((item) => item.id !== studentId));
+  // Remove all their reports
+  const reports = readList<ReportRecord>(KEYS.reports);
+  writeList(KEYS.reports, reports.filter((item) => item.studentId !== studentId));
+  // Remove all their messages
+  const messages = readList<MessageRecord>(KEYS.messages);
+  writeList(KEYS.messages, messages.filter((item) => item.studentId !== studentId));
+  if (student) {
+    saveActivity({
+      type: 'student',
+      refId: studentId,
+      title: 'حذف ملف طالب',
+      detail: `${student.fullName} - ${student.grade}`,
+    });
+  }
+}
+
 export function getReports() {
   return readList<ReportRecord>(KEYS.reports);
 }
