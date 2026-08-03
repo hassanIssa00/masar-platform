@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
@@ -9,6 +10,7 @@ import { curriculumPrograms } from '@/data/curriculum';
 import { getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function ParentDashboard() {
+  const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -17,6 +19,12 @@ export default function ParentDashboard() {
 
   useEffect(() => {
     queueMicrotask(() => {
+      const session = getSession();
+      if (session?.role === 'doctor' || session?.role === 'specialist' || session?.role === 'teacher') {
+        router.push('/dashboard');
+        return;
+      }
+
       const nextStudents = getStudents();
       setStudents(nextStudents);
       setReports(getReports());

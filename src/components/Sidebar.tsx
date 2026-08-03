@@ -12,10 +12,8 @@ const adminLinks = [
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
   { name: 'التقارير', path: '/reports', icon: FileText },
   { name: 'لوحة الأخصائي', path: '/specialist', icon: Stethoscope },
-  { name: 'بوابة ولي الأمر', path: '/parent', icon: UsersRound },
   { name: 'الرسائل', path: '/messages', icon: MessageSquareText },
   { name: 'اجتماعات Zoom', path: '/meetings', icon: CalendarClock },
-  { name: 'ألعاب الطالب', path: '/kids', icon: Gamepad2 },
   { name: 'طالب جديد', path: '/student/new', icon: UserRoundPlus },
 ];
 

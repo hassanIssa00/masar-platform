@@ -47,15 +47,21 @@ function KidsDashboardContent() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      const currentSession = getSession();
+      if (currentSession?.role === 'doctor' || currentSession?.role === 'specialist' || currentSession?.role === 'teacher') {
+        router.push('/dashboard');
+        return;
+      }
+
       const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
       const currentStudent = getStudents().find((item) => item.id === studentId) ?? null;
       setStudent(currentStudent);
       setReports(studentId ? getReports().filter((report) => report.studentId === studentId) : []);
-      setSessionState(getSession());
+      setSessionState(currentSession);
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   const assignedProgram = curriculumPrograms.find((program) => program.slug === student?.assignedProgram);
   const status = getReviewStatus(student, Boolean(assignedProgram));
