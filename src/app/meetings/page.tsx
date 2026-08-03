@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, Monitor, PhoneOff, Copy, 
-  ExternalLink, CalendarClock, MessageSquare, Sparkles, User, 
-  ShieldCheck, PenTool, Radio, Volume2
+  Trash2, CalendarClock, PenTool, Radio, User, 
+  ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -47,6 +47,8 @@ export default function MeetingsPage() {
   const [videoOn, setVideoOn] = useState(true);
   const [screenShare, setScreenShare] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const [chatMessages, setChatMessages] = useState<Array<{ sender: string; text: string; time: string }>>([
     { sender: 'د. إسماعيل عيسى', text: 'أهلاً بك في جلسة المتابعة المباشرة على منصة مسار.', time: '10:00 ص' }
   ]);
@@ -116,6 +118,17 @@ export default function MeetingsPage() {
     writeMeetings(updated);
     setMeetings(updated);
     setForm((current) => ({ ...current, zoomUrl: '', notes: '' }));
+    setCopyMessage('تم إضافة الجلسة المجدولة بنجاح!');
+    setTimeout(() => setCopyMessage(''), 3000);
+  };
+
+  const deleteMeeting = (id: string) => {
+    const updated = meetings.filter((m) => m.id !== id);
+    writeMeetings(updated);
+    setMeetings(updated);
+    setConfirmDeleteId(null);
+    setCopyMessage('تم حذف الجلسة بنجاح.');
+    setTimeout(() => setCopyMessage(''), 3000);
   };
 
   const copyInvite = async (meeting: MeetingRecord) => {
@@ -167,19 +180,19 @@ export default function MeetingsPage() {
             <div className="mb-8 overflow-hidden rounded-3xl border-2 border-teal-600 bg-slate-950 text-white shadow-2xl transition">
               
               {/* Call Top Control Bar */}
-              <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/90 px-6 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 bg-slate-900/90 px-6 py-4">
                 <div className="flex items-center gap-3">
-                  <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping" />
+                  <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
                   <div>
                     <h2 className="font-black text-white text-base">{activeCallRoom.title}</h2>
                     <p className="text-xs font-bold text-teal-300">رمز الغرفة: {activeCallRoom.roomCode} · جودة الاتصال 1080p HD</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3.5">
                   <button
                     onClick={() => setShowWhiteboard(!showWhiteboard)}
-                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition ${
+                    className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-black transition ${
                       showWhiteboard ? 'bg-teal-400 text-slate-950' : 'bg-white/10 text-white hover:bg-white/20'
                     }`}
                   >
@@ -189,7 +202,7 @@ export default function MeetingsPage() {
 
                   <button
                     onClick={() => setActiveCallRoom(null)}
-                    className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-700 transition"
+                    className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition"
                   >
                     <PhoneOff size={16} />
                     <span>إنهاء الجلسة</span>
@@ -201,7 +214,7 @@ export default function MeetingsPage() {
               <div className="grid lg:grid-cols-12 min-h-[460px]">
                 
                 {/* Video Streams & Whiteboard Area */}
-                <div className={`p-4 space-y-4 ${showWhiteboard ? 'lg:col-span-8' : 'lg:col-span-8'}`}>
+                <div className="p-4 space-y-4 lg:col-span-8">
                   
                   {showWhiteboard ? (
                     <div className="h-96 rounded-2xl bg-white p-4 text-slate-900 flex flex-col justify-between border border-slate-300 shadow-inner">
@@ -472,10 +485,10 @@ export default function MeetingsPage() {
                             )}
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <button
                               onClick={() => copyInvite(meeting)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
                             >
                               <Copy size={15} />
                               <span>نسخ الدعوة</span>
@@ -483,10 +496,20 @@ export default function MeetingsPage() {
 
                             <button
                               onClick={() => launchCall(meeting)}
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm active:scale-95"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm active:scale-95"
                             >
                               <Video size={16} />
                               <span>دخول الغرفة المباشرة</span>
+                            </button>
+
+                            {/* DELETE MEETING BUTTON */}
+                            <button
+                              onClick={() => setConfirmDeleteId(meeting.id)}
+                              className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition"
+                              title="حذف الجلسة"
+                            >
+                              <Trash2 size={15} />
+                              <span>حذف</span>
                             </button>
                           </div>
                         </div>
@@ -506,6 +529,38 @@ export default function MeetingsPage() {
 
         </main>
       </div>
+
+      {/* Delete Meeting Modal Confirmation */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 text-right space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle size={28} />
+              <h3 className="text-xl font-black text-slate-900">تأكيد حذف الجلسة المجدولة</h3>
+            </div>
+            <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed">
+              هل أنت تأكد من حذف هذه الجلسة من جدول المواعيد؟ لن تمكن من استعادتها بعد الحذف.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(null)}
+                className="rounded-xl px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-100 transition"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDeleteId && deleteMeeting(confirmDeleteId)}
+                className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition shadow-md shadow-rose-600/20"
+              >
+                تأكيد الحذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
