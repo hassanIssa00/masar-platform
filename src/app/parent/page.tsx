@@ -22,8 +22,23 @@ export default function ParentDashboard() {
       setReports(getReports());
       setMessages(getMessages());
       setParentName(getSession()?.name ?? 'ولي الأمر');
-      setSelectedStudentId(nextStudents[0]?.id ?? '');
+      
+      const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar_active_student_id') : null;
+      if (savedStudentId && nextStudents.some((s) => s.id === savedStudentId)) {
+        setSelectedStudentId(savedStudentId);
+      } else {
+        setSelectedStudentId(nextStudents[0]?.id ?? '');
+      }
     });
+
+    const handleStorage = () => {
+      const savedStudentId = localStorage.getItem('masar_active_student_id');
+      if (savedStudentId) {
+        setSelectedStudentId(savedStudentId);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
