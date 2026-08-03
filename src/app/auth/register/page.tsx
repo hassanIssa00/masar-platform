@@ -149,7 +149,7 @@ export default function RegisterPage() {
             }`}
           >
             <HeartHandshake size={18} />
-            <span>حساب ولي أمر وطالب</span>
+            <span>حساب ولي أمر</span>
           </button>
 
           <button
