@@ -104,32 +104,6 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Mode Switcher Toggle Button */}
-          <div className="flex items-center rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-inner">
-            <button
-              onClick={() => switchMode('parent')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition ${
-                mode === 'parent'
-                  ? 'bg-white text-indigo-950 shadow-sm border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <User size={14} className="text-indigo-600" />
-              <span>وضع ولي الأمر</span>
-            </button>
-
-            <button
-              onClick={() => switchMode('student')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition ${
-                mode === 'student'
-                  ? 'bg-amber-400 text-slate-950 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Sparkles size={14} className="text-amber-700 animate-pulse" />
-              <span>وضع الطفل (الألعاب)</span>
-            </button>
-          </div>
 
           {/* Active Account Pill */}
           <div className="hidden sm:flex min-w-0 rounded-xl bg-slate-50 px-3 py-1.5 text-right border border-slate-200">
