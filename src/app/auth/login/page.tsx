@@ -135,7 +135,7 @@ export default function LoginPage() {
               {[
                 'جلسة محفوظة محلياً بأمان',
                 'تحقق فوري من الحساب وكلمة المرور',
-                'أزرار تجربة سريعة للدكتور وولي الأمر'
+                'دخول آمن ومباشر بنظام المشتركين'
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 text-xs sm:text-sm font-bold text-slate-800 border border-slate-200/80 shadow-sm">
                   <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
@@ -158,43 +158,6 @@ export default function LoginPage() {
             </Link>
             <h1 className="text-3xl font-black text-slate-900">تسجيل الدخول</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
-          </div>
-
-          {/* Quick Demo Login Buttons */}
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <button 
-              type="button" 
-              onClick={loginAsDoctor} 
-              className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-xs sm:text-sm font-black text-white hover:bg-teal-800 transition shadow-sm active:scale-95"
-            >
-              <ShieldCheck size={18} />
-              دخول د. إسماعيل
-            </button>
-            <button 
-              type="button" 
-              onClick={loginAsParent} 
-              className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs sm:text-sm font-black text-white hover:bg-slate-800 transition shadow-sm active:scale-95"
-            >
-              <UserRound size={18} />
-              دخول ولي أمر
-            </button>
-          </div>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <button 
-              type="button" 
-              onClick={() => fillDemo('doctor')} 
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
-            >
-              تعبئة بيانات الدكتور
-            </button>
-            <button 
-              type="button" 
-              onClick={() => fillDemo('parent')} 
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
-            >
-              تعبئة بيانات ولي الأمر
-            </button>
           </div>
 
           {(loginError || loginMessage) && (
