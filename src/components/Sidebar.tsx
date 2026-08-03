@@ -9,6 +9,7 @@ import { clearSession } from '@/lib/localDb';
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
+  { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
   { name: 'التقارير', path: '/reports', icon: FileText },
   { name: 'لوحة الأخصائي', path: '/specialist', icon: Stethoscope },
