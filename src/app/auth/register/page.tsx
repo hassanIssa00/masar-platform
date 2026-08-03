@@ -3,10 +3,10 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, UserCheck, GraduationCap, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { UserPlus, GraduationCap, HeartHandshake } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
-import { saveAccount, saveStudent, setSession } from '@/lib/localDb';
+import { getStudents, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
 
 const countryCodes = [
   // ── الدول العربية ──
@@ -81,30 +81,50 @@ export default function RegisterPage() {
     const fullPhone = `${countryCode}${phone}`;
     const primaryName = accountType === 'parent' ? parentName : childName;
 
-    // 1. Create User Account
+    // 1. Save User Account
     const account = saveAccount({
       name: primaryName,
       email,
       phone: fullPhone,
-      role: accountType === 'parent' ? 'parent' : 'parent', // student accesses under family account
+      role: 'parent',
     });
 
-    // 2. Automatically Create & Link Student Profile
-    const studentRecord = saveStudent({
-      fullName: childName || primaryName,
-      grade,
-      parentName: accountType === 'parent' ? parentName : undefined,
-      parentPhone: fullPhone,
-      source: 'student-wizard',
-      reviewStatus: 'awaiting-survey',
+    // 2. Automatic Linkage Logic: Look for existing matching student in system
+    const allStudents = getStudents();
+    const normalizedParentName = parentName.trim().toLowerCase();
+    const normalizedChildName = childName.trim().toLowerCase();
+
+    let matchingStudent = allStudents.find((s) => {
+      if (phone && s.parentPhone && s.parentPhone.includes(phone)) return true;
+      if (normalizedParentName && s.parentName && s.parentName.trim().toLowerCase() === normalizedParentName) return true;
+      if (normalizedChildName && s.fullName && s.fullName.trim().toLowerCase() === normalizedChildName) return true;
+      return false;
     });
+
+    // If matching student found, update their parent details to ensure instant report linkage
+    if (matchingStudent) {
+      updateStudent(matchingStudent.id, {
+        parentName: parentName || matchingStudent.parentName,
+        parentPhone: fullPhone || matchingStudent.parentPhone,
+      });
+    } else {
+      // If no matching student exists yet, create new student record linked to this parent
+      matchingStudent = saveStudent({
+        fullName: childName || `طالب ${parentName}`,
+        grade,
+        parentName: parentName,
+        parentPhone: fullPhone,
+        source: 'student-wizard',
+        reviewStatus: 'awaiting-survey',
+      });
+    }
 
     setSession(account);
     saveCredential(account, password);
 
-    // Save active student ID for profile switcher
+    // Save active student ID for instant report and profile switcher binding
     if (typeof window !== 'undefined') {
-      localStorage.setItem('masar_active_student_id', studentRecord.id);
+      localStorage.setItem('masar_active_student_id', matchingStudent.id);
       localStorage.setItem('masar_active_mode', accountType === 'parent' ? 'parent' : 'student');
     }
 
@@ -226,7 +246,7 @@ export default function RegisterPage() {
             className="focus-ring flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95 disabled:opacity-60"
           >
             <UserPlus size={18} />
-            {loading ? 'جاري إنشاء وتجهيز الحساب...' : 'إنشاء الحساب ودخول المنصة'}
+            {loading ? 'جاري الربط وإنشاء الحساب...' : 'إنشاء الحساب ودخول المنصة'}
           </button>
         </form>
 
@@ -242,8 +262,8 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-900/50 text-slate-900 backdrop-blur-md">
           <div className="motion-scale-in rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-2xl max-w-sm w-full mx-4 space-y-3">
             <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-teal-600" />
-            <p className="text-lg font-black text-slate-900">جاري تجهيز الحساب الموحد...</p>
-            <p className="text-xs font-bold text-slate-500">تم إنشاء الملف وربط الطفل بنجاح.</p>
+            <p className="text-lg font-black text-slate-900">جاري ربط ملف الطالب والتقارير...</p>
+            <p className="text-xs font-bold text-slate-500">سيتم التعرف التلقائي على نتائج وتقارير الطفل.</p>
           </div>
         </div>
       )}
