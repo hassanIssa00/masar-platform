@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
@@ -9,7 +9,7 @@ import {
   Stethoscope, Activity, Users, Check, Zap, Eye, Star,
   BookOpen, Calculator, Volume2, Target, Cpu, Flame, Layers,
   MoveLeft, ArrowRight, Compass, MousePointerClick, ChevronLeft,
-  UserCheck
+  UserCheck, VolumeX, RotateCcw, ThumbsUp, Play, CheckCircle
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 
@@ -88,6 +88,54 @@ const learningTracks = [
   { title: 'تشخيص وتأهيل صعوبات التعلم', icon: Stethoscope, desc: 'تقارير إكلينيكية متخصصة بدعم فردي مباشر' },
 ];
 
+const sampleInteractiveQuestions = [
+  {
+    prompt: 'أكمل الكلمة بالحرف المناسب: بَــ...ــتْ',
+    options: ['يْـ', 'تْـ', 'نْـ'],
+    correctIndex: 0,
+    audioText: 'بَيْتْ',
+    explanation: 'ممتاز! مهارة التحليل الصوتي المكتسبة: التمييز بين حرف الياء والتاء وسط الكلمة.'
+  },
+  {
+    prompt: 'ما ناتج جمع النماذج المحسوسة: 5 + 3 = ؟',
+    options: ['7', '8', '9'],
+    correctIndex: 1,
+    audioText: 'خمسة زائد ثلاثة يساوي ثمانية',
+    explanation: 'إجابة صحيحة! التفكير الحسابي المحسوس مفعّل بنجاح.'
+  },
+  {
+    prompt: 'ما النمط الصحيح التالي: أزرق، أحمر، أزرق، ...',
+    options: ['أحمر', 'أخضر', 'أصفر'],
+    correctIndex: 0,
+    audioText: 'أحمر',
+    explanation: 'رائع! مهارة استكمال الأنماط البصرية والتركيز مرتفعة.'
+  }
+];
+
+const parentStories = [
+  {
+    name: 'أم عبد الله (الصف الثاني الابتدائي)',
+    track: 'تأسيس التهجي والقرائية',
+    before: 'كان يواجه صعوبة في التمييز بين المقاطع الصوتية القصيرة والطويلة.',
+    after: 'بعد 3 أسابيع من الخطة العلاجية، أصبح يقرأ الجمل البسيطة بطلاقة وثقة.',
+    rating: 5,
+  },
+  {
+    name: 'أبو سارة (الصف الرابع الابتدائي)',
+    track: 'الرياضيات والتفكير المنطقي',
+    before: 'كان يتوتر عند رؤية المسائل اللفظية ويواجه تشتتاً سريعاً.',
+    after: 'ارتفع تركيزه واستيعابه عبر التمثيل البصري المحسوس للمسائل.',
+    rating: 5,
+  },
+  {
+    name: 'أم خالد (الصف الأول الابتدائي)',
+    track: 'النطق والتخاطب',
+    before: 'تأخر لغوي بصرى مع صعوبة في مخارج حروف السين والصاد.',
+    after: 'تحسن ملحوظ في النطق مع زيادة حصيلته اللغوية اليومية بنسبة 70%.',
+    rating: 5,
+  }
+];
+
 const labs = [
   {
     title: 'معمل التأسيس القرائي والتهجئة',
@@ -131,6 +179,39 @@ const faqs = [
 export default function Home() {
   const [selectedLevel, setSelectedLevel] = useState(placementLevels[0]);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
+  const [activeStoryIdx, setActiveStoryIdx] = useState(0);
+
+  // Interactive Quiz Demo State
+  const [quizStep, setQuizStep] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [quizScore, setQuizScore] = useState(0);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  const currentQuiz = sampleInteractiveQuestions[quizStep];
+
+  const handleOptionSelect = (idx: number) => {
+    setSelectedOption(idx);
+    if (idx === currentQuiz.correctIndex) {
+      setQuizScore((prev) => prev + 1);
+    }
+  };
+
+  const playAudio = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ar-SA';
+      utterance.onstart = () => setIsPlayingAudio(true);
+      utterance.onend = () => setIsPlayingAudio(false);
+      utterance.onerror = () => setIsPlayingAudio(false);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const nextQuizQuestion = () => {
+    setSelectedOption(null);
+    setQuizStep((prev) => (prev + 1) % sampleInteractiveQuestions.length);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
@@ -189,8 +270,8 @@ export default function Home() {
                 
                 {/* Header Pill: تعليمي - علاجي - خطط فردية */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-600 px-4 py-1.5 text-xs sm:text-sm font-black text-white shadow-md">
-                    <Sparkles size={15} className="animate-pulse" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-600 px-4 py-1.5 text-xs sm:text-sm font-black text-white shadow-md animate-pulse">
+                    <Sparkles size={15} />
                     <span>تعليمي • علاجي • خطط فردية</span>
                   </div>
 
@@ -253,15 +334,15 @@ export default function Home() {
 
                 {/* Trust Metrics Bar */}
                 <div className="pt-6 border-t border-slate-200/80 grid grid-cols-3 gap-4 text-right">
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs">
+                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
                     <p className="text-2xl sm:text-3xl font-black text-slate-900">+5,000</p>
                     <p className="text-xs font-bold text-slate-500 mt-0.5">طالب تم تقييمهم</p>
                   </div>
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs">
+                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
                     <p className="text-2xl sm:text-3xl font-black text-teal-600">98%</p>
                     <p className="text-xs font-bold text-slate-500 mt-0.5">نسبة التحسن الأكاديمي</p>
                   </div>
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs">
+                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
                     <p className="text-2xl sm:text-3xl font-black text-cyan-600">7 صفوف</p>
                     <p className="text-xs font-bold text-slate-500 mt-0.5">اختبارات تشخيصية</p>
                   </div>
@@ -314,7 +395,102 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3. DYNAMIC NEXUS ENTRY BRIDGE WITH ANIMATED ARROWS (LIGHT THEME AS REQUESTED) */}
+        {/* 3. NEW INTERACTIVE DEMO WIDGET SECTION (تجربة تفاعلية حية لأسئلة التقييم) */}
+        <section className="py-16 border-t border-slate-200 bg-white relative">
+          <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-8">
+            
+            <div className="text-center space-y-3">
+              <span className="px-4 py-1.5 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-black inline-flex items-center gap-2">
+                <MousePointerClick size={16} className="text-cyan-700 animate-bounce" />
+                <span>تجربة تفاعلية حية</span>
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">جرب عينة من أسئلة التقييم التفاعلية</h2>
+              <p className="text-slate-600 font-bold text-sm max-w-xl mx-auto">
+                اضغط على الخيارات المتاحة واستمع للنطق الصوتي لتجربة بيئة الطفل التفاعلية
+              </p>
+            </div>
+
+            {/* Interactive Demo Quiz Box */}
+            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-6 sm:p-8 shadow-xl space-y-6 max-w-3xl mx-auto">
+              
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-teal-600 px-3 py-1 text-xs font-black text-white">
+                    السؤال {quizStep + 1} من {sampleInteractiveQuestions.length}
+                  </span>
+                  <span className="text-xs font-black text-slate-500">طريقة التقييم التفاعلي</span>
+                </div>
+
+                <button
+                  onClick={() => playAudio(currentQuiz.audioText)}
+                  className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-black transition cursor-pointer ${
+                    isPlayingAudio ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse' : 'bg-white border-slate-200 text-teal-800 hover:bg-teal-50'
+                  }`}
+                >
+                  <Volume2 size={16} />
+                  <span>{isPlayingAudio ? 'جاري التشغيل...' : '🔊 استمع للكلمة'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-4 text-center py-4">
+                <h3 className="text-2xl font-black text-slate-900">{currentQuiz.prompt}</h3>
+                
+                {/* Options */}
+                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto pt-2">
+                  {currentQuiz.options.map((opt, idx) => {
+                    const isSelected = selectedOption === idx;
+                    const isCorrect = idx === currentQuiz.correctIndex;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleOptionSelect(idx)}
+                        className={`rounded-2xl border-2 py-4 text-lg font-black transition-all duration-300 cursor-pointer ${
+                          isSelected
+                            ? isCorrect
+                              ? 'bg-emerald-500 text-white border-emerald-600 scale-105 shadow-md'
+                              : 'bg-rose-500 text-white border-rose-600'
+                            : 'bg-white border-slate-200 text-slate-800 hover:border-teal-400 hover:bg-teal-50'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Explanation Feedback */}
+                {selectedOption !== null && (
+                  <div className={`mt-4 rounded-2xl p-4 text-xs font-black leading-relaxed transition-all duration-300 ${
+                    selectedOption === currentQuiz.correctIndex 
+                      ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' 
+                      : 'bg-rose-100 text-rose-950 border border-rose-300'
+                  }`}>
+                    {selectedOption === currentQuiz.correctIndex ? '✓ ' : '✗ '}
+                    {currentQuiz.explanation}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+                <span className="text-xs font-bold text-slate-500">
+                  نقاط التجربة: <span className="font-black text-teal-700">{quizScore}</span> إجابات صحيحة
+                </span>
+
+                <button
+                  onClick={nextQuizQuestion}
+                  className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2 text-xs font-black text-white hover:bg-teal-700 transition cursor-pointer"
+                >
+                  <span>السؤال التالي</span>
+                  <MoveLeft size={16} />
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        {/* 4. DYNAMIC NEXUS ENTRY BRIDGE WITH ANIMATED ARROWS (LIGHT THEME AS REQUESTED) */}
         <section className="py-20 border-t border-slate-200 bg-gradient-to-b from-slate-50 via-teal-50/50 to-white relative overflow-hidden">
           
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
@@ -461,7 +637,7 @@ export default function Home() {
 
             </div>
 
-            {/* Nexus Mockup Image Section (Light Frame) */}
+            {/* Nexus Mockup Image Section (Light Frame with Real Official Image) */}
             <div className="relative rounded-3xl border border-slate-200 bg-white p-3 shadow-xl overflow-hidden group">
               <div className="relative h-[280px] sm:h-[380px] w-full rounded-2xl overflow-hidden bg-slate-900">
                 <Image 
@@ -491,7 +667,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. VISUAL LEARNING LABS SHOWCASE */}
+        {/* 5. VISUAL LEARNING LABS SHOWCASE */}
         <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
@@ -542,7 +718,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 5. SEVEN PLACEMENT LEVELS INTERACTIVE EXPLORER */}
+        {/* 6. SEVEN PLACEMENT LEVELS INTERACTIVE EXPLORER */}
         <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
@@ -649,8 +825,60 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 6. FAQS ACCORDION SECTION */}
+        {/* 7. PARENT TESTIMONIAL STORIES CAROUSEL */}
         <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
+          <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-10">
+            
+            <div className="text-center space-y-4">
+              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
+                تجارب وقصص نجاح
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">قصص تحول واقعية للأطفال والطلاب</h2>
+            </div>
+
+            {/* Testimonials Switcher */}
+            <div className="grid md:grid-cols-3 gap-4">
+              {parentStories.map((story, idx) => {
+                const isActive = activeStoryIdx === idx;
+                return (
+                  <div
+                    key={story.name}
+                    onClick={() => setActiveStoryIdx(idx)}
+                    className={`rounded-3xl border p-6 transition cursor-pointer flex flex-col justify-between space-y-4 ${
+                      isActive 
+                        ? 'border-teal-500 bg-white shadow-xl ring-2 ring-teal-500/20 scale-102' 
+                        : 'border-slate-200 bg-white/70 hover:bg-white'
+                    }`}
+                  >
+                    <div className="space-y-3 text-right">
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-1 text-amber-400">
+                          {Array.from({ length: story.rating }).map((_, i) => (
+                            <Star key={i} size={14} fill="currentColor" />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-black text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                          {story.track}
+                        </span>
+                      </div>
+
+                      <h4 className="font-black text-slate-900 text-sm">{story.name}</h4>
+                      
+                      <div className="space-y-2 text-xs font-bold leading-relaxed">
+                        <p className="text-slate-500 line-through">قبل: {story.before}</p>
+                        <p className="text-teal-900 font-black">بعد: {story.after}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>
+        </section>
+
+        {/* 8. FAQS ACCORDION SECTION */}
+        <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-4xl px-5 lg:px-8 space-y-10">
             
             <div className="text-center space-y-4">
@@ -664,7 +892,7 @@ export default function Home() {
               {faqs.map((faq, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden transition shadow-2xs"
+                  className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden transition shadow-2xs"
                 >
                   <button
                     onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
@@ -688,7 +916,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 7. FINAL CTA SECTION */}
+        {/* 9. FINAL CTA SECTION */}
         <section className="py-20 border-t border-slate-200 bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white relative overflow-hidden">
           <div className="mx-auto max-w-5xl px-5 text-center space-y-6">
             <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
