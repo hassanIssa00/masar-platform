@@ -142,7 +142,7 @@ export default function Home() {
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link 
-              href="/nexus" 
+              href="https://nexus.masar-platform.org" 
               className="focus-ring rounded-xl border border-cyan-300 bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md hover:from-cyan-700 hover:to-teal-700 transition active:scale-95 flex items-center gap-1.5"
             >
               <Trophy size={16} />
@@ -235,7 +235,7 @@ export default function Home() {
                 </Link>
 
                 <Link 
-                  href="/nexus" 
+                  href="https://nexus.masar-platform.org" 
                   className="focus-ring inline-flex min-h-14 items-center justify-center gap-2.5 rounded-2xl border border-cyan-300 bg-gradient-to-r from-cyan-900 via-teal-900 to-slate-900 px-8 py-4 text-base font-black text-white shadow-lg shadow-cyan-900/30 hover:from-cyan-950 hover:to-slate-950 transition active:scale-95"
                 >
                   <Trophy size={20} className="text-amber-400 animate-bounce" />
