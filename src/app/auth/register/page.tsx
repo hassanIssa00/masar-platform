@@ -3,10 +3,10 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, UserCheck, GraduationCap, ShieldCheck, HeartHandshake } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
-import { saveAccount, setSession } from '@/lib/localDb';
+import { saveAccount, saveStudent, setSession } from '@/lib/localDb';
 
 const countryCodes = [
   // ── الدول العربية ──
@@ -40,58 +40,34 @@ const countryCodes = [
   { code: '+33', name: '🇫🇷 فرنسا (+33)' },
   { code: '+39', name: '🇮🇹 إيطاليا (+39)' },
   { code: '+34', name: '🇪🇸 إسبانيا (+34)' },
-  { code: '+31', name: '🇳🇱 هولندا (+31)' },
-  { code: '+32', name: '🇧🇪 بلجيكا (+32)' },
-  { code: '+41', name: '🇨🇭 سويسرا (+41)' },
-  { code: '+43', name: '🇦🇹 النمسا (+43)' },
-  { code: '+46', name: '🇸🇪 السويد (+46)' },
-  { code: '+47', name: '🇳🇴 النرويج (+47)' },
-  { code: '+45', name: '🇩🇰 الدنمارك (+45)' },
-  { code: '+358', name: '🇫🇮 فنلندا (+358)' },
-  { code: '+351', name: '🇵🇹 البرتغال (+351)' },
-  { code: '+30', name: '🇬🇷 اليونان (+30)' },
-  { code: '+90', name: '🇹🇷 تركيا (+90)' },
-  { code: '+7', name: '🇷🇺 روسيا (+7)' },
-  { code: '+380', name: '🇺🇦 أوكرانيا (+380)' },
-  { code: '+48', name: '🇵🇱 بولندا (+48)' },
-  { code: '+40', name: '🇷🇴 رومانيا (+40)' },
-  { code: '+36', name: '🇭🇺 المجر (+36)' },
-  { code: '+420', name: '🇨🇿 التشيك (+420)' },
-  { code: '+353', name: '🇮🇪 أيرلندا (+353)' },
 
-  // ── آسيا وأوقيانوسيا ──
+  // ── آسيا وباقي العالم ──
   { code: '+91', name: '🇮🇳 الهند (+91)' },
   { code: '+86', name: '🇨🇳 الصين (+86)' },
   { code: '+81', name: '🇯🇵 اليابان (+81)' },
-  { code: '+82', name: '🇰🇷 كوريا الجنوبية (+82)' },
-  { code: '+92', name: '🇵🇰 باكستان (+92)' },
-  { code: '+880', name: '🇧🇩 بنغلاديش (+880)' },
-  { code: '+94', name: '🇱🇰 سريلانكا (+94)' },
-  { code: '+60', name: '🇲🇾 ماليزيا (+60)' },
-  { code: '+62', name: '🇮🇩 إندونيسيا (+62)' },
-  { code: '+65', name: '🇸🇬 سنغافورة (+65)' },
-  { code: '+66', name: '🇹🇭 تايلاند (+66)' },
-  { code: '+84', name: '🇻🇳 فيتنام (+84)' },
-  { code: '+63', name: '🇵🇭 الفلبين (+63)' },
+  { code: '+90', name: '🇹🇷 تركيا (+90)' },
   { code: '+61', name: '🇦🇺 أستراليا (+61)' },
-  { code: '+64', name: '🇳🇿 نيوزيلندا (+64)' },
+];
 
-  // ── أمريكا اللاتينية وإفريقيا ──
-  { code: '+55', name: '🇧🇷 البرازيل (+55)' },
-  { code: '+52', name: '🇲🇽 المكسيك (+52)' },
-  { code: '+54', name: '🇦🇷 الأرجنتين (+54)' },
-  { code: '+57', name: '🇨🇴 كولومبيا (+57)' },
-  { code: '+56', name: '🇨🇱 تشيلي (+56)' },
-  { code: '+27', name: '🇿🇦 جنوب إفريقيا (+27)' },
-  { code: '+234', name: '🇳🇬 نيجيريا (+234)' },
-  { code: '+254', name: '🇰🇪 كينيا (+254)' },
-  { code: '+233', name: '🇬🇭 غانا (+233)' },
-  { code: '+251', name: '🇪🇹 إثيوبيا (+251)' },
+const grades = [
+  'الصف الأول الابتدائي',
+  'الصف الثاني الابتدائي',
+  'الصف الثالث الابتدائي',
+  'الصف الرابع الابتدائي',
+  'الصف الخامس الابتدائي',
+  'الصف السادس الابتدائي',
+  'الروضة / التمهيدي',
+  'مرحلة متوسطة / إعدادية',
 ];
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const [accountType, setAccountType] = useState<'parent' | 'student'>('parent');
+
+  // Form Fields
+  const [parentName, setParentName] = useState('');
+  const [childName, setChildName] = useState('');
+  const [grade, setGrade] = useState(grades[0]);
   const [email, setEmail] = useState('');
   const [countryCode, setCountryCode] = useState('+20');
   const [phone, setPhone] = useState('');
@@ -101,16 +77,44 @@ export default function RegisterPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
+
+    const fullPhone = `${countryCode}${phone}`;
+    const primaryName = accountType === 'parent' ? parentName : childName;
+
+    // 1. Create User Account
     const account = saveAccount({
-      name,
+      name: primaryName,
       email,
-      phone: `${countryCode}${phone}`,
-      role: 'parent',
+      phone: fullPhone,
+      role: accountType === 'parent' ? 'parent' : 'parent', // student accesses under family account
+    });
+
+    // 2. Automatically Create & Link Student Profile
+    const studentRecord = saveStudent({
+      fullName: childName || primaryName,
+      grade,
+      parentName: accountType === 'parent' ? parentName : undefined,
+      parentPhone: fullPhone,
+      source: 'student-wizard',
+      reviewStatus: 'awaiting-survey',
     });
 
     setSession(account);
     saveCredential(account, password);
-    router.push('/student/new');
+
+    // Save active student ID for profile switcher
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('masar_active_student_id', studentRecord.id);
+      localStorage.setItem('masar_active_mode', accountType === 'parent' ? 'parent' : 'student');
+    }
+
+    setTimeout(() => {
+      if (accountType === 'parent') {
+        router.push('/parent');
+      } else {
+        router.push('/kids');
+      }
+    }, 600);
   };
 
   return (
@@ -120,21 +124,79 @@ export default function RegisterPage() {
       <div className="fixed top-10 right-10 w-96 h-96 bg-teal-200/40 rounded-full blur-[120px] pointer-events-none" />
       <div className="fixed bottom-10 left-10 w-96 h-96 bg-emerald-200/30 rounded-full blur-[120px] pointer-events-none" />
 
-      <main className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8 text-right">
+      <main className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl text-right">
+        
+        {/* Header Logo & Title */}
         <div className="text-center">
           <Link href="/" className="mx-auto inline-flex justify-center">
             <BrandMark size="lg" showText={false} />
           </Link>
-          <h1 className="mt-4 text-3xl font-black text-slate-900">إنشاء حساب جديد</h1>
-          <p className="mt-2 text-sm font-bold text-slate-500">إنشاء حساب ولي أمر لمتابعة بيانات الطفل والاستبيان.</p>
+          <h1 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">إنشاء حساب جديد</h1>
+          <p className="mt-1.5 text-xs sm:text-sm font-bold text-slate-500">
+            انضم لمنصة د. إسماعيل عيسى ومكّن طفلك من رحلة التأهيل الذكي
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-          <Field label="الاسم الكامل" value={name} onChange={setName} placeholder="الاسم الثلاثي" />
-          <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" />
+        {/* Account Type Selector Tabs (Parent vs Student) */}
+        <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setAccountType('parent')}
+            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
+              accountType === 'parent'
+                ? 'bg-teal-700 text-white shadow-md'
+                : 'text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <HeartHandshake size={18} />
+            <span>حساب ولي أمر وطالب</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAccountType('student')}
+            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
+              accountType === 'student'
+                ? 'bg-teal-700 text-white shadow-md'
+                : 'text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <GraduationCap size={18} />
+            <span>تسجيل طالب مباشر</span>
+          </button>
+        </div>
+
+        {/* Registration Form */}
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          
+          {accountType === 'parent' ? (
+            <>
+              <Field label="اسم ولي الأمر (الكامل)" value={parentName} onChange={setParentName} placeholder="مثال: أحمد محمد علي" required />
+              <Field label="اسم الطالب / الطفل" value={childName} onChange={setChildName} placeholder="مثال: يوسف أحمد" required />
+            </>
+          ) : (
+            <Field label="اسم الطالب (الكامل)" value={childName} onChange={setChildName} placeholder="مثال: يوسف أحمد محمد" required />
+          )}
+
+          {/* Grade Selector */}
+          <label className="block text-right">
+            <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">الصف الدراسي للطالب</span>
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition cursor-pointer"
+            >
+              {grades.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </label>
+
+          <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" required />
+
           {/* Phone field with country code selector */}
           <div className="block">
-            <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">رقم الهاتف</span>
+            <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">رقم الهاتف / الواتساب</span>
             <div className="flex rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition overflow-hidden">
               <select
                 value={countryCode}
@@ -142,7 +204,7 @@ export default function RegisterPage() {
                 className="shrink-0 bg-slate-100 border-l border-slate-200 px-3 py-3 text-xs font-black text-slate-800 outline-none cursor-pointer hover:bg-slate-200 transition"
               >
                 {countryCodes.map((c) => (
-                  <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                  <option key={c.code} value={c.code}>{c.name}</option>
                 ))}
               </select>
               <input
@@ -155,10 +217,12 @@ export default function RegisterPage() {
               />
             </div>
           </div>
-          <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة المرور" type="password" />
 
-          <div className="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs font-bold leading-relaxed text-teal-900">
-            💡 هذه الصفحة مخصصة لولي الأمر فقط. حسابات الدكتور والأخصائي لا تُنشأ من التسجيل العام.
+          <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة مرور قوية" type="password" required />
+
+          <div className="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs font-bold leading-relaxed text-teal-900 flex items-center gap-2">
+            <ShieldCheck size={20} className="text-teal-700 shrink-0" />
+            <span>سيتم إنشاء الحساب وربط ملف الطفل تلقائياً مع خيار التبديل بين وضع ولي الأمر ووضع الطفل.</span>
           </div>
 
           <button 
@@ -167,7 +231,7 @@ export default function RegisterPage() {
             className="focus-ring flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95 disabled:opacity-60"
           >
             <UserPlus size={18} />
-            {loading ? 'جاري تجهيز ملف ولي الأمر...' : 'تسجيل وإنشاء جلسة'}
+            {loading ? 'جاري إنشاء وتجهيز الحساب...' : 'إنشاء الحساب ودخول المنصة'}
           </button>
         </form>
 
@@ -181,10 +245,10 @@ export default function RegisterPage() {
 
       {loading && (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-900/50 text-slate-900 backdrop-blur-md">
-          <div className="motion-scale-in rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-2xl max-w-sm w-full mx-4">
+          <div className="motion-scale-in rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-2xl max-w-sm w-full mx-4 space-y-3">
             <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-teal-600" />
-            <p className="mt-4 text-lg font-black text-slate-900">جاري نقلك لتسجيل بيانات الطفل</p>
-            <p className="mt-1 text-xs font-bold text-slate-500">لحظات بسيطة ونكمل المسار بشكل منظم.</p>
+            <p className="text-lg font-black text-slate-900">جاري تجهيز الحساب الموحد...</p>
+            <p className="text-xs font-bold text-slate-500">تم إنشاء الملف وربط الطفل بنجاح.</p>
           </div>
         </div>
       )}
@@ -198,12 +262,14 @@ function Field({
   onChange,
   placeholder,
   type = 'text',
+  required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
+  required?: boolean;
 }) {
   return (
     <label className="block">
@@ -214,7 +280,7 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
         placeholder={placeholder}
-        required
+        required={required}
       />
     </label>
   );
