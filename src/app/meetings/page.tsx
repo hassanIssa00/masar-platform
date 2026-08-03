@@ -217,7 +217,7 @@ function MeetingsContent() {
 
       let existing = readMeetings();
       if (existing.length === 0) {
-        const demo: MeetingRecord = {
+        const demo1: MeetingRecord = {
           id: 'meeting_demo_1',
           targetId: nextStudents[0]?.id || 'class_g1',
           targetName: nextStudents[0]?.fullName || 'فصل الصف الأول الابتدائي',
@@ -229,8 +229,20 @@ function MeetingsContent() {
           link: `${typeof window !== 'undefined' ? window.location.origin : ''}/meetings?room=MASAR-ROOM-8802&role=student`,
           notes: 'تقييم وتدريب على المخارج الصوتية والقاموس المفيد.',
         };
-        writeMeetings([demo]);
-        existing = [demo];
+        const demo2: MeetingRecord = {
+          id: 'meeting_demo_2',
+          targetId: 'all_students',
+          targetName: 'جميع الطلاب وأولياء الأمور',
+          roomCode: 'ZOOM-892-1049',
+          title: 'لقاء Zoom المباشر مع د. إسماعيل عيسى',
+          date: new Date().toISOString().slice(0, 10),
+          time: '08:00 م',
+          type: 'zoom',
+          link: 'https://zoom.us/j/99988877766',
+          notes: 'لقاء استشاري مفتوح والإجابة على تساؤلات أولياء الأمور عبر زوم.',
+        };
+        writeMeetings([demo1, demo2]);
+        existing = [demo1, demo2];
       }
       setMeetings(existing);
       setForm(f => ({ ...f, targetId: f.targetId || (nextStudents[0]?.id || targetOptions[0].id) }));
@@ -361,10 +373,35 @@ function MeetingsContent() {
                     : 'انضمام مباشر لجلسة التأهيل مع د. إسماعيل عيسى بالصوت والصورة والسبورة التفاعلية.'}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-black text-teal-800 self-start">
-                <Radio size={15} className="animate-pulse text-teal-500" />
-                {isHost ? 'وضع المضيف (د. إسماعيل)' : 'وضع الطالب / الحضور'}
-              </span>
+              <div className="flex flex-wrap items-center gap-3 self-start">
+                {isHost && (
+                  <button
+                    onClick={() => {
+                      const instantMeeting: MeetingRecord = {
+                        id: `instant_${Date.now()}`,
+                        targetId: 'all_students',
+                        targetName: 'غرفة بث مباشر فورية',
+                        roomCode: `MASAR-LIVE-${Math.floor(1000 + Math.random() * 9000)}`,
+                        title: 'جلسة بث مباشر تفاعلية فورية',
+                        date: new Date().toISOString().slice(0, 10),
+                        time: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+                        type: 'internal',
+                        link: `${typeof window !== 'undefined' ? window.location.origin : ''}/meetings?room=MASAR-LIVE-NOW&role=student`,
+                        notes: 'بث مباشر فوري مفتوح لجميع الحضور.',
+                      };
+                      setActiveCallRoom(instantMeeting);
+                    }}
+                    className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm cursor-pointer active:scale-95"
+                  >
+                    <Video size={16} />
+                    <span>🚀 بدء بث فوري الآن</span>
+                  </button>
+                )}
+                <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
+                  <Radio size={15} className="animate-pulse text-teal-500" />
+                  {isHost ? 'وضع المضيف (د. إسماعيل)' : 'وضع الطالب / الحضور'}
+                </span>
+              </div>
             </div>
           </header>
 
@@ -701,13 +738,24 @@ function MeetingsContent() {
                           <button onClick={() => copyInvite(m)}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 transition"
                           >
-                            <Copy size={14} /> نسخ دعوة الطلاب
+                            <Copy size={14} /> نسخ الدعوة
                           </button>
-                          <button onClick={() => setActiveCallRoom(m)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm"
-                          >
-                            <Video size={14} /> دخول كالمضيف
-                          </button>
+                          {m.type === 'zoom' ? (
+                            <a
+                              href={m.link && m.link.startsWith('http') ? m.link : 'https://zoom.us/join'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white hover:bg-blue-700 transition shadow-sm"
+                            >
+                              <Video size={14} /> فتح اجتماع Zoom 🚀
+                            </a>
+                          ) : (
+                            <button onClick={() => setActiveCallRoom(m)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm"
+                            >
+                              <Video size={14} /> بدء الجلسة كالمضيف
+                            </button>
+                          )}
                           <button onClick={() => setConfirmDeleteId(m.id)}
                             className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-100 transition"
                           >
@@ -736,15 +784,28 @@ function MeetingsContent() {
                 {meetings.map(m => (
                   <article key={m.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[10px] font-black text-teal-800">غرفة متصلة</span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${m.type === 'zoom' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-teal-100 text-teal-800 border border-teal-200'}`}>
+                        {m.type === 'zoom' ? '🔗 اجتماع Zoom' : '🎥 غرفة المنصة المباشرة'}
+                      </span>
                       <h3 className="text-base font-black text-slate-950 mt-1">{m.title}</h3>
                       <p className="text-xs font-bold text-slate-500 mt-0.5">{m.date} — الساعة {m.time}</p>
                     </div>
-                    <button onClick={() => setActiveCallRoom(m)}
-                      className="rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm shrink-0"
-                    >
-                      الانضمام للجلسة
-                    </button>
+                    {m.type === 'zoom' ? (
+                      <a
+                        href={m.link && m.link.startsWith('http') ? m.link : 'https://zoom.us/join'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-black text-white hover:bg-blue-700 transition shadow-sm shrink-0 inline-flex items-center gap-1.5"
+                      >
+                        <Video size={15} /> الانضمام عبر Zoom 🚀
+                      </a>
+                    ) : (
+                      <button onClick={() => setActiveCallRoom(m)}
+                        className="rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm shrink-0 inline-flex items-center gap-1.5"
+                      >
+                        <Video size={15} /> الانضمام للجلسة
+                      </button>
+                    )}
                   </article>
                 ))}
               </div>
