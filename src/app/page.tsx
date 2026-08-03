@@ -7,7 +7,7 @@ import {
   ArrowLeft, Brain, FileSearch, Hand, Shapes, ShieldCheck, 
   Sparkles, CheckCircle2, Award, ChevronDown, Trophy, 
   Stethoscope, Activity, Users, Check, Zap, Eye, Star,
-  BookOpen, Calculator, Volume2, Target, Cpu, Flame
+  BookOpen, Calculator, Volume2, Target, Cpu, Flame, Layers
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 
@@ -143,7 +143,7 @@ export default function Home() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link 
               href="https://nexus.masar-platform.org" 
-              className="focus-ring rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md hover:from-slate-900 hover:to-cyan-900 transition active:scale-95 flex items-center gap-2"
+              className="focus-ring rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-900 via-cyan-950 to-teal-950 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md hover:from-slate-850 hover:to-cyan-900 transition active:scale-95 flex items-center gap-2"
             >
               <Trophy size={16} className="text-amber-400 animate-bounce" />
               <span>دخول بوابة نكسس للمدارس (NEXUS)</span>
@@ -169,8 +169,8 @@ export default function Home() {
 
       <main>
         
-        {/* 2. HERO SECTION WITH IMPACTFUL CATCHING SLOGAN & HIGH-END MOCKUP */}
-        <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/90 via-slate-50 to-white pt-12 pb-20 lg:pt-20 lg:pb-32">
+        {/* 2. HERO SECTION WITH EXACT REQUESTED HEADLINE AND FULL UNCROPPED IMAGE */}
+        <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/90 via-slate-50 to-white pt-10 pb-20 lg:pt-16 lg:pb-28">
           
           {/* Background Glows */}
           <div className="absolute top-10 right-10 -z-10 h-96 w-96 rounded-full bg-teal-200/40 blur-[140px] pointer-events-none" />
@@ -179,23 +179,23 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="grid gap-12 items-center lg:grid-cols-[1.1fr_0.9fr]">
               
-              {/* Left Column: Hero Text & Slogan */}
+              {/* Left Column: Headline & Subtitle */}
               <div className="space-y-6 text-right">
                 
-                {/* Header Badges */}
+                {/* Header Pill: تعليمي - علاجي - خطط فردية */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-white px-4 py-1.5 text-xs sm:text-sm font-black text-teal-900 shadow-2xs">
-                    <Sparkles size={16} className="text-teal-600 animate-pulse" />
-                    <span>إشراف وتأسيس د. إسماعيل عيسى</span>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-600 px-4 py-1.5 text-xs sm:text-sm font-black text-white shadow-md">
+                    <Sparkles size={15} className="animate-pulse" />
+                    <span>تعليمي • علاجي • خطط فردية</span>
                   </div>
 
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-3.5 py-1.5 text-xs font-black text-cyan-900">
-                    <CheckCircle2 size={14} className="text-cyan-600" />
-                    <span>مسارات تعليمية وتأهيلية متكاملة</span>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3.5 py-1.5 text-xs font-black text-teal-900 shadow-2xs">
+                    <CheckCircle2 size={14} className="text-teal-600" />
+                    <span>إشراف وتأسيس د. إسماعيل عيسى</span>
                   </div>
                 </div>
 
-                {/* Powerful Slogan */}
+                {/* Headline: المنصة الشاملة للتقييم، التأهيل، والتعليم التفاعلي */}
                 <h1 className="text-4xl font-black leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl lg:text-6xl tracking-tight">
                   المنصة الشاملة للتقييم،
                   <br />
@@ -260,49 +260,43 @@ export default function Home() {
 
               </div>
 
-              {/* Right Column: Custom High-End Platform Dashboard Mockup */}
+              {/* Right Column: Full Uncropped Realistic Photograph Showing Child & Specialist Interaction */}
               <div className="relative">
                 <div className="relative rounded-3xl border border-slate-200/90 bg-white p-3 shadow-2xl overflow-hidden group">
-                  <div className="relative h-[420px] sm:h-[480px] w-full rounded-2xl overflow-hidden bg-slate-900">
+                  
+                  {/* Full Display Image (Uncropped) */}
+                  <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100">
                     <Image 
-                      src="/brand/masar_hero_dashboard.jpg" 
-                      alt="لوحة تحكم منصة مسار التعليمية والتأهيلية" 
+                      src="/brand/masar_child_learning.jpg" 
+                      alt="طفل يتفاعل مع الأخصائي على منصة مسار التفاعلية" 
                       fill 
                       priority
-                      className="object-cover group-hover:scale-103 transition duration-700" 
+                      className="object-cover group-hover:scale-102 transition duration-700" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
-                    {/* Floating Overlay Badge 1 */}
-                    <div className="absolute top-4 right-4 rounded-2xl bg-white/95 backdrop-blur-md p-3.5 border border-slate-200 shadow-xl flex items-center gap-3">
-                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-100 text-teal-800 font-bold">
-                        <Activity size={20} />
-                      </span>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">سجل التقييم التشخيصي</p>
-                        <p className="text-xs font-black text-slate-900">مكتمل ومحفوظ لدكتور إسماعيل ✓</p>
-                      </div>
-                    </div>
-
-                    {/* Floating Overlay Badge 2 */}
-                    <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-slate-950/90 backdrop-blur-md p-4 border border-slate-800 text-white flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-amber-400 flex items-center gap-1">
-                          <Sparkles size={14} />
-                          <span>الخطة الفردية المخصصة</span>
-                        </p>
-                        <p className="text-[11px] font-bold text-slate-300 mt-0.5">تحديث تلقائي بناءً على نتائج الاستبيان والاختبار</p>
+                    {/* Floating Overlay Badge */}
+                    <div className="absolute bottom-4 right-4 left-4 rounded-2xl bg-white/95 backdrop-blur-md p-4 border border-slate-200/80 shadow-xl flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 font-bold">
+                          <Activity size={20} />
+                        </span>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">تفاعل حسي مباشر</p>
+                          <p className="text-xs font-black text-slate-900">تفاعلي • تشخيصي • يبني الثقة</p>
+                        </div>
                       </div>
 
                       <Link 
                         href="/auth/register"
-                        className="rounded-xl bg-teal-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-teal-400 transition"
+                        className="rounded-xl bg-teal-600 px-3.5 py-2 text-xs font-black text-white hover:bg-teal-700 transition shrink-0"
                       >
-                        معاينة التقييم
+                        ابدأ التقييم
                       </Link>
                     </div>
 
                   </div>
+
                 </div>
               </div>
 
@@ -310,58 +304,55 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3. NEXUS EDU ENTERPRISE CONCEPT BRIDGING SECTION */}
-        <section className="py-20 border-t border-slate-200 bg-gradient-to-br from-slate-950 via-cyan-950 to-slate-950 text-white relative overflow-hidden">
+        {/* 3. NEXUS EDU BRIDGING SECTION - LIGHT THEME AS REQUESTED */}
+        <section className="py-20 border-t border-slate-200 bg-gradient-to-b from-slate-50 via-teal-50/40 to-white relative overflow-hidden">
           
-          {/* Subtle Background Glow */}
-          <div className="absolute top-0 right-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-[150px] pointer-events-none" />
-
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
             <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs font-black text-amber-300">
-                <Trophy size={16} />
+              <span className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-100 px-4 py-1.5 text-xs font-black text-teal-900 shadow-2xs">
+                <Trophy size={16} className="text-teal-700" />
                 <span>المنظومة المزدوجة المتكاملة</span>
               </span>
-              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-tight">
                 مسار للتأهيل الفردي × نكسس للمدارس والتنافس
               </h2>
-              <p className="text-slate-300 font-bold text-sm sm:text-base leading-relaxed">
+              <p className="text-slate-600 font-bold text-sm sm:text-base leading-relaxed">
                 تكامل ذكي على نفس الدومين يجمع بين التقييم التشخيصي الخاص بالأسر، وبيئة المدارس التنافسية المتقدمة.
               </p>
             </div>
 
-            {/* Split System Cards */}
+            {/* Split System Cards (Light Theme) */}
             <div className="grid lg:grid-cols-2 gap-8 items-center">
               
-              {/* Masar Card */}
-              <div className="rounded-3xl border border-teal-500/30 bg-slate-900/80 p-6 sm:p-8 space-y-5 backdrop-blur">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 font-black">
+              {/* Masar Card (Light Theme) */}
+              <div className="rounded-3xl border border-teal-200 bg-white p-6 sm:p-8 space-y-5 shadow-lg relative">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-100 text-teal-800 font-black text-base border border-teal-200">
                       1
                     </span>
                     <div>
-                      <h3 className="text-xl font-black text-white">منصة مسار (Masar Platform)</h3>
-                      <p className="text-xs font-bold text-slate-400">للأسر والأطفال والتقييم الفردي</p>
+                      <h3 className="text-xl font-black text-slate-900">منصة مسار (Masar Platform)</h3>
+                      <p className="text-xs font-bold text-slate-500">للأسر والأطفال والتقييم الفردي</p>
                     </div>
                   </div>
-                  <span className="rounded-full bg-teal-500/10 px-3 py-1 text-xs font-black text-teal-300 border border-teal-500/20">
+                  <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800 border border-teal-200">
                     B2C الأسر
                   </span>
                 </div>
 
-                <ul className="space-y-3 text-xs sm:text-sm font-bold text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-teal-400 shrink-0" />
+                <ul className="space-y-3.5 text-xs sm:text-sm font-bold text-slate-700">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
                     <span>تقييم تشخيصي استبياني واختباري محكم 100%.</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-teal-400 shrink-0" />
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
                     <span>متابعة إكلينيكية مباشرة تحت إشراف د. إسماعيل عيسى.</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-teal-400 shrink-0" />
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
                     <span>ألعاب وأنشطة حسية موجهة لتثبيت المهارات للطفل.</span>
                   </li>
                 </ul>
@@ -369,42 +360,42 @@ export default function Home() {
                 <div className="pt-3">
                   <Link
                     href="/auth/register"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs sm:text-sm transition"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs sm:text-sm transition shadow-md"
                   >
                     <span>ابدأ تقييم مسار للأطفال</span>
-                    <ArrowLeft size={14} />
+                    <ArrowLeft size={15} />
                   </Link>
                 </div>
               </div>
 
-              {/* Nexus Card */}
-              <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-cyan-950 to-slate-900 p-6 sm:p-8 space-y-5 backdrop-blur relative overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black">
+              {/* Nexus Card (Light Theme) */}
+              <div className="rounded-3xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50/50 to-teal-50/60 p-6 sm:p-8 space-y-5 shadow-lg relative">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-100 text-cyan-900 font-black text-base border border-cyan-200">
                       2
                     </span>
                     <div>
-                      <h3 className="text-xl font-black text-white">نظام نكسس (NEXUS EDU)</h3>
-                      <p className="text-xs font-bold text-slate-400">للمدارس والمسابقات والـ AI</p>
+                      <h3 className="text-xl font-black text-slate-900">نظام نكسس (NEXUS EDU)</h3>
+                      <p className="text-xs font-bold text-slate-500">للمدارس والمسابقات والـ AI</p>
                     </div>
                   </div>
-                  <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black text-amber-300 border border-amber-500/20">
+                  <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-black text-cyan-900 border border-cyan-200">
                     B2B المدارس
                   </span>
                 </div>
 
-                <ul className="space-y-3 text-xs sm:text-sm font-bold text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <Trophy size={16} className="text-amber-400 shrink-0" />
+                <ul className="space-y-3.5 text-xs sm:text-sm font-bold text-slate-700">
+                  <li className="flex items-center gap-2.5">
+                    <Trophy size={18} className="text-amber-600 shrink-0" />
                     <span>منافسات جائزة المليون ريال السنوية وقوائم المتصدرين.</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Cpu size={16} className="text-cyan-400 shrink-0" />
+                  <li className="flex items-center gap-2.5">
+                    <Cpu size={18} className="text-cyan-700 shrink-0" />
                     <span>معلم الذكاء الاصطناعي (AI Tutor) التفاعلي 24/7.</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Zap size={16} className="text-teal-400 shrink-0" />
+                  <li className="flex items-center gap-2.5">
+                    <Zap size={18} className="text-teal-700 shrink-0" />
                     <span>تحضير الـ QR Code التلقائي ولوحات تنقيب المدارس.</span>
                   </li>
                 </ul>
@@ -412,35 +403,35 @@ export default function Home() {
                 <div className="pt-3">
                   <Link
                     href="https://nexus.masar-platform.org"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm transition shadow-lg"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 hover:from-slate-900 hover:to-cyan-900 text-white font-black text-xs sm:text-sm transition shadow-md"
                   >
-                    <Trophy size={16} />
-                    <span>دخول بوابة نكسس للمدارس الان (NEXUS)</span>
+                    <Trophy size={16} className="text-amber-400 animate-bounce" />
+                    <span>دخول بوابة نكسس للمدارس الآن (NEXUS)</span>
                   </Link>
                 </div>
               </div>
 
             </div>
 
-            {/* Nexus Mockup Image Section */}
-            <div className="relative rounded-3xl border border-slate-800 bg-slate-900 p-3 shadow-2xl overflow-hidden">
-              <div className="relative h-[300px] sm:h-[400px] w-full rounded-2xl overflow-hidden bg-slate-950">
+            {/* Nexus Mockup Image Section (Light Frame) */}
+            <div className="relative rounded-3xl border border-slate-200 bg-white p-3 shadow-xl overflow-hidden">
+              <div className="relative h-[280px] sm:h-[380px] w-full rounded-2xl overflow-hidden bg-slate-900">
                 <Image 
                   src="/brand/nexus_portal_mockup.jpg" 
                   alt="نظام نكسس للمدارس والمسابقات" 
                   fill 
                   className="object-cover opacity-90" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
                 
                 <div className="absolute bottom-6 right-6 left-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h4 className="text-xl font-black text-white">بوابة نكسس التعليمية للمدارس</h4>
+                    <h4 className="text-xl font-black text-white">بوابة نكسس التعليمية للمدارس والمسابقات</h4>
                     <p className="text-xs font-bold text-slate-300 mt-1">منظومة متكاملة لجميع أدوار المدرسة: طالب، معلم، ولي أمر، مدير، وموجه</p>
                   </div>
                   <Link
                     href="https://nexus.masar-platform.org"
-                    className="px-6 py-3 rounded-xl bg-amber-400 text-slate-950 font-black text-xs transition hover:bg-amber-300 shrink-0"
+                    className="px-6 py-3 rounded-xl bg-amber-400 text-slate-950 font-black text-xs transition hover:bg-amber-300 shrink-0 shadow-md"
                   >
                     الانتقال للبوابة 🚀
                   </Link>
