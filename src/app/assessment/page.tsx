@@ -56,16 +56,6 @@ function PlacementAssessmentContent() {
   useEffect(() => {
     const studentId = searchParams.get('student');
     const timeout = window.setTimeout(() => {
-
-      // Auto-redirect: if no student param but localStorage has one, redirect with it
-      if (!studentId) {
-        const savedStudentId = localStorage.getItem('masar.current-student-id') || localStorage.getItem('masar_active_student_id');
-        if (savedStudentId) {
-          router.replace(`/assessment?student=${savedStudentId}`);
-          return;
-        }
-      }
-
       const existingStudent = studentId ? getStudents().find((item) => item.id === studentId) : null;
       if (existingStudent) {
         setStudent(existingStudent);

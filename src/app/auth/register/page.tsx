@@ -138,12 +138,8 @@ export default function RegisterPage() {
     }
 
     setTimeout(() => {
-      if (accountType === 'parent') {
-        // Go to student data entry → then survey → then assessment
-        router.push('/student/new');
-      } else {
-        router.push('/assessment');
-      }
+      // Step 1 done -> ALWAYS go to Step 2 (/student/new)
+      router.push('/student/new');
     }, 600);
   };
 
