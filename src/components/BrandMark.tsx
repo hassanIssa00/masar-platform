@@ -30,10 +30,10 @@ export default function BrandMark({ size = 'md', showText = true, dark = false }
 
       {/* Nexus Logo */}
       <span
-        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-slate-900 ring-1 ring-slate-800 shadow-xs"
+        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-xs"
         style={{ width: markSize, height: markSize }}
       >
-        <Image src="/brand/nexus-logo.webp" alt="شعار نظام نكسس" fill className="object-contain p-0.5" sizes={`${markSize}px`} priority={size === 'lg'} />
+        <Image src="/brand/nexus-logo-new.webp" alt="شعار نظام نكسس" fill className="object-contain p-1" sizes={`${markSize}px`} priority={size === 'lg'} />
       </span>
 
       {showText && (
