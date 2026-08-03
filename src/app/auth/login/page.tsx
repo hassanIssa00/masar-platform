@@ -163,42 +163,8 @@ export default function LoginPage() {
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
 
-          {/* Role Selector Tabs */}
-          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-            <button
-              type="button"
-              onClick={() => setLoginRole('parent')}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition cursor-pointer ${
-                loginRole === 'parent'
-                  ? 'bg-white border border-slate-200 text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <UserRound size={15} />
-              <span>ولي أمر / مستخدم</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginRole('doctor')}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition cursor-pointer ${
-                loginRole === 'doctor'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ShieldCheck size={15} />
-              <span>دكتور / أدمن</span>
-            </button>
-          </div>
-
-          {loginRole === 'doctor' && (
-            <div className="mt-3 rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs font-bold text-teal-900">
-              📧 <span className="font-black">dr.ismail@masar.com</span> &nbsp;|&nbsp; 🔑 <span className="font-mono font-black">masar2026</span>
-            </div>
-          )}
-
           {(loginError || loginMessage) && (
-            <div className={`mt-4 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
+            <div className={`mt-5 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
               loginError ? 'bg-rose-50 text-rose-900 border border-rose-200' : 'bg-teal-50 text-teal-950 border border-teal-200'
             }`}>
               {loginError ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}

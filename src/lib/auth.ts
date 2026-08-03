@@ -51,6 +51,12 @@ function writeCredentials(records: CredentialRecord[]) {
   localStorage.setItem(KEY, JSON.stringify(records));
 }
 
+export function getCredentialByEmailOrPhone(emailOrPhone: string): CredentialRecord | null {
+  const clean = normalize(emailOrPhone);
+  const records = readCredentials();
+  return records.find((item) => item.email === clean || item.phone === emailOrPhone.trim()) ?? null;
+}
+
 export function saveCredential(account: AccountRecord, password: string) {
   const cleanPassword = password.trim();
   if (!cleanPassword) return;

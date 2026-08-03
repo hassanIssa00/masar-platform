@@ -6,8 +6,8 @@ import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRou
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
-import { deleteStudent, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
-import { getDemoPassword } from '@/lib/auth';
+import { deleteStudent, getAccounts, getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { getCredentialByEmailOrPhone } from '@/lib/auth';
 
 export default function StudentsControlPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -243,7 +243,7 @@ export default function StudentsControlPage() {
                         </div>
 
                         {/* Logged-in Account Credentials */}
-                        <AccountCredentialsBox />
+                        <AccountCredentialsBox student={selectedStudent} />
 
                         {selectedStudent.notes && (
                           <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3.5">
@@ -497,44 +497,65 @@ function getReportSlots(reports: ReportRecord[]) {
   ];
 }
 
-function AccountCredentialsBox() {
-  const session = getSession();
-  if (!session) return null;
+function AccountCredentialsBox({ student }: { student: StudentRecord }) {
+  // Find the account registered for this student by matching parentPhone or parentName
+  const accounts = getAccounts();
+  
+  // Try to find account by phone number (most reliable)
+  let linkedAccount = student.parentPhone
+    ? accounts.find((a) => a.phone && student.parentPhone && a.phone.includes(student.parentPhone.replace(/^\+\d{2,3}/, '').replace(/^0/, '')))
+    : null;
 
-  const password = getDemoPassword(session.email) || 'محفوظة بشكل مشفر';
-  const roleLabel =
-    session.role === 'doctor' ? 'دكتور / أخصائي' :
-    session.role === 'parent' ? 'ولي أمر' :
-    session.role === 'specialist' ? 'أخصائي' :
-    session.role === 'teacher' ? 'معلم' : session.role;
+  // Fallback: match by parent name
+  if (!linkedAccount && student.parentName) {
+    const normalizedParent = student.parentName.trim().toLowerCase();
+    linkedAccount = accounts.find((a) => a.name.trim().toLowerCase() === normalizedParent && a.role === 'parent');
+  }
+
+  // If still not found, show the most recent parent account
+  if (!linkedAccount) {
+    linkedAccount = accounts.filter((a) => a.role === 'parent')[0] ?? null;
+  }
+
+  if (!linkedAccount) {
+    return (
+      <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+        <p className="text-xs font-bold text-slate-400">لم يتم ربط حساب بهذا الطالب بعد</p>
+      </div>
+    );
+  }
+
+  // Get password from credentials store
+  const credential = getCredentialByEmailOrPhone(linkedAccount.email);
+  const password = credential?.password ?? 'محفوظة بشكل مشفر';
 
   return (
-    <div className="mt-5 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-slate-50 to-white p-4 space-y-3">
-      <div className="flex items-center gap-2 border-b border-blue-100 pb-3">
-        <span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-100 text-blue-700">
+    <div className="mt-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50/60 via-slate-50 to-white p-4 space-y-3">
+      <div className="flex items-center gap-2 border-b border-teal-100 pb-3">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-100 text-teal-700">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </span>
         <div>
-          <p className="text-[11px] font-black text-blue-600 uppercase tracking-wider">بيانات الحساب المسجل دخوله</p>
-          <p className="text-xs font-bold text-slate-600">الحساب المرتبط بهذه الجلسة الحالية</p>
+          <p className="text-[11px] font-black text-teal-700 uppercase tracking-wider">بيانات حساب ولي الأمر المسجل</p>
+          <p className="text-xs font-bold text-slate-500">الحساب المرتبط بملف هذا الطالب</p>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">الاسم</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{session.name}</p>
+          <p className="text-[10px] font-black text-slate-400">اسم ولي الأمر</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{linkedAccount.name}</p>
         </div>
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">البريد الإلكتروني</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{session.email}</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.email}</p>
         </div>
-        <div className="rounded-xl bg-white border border-blue-200 p-3 shadow-2xs">
+        <div className="rounded-xl bg-white border border-teal-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
-          <p className="mt-0.5 text-xs font-black text-blue-800 font-mono tracking-wide">{password}</p>
+          <p className="mt-0.5 text-xs font-black text-teal-800 font-mono tracking-wide">{password}</p>
         </div>
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">نوع الحساب</p>
-          <p className="mt-0.5 text-xs font-black text-teal-800">{roleLabel}</p>
+          <p className="text-[10px] font-black text-slate-400">رقم الهاتف</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.phone || student.parentPhone || 'غير مسجل'}</p>
         </div>
       </div>
     </div>
