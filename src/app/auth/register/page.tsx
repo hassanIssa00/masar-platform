@@ -93,8 +93,14 @@ export default function RegisterPage() {
       name: primaryName,
       email,
       phone: fullPhone,
-      role: 'parent',
+      role: accountType === 'parent' ? 'parent' : 'parent', // All registrations start as parent role for now
     });
+
+    // Store account type so login redirect works correctly
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('masar_account_type', accountType);
+      localStorage.setItem('masar_registered_email', email.trim().toLowerCase());
+    }
 
     // 2. Automatic Linkage Logic: Look for existing matching student in system
     const allStudents = getStudents();
