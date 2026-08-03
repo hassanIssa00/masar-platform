@@ -81,6 +81,13 @@ export default function RegisterPage() {
     const fullPhone = `${countryCode}${phone}`;
     const primaryName = accountType === 'parent' ? parentName : childName;
 
+    // 0. Clear any stale session/onboarding data to ensure clean fresh flow
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('masar.current-student-id');
+      localStorage.removeItem('masar_active_student_id');
+      localStorage.removeItem('masar_active_mode');
+    }
+
     // 1. Save User Account
     const account = saveAccount({
       name: primaryName,
