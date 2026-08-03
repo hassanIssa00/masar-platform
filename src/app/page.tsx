@@ -218,14 +218,6 @@ export default function Home() {
                   <span>ابدأ تقييم تحديد المستوى</span>
                   <ArrowLeft size={18} />
                 </Link>
-                
-                <Link 
-                  href="/auth/login" 
-                  className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-8 py-4 text-base font-black text-slate-800 shadow-sm hover:bg-slate-100 transition active:scale-95"
-                >
-                  <LockKeyhole size={18} className="text-teal-600" />
-                  <span>دخول د. إسماعيل (الأدمن)</span>
-                </Link>
               </div>
 
             </div>
