@@ -6,7 +6,8 @@ import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRou
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
-import { deleteStudent, getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { deleteStudent, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { getDemoPassword } from '@/lib/auth';
 
 export default function StudentsControlPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -240,6 +241,9 @@ export default function StudentsControlPage() {
                           <Info label="تاريخ إنشاء الملف" value={new Date(selectedStudent.createdAt).toLocaleDateString('ar-SA')} />
                           <Info label="حالة الملف الحالية" value={getStatusLabel(selectedStudent)} />
                         </div>
+
+                        {/* Logged-in Account Credentials */}
+                        <AccountCredentialsBox />
 
                         {selectedStudent.notes && (
                           <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3.5">
@@ -491,4 +495,48 @@ function getReportSlots(reports: ReportRecord[]) {
       report: reports.find((report) => report.type === 'student-assessment-analysis') ?? reports.find((report) => report.type === 'clinical-analysis'),
     },
   ];
+}
+
+function AccountCredentialsBox() {
+  const session = getSession();
+  if (!session) return null;
+
+  const password = getDemoPassword(session.email) || 'محفوظة بشكل مشفر';
+  const roleLabel =
+    session.role === 'doctor' ? 'دكتور / أخصائي' :
+    session.role === 'parent' ? 'ولي أمر' :
+    session.role === 'specialist' ? 'أخصائي' :
+    session.role === 'teacher' ? 'معلم' : session.role;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-slate-50 to-white p-4 space-y-3">
+      <div className="flex items-center gap-2 border-b border-blue-100 pb-3">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-100 text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <div>
+          <p className="text-[11px] font-black text-blue-600 uppercase tracking-wider">بيانات الحساب المسجل دخوله</p>
+          <p className="text-xs font-bold text-slate-600">الحساب المرتبط بهذه الجلسة الحالية</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+          <p className="text-[10px] font-black text-slate-400">الاسم</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{session.name}</p>
+        </div>
+        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+          <p className="text-[10px] font-black text-slate-400">البريد الإلكتروني</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{session.email}</p>
+        </div>
+        <div className="rounded-xl bg-white border border-blue-200 p-3 shadow-2xs">
+          <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
+          <p className="mt-0.5 text-xs font-black text-blue-800 font-mono tracking-wide">{password}</p>
+        </div>
+        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+          <p className="text-[10px] font-black text-slate-400">نوع الحساب</p>
+          <p className="mt-0.5 text-xs font-black text-teal-800">{roleLabel}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
