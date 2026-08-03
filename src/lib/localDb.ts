@@ -23,6 +23,7 @@ export type StudentRecord = {
   notes?: string;
   reviewStatus?: 'awaiting-survey' | 'awaiting-doctor-review' | 'program-assigned';
   assignedProgram?: string;
+  assignedPrograms?: string[];
   assignedBy?: string;
   assignedAt?: string;
   source: 'student-wizard' | 'survey' | 'import';

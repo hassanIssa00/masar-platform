@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle } from 'lucide-react';
+import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -15,11 +15,22 @@ export default function StudentsControlPage() {
   const [message, setMessage] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Multi-track selection state for the selected student
+  const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
+
   const refresh = () => {
     const nextStudents = getStudents();
     setStudents(nextStudents);
     setReports(getReports());
-    setSelectedId((current) => current || nextStudents[0]?.id || '');
+    
+    const initialStudentId = selectedId || nextStudents[0]?.id || '';
+    setSelectedId(initialStudentId);
+    
+    const targetStudent = nextStudents.find((s) => s.id === initialStudentId);
+    if (targetStudent) {
+      const activeSlugs = targetStudent.assignedPrograms || (targetStudent.assignedProgram ? [targetStudent.assignedProgram] : []);
+      setSelectedTrackSlugs(activeSlugs);
+    }
   };
 
   useEffect(() => {
@@ -28,14 +39,30 @@ export default function StudentsControlPage() {
   }, []);
 
   const selectedStudent = students.find((student) => student.id === selectedId) ?? students[0] ?? null;
+
+  // Sync selected track slugs whenever student selection changes
+  useEffect(() => {
+    if (selectedStudent) {
+      const activeSlugs = selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
+      setSelectedTrackSlugs(activeSlugs);
+      setMessage('');
+    }
+  }, [selectedId, selectedStudent]);
+
   const studentReports = useMemo(
     () => reports.filter((report) => selectedStudent && (report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName)),
     [reports, selectedStudent],
   );
   const reportSlots = getReportSlots(studentReports);
-  const assignedProgram = curriculumPrograms.find((program) => program.slug === selectedStudent?.assignedProgram);
 
-  // Determine system-recommended track for this student based on test scores and grade
+  // Currently assigned programs for the student
+  const assignedPrograms = useMemo(() => {
+    if (!selectedStudent) return [];
+    const slugs = selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
+    return curriculumPrograms.filter((p) => slugs.includes(p.slug));
+  }, [selectedStudent]);
+
+  // System-recommended track suggestion
   const systemRecommendation = useMemo(() => {
     if (!selectedStudent) return null;
     const testReport = studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'initial-assessment');
@@ -43,7 +70,7 @@ export default function StudentsControlPage() {
     if (selectedStudent.grade.includes('الأول') || selectedStudent.grade.includes('الثاني') || selectedStudent.grade.includes('عام')) {
       return {
         program: curriculumPrograms.find((p) => p.slug === 'reading')!,
-        reason: 'بناءً على الصف الدراسي وحاجة الطالب لتأسيس القراءة والتهجي الصريح.',
+        reason: 'بناءً على المرحلة التأسيسية، يُقترح الاعتماد الأولي على مسار القراءة والتهجي الصريح.',
       };
     }
     
@@ -52,7 +79,7 @@ export default function StudentsControlPage() {
       if (mathDomain && mathDomain.score < 65) {
         return {
           program: curriculumPrograms.find((p) => p.slug === 'math')!,
-          reason: `الدرجة المنخفضة في الرياضيات (${mathDomain.score}%) تتطلب معمل التفكير الرياضي والعد المحسوس.`,
+          reason: `درجة الرياضيات (${mathDomain.score}%) تشير لحاجة الطفل لمعمل العد التفاعلي.`,
         };
       }
     }
@@ -63,17 +90,46 @@ export default function StudentsControlPage() {
     };
   }, [selectedStudent, studentReports]);
 
-  const approveProgram = (slug: string) => {
+  // Toggle track selection locally
+  const toggleTrack = (slug: string) => {
+    setSelectedTrackSlugs((prev) => 
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  };
+
+  // Select system recommendation into local multi-select state
+  const addSystemRecommendation = () => {
+    if (!systemRecommendation) return;
+    const slug = systemRecommendation.program.slug;
+    if (!selectedTrackSlugs.includes(slug)) {
+      setSelectedTrackSlugs((prev) => [...prev, slug]);
+    }
+  };
+
+  // Save selected tracks to DB
+  const saveAssignedTracks = () => {
     if (!selectedStudent) return;
-    const program = curriculumPrograms.find((item) => item.slug === slug);
+    if (selectedTrackSlugs.length === 0) {
+      setMessage('يرجى اختيار مسار واحد على الأقل قبل الحفظ.');
+      return;
+    }
+
+    const primarySlug = selectedTrackSlugs[0];
+    const programTitles = curriculumPrograms
+      .filter((p) => selectedTrackSlugs.includes(p.slug))
+      .map((p) => p.shortTitle)
+      .join(' + ');
+
     updateStudent(selectedStudent.id, {
-      assignedProgram: slug,
+      assignedProgram: primarySlug,
+      assignedPrograms: selectedTrackSlugs,
       assignedBy: 'د. إسماعيل عيسى',
       assignedAt: new Date().toISOString(),
       reviewStatus: 'program-assigned',
     });
+
     refresh();
-    setMessage(`تم اعتماد ${program?.shortTitle ?? 'المسار'} للطالب ${selectedStudent.fullName}.`);
+    setMessage(`تم اعتماد المسارات (${programTitles}) للطالب ${selectedStudent.fullName} بنجاح ✅.`);
   };
 
   const handleDeleteStudent = (studentId: string) => {
@@ -92,10 +148,10 @@ export default function StudentsControlPage() {
           <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <p className="text-xs font-black text-teal-800 uppercase tracking-wider">إدارة الطلاب</p>
-                <h1 className="mt-1 text-3xl font-black text-slate-950 md:text-4xl">ملفات الطلاب، تقاريرهم، والمسار العلاجي</h1>
+                <p className="text-xs font-black text-teal-800 uppercase tracking-wider">إدارة وإسناد المسارات</p>
+                <h1 className="mt-1 text-3xl font-black text-slate-950 md:text-4xl">إمكانية تحديد مسار أو أكثر لكل طالب يدوياً</h1>
                 <p className="mt-2 max-w-3xl text-xs sm:text-sm font-bold text-slate-600">
-                  معاينة كافة بيانات حساب ولي الأمر، التوصيات التلقائية للنظام، واعتمد المسار المناسب بضغطة زر.
+                  يمكنك اختيار مسار واحد أو دمج عدة مسارات معاً للطالب بناءً على رؤيتك التشخيصية، ثم اعتمادها رسمياً.
                 </p>
               </div>
               <Link href="/student/new" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 transition">
@@ -117,21 +173,26 @@ export default function StudentsControlPage() {
               <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-24 xl:self-start">
                 <h2 className="px-2 text-lg font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
                 <div className="mt-4 grid gap-2.5">
-                  {students.map((student) => (
-                    <button
-                      key={student.id}
-                      onClick={() => setSelectedId(student.id)}
-                      className={`flex items-center gap-3 rounded-xl border p-3 text-right transition ${
-                        selectedStudent?.id === student.id ? 'border-teal-600 bg-teal-50/80 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
-                    >
-                      <Avatar student={student} size="sm" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-black text-slate-950 text-sm">{student.fullName}</span>
-                        <span className="mt-0.5 block text-xs font-bold text-slate-500">{student.grade}</span>
-                      </span>
-                    </button>
-                  ))}
+                  {students.map((student) => {
+                    const count = (student.assignedPrograms?.length || (student.assignedProgram ? 1 : 0));
+                    return (
+                      <button
+                        key={student.id}
+                        onClick={() => setSelectedId(student.id)}
+                        className={`flex items-center gap-3 rounded-xl border p-3 text-right transition ${
+                          selectedStudent?.id === student.id ? 'border-teal-600 bg-teal-50/80 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <Avatar student={student} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-black text-slate-950 text-sm">{student.fullName}</span>
+                          <span className="mt-0.5 block text-xs font-bold text-slate-500">
+                            {student.grade} {count > 0 ? `· (${count} مسار)` : ''}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </aside>
 
@@ -144,7 +205,7 @@ export default function StudentsControlPage() {
                     <div className="grid lg:grid-cols-[240px_minmax(0,1fr)]">
                       <div className="grid place-items-center bg-slate-900 p-6 text-white text-center">
                         <Avatar student={selectedStudent} size="lg" />
-                        <div className="mt-3">
+                        <div className="mt-3 space-y-1">
                           <span className="inline-block rounded-full bg-teal-400/20 px-3 py-1 text-xs font-black text-teal-300">
                             {selectedStudent.grade}
                           </span>
@@ -190,69 +251,106 @@ export default function StudentsControlPage() {
                     </div>
                   </section>
 
-                  {/* System Track Recommendation & Track Selector */}
+                  {/* MULTI-TRACK ASSIGNMENT PANEL */}
                   <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
                     
                     {/* Header */}
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700">
-                        <BookOpenCheck size={22} />
-                      </span>
-                      <div>
-                        <p className="text-xs font-black text-teal-700">توجيه واعتماد المسار</p>
-                        <h2 className="text-xl font-black text-slate-950">
-                          {assignedProgram ? `المسار المعتمد حالياً: ${assignedProgram.shortTitle}` : 'لم يتم اعتماد مسار بعد'}
-                        </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700">
+                          <BookOpenCheck size={22} />
+                        </span>
+                        <div>
+                          <p className="text-xs font-black text-teal-700">إسناد متعدد المسارات</p>
+                          <h2 className="text-xl font-black text-slate-950">
+                            {assignedPrograms.length > 0
+                              ? `المسارات المعتمدة (${assignedPrograms.length}): ${assignedPrograms.map((p) => p.shortTitle).join(' + ')}`
+                              : 'لم يتم اعتماد مسارات بعد'}
+                          </h2>
+                        </div>
                       </div>
+
+                      {/* Save Assigned Tracks Button */}
+                      <button
+                        type="button"
+                        onClick={saveAssignedTracks}
+                        className="rounded-xl bg-teal-600 px-6 py-3 text-xs font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95 flex items-center gap-2"
+                      >
+                        <CheckCircle2 size={18} />
+                        <span>اعتماد المسارات المختارة ({selectedTrackSlugs.length})</span>
+                      </button>
                     </div>
 
-                    {/* SYSTEM RECOMMENDED TRACK CARD */}
+                    {/* SYSTEM RECOMMENDED TRACK SUGGESTION */}
                     {systemRecommendation && (
-                      <div className="rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-emerald-50/50 to-white p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-emerald-50/40 to-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="space-y-1">
                           <div className="inline-flex items-center gap-1.5 text-xs font-black text-teal-800">
-                            <Sparkles size={16} className="text-teal-600" />
-                            <span>ترشيح المنصة التلقائي بناءً على البيانات والتأهيل:</span>
+                            <Sparkles size={15} className="text-teal-600" />
+                            <span>اقتراح المنصة الاسترشادي (غير إجباري):</span>
                           </div>
-                          <h3 className="text-lg font-black text-slate-900">{systemRecommendation.program.shortTitle}</h3>
-                          <p className="text-xs font-bold text-slate-600">{systemRecommendation.reason}</p>
+                          <p className="text-xs font-bold text-slate-700">
+                            المسار المقترح: <span className="font-black text-slate-900">{systemRecommendation.program.shortTitle}</span> · {systemRecommendation.reason}
+                          </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => approveProgram(systemRecommendation.program.slug)}
-                          className="shrink-0 rounded-xl bg-teal-600 px-5 py-3 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm"
+                          onClick={addSystemRecommendation}
+                          className="shrink-0 rounded-xl border border-teal-300 bg-white px-3.5 py-2 text-xs font-black text-teal-800 hover:bg-teal-100 transition shadow-sm"
                         >
-                          اعتماد المسار المقترح مباشرة
+                          + إضافة المقترح للقائمة
                         </button>
                       </div>
                     )}
 
-                    {/* All Available Programs Selector */}
+                    {/* MULTI-SELECTABLE TRACK CARDS */}
                     <div>
-                      <p className="mb-3 text-xs font-black text-slate-500 uppercase tracking-wider">أو اختر مساراً آخر يدويًا:</p>
+                      <p className="mb-3 text-xs font-black text-slate-600 uppercase tracking-wider">
+                        اختر مساراً واحداً أو أكثر بالضغط على الكروت أدناه (يمكن دمج أكثر من مسار للطالب):
+                      </p>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {curriculumPrograms.map((program) => (
-                          <button
-                            key={program.slug}
-                            onClick={() => approveProgram(program.slug)}
-                            className={`rounded-2xl border p-4 text-right transition ${
-                              selectedStudent.assignedProgram === program.slug
-                                ? 'border-teal-600 bg-teal-50 shadow-sm'
-                                : 'border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-300'
-                            }`}
-                          >
-                            <span className="mb-2 block h-2 rounded-full" style={{ backgroundColor: program.color }} />
-                            <span className="block font-black text-slate-950 text-sm">{program.shortTitle}</span>
-                            <span className="mt-1 block text-xs font-bold text-slate-500 leading-relaxed">{program.duration}</span>
-                          </button>
-                        ))}
+                        {curriculumPrograms.map((program) => {
+                          const isSelected = selectedTrackSlugs.includes(program.slug);
+                          return (
+                            <div
+                              key={program.slug}
+                              onClick={() => toggleTrack(program.slug)}
+                              className={`cursor-pointer rounded-2xl border p-4 text-right transition flex flex-col justify-between select-none ${
+                                isSelected
+                                  ? 'border-2 border-teal-600 bg-teal-50/90 shadow-md ring-2 ring-teal-600/20'
+                                  : 'border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="h-2.5 w-12 rounded-full" style={{ backgroundColor: program.color }} />
+                                  {isSelected ? (
+                                    <span className="flex items-center gap-1 text-xs font-black text-teal-700">
+                                      <CheckSquare size={18} className="text-teal-600" />
+                                      <span>محدد</span>
+                                    </span>
+                                  ) : (
+                                    <Square size={18} className="text-slate-400" />
+                                  )}
+                                </div>
+                                <h3 className="font-black text-slate-950 text-sm sm:text-base">{program.shortTitle}</h3>
+                                <p className="mt-1 text-xs font-bold text-slate-500 leading-relaxed">{program.promise}</p>
+                              </div>
+
+                              <div className="mt-3 border-t border-slate-200/60 pt-2 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                <span>{program.duration}</span>
+                                <span>{program.modules.length} أسابيع علاجية</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
                     {message && (
-                      <p className="rounded-xl bg-teal-50 border border-teal-200 p-3.5 text-xs font-black text-teal-900">
+                      <div className="rounded-xl bg-teal-50 border border-teal-200 p-3.5 text-xs font-black text-teal-900">
                         {message}
-                      </p>
+                      </div>
                     )}
 
                   </section>
