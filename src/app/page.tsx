@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { 
   ArrowLeft, Brain, FileSearch, Hand, LockKeyhole, Shapes, ShieldCheck, 
-  Sparkles, CheckCircle2, Award, ChevronDown, GraduationCap, Volume2, Star
+  Sparkles, CheckCircle2, Award, ChevronDown, GraduationCap, Volume2, Star, Trophy
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 
@@ -140,7 +140,15 @@ export default function Home() {
           <Link href="/" className="focus-ring rounded-lg">
             <BrandMark size="md" />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link 
+              href="/nexus" 
+              className="focus-ring rounded-xl border border-cyan-300 bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md hover:from-cyan-700 hover:to-teal-700 transition active:scale-95 flex items-center gap-1.5"
+            >
+              <Trophy size={16} />
+              <span>نظام نكسس للمدارس (NEXUS)</span>
+            </Link>
+
             <Link 
               href="/auth/login" 
               className="focus-ring rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95 shadow-sm"
@@ -181,11 +189,18 @@ export default function Home() {
             {/* Left Main Hero Text */}
             <div className="motion-fade-up space-y-6 text-right">
               
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-teal-200 bg-teal-50/90 px-4 py-2 text-xs sm:text-sm font-black text-teal-800 shadow-sm backdrop-blur">
-                <Sparkles size={16} className="text-teal-600 animate-pulse" />
-                <span>بإشراف الخبير د. إسماعيل عيسى</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
-                <span>منصة مسار التأهيل الأولى</span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="inline-flex items-center gap-2.5 rounded-full border border-teal-200 bg-teal-50/90 px-4 py-2 text-xs sm:text-sm font-black text-teal-800 shadow-sm backdrop-blur">
+                  <Sparkles size={16} className="text-teal-600 animate-pulse" />
+                  <span>بإشراف الخبير د. إسماعيل عيسى</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
+                  <span>منصة مسار الأولى</span>
+                </div>
+
+                <Link href="/nexus" className="inline-flex items-center gap-2 rounded-full border border-cyan-300 bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2 text-xs sm:text-sm font-black text-white shadow-sm hover:opacity-95 transition">
+                  <Trophy size={14} />
+                  <span>مدمج مع نظام NEXUS EDU للمدارس والجائزة الكبرى 🚀</span>
+                </Link>
               </div>
 
               <h1 className="text-4xl font-black leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl tracking-tight">
@@ -217,6 +232,14 @@ export default function Home() {
                 >
                   <span>ابدأ تقييم تحديد المستوى</span>
                   <ArrowLeft size={18} />
+                </Link>
+
+                <Link 
+                  href="/nexus" 
+                  className="focus-ring inline-flex min-h-14 items-center justify-center gap-2.5 rounded-2xl border border-cyan-300 bg-gradient-to-r from-cyan-900 via-teal-900 to-slate-900 px-8 py-4 text-base font-black text-white shadow-lg shadow-cyan-900/30 hover:from-cyan-950 hover:to-slate-950 transition active:scale-95"
+                >
+                  <Trophy size={20} className="text-amber-400 animate-bounce" />
+                  <span>دخول نظام نكسس للمدارس (NEXUS)</span>
                 </Link>
               </div>
 

@@ -16,17 +16,33 @@ export default function BrandMark({ size = 'md', showText = true, dark = false }
   const markSize = sizes[size];
 
   return (
-    <span className="inline-flex min-w-0 items-center gap-3">
+    <span className="inline-flex min-w-0 items-center gap-2 sm:gap-3">
+      {/* Masar Logo */}
       <span
-        className="relative inline-block shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200"
+        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-xs"
         style={{ width: markSize, height: markSize }}
       >
-        <Image src="/brand/masar-logo.png" alt="شعار منصة مسار" fill className="object-contain" sizes={`${markSize}px`} priority={size === 'lg'} />
+        <Image src="/brand/masar-logo.png" alt="شعار منصة مسار" fill className="object-contain p-0.5" sizes={`${markSize}px`} priority={size === 'lg'} />
       </span>
+
+      {/* Plus Connector & Nexus Badge */}
+      <span className="text-teal-600 font-black text-xs sm:text-sm select-none">×</span>
+
+      {/* Nexus Logo Badge */}
+      <span
+        className="relative inline-flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 text-white font-black shadow-xs ring-1 ring-teal-400/30"
+        style={{ width: markSize, height: markSize, fontSize: markSize * 0.4 }}
+      >
+        <span>N</span>
+      </span>
+
       {showText && (
         <span className="min-w-0">
-          <span className={`block text-base font-black leading-5 md:text-xl ${dark ? 'text-white' : 'text-slate-950'}`}>منصة مسار التأهيل</span>
-          <span className={`hidden text-xs font-bold sm:block ${dark ? 'text-white/68' : 'text-slate-500'}`}>تقييم، تدخل، متابعة تقدم</span>
+          <span className="flex items-center gap-1.5">
+            <span className={`block text-base font-black leading-5 md:text-xl ${dark ? 'text-white' : 'text-slate-950'}`}>منصة مسار</span>
+            <span className="rounded-md bg-cyan-600/10 px-1.5 py-0.5 text-[10px] font-black text-cyan-700 border border-cyan-500/20">NEXUS</span>
+          </span>
+          <span className={`hidden text-xs font-bold sm:block ${dark ? 'text-white/68' : 'text-slate-500'}`}>التأهيل الذكي والتعلم التفاعلي</span>
         </span>
       )}
     </span>
