@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardCheck, Gauge, Layers3, Route, Target } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Download, FileText, Gauge, Layers3, Route, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
@@ -15,7 +15,7 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
   const image =
     program.slug === 'math'
       ? '/learning/math-lab.png'
-      : program.slug === 'reading' || program.slug === 'speech'
+      : program.slug === 'reading' || program.slug === 'speech' || program.slug === 'simple-spelling'
         ? '/learning/literacy-lab.png'
         : '/learning/communication-lab.png';
 
@@ -48,6 +48,39 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
               </div>
             </div>
           </section>
+
+          {program.slug === 'simple-spelling' && (
+            <section className="border-b border-slate-200 bg-slate-50">
+              <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+                <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-teal-800">المذكرة الأصلية كاملة</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-950">محتوى التهجي البسيط كما هو داخل النظام</h2>
+                    <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
+                      الملف مدمج داخل المسار بنفس ترتيب الصفحات والتدريبات، ويستخدمه الدكتور أو ولي الأمر للطباعة أو المتابعة.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <a href="/resources/simple-spelling-iop.pdf" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
+                      <FileText size={17} />
+                      فتح PDF كامل
+                    </a>
+                    <a href="/resources/simple-spelling-iop.pdf" download className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800">
+                      <Download size={17} />
+                      تحميل المذكرة
+                    </a>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <iframe
+                    title="مذكرة التهجي البسيط"
+                    src="/resources/simple-spelling-iop.pdf#view=FitH"
+                    className="h-[78svh] min-h-[620px] w-full"
+                  />
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
