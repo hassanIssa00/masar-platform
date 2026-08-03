@@ -220,11 +220,6 @@ export default function RegisterPage() {
 
           <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة مرور قوية" type="password" required />
 
-          <div className="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs font-bold leading-relaxed text-teal-900 flex items-center gap-2">
-            <ShieldCheck size={20} className="text-teal-700 shrink-0" />
-            <span>سيتم إنشاء الحساب وربط ملف الطفل تلقائياً مع خيار التبديل بين وضع ولي الأمر ووضع الطفل.</span>
-          </div>
-
           <button 
             type="submit" 
             disabled={loading} 
