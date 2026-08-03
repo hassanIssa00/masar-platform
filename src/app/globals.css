@@ -270,53 +270,84 @@ button {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 15mm;
+    margin: 18mm 14mm 14mm 14mm;
   }
 
+  /* Hide all non-report UI */
   nav,
-  header,
   aside,
-  sidebar,
-  .no-print {
+  .no-print,
+  [class*="Sidebar"],
+  [class*="Navbar"] {
     display: none !important;
   }
 
-  body {
+  html, body {
     background: #ffffff !important;
     color: #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
+    font-size: 10pt !important;
+  }
+
+  /* Reset all wrappers so report fills the page */
+  .flex, .min-h-screen {
+    display: block !important;
   }
 
   main {
     padding: 0 !important;
     margin: 0 !important;
     max-width: 100% !important;
+    width: 100% !important;
   }
 
+  /* The report card itself */
   .clinical-report {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    border-radius: 0 !important;
     background: white !important;
+    /* Prevent first content from touching top edge */
+    padding-top: 4mm !important;
   }
 
+  /* Preserve colours in print */
   .clinical-report * {
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
   }
 
+  /* Prevent mid-element page breaks */
+  .clinical-report header {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-before: avoid !important;
+  }
+
   .clinical-report section,
-  .clinical-report article,
+  .clinical-report article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 6mm !important;
+  }
+
   .clinical-report footer {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-bottom: 1rem !important;
+    margin-top: 8mm !important;
   }
 
+  /* Ensure grids are symmetric */
+  .clinical-report .grid {
+    display: grid !important;
+  }
+
+  /* Tables */
   .clinical-report table {
     width: 100% !important;
     table-layout: fixed !important;
@@ -327,5 +358,15 @@ button {
   .clinical-report td {
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
+  }
+
+  /* Two-column grids stay two columns in print */
+  @supports (display: grid) {
+    .clinical-report .md\:grid-cols-2 {
+      grid-template-columns: 1fr 1fr !important;
+    }
+    .clinical-report .md\:grid-cols-3 {
+      grid-template-columns: 1fr 1fr 1fr !important;
+    }
   }
 }

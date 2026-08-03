@@ -108,60 +108,75 @@ function ReportsContent() {
             </button>}
 
             <article className="clinical-report overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div className="p-5 md:p-7">
-                <header className="flex flex-col gap-5 border-b-4 border-indigo-950 pb-5 md:flex-row md:items-center md:justify-between">
-                  <div className="order-2 md:order-1">
-                    <div className="inline-flex rounded-lg bg-indigo-950 px-5 py-3 text-center text-white">
-                      <div>
-                        <p className="text-xs font-black text-white/70">رقم ملف الطالب</p>
-                        <p className="mt-1 text-xl font-black tracking-wide">{fileNumber}</p>
+              <div className="p-5 md:p-8">
+
+                {/* ══ REPORT IDENTITY HEADER ══ */}
+                <header className="border-b-4 border-indigo-950 pb-6">
+
+                  {/* Top identity bar: Logo left / Brand right */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* File number badge */}
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="rounded-lg bg-indigo-950 px-5 py-2.5 text-white text-center">
+                        <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">رقم الملف</p>
+                        <p className="mt-0.5 text-lg font-black tracking-widest">{fileNumber}</p>
                       </div>
+                      <p className="text-xs font-bold text-slate-400 mt-1">{selected.date}</p>
                     </div>
-                    <p className="mt-3 text-sm font-black text-slate-500">{selected.date}</p>
+
+                    {/* Center: Platform name */}
+                    <div className="flex-1 text-center px-4">
+                      <h1 className="text-3xl font-black text-indigo-950 tracking-tight">مَسَار · MASAR</h1>
+                      <p className="mt-1 text-sm font-black text-blue-700">منصة التأهيل والتعليم الذكي لصعوبات التعلم</p>
+                      <p className="mt-0.5 text-xs font-bold text-slate-500">مؤسس المنصة: أ.د. إسماعيل عيسى — استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
+                    </div>
+
+                    {/* Logo */}
+                    <div className="flex flex-col items-center gap-1">
+                      <BrandMark size="lg" showText={false} />
+                      <p className="text-[9px] font-black text-indigo-700 uppercase tracking-widest">وثيقة معتمدة</p>
+                    </div>
                   </div>
-                  <div className="order-1 flex items-center gap-4 text-right md:order-2">
-                    <div>
-                      <h1 className="text-3xl font-black text-indigo-950">MASAR · مَسَار</h1>
-                      <p className="mt-1 text-lg font-black text-blue-700">منصة التأهيل والتعليم الذكي لصعوبات التعلم</p>
-                      <p className="mt-1 text-sm font-bold text-slate-500">مؤسس المنصة: د. إسماعيل عيسى - استشاري التربية الخاصة</p>
-                    </div>
-                    <BrandMark size="lg" showText={false} />
+
+                  {/* Report title strip */}
+                  <div className="mt-5 rounded-xl bg-gradient-to-l from-indigo-950 to-blue-800 px-6 py-4 text-center text-white">
+                    <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest mb-1">وثيقة تعليمية علاجية معتمدة · OFFICIAL ASSESSMENT REPORT</p>
+                    <h2 className="text-xl font-black">{getReportPrintTitle(selected)}</h2>
                   </div>
                 </header>
 
-                <div className="mt-5 rounded-lg bg-gradient-to-l from-indigo-950 to-blue-800 p-5 text-center text-white">
-                  <p className="text-xs font-black text-amber-300">وثيقة تعليمية علاجية معتمدة</p>
-                  <h2 className="mt-2 text-2xl font-black">{getReportPrintTitle(selected)}</h2>
-                </div>
-
-                <section className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="grid gap-3 md:grid-cols-[100px_1fr_1fr_1fr]">
-                    <div className="grid place-items-center rounded-lg border-2 border-indigo-200 bg-white p-3 text-center">
+                {/* ══ STUDENT INFO GRID (symmetric 3-col) ══ */}
+                <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-3 text-xs font-black text-slate-500 uppercase tracking-wider text-center">بيانات الطالب والتقرير</p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {/* Photo cell spans 1 row on md, full width on small */}
+                    <div className="md:row-span-2 grid place-items-center rounded-xl border-2 border-indigo-100 bg-white p-4 text-center">
                       {selectedStudent?.photoUrl ? (
                         <span
                           role="img"
                           aria-label={selectedStudent.fullName}
-                          className="h-20 w-20 rounded-lg bg-cover bg-center ring-2 ring-indigo-100"
+                          className="h-24 w-24 rounded-xl bg-cover bg-center ring-2 ring-indigo-200"
                           style={{ backgroundImage: `url(${selectedStudent.photoUrl})` }}
                         />
                       ) : (
-                        <span className="grid h-20 w-20 place-items-center rounded-lg bg-slate-100 text-slate-500">
-                          <UserRound size={34} />
+                        <span className="grid h-24 w-24 place-items-center rounded-xl bg-indigo-50 text-indigo-400 border-2 border-indigo-100">
+                          <UserRound size={40} />
                         </span>
                       )}
                       <p className="mt-2 text-xs font-black text-indigo-700">صورة الطالب</p>
                     </div>
+                    {/* 6 info cells in 2 columns → perfectly symmetric */}
                     {[
                       ['اسم الطالب', selected.studentName],
-                      ['الصف الدراسي', selected.grade],
                       [isAnswersReport ? 'نسبة اكتمال الإجابات' : 'نسبة الأداء الكلي', `${selected.score}%`],
+                      ['الصف الدراسي', selected.grade],
                       ['البرنامج', cleanReportText(selected.program)],
                       ['تاريخ التقرير', selected.date],
-                      ['حالة التقرير', selected.status === 'completed' ? 'مكتمل ومعتمد' : 'قيد مراجعة الأخصائي'],
+                      ['حالة التقرير', selected.status === 'completed' ? 'مكتمل ومعتمد ✓' : 'قيد المراجعة'],
                     ].map(([label, value]) => (
-                      <div key={label} className="rounded-lg border border-slate-200 bg-white p-4">
-                        <p className="text-xs font-black text-slate-400">{label}</p>
-                        <p className="mt-2 text-lg font-black text-slate-950">{value}</p>
+                      <div key={label} className="rounded-xl border border-slate-200 bg-white p-3.5 text-right">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{label}</p>
+                        <p className="mt-1.5 text-base font-black text-slate-950 leading-snug">{value}</p>
                       </div>
                     ))}
                   </div>
