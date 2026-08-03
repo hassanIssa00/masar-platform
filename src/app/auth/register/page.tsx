@@ -8,10 +8,33 @@ import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
 import { saveAccount, setSession } from '@/lib/localDb';
 
+const countryCodes = [
+  { code: '+20', name: '🇪🇬 مصر' },
+  { code: '+966', name: '🇸🇦 السعودية' },
+  { code: '+971', name: '🇦🇪 الإمارات' },
+  { code: '+965', name: '🇰🇼 الكويت' },
+  { code: '+974', name: '🇶🇦 قطر' },
+  { code: '+973', name: '🇧🇭 البحرين' },
+  { code: '+968', name: '🇴🇲 عُمان' },
+  { code: '+962', name: '🇯🇴 الأردن' },
+  { code: '+961', name: '🇱🇧 لبنان' },
+  { code: '+963', name: '🇸🇾 سوريا' },
+  { code: '+964', name: '🇮🇶 العراق' },
+  { code: '+218', name: '🇱🇾 ليبيا' },
+  { code: '+216', name: '🇹🇳 تونس' },
+  { code: '+213', name: '🇩🇿 الجزائر' },
+  { code: '+212', name: '🇲🇦 المغرب' },
+  { code: '+249', name: '🇸🇩 السودان' },
+  { code: '+967', name: '🇾🇪 اليمن' },
+  { code: '+1', name: '🇺🇸 أمريكا' },
+  { code: '+44', name: '🇬🇧 بريطانيا' },
+];
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState('+20');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +45,7 @@ export default function RegisterPage() {
     const account = saveAccount({
       name,
       email,
-      phone,
+      phone: `${countryCode}${phone}`,
       role: 'parent',
     });
 
@@ -50,7 +73,29 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <Field label="الاسم الكامل" value={name} onChange={setName} placeholder="الاسم الثلاثي" />
           <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@example.com" type="email" />
-          <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="01000000000" type="tel" />
+          {/* Phone field with country code selector */}
+          <div className="block">
+            <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">رقم الهاتف</span>
+            <div className="flex rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition overflow-hidden">
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="shrink-0 bg-slate-100 border-l border-slate-200 px-3 py-3 text-xs font-black text-slate-800 outline-none cursor-pointer hover:bg-slate-200 transition"
+              >
+                {countryCodes.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold text-slate-900 outline-none"
+                placeholder="1000000000"
+                required
+              />
+            </div>
+          </div>
           <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="اكتب كلمة المرور" type="password" />
 
           <div className="rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs font-bold leading-relaxed text-teal-900">
