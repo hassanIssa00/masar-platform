@@ -1,6 +1,6 @@
 'use client';
 
-export type UserRole = 'doctor' | 'parent' | 'specialist' | 'teacher';
+export type UserRole = 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
 
 export type AccountRecord = {
   id: string;

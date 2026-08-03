@@ -30,6 +30,13 @@ const demoUsers = [
     role: 'parent' as UserRole,
     password: 'parent123',
   },
+  {
+    name: 'أحمد محمد سيد (طالب)',
+    email: 'student@masar.com',
+    phone: '01000000002',
+    role: 'student' as UserRole,
+    password: 'student123',
+  },
 ];
 
 function normalize(value: string) {

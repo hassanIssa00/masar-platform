@@ -93,7 +93,7 @@ export default function RegisterPage() {
       name: primaryName,
       email,
       phone: fullPhone,
-      role: accountType === 'parent' ? 'parent' : 'parent', // All registrations start as parent role for now
+      role: accountType === 'parent' ? 'parent' : 'student',
     });
 
     // Store account type so login redirect works correctly
@@ -139,13 +139,15 @@ export default function RegisterPage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('masar_active_student_id', matchingStudent.id);
       localStorage.setItem('masar_active_mode', accountType === 'parent' ? 'parent' : 'student');
-      // Store the student id so /student/new can pre-fill if needed
       localStorage.setItem('masar.current-student-id', matchingStudent.id);
     }
 
     setTimeout(() => {
-      // Step 1 done -> ALWAYS go to Step 2 (/student/new)
-      router.push('/student/new');
+      if (accountType === 'student') {
+        router.push('/kids');
+      } else {
+        router.push('/parent');
+      }
     }, 600);
   };
 

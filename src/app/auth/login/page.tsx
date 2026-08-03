@@ -12,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginRole, setLoginRole] = useState<'doctor' | 'parent'>('parent');
   const [forgotOpen, setForgotOpen] = useState(false);
   const [otpStep, setOtpStep] = useState<1 | 2 | 3>(1);
   const [otp, setOtp] = useState('');
@@ -61,11 +60,29 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
-      if (result.account.role === 'doctor' || result.account.role === 'specialist' || result.account.role === 'teacher' || loginRole === 'doctor') {
+
+      // 1. Doctor / Admin Role -> Doctor Dashboard
+      if (result.account.role === 'doctor' || result.account.role === 'specialist' || result.account.role === 'teacher') {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('masar_active_mode', 'parent');
+        }
         router.push('/dashboard');
         return;
       }
 
+      // 2. Student Role -> Student Interactive Experience
+      if (result.account.role === 'student') {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('masar_active_mode', 'student');
+        }
+        router.push('/kids');
+        return;
+      }
+
+      // 3. Parent Role -> Parent Portal
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('masar_active_mode', 'parent');
+      }
       const students = getStudents();
       router.push(students.length > 0 ? '/parent' : '/student/new');
       return;
