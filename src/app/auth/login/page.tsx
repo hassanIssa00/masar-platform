@@ -39,10 +39,11 @@ export default function LoginPage() {
 
   const fillDemo = (type: 'doctor' | 'parent') => {
     const demoEmail = type === 'doctor' ? 'dr.ismail@masar.com' : 'parent@masar.com';
+    const demoPass = type === 'doctor' ? 'masar2026' : 'parent123';
     setEmail(demoEmail);
-    setPassword(getDemoPassword(demoEmail));
+    setPassword(demoPass);
     setLoginError('');
-    setLoginMessage('تم تعبئة بيانات الدخول التجريبية. اضغط دخول للمتابعة.');
+    setLoginMessage('تم تعبئة بيانات الدخول. اضغط تسجيل الدخول للمتابعة.');
   };
 
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
@@ -160,8 +161,28 @@ export default function LoginPage() {
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
 
+          <div className="mt-5 grid grid-cols-2 gap-2 text-right">
+            <button
+              type="button"
+              onClick={loginAsDoctor}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50/80 px-3 py-2.5 text-xs font-black text-teal-900 hover:bg-teal-100 transition shadow-2xs cursor-pointer"
+            >
+              <ShieldCheck size={16} className="text-teal-600" />
+              <span>دخول مباشر د. إسماعيل</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={loginAsParent}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black text-slate-800 hover:bg-slate-100 transition shadow-2xs cursor-pointer"
+            >
+              <UserRound size={16} className="text-slate-600" />
+              <span>دخول كـ ولي أمر</span>
+            </button>
+          </div>
+
           {(loginError || loginMessage) && (
-            <div className={`mt-5 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
+            <div className={`mt-4 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
               loginError ? 'bg-rose-50 text-rose-900 border border-rose-200' : 'bg-teal-50 text-teal-950 border border-teal-200'
             }`}>
               {loginError ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}
