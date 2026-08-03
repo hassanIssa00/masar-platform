@@ -105,13 +105,15 @@ export default function Navbar() {
           )}
 
 
-          {/* Active Account Pill */}
-          <div className="hidden sm:flex min-w-0 rounded-xl bg-slate-50 px-3 py-1.5 text-right border border-slate-200">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">حساب العائلة</p>
-              <p className="truncate text-xs font-black text-slate-900">{userName || 'ولي الأمر'}</p>
+          {/* Active Account Pill — only show for parent accounts, not doctor/admin */}
+          {userRole !== 'doctor' && userRole !== 'specialist' && userRole !== 'teacher' && (
+            <div className="hidden sm:flex min-w-0 rounded-xl bg-slate-50 px-3 py-1.5 text-right border border-slate-200">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">حساب العائلة</p>
+                <p className="truncate text-xs font-black text-slate-900">{userName || 'ولي الأمر'}</p>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
