@@ -1,12 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, DatabaseZap, FileText, UserRound, Trash2 } from 'lucide-react';
+import { Activity, DatabaseZap, FileText, UserRound, Trash2, Loader2 } from 'lucide-react';
 import { clearAllMockData, getSyncSnapshot } from '@/lib/localDb';
+import { collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+// Collections to wipe — accounts excluded to preserve login
+const DATA_COLLECTIONS = ['students', 'reports', 'surveys', 'activities', 'messages', 'masar_rooms'];
+
+async function purgeFirestore() {
+  for (const colName of DATA_COLLECTIONS) {
+    try {
+      const snap = await getDocs(collection(db, colName));
+      for (const d of snap.docs) {
+        await deleteDoc(d.ref);
+      }
+    } catch (e) {
+      console.error(`Error purging ${colName}:`, e);
+    }
+  }
+}
 
 export default function SyncStatus() {
   const [snapshot, setSnapshot] = useState({ students: 0, reports: 0, surveys: 0, activities: 0, lastSync: null as string | null });
-  const [clearedMsg, setClearedMsg] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
 
   const refreshSnapshot = () => {
     queueMicrotask(() => setSnapshot(getSyncSnapshot()));
@@ -16,11 +34,16 @@ export default function SyncStatus() {
     refreshSnapshot();
   }, []);
 
-  const handleClearMock = () => {
+  const handleClearAll = async () => {
+    setStatus('loading');
+    // 1️⃣ Wipe Firestore first
+    await purgeFirestore();
+    // 2️⃣ Wipe localStorage and set cleared flag
     clearAllMockData();
+    // 3️⃣ Refresh counters
     refreshSnapshot();
-    setClearedMsg('تم تفريغ وحذف جميع البيانات التجريبية بنجاح!');
-    setTimeout(() => setClearedMsg(''), 4000);
+    setStatus('done');
+    setTimeout(() => setStatus('idle'), 5000);
   };
 
   const lastSync = snapshot.lastSync ? new Date(snapshot.lastSync).toLocaleString('ar-SA') : 'لا توجد عمليات محفوظة بعد';
@@ -56,18 +79,23 @@ export default function SyncStatus() {
           </div>
 
           <button
-            onClick={handleClearMock}
-            className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-xs"
-            title="تصفير وتفريغ البيانات المحلية القديمة"
+            onClick={handleClearAll}
+            disabled={status === 'loading'}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-xs disabled:opacity-60 disabled:cursor-wait"
+            title="تصفير وتفريغ كامل — Firestore + Local"
           >
-            <Trash2 size={14} />
-            <span>تصفير وتفريغ النظام</span>
+            {status === 'loading'
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Trash2 size={14} />
+            }
+            <span>{status === 'loading' ? 'جاري التصفير...' : 'تصفير وتفريغ النظام'}</span>
           </button>
         </div>
       </div>
-      {clearedMsg && (
-        <p className="mt-2 text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-lg p-2 text-center animate-fade-in">
-          {clearedMsg}
+
+      {status === 'done' && (
+        <p className="mt-2 text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-lg p-2 text-center">
+          ✅ تم تفريغ جميع البيانات من قاعدة البيانات السحابية والمتصفح نهائياً!
         </p>
       )}
     </section>
