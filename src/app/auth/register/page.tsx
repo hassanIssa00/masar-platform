@@ -142,11 +142,15 @@ export default function RegisterPage() {
       localStorage.setItem('masar.current-student-id', matchingStudent.id);
     }
 
-    // Always route through the onboarding wizard first so the student
-    // profile (national ID, date of birth, survey, assessment) is
-    // completed before reaching the main dashboard.
     setTimeout(() => {
-      router.push('/student/new');
+      if (accountType === 'parent') {
+        // Parent accounts go straight to their dashboard — no survey/assessment needed
+        router.push('/parent');
+      } else {
+        // Student accounts must complete the full onboarding:
+        // /student/new → /survey → /assessment → /kids
+        router.push('/student/new');
+      }
     }, 600);
   };
 
