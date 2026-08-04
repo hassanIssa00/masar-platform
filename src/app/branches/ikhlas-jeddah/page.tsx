@@ -1,581 +1,686 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Building2, Clock, CheckCircle2, AlertTriangle, Send, BookOpen, UserCheck,
-  ShieldCheck, Bell, Award, Sparkles, MessageCircle, Calendar, Plus, Share2
+  BookOpen, Clock, Users, Camera, BarChart3, Calendar,
+  Bell, Send, CheckCircle, XCircle, Plus, Video,
+  AlertTriangle, ChevronRight, Loader2, Star, MessageSquare,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Sidebar from '@/components/Sidebar';
 import {
-  getStudents, StudentRecord, getIkhlasLogs, saveIkhlasLog,
-  getIkhlasPosts, saveIkhlasPost, IkhlasDailyLogRecord, IkhlasCommunityPost
-} from '@/lib/localDb';
+  DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
+  getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal,
+  type Period,
+} from '@/data/ikhlasSchedule';
 
-const MOCK_IKHLAS_STUDENTS = [
-  { id: 'ikh_1', name: 'محمد أحمد علي إبراهيم', grade: 'أولى ابتدائي / 1', parentName: 'أحمد علي إبراهيم', phone: '0501234567' },
-  { id: 'ikh_2', name: 'يوسف خالد عبد العزيز', grade: 'أولى ابتدائي / 1', parentName: 'خالد عبد العزيز', phone: '0559876543' },
-  { id: 'ikh_3', name: 'عمر فيصل سعيد الغامدي', grade: 'أولى ابتدائي / 1', parentName: 'فيصل سعيد الغامدي', phone: '0541122334' },
-  { id: 'ikh_4', name: 'عبد الله صالح العتيبي', grade: 'أولى ابتدائي / 1', parentName: 'صالح العتيبي', phone: '0569988776' },
-  { id: 'ikh_5', name: 'إبراهيم حسن بن جاسم', grade: 'أولى ابتدائي / 1', parentName: 'حسن بن جاسم', phone: '0533344556' },
-  { id: 'ikh_6', name: 'سعود فهد الشمري', grade: 'أولى ابتدائي / 1', parentName: 'فهد الشمري', phone: '0522211445' },
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const BRANCH = 'IKHLAS_JEDDAH';
+
+// ── الطلاب (مؤقتاً hardcoded — سيأتي من الـ API لاحقاً) ──
+const CLASS_STUDENTS = [
+  { id: 's1', name: 'أحمد محمد علي إبراهيم' },
+  { id: 's2', name: 'يوسف خالد عبد العزيز السهلي' },
+  { id: 's3', name: 'عمر سعد محمد الغامدي' },
+  { id: 's4', name: 'عبد الرحمن فهد علي القحطاني' },
+  { id: 's5', name: 'محمد عبد الله أحمد الزهراني' },
+  { id: 's6', name: 'سلطان ناصر محمد العتيبي' },
+  { id: 's7', name: 'فيصل بندر عبد الرحمن الشمري' },
 ];
 
-export default function IkhlasJeddahClassPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'dismissal' | 'reports' | 'feed' | 'preview'>('dismissal');
-  const [logs, setLogs] = useState<IkhlasDailyLogRecord[]>([]);
-  const [posts, setPosts] = useState<IkhlasCommunityPost[]>([]);
-  const [currentTime, setCurrentTime] = useState('');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+type Tab = 'overview' | 'schedule' | 'homework' | 'attendance' | 'meetings' | 'photos' | 'reports';
 
-  // New Post Form State
-  const [postTitle, setPostTitle] = useState('');
-  const [postContent, setPostContent] = useState('');
-  const [postType, setPostType] = useState<'homework' | 'announcement' | 'photo'>('homework');
-  const [postDueDate, setPostDueDate] = useState('');
+function getToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('masar_token') ?? localStorage.getItem('access_token');
+}
 
-  // Daily Report State
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(MOCK_IKHLAS_STUDENTS[0].id);
-  const [score, setScore] = useState<number>(95);
-  const [summary, setSummary] = useState<string>('تم تدريس مهارات القراءة الجهرية، والتمييز بين المقاطع الصوتية القصيرة والطويلة، وإكمال تمارين الحساب التفاعلية بنجاح.');
-  const [attendance, setAttendance] = useState<'present' | 'absent' | 'late'>('present');
+function authHeaders() {
+  const token = getToken();
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
 
+export default function IkhlasJeddahPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [schedule] = useState<Period[]>(DEFAULT_SCHEDULE);
+  const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
+  const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
+  const [todayPeriods, setTodayPeriods] = useState<Period[]>([]);
+
+  // Homework state
+  const [homeworkList, setHomeworkList] = useState<any[]>([]);
+  const [hwTitle, setHwTitle] = useState('');
+  const [hwDesc, setHwDesc] = useState('');
+  const [hwType, setHwType] = useState<'TEXT' | 'MULTIPLE_CHOICE'>('TEXT');
+  const [hwOptions, setHwOptions] = useState(['', '', '', '']);
+  const [hwDue, setHwDue] = useState('');
+  const [hwLoading, setHwLoading] = useState(false);
+
+  // Attendance state
+  const [attendance, setAttendance] = useState<Record<string, { status: string; score: number; exit: string }>>({});
+  const [attLoading, setAttLoading] = useState(false);
+  const [exitLogged, setExitLogged] = useState<Record<string, string>>({});
+
+  // Meeting state
+  const [meetings, setMeetings] = useState<any[]>([]);
+  const [mtgTitle, setMtgTitle] = useState('');
+  const [mtgUrl, setMtgUrl] = useState('');
+  const [mtgDate, setMtgDate] = useState('');
+  const [mtgDuration, setMtgDuration] = useState(45);
+  const [mtgLoading, setMtgLoading] = useState(false);
+
+  // Photos state
+  const [photos, setPhotos] = useState<any[]>([]);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoCaption, setPhotoCaption] = useState('');
+  const [photoLoading, setPhotoLoading] = useState(false);
+
+  // Posts / community state
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postBody, setPostBody] = useState('');
+  const [postType, setPostType] = useState<'ANNOUNCEMENT' | 'GENERAL'>('ANNOUNCEMENT');
+  const [postLoading, setPostLoading] = useState(false);
+
+  // Weekly report
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
+
+  // ── Clock ticker ──
   useEffect(() => {
-    // Clock tick
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    }, 1000);
-    setCurrentTime(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    const tick = () => {
+      setCurrentPeriod(getCurrentPeriod(schedule));
+      setMinsUntilDismissal(getMinutesUntilDismissal(schedule));
+      setTodayPeriods(getTodayPeriods(schedule));
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [schedule]);
 
-    // Load logs & posts
-    setLogs(getIkhlasLogs());
-    setPosts(getIkhlasPosts());
-
-    return () => clearInterval(timer);
+  // ── Fetch data ──
+  const fetchHomework = useCallback(async () => {
+    const r = await fetch(`${API}/school/homework?branch=${BRANCH}`, { headers: authHeaders() });
+    if (r.ok) setHomeworkList(await r.json());
   }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
+  const fetchMeetings = useCallback(async () => {
+    const r = await fetch(`${API}/school/meetings?branch=${BRANCH}`, { headers: authHeaders() });
+    if (r.ok) setMeetings(await r.json());
+  }, []);
 
-  // 1. Log Exit Timestamp
-  const handleLogExitTime = (studentId: string, studentName: string) => {
-    const timeNow = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-    const dateToday = new Date().toISOString().split('T')[0];
+  const fetchPhotos = useCallback(async () => {
+    const r = await fetch(`${API}/school/photos?branch=${BRANCH}`, { headers: authHeaders() });
+    if (r.ok) setPhotos(await r.json());
+  }, []);
 
-    const existingLog = logs.find((l) => l.studentId === studentId && l.date === dateToday);
+  const fetchPosts = useCallback(async () => {
+    const r = await fetch(`${API}/school/posts?branch=${BRANCH}`, { headers: authHeaders() });
+    if (r.ok) setPosts(await r.json());
+  }, []);
 
-    const updated = saveIkhlasLog({
-      id: existingLog?.id,
-      studentId,
-      studentName,
-      date: dateToday,
-      attendance: existingLog?.attendance || 'present',
-      performanceScore: existingLog?.performanceScore || 95,
-      summaryReport: existingLog?.summaryReport || 'حضور وانتظام يومي ممتاز في فصل أولى ابتدائي.',
-      exitTime: `${timeNow} م`,
-      exitLoggedAt: new Date().toISOString(),
-      parentNotified: true,
+  useEffect(() => {
+    fetchHomework();
+    fetchMeetings();
+    fetchPhotos();
+    fetchPosts();
+  }, [fetchHomework, fetchMeetings, fetchPhotos, fetchPosts]);
+
+  // ── Actions ──
+  const logExit = async (studentId: string, studentName: string) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const today = now.toISOString().slice(0, 10);
+    setExitLogged((prev) => ({ ...prev, [studentId]: timeStr }));
+    const att = attendance[studentId] ?? { status: 'present', score: 90, exit: '' };
+    await fetch(`${API}/school/attendance`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        branch: BRANCH, studentName, studentId, date: today,
+        attendance: att.status, performanceScore: att.score,
+        exitTime: timeStr, parentNotified: true,
+      }),
     });
-
-    setLogs(getIkhlasLogs());
-    showToast(`✅ تم توثيق خروج الطالب ${studentName} الساعة ${timeNow} م وإرسال إشعار لولي الأمر!`);
   };
 
-  // 2. Send Late Pickup Alert
-  const handleSendLateAlert = (studentName: string, parentPhone: string) => {
-    const timeNow = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-    const msgText = `السيد ولي أمر الطالب (${studentName})، نود تذكيركم بأن اليوم الدراسي بمدارس الإخلاص الأهلية بجدة قد انتهى في تمام الساعة ${timeNow}م. يرجى الحضور لاستلام طفلك من بوابة المدرسة.`;
-    
-    // WhatsApp direct link
-    const waUrl = `https://wa.me/${parentPhone.replace(/\+/g, '')}?text=${encodeURIComponent(msgText)}`;
+  const sendLateAlert = async (studentId: string, studentName: string) => {
+    const exitTime = exitLogged[studentId] ?? '--:--';
+    await fetch(`${API}/school/attendance`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        branch: BRANCH, studentName, studentId,
+        date: new Date().toISOString().slice(0, 10),
+        attendance: 'present', lateAlertSent: true,
+        exitTime, parentNotified: true,
+      }),
+    });
+    alert(`✅ تم إرسال تنبيه التأخر لولي أمر ${studentName}`);
+  };
 
-    showToast(`🔔 تم إرسال تنبيه تأخر الاستلام لولي أمر ${studentName}!`);
-    if (typeof window !== 'undefined') {
-      window.open(waUrl, '_blank');
+  const saveAttendance = async () => {
+    setAttLoading(true);
+    const today = new Date().toISOString().slice(0, 10);
+    await Promise.all(
+      CLASS_STUDENTS.map((s) => {
+        const att = attendance[s.id] ?? { status: 'present', score: 90, exit: '' };
+        return fetch(`${API}/school/attendance`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            branch: BRANCH, studentName: s.name, studentId: s.id,
+            date: today, attendance: att.status,
+            performanceScore: att.score,
+          }),
+        });
+      })
+    );
+    setAttLoading(false);
+    alert('✅ تم حفظ كشف الحضور بنجاح');
+  };
+
+  const createHomework = async () => {
+    if (!hwTitle || !hwDesc || !hwDue) return;
+    setHwLoading(true);
+    const r = await fetch(`${API}/school/homework`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        branch: BRANCH, title: hwTitle, description: hwDesc,
+        type: hwType, dueDate: hwDue,
+        options: hwType === 'MULTIPLE_CHOICE' ? hwOptions.filter(Boolean) : undefined,
+      }),
+    });
+    if (r.ok) {
+      setHwTitle(''); setHwDesc(''); setHwDue('');
+      setHwOptions(['', '', '', '']);
+      await fetchHomework();
     }
+    setHwLoading(false);
   };
 
-  // 3. Save Daily Report
-  const handleSaveDailyReport = (e: React.FormEvent) => {
-    e.preventDefault();
-    const st = MOCK_IKHLAS_STUDENTS.find((s) => s.id === selectedStudentId);
-    if (!st) return;
-
-    const dateToday = new Date().toISOString().split('T')[0];
-    const existingLog = logs.find((l) => l.studentId === st.id && l.date === dateToday);
-
-    saveIkhlasLog({
-      id: existingLog?.id,
-      studentId: st.id,
-      studentName: st.name,
-      date: dateToday,
-      attendance,
-      performanceScore: score,
-      summaryReport: summary,
-      exitTime: existingLog?.exitTime,
-      exitLoggedAt: existingLog?.exitLoggedAt,
-      parentNotified: true,
+  const createMeeting = async () => {
+    if (!mtgTitle || !mtgUrl || !mtgDate) return;
+    setMtgLoading(true);
+    const r = await fetch(`${API}/school/meetings`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        branch: BRANCH, title: mtgTitle, meetingUrl: mtgUrl,
+        scheduledAt: mtgDate, duration: mtgDuration,
+      }),
     });
-
-    setLogs(getIkhlasLogs());
-    showToast(`🎉 تم إرسال التقرير التحليلي اليومي للطالب (${st.name}) بنجاح لولي الأمر!`);
+    if (r.ok) {
+      setMtgTitle(''); setMtgUrl(''); setMtgDate('');
+      await fetchMeetings();
+    }
+    setMtgLoading(false);
   };
 
-  // 4. Create Community Post / Homework
-  const handleCreatePost = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!postTitle.trim() || !postContent.trim()) return;
-
-    saveIkhlasPost({
-      title: postTitle,
-      content: postContent,
-      type: postType,
-      dueDate: postDueDate || undefined,
-      author: 'الأستاذ (المعلم المسؤول) - مدارس الإخلاص',
+  const uploadPhoto = async () => {
+    if (!photoUrl) return;
+    setPhotoLoading(true);
+    const r = await fetch(`${API}/school/photos`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ branch: BRANCH, photoUrl, caption: photoCaption }),
     });
-
-    setPosts(getIkhlasPosts());
-    setPostTitle('');
-    setPostContent('');
-    setPostDueDate('');
-    showToast('📌 تم نشر التنبيه/الواجب اليومي في مجتمع فصل أولى ابتدائي!');
+    if (r.ok) { setPhotoUrl(''); setPhotoCaption(''); await fetchPhotos(); }
+    setPhotoLoading(false);
   };
+
+  const createPost = async () => {
+    if (!postBody) return;
+    setPostLoading(true);
+    const r = await fetch(`${API}/school/posts`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ branch: BRANCH, type: postType, body: postBody }),
+    });
+    if (r.ok) { setPostBody(''); await fetchPosts(); }
+    setPostLoading(false);
+  };
+
+  const sendWeeklyReport = async () => {
+    setReportLoading(true);
+    const now = new Date();
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 4);
+    await Promise.all(
+      CLASS_STUDENTS.map((s) =>
+        fetch(`${API}/school/weekly-reports`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            branch: BRANCH, studentName: s.name, studentId: s.id,
+            weekStart: weekStart.toISOString().slice(0, 10),
+            weekEnd: weekEnd.toISOString().slice(0, 10),
+            attendanceDays: 5, avgPerformance: 92,
+            homeworkDone: homeworkList.length, homeworkTotal: homeworkList.length,
+            teacherNotes: 'أسبوع ممتاز — الطلاب في تقدم رائع بإذن الله 🌟',
+          }),
+        })
+      )
+    );
+    setReportLoading(false);
+    setReportSent(true);
+    setTimeout(() => setReportSent(false), 4000);
+  };
+
+  // ── Tabs config ──
+  const tabs: { key: Tab; label: string; icon: any }[] = [
+    { key: 'overview',    label: 'نظرة عامة',     icon: BarChart3 },
+    { key: 'schedule',   label: 'جدول الحصص',    icon: Clock },
+    { key: 'attendance', label: 'الحضور والانصراف', icon: Users },
+    { key: 'homework',   label: 'الواجبات',       icon: BookOpen },
+    { key: 'meetings',   label: 'الاجتماعات',     icon: Video },
+    { key: 'photos',     label: 'معرض الصور',     icon: Camera },
+    { key: 'reports',    label: 'التقارير',        icon: BarChart3 },
+  ];
+
+  const jsDay = new Date().getDay();
+  const isSchoolDay = jsDay >= 0 && jsDay <= 4;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950">
-      <Navbar />
-
-      <div className="flex" dir="rtl">
-        <Sidebar desktopOnly />
-
-        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8 space-y-6">
-
-          {/* Toast Notification */}
-          {toastMessage && (
-            <div className="fixed top-20 right-6 z-50 rounded-2xl bg-slate-900 p-4 text-white shadow-2xl border border-teal-500/50 flex items-center gap-3 animate-bounce">
-              <Sparkles className="text-amber-400 shrink-0" size={20} />
-              <p className="text-xs sm:text-sm font-black">{toastMessage}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white" dir="rtl">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-black text-white flex items-center gap-2">
+              🏫 فصل 1/1 — مدارس الإخلاص الأهلية بجدة
+            </h1>
+            <p className="text-xs text-slate-400">لوحة تحكم المعلم | أ. إسماعيل عيسى</p>
+          </div>
+          {currentPeriod && (
+            <div className="flex items-center gap-2 bg-green-500/20 border border-green-500/40 rounded-xl px-3 py-1.5">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-green-300 text-sm font-bold">{currentPeriod.subjectName}</span>
+              <span className="text-green-400 text-xs">{currentPeriod.startTime}–{currentPeriod.endTime}</span>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* HERO BANNER - AL-IKHLAS JEDDAH CLASS */}
-          <div className="overflow-hidden rounded-3xl bg-gradient-to-l from-teal-800 via-teal-900 to-slate-950 p-6 sm:p-8 text-white shadow-2xl relative">
-            <div className="absolute top-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-teal-500/20 px-3.5 py-1 text-xs font-black text-teal-200 border border-teal-400/30">
-                    🇸🇦 مدارس الإخلاص الأهلية بجدة
-                  </span>
-                  <span className="rounded-full bg-amber-400/20 px-3.5 py-1 text-xs font-black text-amber-300 border border-amber-400/30">
-                    فصل أولى ابتدائي (1/1)
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight">
-                  منظومة إدارة الفصل والمتابعة اليومية لأولياء الأمور
-                </h1>
-                <p className="text-xs sm:text-sm font-bold text-teal-200/90 max-w-2xl">
-                  توثيق الحضور والغياب، إرسال تقرير اليوم الدراسي الشامل، توثيق وقت خروج الطفل بالدقيقة، وتنبيهات تأخر استلام الأطفال مع مجتمع الواجبات.
-                </p>
-              </div>
+      {/* Tabs */}
+      <div className="border-b border-white/10 bg-slate-900/50 overflow-x-auto">
+        <div className="max-w-6xl mx-auto flex gap-1 px-4 py-2">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                  activeTab === t.key
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-              {/* Live Clock Card */}
-              <div className="shrink-0 rounded-2xl bg-white/10 p-4 border border-white/20 backdrop-blur-md text-center space-y-1">
-                <p className="text-[11px] font-black text-teal-300 uppercase tracking-wider">الساعة الحالية بجدة ⏰</p>
-                <p className="text-2xl font-black text-white tracking-wider" dir="ltr">{currentTime || '01:45:00 م'}</p>
-                <p className="text-[10px] font-bold text-teal-200">توثيق آلي مباشر لوقت خروج الطلاب</p>
-              </div>
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+        {/* ══════════════ نظرة عامة ══════════════ */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* بطاقات الإحصائيات */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'طلاب الفصل', value: CLASS_STUDENTS.length, icon: Users, color: 'blue' },
+                { label: 'واجبات مفتوحة', value: homeworkList.filter(h => h.status === 'OPEN').length, icon: BookOpen, color: 'amber' },
+                { label: 'اجتماعات قادمة', value: meetings.filter(m => m.status === 'UPCOMING').length, icon: Video, color: 'green' },
+                { label: 'صور الأسبوع', value: photos.length, icon: Camera, color: 'pink' },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className={`bg-${stat.color}-500/10 border border-${stat.color}-500/30 rounded-2xl p-4`}>
+                    <Icon className={`w-6 h-6 text-${stat.color}-400 mb-2`} />
+                    <div className={`text-2xl font-black text-${stat.color}-300`}>{stat.value}</div>
+                    <div className="text-xs text-slate-400">{stat.label}</div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Quick Stats Grid */}
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-white/10">
-              <div className="rounded-xl bg-white/5 p-3 text-center border border-white/10">
-                <p className="text-[11px] font-black text-teal-300">طلاب الفصل</p>
-                <p className="text-xl font-black text-white mt-0.5">{MOCK_IKHLAS_STUDENTS.length} طالباً</p>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3 text-center border border-white/10">
-                <p className="text-[11px] font-black text-teal-300">نسبة الحضور اليوم</p>
-                <p className="text-xl font-black text-emerald-400 mt-0.5">100%</p>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3 text-center border border-white/10">
-                <p className="text-[11px] font-black text-teal-300">تم توثيق الخروج</p>
-                <p className="text-xl font-black text-amber-300 mt-0.5">
-                  {logs.filter((l) => l.exitTime).length} طلاب
-                </p>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3 text-center border border-white/10">
-                <p className="text-[11px] font-black text-teal-300">متوسط الأداء اليومي</p>
-                <p className="text-xl font-black text-cyan-300 mt-0.5">95%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* TAB NAVIGATION */}
-          <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none">
-            <button
-              onClick={() => setActiveTab('dismissal')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer ${
-                activeTab === 'dismissal'
-                  ? 'bg-teal-700 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Clock size={16} />
-              <span>طابور الانصراف وتوثيق وقت الخروج</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer ${
-                activeTab === 'reports'
-                  ? 'bg-teal-700 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Award size={16} />
-              <span>إرسال التقرير اليومي الشامل</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('feed')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer ${
-                activeTab === 'feed'
-                  ? 'bg-teal-700 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <BookOpen size={16} />
-              <span>مجتمع الفصل والواجبات</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('preview')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer ${
-                activeTab === 'preview'
-                  ? 'bg-teal-700 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <MessageCircle size={16} />
-              <span>معاينة شاشة ولي الأمر Live</span>
-            </button>
-          </div>
-
-          {/* TAB 1: DISMISSAL & EXIT TIMESTAMPS */}
-          {activeTab === 'dismissal' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-teal-50 border border-teal-200 p-4 rounded-2xl">
-                <div>
-                  <h3 className="font-black text-teal-900 text-base">طابور انصراف الطلاب - توثيق لحظي ووقت الخروج بالدقيقة</h3>
-                  <p className="text-xs font-bold text-teal-700 mt-0.5">
-                    عند خروج الطالب من المدرسة، اضغط "توثيق الخروج" ليصل إشعار زمني موثق لولي الأمر فوراً.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3">
-                {MOCK_IKHLAS_STUDENTS.map((student) => {
-                  const studentLog = logs.find((l) => l.studentId === student.id);
-                  const exitTime = studentLog?.exitTime;
-
-                  return (
-                    <article key={student.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-teal-300 transition">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <h4 className="font-black text-slate-900 text-base">{student.name}</h4>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-600">
-                              {student.grade}
-                            </span>
-                          </div>
-                          <p className="text-xs font-bold text-slate-500">
-                            ولي الأمر: <span className="text-slate-800 font-black">{student.parentName}</span> ({student.phone})
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          {/* Exit timestamp display */}
-                          {exitTime ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-800">
-                              <CheckCircle2 size={16} className="text-emerald-600" />
-                              <span>تم الخروج الساعة: {exitTime}</span>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleLogExitTime(student.id, student.name)}
-                              className="focus-ring flex items-center gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 text-xs font-black transition shadow-sm cursor-pointer active:scale-95"
-                            >
-                              <Clock size={16} />
-                              <span>توثيق خروج الطالب الآن 🕒</span>
-                            </button>
-                          )}
-
-                          {/* Late pickup alert trigger */}
-                          <button
-                            onClick={() => handleSendLateAlert(student.name, student.phone)}
-                            className="focus-ring flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2.5 text-xs font-black transition shadow-sm cursor-pointer active:scale-95"
-                            title="إرسال تذكير عاجل لولي الأمر المتأخر عبر المنصة والواتساب"
-                          >
-                            <Bell size={16} />
-                            <span>تنبيه تأخر ولي الأمر 🔔</span>
-                          </button>
-                        </div>
-
+            {/* جدول اليوم */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+              <h2 className="text-base font-black text-white mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-blue-400" />
+                جدول اليوم — {DAY_NAMES[jsDay] ?? 'إجازة'}
+              </h2>
+              {!isSchoolDay ? (
+                <p className="text-slate-400 text-center py-6">🌙 اليوم إجازة — استرح!</p>
+              ) : (
+                <div className="space-y-2">
+                  {todayPeriods.map((p) => {
+                    const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+                    const isNow = currentPeriod?.periodNumber === p.periodNumber;
+                    return (
+                      <div key={p.periodNumber}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isNow ? 'bg-blue-500/20 border-blue-500/50 shadow-lg shadow-blue-500/20' : `${colorClass} opacity-80`
+                        }`}>
+                        <span className="text-xs font-black w-5 text-center text-slate-400">{p.periodNumber}</span>
+                        <span className="flex-1 font-bold text-sm">{p.subjectName}</span>
+                        <span className="text-xs text-slate-400">{p.startTime} – {p.endTime}</span>
+                        {isNow && <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />}
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: DAILY ANALYTICAL REPORT DISPATCHER */}
-          {activeTab === 'reports' && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xl space-y-6 max-w-3xl mx-auto">
-              <div>
-                <h3 className="text-xl font-black text-slate-900">مُرسل التقرير اليومي الأوتوماتيكي لأولياء الأمور</h3>
-                <p className="text-xs font-bold text-slate-500 mt-1">
-                  إرسال كشف الأداء اليومي والتقييم والمهارات لولي أمر طالب محدد في فصل أولى ابتدائي الإخلاص.
-                </p>
-              </div>
-
-              <form onSubmit={handleSaveDailyReport} className="space-y-4">
-                <label className="block text-right space-y-1.5">
-                  <span className="text-xs font-black text-slate-700">اختر الطالب</span>
-                  <select
-                    value={selectedStudentId}
-                    onChange={(e) => setSelectedStudentId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600"
-                  >
-                    {MOCK_IKHLAS_STUDENTS.map((s) => (
-                      <option key={s.id} value={s.id}>👦 {s.name} - ولي الأمر: {s.parentName}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <label className="block text-right space-y-1.5">
-                    <span className="text-xs font-black text-slate-700">حالة الحضور والانتظام</span>
-                    <select
-                      value={attendance}
-                      onChange={(e) => setAttendance(e.target.value as any)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600"
-                    >
-                      <option value="present">✅ حاضر ومنتظم</option>
-                      <option value="late">⏰ متأخر</option>
-                      <option value="absent">❌ غائب</option>
-                    </select>
-                  </label>
-
-                  <label className="block text-right space-y-1.5">
-                    <span className="text-xs font-black text-slate-700">تقييم أداء الطفل اليومي (%)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={score}
-                      onChange={(e) => setScore(Number(e.target.value))}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600"
-                    />
-                  </label>
+                    );
+                  })}
                 </div>
-
-                <label className="block text-right space-y-1.5">
-                  <span className="text-xs font-black text-slate-700">التقرير اليومي والمهارات المكتسبة اليوم</span>
-                  <textarea
-                    rows={4}
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 leading-relaxed"
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  className="w-full focus-ring flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md cursor-pointer"
-                >
-                  <Send size={18} />
-                  <span>اعتماد وإرسال التقرير اليومي لولي الأمر</span>
-                </button>
-              </form>
+              )}
             </div>
-          )}
 
-          {/* TAB 3: CLASS COMMUNITY & HOMEWORK FEED */}
-          {activeTab === 'feed' && (
-            <div className="grid lg:grid-cols-[1fr_1.3fr] gap-6 items-start">
-              
-              {/* Post Creation Form */}
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
-                <h3 className="text-lg font-black text-slate-900">نشر واجب أو تنبيه في مجتمع الفصل</h3>
-                
-                <form onSubmit={handleCreatePost} className="space-y-3">
-                  <label className="block text-right space-y-1">
-                    <span className="text-xs font-black text-slate-700">نوع المنشور</span>
-                    <select
-                      value={postType}
-                      onChange={(e) => setPostType(e.target.value as any)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600"
-                    >
-                      <option value="homework">📚 واجب يومي جديد</option>
-                      <option value="announcement">📢 إعلان مهم لجميع الأولياء</option>
-                      <option value="photo">🖼️ صورة نشاط في الفصل</option>
-                    </select>
-                  </label>
-
-                  <label className="block text-right space-y-1">
-                    <span className="text-xs font-black text-slate-700">عنوان الواجب / التنبيه</span>
-                    <input
-                      type="text"
-                      value={postTitle}
-                      onChange={(e) => setPostTitle(e.target.value)}
-                      placeholder="مثال: واجب لغتي - حل ص 45 في المذكرة"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600"
-                      required
-                    />
-                  </label>
-
-                  <label className="block text-right space-y-1">
-                    <span className="text-xs font-black text-slate-700">تفاصيل الواجب والتعليمات</span>
-                    <textarea
-                      rows={3}
-                      value={postContent}
-                      onChange={(e) => setPostContent(e.target.value)}
-                      placeholder="مثال: قراءة درس (الأسرة) وكتابة الكلمات الثلاثية 3 مرات في الكراسة المنزلية..."
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 leading-relaxed"
-                      required
-                    />
-                  </label>
-
-                  <label className="block text-right space-y-1">
-                    <span className="text-xs font-black text-slate-700">تاريخ التسليم (اختياري)</span>
-                    <input
-                      type="date"
-                      value={postDueDate}
-                      onChange={(e) => setPostDueDate(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600"
-                    />
-                  </label>
-
-                  <button
-                    type="submit"
-                    className="w-full focus-ring flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition shadow-sm cursor-pointer"
-                  >
-                    <Plus size={16} />
-                    <span>نشر التنبيه في مجتمع فصل أولى ابتدائي</span>
-                  </button>
-                </form>
+            {/* تنبيه قبل الخروج */}
+            {minsUntilDismissal > 0 && minsUntilDismissal <= 20 && (
+              <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+                <div>
+                  <p className="font-black text-amber-300">تنبيه: {minsUntilDismissal} دقيقة للخروج!</p>
+                  <p className="text-xs text-amber-400/70">تم إرسال تنبيه لأولياء الأمور للحضور</p>
+                </div>
               </div>
+            )}
 
-              {/* Class Community Feed */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-black text-slate-900">حائط مجتمع أولى ابتدائي (مدارس الإخلاص بجدة)</h3>
+            {/* آخر الواجبات */}
+            {homeworkList.slice(0, 3).map((hw) => (
+              <div key={hw.id} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-sm">{hw.title}</p>
+                  <p className="text-xs text-slate-400">موعد التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</p>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full font-bold ${hw.status === 'OPEN' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                  {hw.status === 'OPEN' ? 'مفتوح' : 'مغلق'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
-                {posts.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center space-y-2">
-                    <BookOpen size={32} className="mx-auto text-slate-400" />
-                    <p className="font-black text-slate-900">لا توجد منشورات حتى الآن</p>
-                    <p className="text-xs font-bold text-slate-500">انشر أول واجب أو إعلان وسيظهر هنا وفي حساب أولياء الأمور فوراً.</p>
+        {/* ══════════════ جدول الحصص ══════════════ */}
+        {activeTab === 'schedule' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-black text-white">📅 الجدول الأسبوعي الكامل</h2>
+            {DAY_NAMES.map((day, dayIdx) => {
+              const dayPeriods = schedule.filter((p) => p.dayOfWeek === dayIdx).sort((a, b) => a.periodNumber - b.periodNumber);
+              const isToday = jsDay === dayIdx;
+              return (
+                <div key={day} className={`rounded-2xl border overflow-hidden ${isToday ? 'border-blue-500/50 shadow-lg shadow-blue-500/20' : 'border-white/10'}`}>
+                  <div className={`px-4 py-2 flex items-center gap-2 ${isToday ? 'bg-blue-600/30' : 'bg-white/5'}`}>
+                    <span className="font-black text-sm">{day}</span>
+                    {isToday && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">اليوم</span>}
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {posts.map((post) => (
-                      <article key={post.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className={`rounded-md px-2.5 py-1 text-[11px] font-black ${
-                            post.type === 'homework' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  <div className="divide-y divide-white/5">
+                    {dayPeriods.map((p) => {
+                      const colorClass = SUBJECT_COLORS[p.subjectName] ?? '';
+                      return (
+                        <div key={p.periodNumber} className={`flex items-center gap-3 px-4 py-2.5 ${colorClass}`}>
+                          <span className="text-xs text-slate-500 w-4">{p.periodNumber}</span>
+                          <span className="flex-1 text-sm font-bold">{p.subjectName}</span>
+                          <span className="text-xs text-slate-400">{p.startTime} – {p.endTime}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ══════════════ الحضور والانصراف ══════════════ */}
+        {activeTab === 'attendance' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-white">👥 كشف الحضور والانصراف</h2>
+              <button onClick={saveAttendance} disabled={attLoading}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50">
+                {attLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                حفظ الكشف
+              </button>
+            </div>
+            <div className="space-y-3">
+              {CLASS_STUDENTS.map((student) => {
+                const att = attendance[student.id] ?? { status: 'present', score: 90, exit: '' };
+                const exited = exitLogged[student.id];
+                return (
+                  <div key={student.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm">{student.name}</p>
+                      {exited && (
+                        <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full">
+                          خرج {exited} 🕒
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(['present', 'absent', 'late'] as const).map((s) => (
+                        <button key={s}
+                          onClick={() => setAttendance((prev) => ({ ...prev, [student.id]: { ...att, status: s } }))}
+                          className={`text-xs px-3 py-1 rounded-full font-bold border transition-all ${
+                            att.status === s
+                              ? s === 'present' ? 'bg-green-500 border-green-500 text-white'
+                              : s === 'absent' ? 'bg-red-500 border-red-500 text-white'
+                              : 'bg-amber-500 border-amber-500 text-white'
+                              : 'border-white/20 text-slate-400 hover:border-white/40'
                           }`}>
-                            {post.type === 'homework' ? '📚 واجب منزلي' : '📢 إعلان فصل'}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-400">
-                            {new Date(post.createdAt).toLocaleDateString('ar-SA')}
-                          </span>
-                        </div>
+                          {s === 'present' ? '✅ حاضر' : s === 'absent' ? '❌ غائب' : '⏰ متأخر'}
+                        </button>
+                      ))}
+                      <div className="flex items-center gap-2 mr-auto">
+                        <span className="text-xs text-slate-400">الأداء:</span>
+                        <input type="range" min={0} max={100} value={att.score}
+                          onChange={(e) => setAttendance((prev) => ({ ...prev, [student.id]: { ...att, score: Number(e.target.value) } }))}
+                          className="w-20 accent-blue-500" />
+                        <span className="text-xs font-black text-blue-400 w-8">{att.score}%</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => logExit(student.id, student.name)}
+                        className="flex items-center gap-1 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1.5 rounded-xl font-bold transition-all">
+                        <Clock className="w-3 h-3" /> توثيق الخروج الآن
+                      </button>
+                      <button onClick={() => sendLateAlert(student.id, student.name)}
+                        className="flex items-center gap-1 bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/30 text-rose-400 text-xs px-3 py-1.5 rounded-xl font-bold transition-all">
+                        <Bell className="w-3 h-3" /> تنبيه تأخر ولي الأمر
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-                        <div>
-                          <h4 className="font-black text-slate-900 text-base">{post.title}</h4>
-                          <p className="mt-1 text-xs font-bold text-slate-600 leading-relaxed">{post.content}</p>
-                        </div>
+        {/* ══════════════ الواجبات ══════════════ */}
+        {activeTab === 'homework' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-black text-white">📚 الواجبات الإلكترونية</h2>
+            {/* نموذج الإضافة */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+              <h3 className="font-black text-white flex items-center gap-2"><Plus className="w-4 h-4 text-blue-400" /> واجب جديد</h3>
+              <input placeholder="عنوان الواجب" value={hwTitle} onChange={(e) => setHwTitle(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition" />
+              <textarea placeholder="تفاصيل الواجب والمطلوب..." value={hwDesc} onChange={(e) => setHwDesc(e.target.value)} rows={3}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition resize-none" />
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex gap-2">
+                  {(['TEXT', 'MULTIPLE_CHOICE'] as const).map((t) => (
+                    <button key={t} onClick={() => setHwType(t)}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-all ${hwType === t ? 'bg-blue-600 border-blue-600 text-white' : 'border-white/20 text-slate-400'}`}>
+                      {t === 'TEXT' ? '✍️ إجابة نصية' : '🔤 اختيار متعدد'}
+                    </button>
+                  ))}
+                </div>
+                <input type="date" value={hwDue} onChange={(e) => setHwDue(e.target.value)}
+                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 transition" />
+              </div>
+              {hwType === 'MULTIPLE_CHOICE' && (
+                <div className="grid grid-cols-2 gap-2">
+                  {hwOptions.map((opt, i) => (
+                    <input key={i} placeholder={`الخيار ${i + 1}`} value={opt}
+                      onChange={(e) => { const o = [...hwOptions]; o[i] = e.target.value; setHwOptions(o); }}
+                      className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition" />
+                  ))}
+                </div>
+              )}
+              <button onClick={createHomework} disabled={hwLoading || !hwTitle || !hwDesc || !hwDue}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50">
+                {hwLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                نشر الواجب لجميع الطلاب
+              </button>
+            </div>
+            {/* قائمة الواجبات */}
+            <div className="space-y-3">
+              {homeworkList.map((hw) => (
+                <div key={hw.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <p className="font-black text-white">{hw.title}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{hw.description}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full font-bold shrink-0 ${hw.status === 'OPEN' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                      {hw.status === 'OPEN' ? '✅ مفتوح' : '🔒 مغلق'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <span>التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</span>
+                    <span>ردود: {hw.submissions?.length ?? 0} / {CLASS_STUDENTS.length}</span>
+                  </div>
+                </div>
+              ))}
+              {!homeworkList.length && <p className="text-slate-500 text-center py-8">لا توجد واجبات بعد — أضف أول واجب! 📚</p>}
+            </div>
+          </div>
+        )}
 
-                        {post.dueDate && (
-                          <div className="flex items-center gap-1.5 text-xs font-black text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 inline-flex">
-                            <Calendar size={14} />
-                            <span>آخر موعد للتسليم: {post.dueDate}</span>
-                          </div>
-                        )}
-                      </article>
+        {/* ══════════════ الاجتماعات ══════════════ */}
+        {activeTab === 'meetings' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-black text-white">📹 اجتماعات الفيديو</h2>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+              <h3 className="font-black text-white flex items-center gap-2"><Plus className="w-4 h-4 text-green-400" /> اجتماع جديد</h3>
+              <input placeholder="موضوع الاجتماع" value={mtgTitle} onChange={(e) => setMtgTitle(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-green-500 transition" />
+              <input placeholder="رابط الاجتماع (Google Meet / Zoom)" value={mtgUrl} onChange={(e) => setMtgUrl(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-green-500 transition" dir="ltr" />
+              <div className="flex gap-3 flex-wrap">
+                <input type="datetime-local" value={mtgDate} onChange={(e) => setMtgDate(e.target.value)}
+                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-green-500 transition" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">المدة:</span>
+                  <select value={mtgDuration} onChange={(e) => setMtgDuration(Number(e.target.value))}
+                    className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white outline-none">
+                    {[30, 45, 60, 90].map((d) => <option key={d} value={d}>{d} دقيقة</option>)}
+                  </select>
+                </div>
+              </div>
+              <button onClick={createMeeting} disabled={mtgLoading || !mtgTitle || !mtgUrl || !mtgDate}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50">
+                {mtgLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
+                إرسال الدعوة لجميع الطلاب وأولياء الأمور
+              </button>
+            </div>
+            <div className="space-y-3">
+              {meetings.map((m) => (
+                <div key={m.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-black text-white">{m.title}</p>
+                    <p className="text-xs text-slate-400">{new Date(m.scheduledAt).toLocaleString('ar-SA')} — {m.duration} د</p>
+                  </div>
+                  <a href={m.meetingUrl} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 text-xs px-3 py-1.5 rounded-xl font-bold transition-all">
+                    <Video className="w-3 h-3" /> انضم
+                  </a>
+                </div>
+              ))}
+              {!meetings.length && <p className="text-slate-500 text-center py-8">لا توجد اجتماعات قادمة — أضف اجتماعاً! 📹</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════ معرض الصور ══════════════ */}
+        {activeTab === 'photos' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-black text-white">📸 معرض صور الفصل</h2>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+              <h3 className="font-black text-white flex items-center gap-2"><Camera className="w-4 h-4 text-pink-400" /> رفع صورة جديدة</h3>
+              <input placeholder="رابط الصورة (URL)" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-pink-500 transition" dir="ltr" />
+              <input placeholder="وصف الصورة (اختياري)" value={photoCaption} onChange={(e) => setPhotoCaption(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-pink-500 transition" />
+              <button onClick={uploadPhoto} disabled={photoLoading || !photoUrl}
+                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50">
+                {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                نشر الصورة
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {photos.map((ph) => (
+                <div key={ph.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group">
+                  <img src={ph.photoUrl} alt={ph.caption ?? ''} className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
+                  {ph.caption && <p className="text-xs text-slate-400 p-2">{ph.caption}</p>}
+                  <div className="px-2 pb-2 flex gap-1">
+                    {Object.entries((ph.reactions as Record<string, number>) ?? {}).map(([emoji, count]) => (
+                      <span key={emoji} className="text-xs bg-white/10 rounded-full px-2 py-0.5">{emoji} {String(count)}</span>
                     ))}
                   </div>
-                )}
-              </div>
-
+                </div>
+              ))}
+              {!photos.length && <div className="col-span-3 text-slate-500 text-center py-12">لا توجد صور بعد 📷</div>}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* TAB 4: LIVE PARENT PORTAL PREVIEW */}
-          {activeTab === 'preview' && (
-            <div className="max-w-md mx-auto rounded-3xl border-4 border-slate-900 bg-slate-100 p-4 shadow-2xl space-y-4">
-              {/* Phone Status Bar Simulation */}
-              <div className="flex items-center justify-between text-[11px] font-black text-slate-700 px-2 pb-2 border-b border-slate-300">
-                <span>تطبيق مَسَار - ولي الأمر</span>
-                <span dir="ltr">01:45 PM</span>
+        {/* ══════════════ التقارير ══════════════ */}
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-black text-white">📊 التقارير والإشعارات</h2>
+            {/* مجتمع الآباء */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+              <h3 className="font-black text-white flex items-center gap-2"><MessageSquare className="w-4 h-4 text-violet-400" /> نشر في مجتمع الآباء</h3>
+              <div className="flex gap-2">
+                {(['ANNOUNCEMENT', 'GENERAL'] as const).map((t) => (
+                  <button key={t} onClick={() => setPostType(t)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-all ${postType === t ? 'bg-violet-600 border-violet-600 text-white' : 'border-white/20 text-slate-400'}`}>
+                    {t === 'ANNOUNCEMENT' ? '📢 إعلان رسمي' : '💬 منشور عام'}
+                  </button>
+                ))}
               </div>
-
-              {/* Parent View Simulation */}
-              <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-right">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div>
-                    <p className="text-[10px] font-black text-teal-700 uppercase">مدارس الإخلاص الأهلية بجدة 🇸🇦</p>
-                    <h4 className="font-black text-slate-900 text-sm">الطالب: محمد أحمد علي (فصل 1/1)</h4>
+              <textarea placeholder="اكتب رسالتك لأولياء الأمور..." value={postBody} onChange={(e) => setPostBody(e.target.value)} rows={3}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-violet-500 transition resize-none" />
+              <button onClick={createPost} disabled={postLoading || !postBody}
+                className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50">
+                {postLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                نشر للآباء
+              </button>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {posts.map((p) => (
+                  <div key={p.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <p className="text-sm text-white">{p.body}</p>
+                    <p className="text-xs text-slate-500 mt-1">{new Date(p.createdAt).toLocaleString('ar-SA')}</p>
                   </div>
-                  <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-[10px] font-black">
-                    حاضر
-                  </span>
-                </div>
-
-                {/* Exit Time Card */}
-                <div className="rounded-xl bg-teal-50 border border-teal-200 p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="text-teal-700" size={18} />
-                    <div>
-                      <p className="text-[10px] font-black text-teal-800">توقيت خروج الطفل اليوم 🕒</p>
-                      <p className="text-sm font-black text-teal-950">01:45 م (تم التوثيق من المعلم)</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Daily Performance Score */}
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1">
-                  <p className="text-[11px] font-black text-slate-700">تقييم أداء الطفل اليومي</p>
-                  <div className="flex items-center justify-between">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 ml-3">
-                      <div className="h-full bg-teal-600 rounded-full" style={{ width: '95%' }} />
-                    </div>
-                    <span className="text-xs font-black text-teal-800">95%</span>
-                  </div>
-                  <p className="text-[11px] font-bold text-slate-500 pt-1 leading-relaxed">
-                    تم تدريس مهارات القراءة الجهرية، والتمييز بين المقاطع الصوتية القصيرة والطويلة بنجاح.
-                  </p>
-                </div>
-
-                {/* Active Late Pickup Alert Preview */}
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-2 text-amber-900 text-xs font-black">
-                  <Bell className="text-amber-600 shrink-0" size={16} />
-                  <span>تنبيه: انتهى اليوم الدراسي بجدة، طفلك ينتظر استلامك عند البوابة!</span>
-                </div>
+                ))}
               </div>
             </div>
-          )}
+            {/* التقرير الأسبوعي */}
+            <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+              <h3 className="font-black text-amber-300 flex items-center gap-2"><Star className="w-5 h-5" /> إرسال التقرير الأسبوعي</h3>
+              <p className="text-sm text-slate-400">سيتم إرسال تقرير شامل لكل ولي أمر يتضمن: الحضور، الأداء، الواجبات المنجزة، وملاحظات المعلم.</p>
+              <button onClick={sendWeeklyReport} disabled={reportLoading || reportSent}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${reportSent ? 'bg-green-600 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50'}`}>
+                {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : reportSent ? <CheckCircle className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                {reportSent ? 'تم الإرسال بنجاح! ✅' : 'إرسال التقرير الأسبوعي لجميع الآباء'}
+              </button>
+            </div>
+          </div>
+        )}
 
-        </main>
       </div>
     </div>
   );

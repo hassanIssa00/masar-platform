@@ -67,7 +67,8 @@ const grades = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [accountType, setAccountType] = useState<'parent' | 'student'>('parent');
+  const [schoolBranch, setSchoolBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
+  const [accountType, setAccountType] = useState<'parent' | 'student' | 'teacher'>('parent');
 
   // Form Fields
   const [parentName, setParentName] = useState('');
@@ -104,6 +105,7 @@ export default function RegisterPage() {
   };
 
   const getChildNameError = (): string => {
+    if (accountType === 'teacher') return '';
     if (!childName.trim()) return accountType === 'parent' ? 'اسم الطالب مطلوب' : 'اسم الطالب الكامل مطلوب';
     if (countWords(childName) < 4) return 'اسم الطالب غير مكتمل، يجب كتابة 4 أسماء على الأقل (مثال: يوسف أحمد محمد علي)';
     return '';
@@ -151,7 +153,8 @@ export default function RegisterPage() {
 
   const hasErrors = useMemo(() => {
     if (accountType === 'parent' && errors.parentName) return true;
-    return !!(errors.childName || errors.email || errors.phone || errors.password);
+    if (accountType !== 'teacher' && errors.childName) return true;
+    return !!(errors.email || errors.phone || errors.password);
   }, [errors, accountType]);
 
   const markTouched = (field: string) => {
@@ -176,30 +179,27 @@ export default function RegisterPage() {
     setLoading(true);
 
     const fullPhone = `${selectedCountry.code}${phone}`;
-    const primaryName = accountType === 'parent' ? parentName : childName;
+    const primaryName = accountType === 'parent' ? parentName : childName || 'معلم / د. إسماعيل عيسى';
 
-    // 0. Clear any stale session/onboarding data to ensure clean fresh flow
     if (typeof window !== 'undefined') {
       localStorage.removeItem('masar.current-student-id');
       localStorage.removeItem('masar_active_student_id');
       localStorage.removeItem('masar_active_mode');
     }
 
-    // 1. Save User Account
     const account = saveAccount({
       name: primaryName,
       email: email.trim().toLowerCase(),
       phone: fullPhone,
-      role: accountType === 'parent' ? 'parent' : 'student',
+      role: accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student',
     });
 
-    // Store account type so login redirect works correctly
     if (typeof window !== 'undefined') {
       localStorage.setItem('masar_account_type', accountType);
+      localStorage.setItem('masar_school_branch', schoolBranch);
       localStorage.setItem('masar_registered_email', email.trim().toLowerCase());
     }
 
-    // 2. Automatic Linkage Logic: Look for existing matching student in system
     const allStudents = getStudents();
     const normalizedParentName = parentName.trim().toLowerCase();
     const normalizedChildName = childName.trim().toLowerCase();
@@ -211,17 +211,15 @@ export default function RegisterPage() {
       return false;
     });
 
-    // If matching student found, update their parent details to ensure instant report linkage
     if (matchingStudent) {
       updateStudent(matchingStudent.id, {
         parentName: parentName || matchingStudent.parentName,
         parentPhone: fullPhone || matchingStudent.parentPhone,
       });
-    } else {
-      // If no matching student exists yet, create new student record linked to this parent
+    } else if (accountType !== 'teacher') {
       matchingStudent = saveStudent({
         fullName: childName || `طالب ${parentName}`,
-        grade,
+        grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي' : grade,
         parentName: parentName,
         parentPhone: fullPhone,
         source: 'student-wizard',
@@ -231,21 +229,29 @@ export default function RegisterPage() {
 
     setSession(account);
     saveCredential(account, password);
-    // Track registration event
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
 
-    // Save active student ID for instant report and profile switcher binding
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && matchingStudent) {
       localStorage.setItem('masar_active_student_id', matchingStudent.id);
-      localStorage.setItem('masar_active_mode', accountType === 'parent' ? 'parent' : 'student');
+      localStorage.setItem('masar_active_mode', accountType);
       localStorage.setItem('masar.current-student-id', matchingStudent.id);
     }
 
     setTimeout(() => {
-      if (accountType === 'parent') {
-        router.push('/parent');
+      if (schoolBranch === 'IKHLAS_JEDDAH') {
+        if (accountType === 'parent') {
+          router.push('/school-parent');
+        } else if (accountType === 'student') {
+          router.push('/school-student');
+        } else {
+          router.push('/branches/ikhlas-jeddah');
+        }
       } else {
-        router.push('/student/new');
+        if (accountType === 'parent') {
+          router.push('/parent');
+        } else {
+          router.push('/student/new');
+        }
       }
     }, 600);
   };
@@ -270,37 +276,77 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Account Type Selector Tabs (Parent vs Student) */}
-        <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+        {/* School Branch Selector */}
+        <div className="mt-5 space-y-2">
+          <label className="block text-xs font-black text-slate-700">المؤسسة / المدرسة التابع لها:</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setSchoolBranch('MASAR'); if (accountType === 'teacher') setAccountType('parent'); }}
+              className={`p-3 rounded-2xl border text-xs font-black text-center transition-all ${
+                schoolBranch === 'MASAR'
+                  ? 'bg-teal-700 text-white border-teal-700 shadow-md'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              🎯 منصة مَسَار التعليمية
+            </button>
+            <button
+              type="button"
+              onClick={() => setSchoolBranch('IKHLAS_JEDDAH')}
+              className={`p-3 rounded-2xl border text-xs font-black text-center transition-all ${
+                schoolBranch === 'IKHLAS_JEDDAH'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              🇸🇦 مدارس الإخلاص بجدة
+            </button>
+          </div>
+        </div>
+
+        {/* Account Type Selector Tabs */}
+        <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 border border-slate-200">
           <button
             type="button"
-            onClick={() => {
-              setAccountType('parent');
-            }}
-            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
+            onClick={() => setAccountType('parent')}
+            className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-black transition ${
               accountType === 'parent'
                 ? 'bg-teal-700 text-white shadow-md'
                 : 'text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <HeartHandshake size={18} />
-            <span>حساب ولي أمر</span>
+            <HeartHandshake size={15} />
+            <span>ولي أمر</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setAccountType('student');
-            }}
-            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
+            onClick={() => setAccountType('student')}
+            className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-black transition ${
               accountType === 'student'
                 ? 'bg-teal-700 text-white shadow-md'
                 : 'text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <GraduationCap size={18} />
-            <span>تسجيل طالب مباشر</span>
+            <GraduationCap size={15} />
+            <span>طالب</span>
           </button>
+
+          {schoolBranch === 'IKHLAS_JEDDAH' && (
+            <button
+              type="button"
+              onClick={() => setAccountType('teacher')}
+              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-black transition ${
+                accountType === 'teacher'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <UserPlus size={15} />
+              <span>معلم</span>
+            </button>
+          )}
         </div>
 
         {/* Registration Form */}

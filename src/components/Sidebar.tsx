@@ -24,6 +24,8 @@ const adminLinks = [
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
   { name: 'مساعد الذكاء الاصطناعي', path: '/ai-assistant', icon: Bot },
   { name: 'فصل 1/1 الإخلاص بجدة 🏫', path: '/branches/ikhlas-jeddah', icon: Building2 },
+  { name: 'بوابة ولي الأمر 👨‍👦', path: '/school-parent', icon: Users },
+  { name: 'بوابة الطالب 🎒', path: '/school-student', icon: BookOpen },
   { name: 'الفروع والعيادات', path: '/branches', icon: Building2 },
   { name: 'التلعيب والمكافآت', path: '/gamification', icon: Trophy },
   { name: 'الموافقات الرقمية', path: '/consents', icon: ShieldCheck },
