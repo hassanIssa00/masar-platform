@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Menu, Shield, Lock, Check } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
+import NotificationBell from '@/components/NotificationBell';
+import ThemeToggle from '@/components/ThemeToggle';
 import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
 
 export default function Navbar() {
@@ -102,6 +104,8 @@ export default function Navbar() {
 
           {/* Profile Header Bar */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <NotificationBell />
 
             {isStaff ? (
               /* Staff / Doctor Badge */

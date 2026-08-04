@@ -13,6 +13,7 @@ import { clearSession } from '@/lib/localDb';
 
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
+  { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },

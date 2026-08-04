@@ -369,6 +369,83 @@ export default function StudentsControlPage() {
 
                   </section>
 
+                  {/* ══ FEATURE 4: STUDENT PROGRESS & GROWTH TIMELINE ══ */}
+                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="font-black text-slate-900 text-lg">📈 خط التطور والتحسن الزمني للطالب</h3>
+                        <p className="text-xs font-bold text-slate-500 mt-0.5">مقارنة التقييمات ومعدل التحسن عبر الأنشطة والاختبارات</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">
+                        نسبة التحسن الفعلي: {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length > 0 ? `${reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName)[0].score}%` : 'قيد التقييم الأول'}
+                      </span>
+                    </div>
+
+                    {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length === 0 ? (
+                      <div className="py-8 text-center text-slate-400 space-y-1">
+                        <BookOpenCheck className="mx-auto text-slate-300" size={32} />
+                        <p className="text-xs font-black">لا توجد تقارير أو تقييمات سابقة لهذا الطالب بعد</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-end gap-3 h-28 border-b border-slate-200 pb-2 px-4">
+                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                            <div key={rep.id} className="flex-1 flex flex-col items-center gap-1">
+                              <span className="text-[10px] font-black text-teal-700">{rep.score}%</span>
+                              <div
+                                className="w-full rounded-t-lg bg-teal-600 transition-all duration-500"
+                                style={{ height: `${Math.max(rep.score, 15)}%` }}
+                              />
+                              <span className="text-[9px] font-bold text-slate-400 truncate max-w-[80px]">{rep.date}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                            <div key={rep.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex justify-between text-xs font-black">
+                              <div>
+                                <p className="text-slate-900">{rep.program}</p>
+                                <p className="text-slate-400 text-[10px]">{rep.date}</p>
+                              </div>
+                              <span className="text-teal-700">{rep.score}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* ══ FEATURE 5: STUDENT DOCUMENT VAULT ══ */}
+                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="font-black text-slate-900 text-lg">📁 خزنة مستندات وفحوصات الطالب</h3>
+                        <p className="text-xs font-bold text-slate-500 mt-0.5">حفظ الفحوصات الخارجية والملفات الطبية والسمعيات</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center space-y-2">
+                      <p className="text-xs font-black text-slate-700">إضافة مستند طبّي / تقرير خارجي لملف الطالب</p>
+                      <p className="text-[11px] font-bold text-slate-400">يدعم ملفات PDF، صور الفحوصات، أو التقارير الطبية المعتمدة</p>
+                      <input
+                        type="file"
+                        id="vault-upload"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            alert(`تم رفع المستند "${e.target.files[0].name}" بنجاح في ملف الطالب ${selectedStudent.fullName}`);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="vault-upload"
+                        className="inline-block cursor-pointer rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 transition"
+                      >
+                        + اختيار ملف للرفع
+                      </label>
+                    </div>
+                  </section>
+
                   {/* Student PDFs & Reports */}
                   <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

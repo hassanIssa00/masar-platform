@@ -7,6 +7,7 @@ import { ArrowRight, FilePlus2, Printer, Trash2, UserRound } from 'lucide-react'
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PrintableReportModal from '@/components/PrintableReportModal';
 import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
 import { deleteReport, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
@@ -29,6 +30,7 @@ function ReportsContent() {
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [assignMessage, setAssignMessage] = useState('');
+  const [printReport, setPrintReport] = useState<ReportRecord | null>(null);
   const parentMode = searchParams.get('mode') === 'parent';
 
   useEffect(() => {
@@ -145,9 +147,17 @@ function ReportsContent() {
                   </div>
 
                   {/* Report title strip */}
-                  <div className="mt-5 rounded-xl bg-gradient-to-l from-indigo-950 to-blue-800 px-6 py-4 text-center text-white">
-                    <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest mb-1">وثيقة تعليمية علاجية معتمدة · OFFICIAL ASSESSMENT REPORT</p>
-                    <h2 className="text-xl font-black">{getReportPrintTitle(selected)}</h2>
+                  <div className="mt-5 rounded-xl bg-gradient-to-l from-indigo-950 to-blue-800 px-6 py-4 text-center text-white flex items-center justify-between gap-4 flex-wrap">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest mb-1">وثيقة تعليمية علاجية معتمدة · OFFICIAL ASSESSMENT REPORT</p>
+                      <h2 className="text-xl font-black">{getReportPrintTitle(selected)}</h2>
+                    </div>
+                    <button
+                      onClick={() => setPrintReport(selected)}
+                      className="flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-indigo-950 px-4 py-2 text-xs font-black transition shadow-sm"
+                    >
+                      <Printer size={16} /> طباعة رسمية / PDF
+                    </button>
                   </div>
                 </header>
 
@@ -367,6 +377,7 @@ function ReportsContent() {
             </article>
           </main>
         </div>
+        {printReport && <PrintableReportModal report={printReport} onClose={() => setPrintReport(null)} />}
       </div>
     );
   }
@@ -452,6 +463,7 @@ function ReportsContent() {
           )}
         </main>
       </div>
+      {printReport && <PrintableReportModal report={printReport} onClose={() => setPrintReport(null)} />}
     </div>
   );
 }
