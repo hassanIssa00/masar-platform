@@ -12,6 +12,21 @@ export const metadata: Metadata = {
     apple: { url: '/apple-touch-icon.png', sizes: '48x48', type: 'image/png' },
     shortcut: '/favicon-32.png',
   },
+  openGraph: {
+    title: 'د. إسماعيل عيسى | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
+    description: 'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لكل طالب.',
+    url: 'https://masar-platform.org',
+    siteName: 'منصة مَسَار',
+    locale: 'ar_EG',
+    type: 'website',
+    images: [{ url: 'https://masar-platform.org/dr-ismail-student.jpg', width: 1280, height: 854 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'د. إسماعيل عيسى | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
+    description: 'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لكل طالب.',
+    images: ['https://masar-platform.org/dr-ismail-student.jpg'],
+  },
 };
 
 export const viewport: Viewport = {
