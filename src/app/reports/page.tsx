@@ -81,8 +81,11 @@ function ReportsContent() {
     const approveProgram = (slug: string) => {
       if (!selectedStudent) return;
       const program = curriculumPrograms.find((item) => item.slug === slug);
+      const currentList = selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
+      const updatedList = Array.from(new Set([...currentList, slug]));
       updateStudent(selectedStudent.id, {
         assignedProgram: slug,
+        assignedPrograms: updatedList,
         assignedBy: 'د. إسماعيل عيسى',
         assignedAt: new Date().toISOString(),
         reviewStatus: 'program-assigned',

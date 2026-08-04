@@ -63,8 +63,16 @@ function KidsDashboardContent() {
     return () => window.clearTimeout(timeout);
   }, [router, searchParams]);
 
-  const assignedProgram = curriculumPrograms.find((program) => program.slug === student?.assignedProgram);
-  const status = getReviewStatus(student, Boolean(assignedProgram));
+  const assignedSlugs = useMemo(() => {
+    if (!student) return [];
+    return student.assignedPrograms || (student.assignedProgram ? [student.assignedProgram] : []);
+  }, [student]);
+
+  const assignedProgramsList = useMemo(() => {
+    return curriculumPrograms.filter((program) => assignedSlugs.includes(program.slug));
+  }, [assignedSlugs]);
+
+  const status = getReviewStatus(student, assignedProgramsList.length > 0);
   const visibleReports = useMemo(
     () =>
       reports
@@ -120,14 +128,19 @@ function KidsDashboardContent() {
             <div className="mt-4 rounded-lg bg-white/8 p-3">
               <p className="text-xs font-black text-white/60">حالة الملف</p>
               <p className="mt-1 text-sm font-black">{status.label}</p>
+              {assignedProgramsList.length > 0 && (
+                <p className="mt-1 text-xs font-bold text-teal-300">
+                  تم اعتماد ({assignedProgramsList.length}) مسارات تعليمية 🎓
+                </p>
+              )}
             </div>
           </div>
 
           <nav className="mt-5 grid gap-2">
-            <SideLink href="#student-profile" icon={<UserRound size={18} />} label="بيانات الطالب" />
+            <SideLink href="#student-program" icon={<BookOpen size={18} />} label={`المسارات المعتمدة (${assignedProgramsList.length})`} />
             <SideLink href="#student-games" icon={<Gamepad2 size={18} />} label="الألعاب التفاعلية" />
+            <SideLink href="#student-profile" icon={<UserRound size={18} />} label="بيانات الطالب" />
             <SideLink href="#student-reports" icon={<ClipboardList size={18} />} label="حالة التقارير" />
-            <SideLink href="#student-program" icon={<BookOpen size={18} />} label="المسار المعتمد" />
           </nav>
 
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -151,7 +164,7 @@ function KidsDashboardContent() {
                   أهلا {student?.fullName ?? 'بك'}، ملفك جاهز للمراجعة
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm font-bold leading-8 text-slate-600">
-                  هنا تظهر بيانات الطالب والألعاب الآمنة وحالة المسار. نتائج الاستبيان واختبار الطالب محفوظة لد. إسماعيل ولا تظهر كتشخيص داخل تجربة الطالب.
+                  هنا تظهر بيانات الطالب والألعاب الآمنة وحالة المسارات المعتمدة. نتائج الاستبيان واختبار الطالب محفوظة لد. إسماعيل ولا تظهر كتشخيص داخل تجربة الطالب.
                 </p>
                 <div className={`mt-5 rounded-lg border p-4 ${status.className}`}>
                   <p className="text-sm font-black">{status.description}</p>
@@ -167,6 +180,62 @@ function KidsDashboardContent() {
             </div>
           </header>
 
+          {/* ══ ASSIGNED PROGRAMS SECTION ══ */}
+          <section id="student-program" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 text-amber-700">
+                  <ShieldCheck size={24} />
+                </span>
+                <div>
+                  <p className="text-xs font-black text-slate-500">المسارات العلاجية المعتمدة من د. إسماعيل</p>
+                  <h2 className="text-xl font-black text-slate-950">
+                    {assignedProgramsList.length > 0
+                      ? `المسارات المعتمدة لك (${assignedProgramsList.length})`
+                      : 'لم يتم اعتماد مسار بعد'}
+                  </h2>
+                </div>
+              </div>
+            </div>
+
+            {assignedProgramsList.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {assignedProgramsList.map((program) => (
+                  <div
+                    key={program.slug}
+                    className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4 shadow-2xs hover:border-teal-600 transition"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full bg-teal-100 text-teal-900 px-3 py-1 text-xs font-black">
+                          مسار معتمد ✓
+                        </span>
+                        <span className="text-xs font-bold text-slate-400">
+                          {program.modules.length} وحدات تدريبية
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-950">{program.title}</h3>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{program.promise}</p>
+                    </div>
+
+                    <Link
+                      href={`/programs/${program.slug}`}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 py-3 px-4 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm"
+                    >
+                      <BookOpen size={16} />
+                      <span>فتح المنهج الدراسي الكامل لمسار {program.shortTitle}</span>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center text-amber-900 font-bold text-sm">
+                في انتظار مراجعة د. إسماعيل عيسى واعتماد المسارات والبرامج المناسبة لطالك.
+              </div>
+            )}
+          </section>
+
+          {/* ══ STUDENT PROFILE & SECURITY SECTION ══ */}
           <section id="student-profile" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-3">
@@ -220,31 +289,6 @@ function KidsDashboardContent() {
                 </button>
                 {passwordMessage && <p className="text-xs font-black leading-6 text-teal-800">{passwordMessage}</p>}
               </div>
-            </div>
-          </section>
-
-          <section id="student-program" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-lg bg-amber-50 text-amber-700">
-                  <ShieldCheck size={22} />
-                </span>
-                <div>
-                  <p className="text-xs font-black text-slate-500">المسار العلاجي</p>
-                  <h2 className="text-xl font-black text-slate-950">
-                    {assignedProgram ? assignedProgram.shortTitle : 'لم يتم اعتماد مسار بعد'}
-                  </h2>
-                </div>
-              </div>
-              {assignedProgram ? (
-                <Link href={`/programs/${assignedProgram.slug}`} className="inline-flex items-center justify-center rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">
-                  فتح المسار المعتمد
-                </Link>
-              ) : (
-                <span className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black text-amber-800">
-                  في انتظار مراجعة د. إسماعيل واعتماد البرنامج المناسب
-                </span>
-              )}
             </div>
           </section>
 

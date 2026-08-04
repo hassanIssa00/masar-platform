@@ -11,7 +11,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import {
-  getAccounts, getReports, getSession, getStudents,
+  getAccounts, getMessages, getReports, getSession, getStudents,
   MessageRecord, ReportRecord, saveMessage, StudentRecord, AccountRecord
 } from '@/lib/localDb';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
@@ -21,7 +21,12 @@ export default function ParentsManagementPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedReportId, setSelectedReportId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [zoomUrlInput, setZoomUrlInput] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
   const [messages, setMessages] = useState<MessageRecord[]>([]);
 
   // Auth Guard & Data Loading: Only Doctor/Admin can access

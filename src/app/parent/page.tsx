@@ -56,7 +56,15 @@ export default function ParentDashboard() {
   );
   const latestReport = studentReports[0];
   const studentMessages = messages.filter((message) => selectedStudent && message.studentId === selectedStudent.id).slice(0, 4);
-  const assignedProgram = curriculumPrograms.find((program) => program.slug === selectedStudent?.assignedProgram);
+  const assignedSlugs = useMemo(() => {
+    if (!selectedStudent) return [];
+    return selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
+  }, [selectedStudent]);
+
+  const assignedProgramsList = useMemo(() => {
+    return curriculumPrograms.filter((program) => assignedSlugs.includes(program.slug));
+  }, [assignedSlugs]);
+
   const isUnderDoctorReview = selectedStudent?.reviewStatus === 'awaiting-doctor-review' || latestReport?.status === 'pending';
   const parentReportText = isUnderDoctorReview
     ? 'تم استلام ملف الطالب وإرساله إلى د. إسماعيل. سيتم اعتماد المسار المناسب بعد مراجعة التقرير والإجابات التفصيلية.'
@@ -118,7 +126,7 @@ export default function ParentDashboard() {
                 {[
                   { label: 'حالة التقرير', value: latestReport ? 'قيد مراجعة الدكتور' : 'لم يبدأ', icon: ClipboardCheck },
                   { label: 'التقارير', value: String(studentReports.length), icon: FileText },
-                  { label: 'المسار', value: assignedProgram ? assignedProgram.shortTitle : 'قيد مراجعة الدكتور', icon: Home },
+                  { label: 'المسارات المعتمدة', value: assignedProgramsList.length > 0 ? `${assignedProgramsList.length} مسارات` : 'قيد مراجعة الدكتور', icon: Home },
                 ].map(({ label, value, icon: Icon }) => (
                   <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <Icon className="text-teal-700" size={22} />
@@ -133,7 +141,11 @@ export default function ParentDashboard() {
                   <div>
                     <p className="text-sm font-black text-teal-800">حالة ملف الطالب</p>
                     <h2 className="mt-1 text-2xl font-black text-slate-950">
-                      {assignedProgram ? `تم اعتماد ${assignedProgram.shortTitle}` : latestReport ? 'قيد مراجعة د. إسماعيل' : 'لم يتم إرسال الاستبيان بعد'}
+                      {assignedProgramsList.length > 0
+                        ? `تم اعتماد ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
+                        : latestReport
+                        ? 'قيد مراجعة د. إسماعيل'
+                        : 'لم يتم إرسال الاستبيان بعد'}
                     </h2>
                   </div>
                   {latestReport && !isUnderDoctorReview && (
