@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import ProgramExperience from '@/components/ProgramExperience';
 import { curriculumPrograms, programBySlug } from '@/data/curriculum';
 
+export const dynamic = 'force-dynamic';
+
 type ProgramPageProps = {
   params: Promise<{ slug: string }>;
 };

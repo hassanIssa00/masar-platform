@@ -1,16 +1,47 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, ClipboardCheck, Gauge, Layers3, Route, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
+import { getSession } from '@/lib/localDb';
 
 type ProgramExperienceProps = {
   program: CurriculumProgram;
 };
 
 export default function ProgramExperience({ program }: ProgramExperienceProps) {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const session = getSession();
+    // Block doctors, specialists, and teachers from accessing student program pages
+    if (
+      session?.role === 'doctor' ||
+      session?.role === 'specialist' ||
+      session?.role === 'teacher'
+    ) {
+      router.replace('/dashboard');
+      return;
+    }
+    // Block unauthenticated access
+    if (!session) {
+      router.replace('/kids');
+      return;
+    }
+    setAuthorized(true);
+  }, [router]);
+
+  if (!authorized) {
+    return <div className="min-h-screen bg-[var(--background)]" />;
+  }
+
   const topModules = program.modules.slice(0, 4);
   const image =
     program.slug === 'math'
