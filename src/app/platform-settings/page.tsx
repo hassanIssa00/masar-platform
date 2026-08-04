@@ -287,10 +287,14 @@ function Toggle({ checked, onChange, label, description }: {
         {description && <p className="text-xs font-bold text-slate-400 mt-0.5">{description}</p>}
       </div>
       <button
+        type="button"
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-200 ${checked ? 'bg-teal-500' : 'bg-slate-200'}`}
+        dir="ltr"
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors duration-200 ${
+          checked ? 'bg-teal-600 justify-end' : 'bg-slate-300 justify-start'
+        }`}
       >
-        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${checked ? 'translate-x-7' : 'translate-x-1'}`} />
+        <span className="h-5 w-5 rounded-full bg-white shadow-md transition-all duration-200" />
       </button>
     </div>
   );
