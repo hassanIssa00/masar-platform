@@ -218,36 +218,35 @@ export default function Home() {
       
       {/* 1. HEADER NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-xs">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 lg:px-8">
-          <Link href="/" className="focus-ring rounded-lg">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 px-3 py-3 lg:px-8">
+          <Link href="/" className="focus-ring rounded-lg shrink-0">
             <BrandMark size="md" />
           </Link>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Animated Nexus Entry Button in Header */}
             <Link 
               href="https://nexus.masar-platform.org" 
-              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-2.5 sm:px-4 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95"
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-cyan-600/30 via-teal-500/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <Trophy size={16} className="text-amber-400 animate-bounce" />
-              <span>بوابة نكسس للمدارس (NEXUS)</span>
-              <MoveLeft size={16} className="text-cyan-400 transition-transform duration-300 group-hover:-translate-x-1.5" />
+              <Trophy size={14} className="text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">بوابة نكسس للمدارس (NEXUS)</span>
+              <span className="sm:hidden">بوابة NEXUS</span>
             </Link>
 
             <Link 
               href="/auth/login" 
-              className="focus-ring rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-black text-slate-700 hover:bg-slate-100 transition active:scale-95 shadow-2xs"
+              className="focus-ring rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition active:scale-95 shadow-2xs shrink-0"
             >
               تسجيل الدخول
             </Link>
 
             <Link 
               href="/auth/register" 
-              className="focus-ring rounded-xl bg-teal-600 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition active:scale-95 flex items-center gap-1.5"
+              className="focus-ring rounded-xl bg-teal-600 px-3.5 sm:px-5 py-2 text-xs font-black text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition active:scale-95 flex items-center gap-1 shrink-0"
             >
-              <span>ابدأ التقييم</span>
-              <ArrowLeft size={15} />
+              <span>التقييم</span>
+              <ArrowLeft size={14} />
             </Link>
           </div>
         </div>
@@ -255,34 +254,34 @@ export default function Home() {
 
       <main>
         
-        {/* 2. HERO SECTION WITH ANIMATED ARROWS & VIBRANT LAYOUT */}
-        <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/90 via-slate-50 to-white pt-10 pb-20 lg:pt-16 lg:pb-28">
+        {/* 2. HERO SECTION - CLEAN, CONCISE & HIGH IMPACT */}
+        <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/90 via-slate-50 to-white pt-8 pb-16 lg:pt-14 lg:pb-24">
           
           {/* Background Glows */}
           <div className="absolute top-10 right-10 -z-10 h-96 w-96 rounded-full bg-teal-200/40 blur-[140px] pointer-events-none" />
           <div className="absolute bottom-10 left-10 -z-10 h-96 w-96 rounded-full bg-cyan-200/40 blur-[140px] pointer-events-none" />
 
-          <div className="mx-auto max-w-7xl px-5 lg:px-8">
-            <div className="grid gap-12 items-center lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-8 items-center lg:grid-cols-[1.1fr_0.9fr]">
               
-              {/* Left Column: Headline & Subtitle */}
-              <div className="space-y-6 text-right">
+              {/* Left Column: Concise Headline & Direct Actions */}
+              <div className="space-y-5 text-right">
                 
-                {/* Header Pill: تعليمي - علاجي - خطط فردية */}
+                {/* Header Pills */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-600 px-4 py-1.5 text-xs sm:text-sm font-black text-white shadow-md animate-pulse">
-                    <Sparkles size={15} />
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-600 px-3.5 py-1 text-xs font-black text-white shadow-xs">
+                    <Sparkles size={14} />
                     <span>تعليمي • علاجي • خطط فردية</span>
                   </div>
 
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3.5 py-1.5 text-xs font-black text-teal-900 shadow-2xs">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-black text-teal-900 shadow-2xs">
                     <CheckCircle2 size={14} className="text-teal-600" />
-                    <span>إشراف وتأسيس د. إسماعيل عيسى</span>
+                    <span>إشراف د. إسماعيل عيسى</span>
                   </div>
                 </div>
 
-                {/* Headline: المنصة الشاملة للتقييم، التأهيل، والتعليم التفاعلي */}
-                <h1 className="text-4xl font-black leading-[1.15] text-slate-900 sm:text-5xl md:text-6xl lg:text-6xl tracking-tight">
+                {/* Headline */}
+                <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl tracking-tight">
                   المنصة الشاملة للتقييم،
                   <br />
                   <span className="bg-gradient-to-r from-teal-700 via-emerald-600 to-cyan-700 bg-clip-text text-transparent">
@@ -290,61 +289,42 @@ export default function Home() {
                   </span>
                 </h1>
 
-                <p className="max-w-2xl text-base font-bold leading-relaxed text-slate-600 sm:text-lg md:text-xl">
-                  من كشف المهارات التشخيصي المبسط إلى بناء التفوق الأكاديمي: تأسيس القراءة والكتابة، التفكير الرياضي، النطق والتخاطب، والتركيز بخطة فردية مخصصة.
+                <p className="max-w-2xl text-sm font-bold leading-relaxed text-slate-600 sm:text-base md:text-lg">
+                  من كشف المهارات التشخيصي المبسط إلى بناء التفوق الأكاديمي: تأسيس القراءة والكتابة، التفكير الرياضي، النطق والتخاطب، والتركيز بخطة فردية مخصصة لطفلك.
                 </p>
 
-                {/* Multi-Tracks Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-                  {learningTracks.map(({ title, icon: Icon, desc }) => (
-                    <div 
-                      key={title} 
-                      className="group rounded-2xl border border-teal-100 bg-white p-3.5 shadow-2xs transition-all duration-300 hover:border-teal-400 hover:shadow-md hover:-translate-y-1 flex items-start gap-3"
-                    >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700 font-bold mt-0.5 group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
-                        <Icon size={18} />
-                      </span>
-                      <div>
-                        <h4 className="font-black text-slate-900 text-xs sm:text-sm group-hover:text-teal-900 transition-colors">{title}</h4>
-                        <p className="text-[11px] font-bold text-slate-500 mt-0.5">{desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Hero Action Buttons with Animated Arrows */}
-                <div className="flex flex-col sm:flex-row gap-3.5 pt-4">
+                {/* Hero Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link 
                     href="/auth/register" 
-                    className="group focus-ring inline-flex min-h-14 items-center justify-center gap-2.5 rounded-2xl bg-teal-600 px-8 py-4 text-base font-black text-white shadow-xl shadow-teal-600/25 hover:bg-teal-700 transition active:scale-95"
+                    className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-7 py-3.5 text-sm sm:text-base font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition active:scale-95"
                   >
                     <span>ابدأ تقييم تحديد المستوى الآن</span>
-                    <MoveLeft size={20} className="transition-transform duration-300 group-hover:-translate-x-2" />
+                    <MoveLeft size={18} className="transition-transform duration-300 group-hover:-translate-x-1.5" />
                   </Link>
 
                   <Link 
                     href="https://nexus.masar-platform.org" 
-                    className="group focus-ring inline-flex min-h-14 items-center justify-center gap-2.5 rounded-2xl border border-cyan-300 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-7 py-4 text-base font-black text-white shadow-lg shadow-slate-950/20 hover:from-slate-900 hover:to-cyan-900 transition active:scale-95"
+                    className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-6 py-3.5 text-sm sm:text-base font-black text-white shadow-md hover:from-slate-900 hover:to-cyan-900 transition active:scale-95"
                   >
-                    <Trophy size={18} className="text-amber-400 animate-bounce" />
+                    <Trophy size={16} className="text-amber-400" />
                     <span>بوابة نكسس للمدارس (NEXUS)</span>
-                    <MoveLeft size={18} className="text-cyan-400 transition-transform duration-300 group-hover:-translate-x-2" />
                   </Link>
                 </div>
 
                 {/* Trust Metrics Bar */}
-                <div className="pt-6 border-t border-slate-200/80 grid grid-cols-3 gap-4 text-right">
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
-                    <p className="text-2xl sm:text-3xl font-black text-slate-900">+5,000</p>
-                    <p className="text-xs font-bold text-slate-500 mt-0.5">طالب تم تقييمهم</p>
+                <div className="pt-4 border-t border-slate-200/80 grid grid-cols-3 gap-3 text-right">
+                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
+                    <p className="text-xl sm:text-2xl font-black text-slate-900">+5,000</p>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">طالب تم تقييمهم</p>
                   </div>
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
-                    <p className="text-2xl sm:text-3xl font-black text-teal-600">98%</p>
-                    <p className="text-xs font-bold text-slate-500 mt-0.5">نسبة التحسن الأكاديمي</p>
+                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
+                    <p className="text-xl sm:text-2xl font-black text-teal-600">98%</p>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">نسبة التحسن</p>
                   </div>
-                  <div className="rounded-2xl bg-white/80 p-3.5 border border-slate-200/60 shadow-2xs hover:scale-102 transition">
-                    <p className="text-2xl sm:text-3xl font-black text-cyan-600">7 صفوف</p>
-                    <p className="text-xs font-bold text-slate-500 mt-0.5">اختبارات تشخيصية</p>
+                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
+                    <p className="text-xl sm:text-2xl font-black text-cyan-600">7 صفوف</p>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">اختبارات تشخيصية</p>
                   </div>
                 </div>
 
