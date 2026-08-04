@@ -86,10 +86,10 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             {/* Hamburger — desktop & mobile toggle */}
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setSidebarOpen((prev) => !prev)}
               className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition"
-              aria-label="فتح القائمة"
-              title="فتح قائمة التنقل"
+              aria-label="تبديل القائمة"
+              title="تبديل قائمة التنقل"
             >
               <Menu size={22} />
             </button>
