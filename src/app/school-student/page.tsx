@@ -1,11 +1,11 @@
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Clock, BookOpen, Video, CheckCircle, ChevronLeft,
-  Loader2, Star, User,
+  Loader2, Star, User, LogOut
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { clearSession } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -20,6 +20,7 @@ function authHeaders() {
 type Tab = 'schedule' | 'homework' | 'meetings';
 
 export default function SchoolStudentPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('schedule');
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,19 @@ export default function SchoolStudentPage() {
   const [myAnswer, setMyAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<string[]>([]);
+
+  const handleLogout = () => {
+    clearSession();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('masar_logged_in');
+      localStorage.removeItem('masar_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('masar_user');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_name');
+    }
+    router.push('/login');
+  };
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -66,8 +80,20 @@ export default function SchoolStudentPage() {
             <h1 className="text-base font-black text-white">🎒 بوابة الطالب</h1>
             <p className="text-xs text-teal-300">مدارس الإخلاص الأهلية — فصل 1/1</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-teal-600/40 border border-teal-500/40 flex items-center justify-center">
-            <User className="w-5 h-5 text-teal-300" />
+          
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-teal-600/40 border border-teal-500/40 flex items-center justify-center">
+              <User className="w-5 h-5 text-teal-300" />
+            </div>
+
+            <button
+              onClick={handleLogout}
+              title="تسجيل الخروج"
+              className="flex items-center gap-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>خروج</span>
+            </button>
           </div>
         </div>
       </div>

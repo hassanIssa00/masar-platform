@@ -1,12 +1,12 @@
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Clock, BookOpen, Video, MessageSquare, Camera,
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
-  Home, User, Loader2, Heart, Sparkles, AlertTriangle
+  Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { clearSession } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -21,6 +21,7 @@ function authHeaders() {
 type Tab = 'home' | 'schedule' | 'homework' | 'meetings' | 'community' | 'photos' | 'report';
 
 export default function SchoolParentPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('home');
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +47,19 @@ export default function SchoolParentPage() {
       }
     }
   }, []);
+
+  const handleLogout = () => {
+    clearSession();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('masar_logged_in');
+      localStorage.removeItem('masar_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('masar_user');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_name');
+    }
+    router.push('/login');
+  };
 
   const studentId = typeof window !== 'undefined'
     ? (localStorage.getItem('school_student_id') ?? 'demo-student')
@@ -101,8 +115,20 @@ export default function SchoolParentPage() {
               مدارس الإخلاص الأهلية بجدة — متابعة فصل 1/1
             </p>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
-            <User className="w-6 h-6 text-emerald-700" />
+          
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
+              <User className="w-5 h-5 text-emerald-700" />
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              title="تسجيل الخروج"
+              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>خروج</span>
+            </button>
           </div>
         </div>
       </div>
