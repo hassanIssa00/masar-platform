@@ -141,7 +141,7 @@ export default function StudentsControlPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950 font-sans" dir="rtl">
+    <div className="min-h-screen bg-[var(--background)] text-slate-950" dir="rtl">
       <Navbar />
       <div className="flex">
         <Sidebar desktopOnly />

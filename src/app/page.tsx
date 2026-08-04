@@ -214,7 +214,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
       
       {/* 1. HEADER NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-xs">

@@ -107,7 +107,7 @@ export default function ParentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950 font-sans" dir="rtl">
+    <div className="min-h-screen bg-[var(--background)] text-slate-950" dir="rtl">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 space-y-6">
         
