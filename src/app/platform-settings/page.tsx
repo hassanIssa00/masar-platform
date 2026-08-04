@@ -401,10 +401,10 @@ export default function PlatformSettingsPage() {
       <div className="flex">
         <Sidebar desktopOnly />
 
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
           {/* ── Header ─────────────────────────── */}
-          <div className="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-[57px] z-30">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap pb-3 border-b border-slate-100">
               <div>
                 <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
                   <span className="grid h-9 w-9 place-items-center rounded-xl bg-teal-600 text-white">
@@ -422,10 +422,10 @@ export default function PlatformSettingsPage() {
             </div>
 
             {/* Tabs */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 overflow-x-auto pb-0.5 scrollbar-hide">
+            <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-hide">
               {TABS.map((t) => (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-black border-b-2 transition-colors duration-200 ${
+                  className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-black border-b-2 transition-colors duration-200 ${
                     tab === t.id
                       ? 'border-teal-600 text-teal-700'
                       : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -437,7 +437,7 @@ export default function PlatformSettingsPage() {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <div className="space-y-6">
 
             {loading && (
               <div className="grid place-items-center py-24">
