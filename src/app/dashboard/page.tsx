@@ -7,22 +7,29 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
-import { ActivityRecord, getActivities, getReports, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { useRouter } from 'next/navigation';
+import { ActivityRecord, getActivities, getReports, getSession, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
   const [surveysCount, setSurveysCount] = useState(0);
 
   useEffect(() => {
+    const session = getSession();
+    if (!session || session.role !== 'doctor') {
+      router.replace('/login');
+      return;
+    }
     queueMicrotask(() => {
       setStudents(getStudents());
       setReports(getReports());
       setActivities(getActivities());
       setSurveysCount(getSurveys().length);
     });
-  }, []);
+  }, [router]);
 
   const averageScore = useMemo(() => {
     if (reports.length === 0) return 0;

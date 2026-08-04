@@ -6,10 +6,12 @@ import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRou
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
-import { deleteStudent, getAccounts, getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { useRouter } from 'next/navigation';
+import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
 
 export default function StudentsControlPage() {
+  const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -20,6 +22,11 @@ export default function StudentsControlPage() {
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
 
   const refresh = () => {
+    const session = getSession();
+    if (!session || session.role !== 'doctor') {
+      router.replace('/login');
+      return;
+    }
     const nextStudents = getStudents();
     setStudents(nextStudents);
     setReports(getReports());

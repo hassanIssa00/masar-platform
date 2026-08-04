@@ -123,22 +123,15 @@ function MeetingsContent() {
 
   /* ─────────────── Session / Role detection ─────────────── */
   useEffect(() => {
-    // URL param 'role=student' → attendee regardless of localStorage
-    if (roleParam === 'student') {
-      setIsHost(false);
-    } else if (roleParam === 'doctor') {
+    const session = getSession();
+    // STRICT SECURITY: Host/Admin controls strictly require active doctor session
+    if (session?.role === 'doctor') {
       setIsHost(true);
     } else {
-      // Fall back to localStorage session
-      const session = getSession();
-      if (session?.role === 'parent' || session?.role === 'specialist') {
-        setIsHost(false);
-      } else {
-        setIsHost(true); // doctor / teacher / default
-      }
+      setIsHost(false);
     }
     setSessionLoaded(true);
-  }, [roleParam]);
+  }, []);
 
   /* ─────────────── WebRTC: start camera when call opens ─────────────── */
   useEffect(() => {
@@ -436,7 +429,7 @@ function MeetingsContent() {
     <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
       <Navbar />
       <div className="flex">
-        <Sidebar desktopOnly />
+        {isHost && <Sidebar desktopOnly />}
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
 
           {/* ── Page Header ── */}
