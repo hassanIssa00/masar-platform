@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'منصة د. إسماعيل عيسى | تعليم علاجي وخطط فردية',
-  description: 'منصة متكاملة للتقييم، المناهج العلاجية، متابعة الجلسات، وتقارير تقدم الطلاب.',
+  title: 'منصة مَسَار | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
+  description: 'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لكل طالب.',
   icons: {
     icon: [
       { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },

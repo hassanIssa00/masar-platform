@@ -282,10 +282,10 @@ export default function Home() {
 
                 {/* Headline */}
                 <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl tracking-tight">
-                  المنصة الشاملة للتقييم،
+                  اكتشف طفلك.
                   <br />
                   <span className="bg-gradient-to-r from-teal-700 via-emerald-600 to-cyan-700 bg-clip-text text-transparent">
-                    التأهيل، والتعليم التفاعلي.
+                    طوّر قدراته. غيّر مستقبله.
                   </span>
                 </h1>
 
