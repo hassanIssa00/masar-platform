@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'منصة مَسَار | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
+  title: 'د. إسماعيل عيسى | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
   description: 'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لكل طالب.',
   icons: {
     icon: [
