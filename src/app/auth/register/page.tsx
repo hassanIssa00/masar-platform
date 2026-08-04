@@ -7,6 +7,7 @@ import { UserPlus, GraduationCap, HeartHandshake } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
 import { getStudents, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 const countryCodes = [
   // ── الدول العربية ──
@@ -134,6 +135,8 @@ export default function RegisterPage() {
 
     setSession(account);
     saveCredential(account, password);
+    // Track registration event
+    trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
 
     // Save active student ID for instant report and profile switcher binding
     if (typeof window !== 'undefined') {

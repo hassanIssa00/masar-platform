@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
@@ -20,6 +20,10 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    trackEvent('visit', { page: '/login' });
+  }, []);
 
   const loginAsDoctor = () => {
     const account = ensureDemoAccount('dr.ismail@masar.com');
@@ -96,6 +100,7 @@ export default function LoginPage() {
         ? 'الحساب غير موجود. أنشئ حساب جديد أو استخدم بيانات الدكتور التجريبية.'
         : 'كلمة المرور غير صحيحة. جرّب استعادة كلمة المرور أو زر بيانات الدكتور.',
     );
+    trackEvent('login_failed', { userName: email });
   };
 
   const handleOtp = (event: FormEvent<HTMLFormElement>) => {

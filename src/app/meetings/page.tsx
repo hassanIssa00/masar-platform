@@ -14,6 +14,7 @@ import Sidebar from '@/components/Sidebar';
 import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, collection, addDoc, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 /* ═══════════════ TYPES ═══════════════ */
 type MeetingRecord = {
@@ -117,6 +118,7 @@ function MeetingsContent() {
     const session = getSession();
     if (session) {
       setSessionUser({ name: session.name || 'مستخدم مسار', role: session.role });
+      trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/meetings' });
     } else {
       setSessionUser(null);
     }

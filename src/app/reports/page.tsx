@@ -9,7 +9,8 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
-import { deleteReport, getReports, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { deleteReport, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التقرير التحليلي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 
@@ -32,6 +33,8 @@ function ReportsContent() {
 
   useEffect(() => {
     queueMicrotask(() => {
+      const session = getSession();
+      if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
       const nextReports = getReports();
       setReports(nextReports);
       setStudents(getStudents());

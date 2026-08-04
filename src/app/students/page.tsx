@@ -9,6 +9,7 @@ import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 export default function StudentsControlPage() {
   const router = useRouter();
@@ -42,6 +43,8 @@ export default function StudentsControlPage() {
   };
 
   useEffect(() => {
+    const session = getSession();
+    if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
     const timeout = window.setTimeout(refresh, 0);
     return () => window.clearTimeout(timeout);
   }, []);
