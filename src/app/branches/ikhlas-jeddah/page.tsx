@@ -153,7 +153,12 @@ export default function IkhlasJeddahPage() {
         exitTime, parentNotified: true,
       }),
     });
-    alert(`✅ تم إرسال تنبيه التأخر لولي أمر ${studentName}`);
+    // WhatsApp direct alert message
+    const msg = encodeURIComponent(
+      `🚨 تنبيه عاجل من مدارس الإخلاص الأهلية بجدة 🇸🇦:\nالسيد ولي أمر الطالب (${studentName}) المحترم، نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة المدرسة.`
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    alert(`✅ تم إرسال تنبيه التأخر لولي أمر ${studentName} عبر المنصة وفتح تطبيق الواتساب!`);
   };
 
   const saveAttendance = async () => {

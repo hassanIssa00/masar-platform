@@ -112,6 +112,21 @@ export default function SchoolParentPage() {
 
         {!loading && tab === 'home' && (
           <div className="space-y-4">
+            {/* تنبيه تأخر استلام الطفل العاجل */}
+            {dashboard?.todayLog?.lateAlertSent && (
+              <div className="bg-rose-500/20 border-2 border-rose-500/80 rounded-2xl p-4 flex items-center gap-3 animate-pulse shadow-lg shadow-rose-500/20">
+                <div className="w-12 h-12 rounded-full bg-rose-500/30 flex items-center justify-center shrink-0">
+                  <Bell className="w-6 h-6 text-rose-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-rose-300">🚨 تنبيه عاجل من إدارة المدرسة!</p>
+                  <p className="text-xs text-rose-200 mt-0.5">
+                    نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة المدرسة.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* وقت الخروج */}
             {dashboard?.todayLog?.exitTime && (
               <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3">
