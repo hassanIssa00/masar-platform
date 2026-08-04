@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, U
 import BrandMark from '@/components/BrandMark';
 import { authenticate, ensureDemoAccount, getDemoPassword } from '@/lib/auth';
 import { getStudents, setSession } from '@/lib/localDb';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -60,6 +61,8 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
+      // Track login event
+      trackEvent('login', { userId: result.account.id, userName: result.account.name, userRole: result.account.role });
 
       // 1. Doctor / Admin Role -> Doctor Dashboard
       if (result.account.role === 'doctor' || result.account.role === 'specialist' || result.account.role === 'teacher') {

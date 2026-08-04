@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   BarChart3, CalendarClock, ChevronLeft, ChevronRight, ClipboardCheck,
   FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
-  PanelRightClose, PanelRightOpen, Stethoscope, UserRoundPlus, UsersRound, X
+  PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 import { clearSession } from '@/lib/localDb';
@@ -22,6 +22,7 @@ const adminLinks = [
   { name: 'اجتماعات Zoom', path: '/meetings', icon: CalendarClock },
   { name: 'طالب جديد', path: '/student/new', icon: UserRoundPlus },
   { name: 'ألعاب الطالب', path: '/kids', icon: Gamepad2 },
+  { name: 'إعدادات المنصة', path: '/platform-settings', icon: Settings2 },
 ];
 
 interface SidebarProps {
