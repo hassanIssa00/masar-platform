@@ -349,6 +349,15 @@ export function saveMessage(message: Omit<MessageRecord, 'id' | 'createdAt'>) {
   return next;
 }
 
+export function clearAllMockData() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.students);
+  localStorage.removeItem(KEYS.reports);
+  localStorage.removeItem(KEYS.surveys);
+  localStorage.removeItem(KEYS.activity);
+  localStorage.removeItem(KEYS.messages);
+}
+
 export function getSyncSnapshot() {
   const activities = getActivities();
   return {
