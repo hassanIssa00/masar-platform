@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3, CalendarClock, ChevronLeft, ChevronRight, ClipboardCheck,
-  FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
+  CreditCard, BookOpen, FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -16,6 +16,8 @@ const adminLinks = [
   { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
+  { name: 'الفواتير والمالية', path: '/invoices', icon: CreditCard },
+  { name: 'الأنشطة والواجبات', path: '/homework', icon: BookOpen },
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
   { name: 'التقارير', path: '/reports', icon: FileText },
   { name: 'لوحة الأخصائي', path: '/specialist', icon: Stethoscope },

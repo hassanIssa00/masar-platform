@@ -10,6 +10,9 @@ import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
 import { trackEvent } from '@/lib/analyticsTracker';
+import CertificateModal from '@/components/CertificateModal';
+import VoiceNoteRecorder from '@/components/VoiceNoteRecorder';
+import { Award } from 'lucide-react';
 
 export default function StudentsControlPage() {
   const router = useRouter();
@@ -18,6 +21,7 @@ export default function StudentsControlPage() {
   const [selectedId, setSelectedId] = useState('');
   const [message, setMessage] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showCertData, setShowCertData] = useState<{ studentName: string; programTitle: string; completionDate: string; score: number } | null>(null);
 
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
@@ -229,17 +233,36 @@ export default function StudentsControlPage() {
                             <p className="text-xs font-black text-teal-700">ملف الطالب الحسابي الكامل</p>
                             <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedStudent.fullName}</h2>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(selectedStudent.id)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition"
-                          >
-                            <Trash2 size={16} />
-                            <span>حذف الطالب</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowCertData({
+                                studentName: selectedStudent.fullName,
+                                programTitle: selectedStudent.assignedProgram ? (curriculumPrograms.find(p => p.slug === selectedStudent.assignedProgram)?.shortTitle || 'برنامج التأهيل الشامل') : 'برنامج التأهيل الشامل وصعوبات التعلم',
+                                completionDate: new Date().toISOString().slice(0, 10),
+                                score: 92,
+                              })}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-black text-amber-900 hover:bg-amber-100 transition shadow-sm"
+                            >
+                              <Award size={16} className="text-amber-600" />
+                              <span>إصدار شهادة إنجاز PDF</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(selectedStudent.id)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition"
+                            >
+                              <Trash2 size={16} />
+                              <span>حذف الطالب</span>
+                            </button>
+                          </div>
                         </div>
 
-                        {/* All Recorded Account Details */}
+                        {/* Voice Note Recorder Section */}
+                        <div className="mt-5">
+                          <VoiceNoteRecorder onSave={(txt) => setMessage(`تم تسجيل الملاحظة الصوتية للطالب ${selectedStudent.fullName}`)} />
+                        </div>
                         <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                           <Info label="اسم الطالب" value={selectedStudent.fullName} />
                           <Info label="الصف الدراسي" value={selectedStudent.grade} />
@@ -526,6 +549,7 @@ export default function StudentsControlPage() {
         </div>
       )}
 
+      {showCertData && <CertificateModal data={showCertData} onClose={() => setShowCertData(null)} />}
     </div>
   );
 }
