@@ -450,21 +450,23 @@ function renderGamePreview(kind: string) {
 }
 
 function StudentAvatar({ student }: { student: StudentRecord | null }) {
-  if (student?.photoUrl) {
+  const [imgError, setImgError] = useState(false);
+
+  if (student?.photoUrl && !imgError) {
     return (
-      <span
-        aria-label={student.fullName}
-        role="img"
-        className="h-14 w-14 shrink-0 rounded-lg bg-cover bg-center ring-2 ring-white/20"
-        style={{ backgroundImage: `url(${student.photoUrl})` }}
+      <img
+        src={student.photoUrl}
+        alt={student.fullName}
+        onError={() => setImgError(true)}
+        className="h-14 w-14 shrink-0 rounded-xl object-cover ring-2 ring-teal-400/40 shadow-sm"
       />
     );
   }
 
   return (
-    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-white text-xl font-black text-slate-950">
-      {(student?.fullName ?? 'ط').trim().slice(0, 1)}
-    </span>
+    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-teal-800 text-teal-100 font-black text-xl ring-2 ring-teal-500/30 shadow-sm">
+      {student?.fullName ? student.fullName.trim().slice(0, 1) : <UserRound size={26} />}
+    </div>
   );
 }
 

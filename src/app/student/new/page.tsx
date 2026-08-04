@@ -195,7 +195,26 @@ export default function NewStudentPage() {
                     const file = event.target.files?.[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = () => handleFieldChange('photoUrl', String(reader.result));
+                    reader.onload = () => {
+                      const img = document.createElement('img');
+                      img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxDim = 240;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > h) {
+                          if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        } else {
+                          if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(img, 0, 0, w, h);
+                        handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                      };
+                      img.src = String(reader.result);
+                    };
                     reader.readAsDataURL(file);
                   }}
                 />
