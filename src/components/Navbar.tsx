@@ -86,12 +86,16 @@ export default function Navbar() {
         <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
 
           <div className="flex items-center gap-2">
-            {/* Hamburger — desktop & mobile toggle */}
+            {/* Hamburger — controls existing sidebar directly */}
             <button
-              onClick={() => setSidebarOpen((prev) => !prev)}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('masar_toggle_sidebar'));
+                }
+              }}
               className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition"
               aria-label="تبديل القائمة"
-              title="تبديل قائمة التنقل"
+              title="تبديل القائمة الرائسية"
             >
               <Menu size={22} />
             </button>
@@ -194,9 +198,6 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-
-      {/* Mobile Sidebar Drawer */}
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </>
   );
 }
