@@ -218,27 +218,26 @@ export default function Home() {
       
       {/* 1. HEADER NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-xs">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 px-3 py-3 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-6 lg:px-8">
           <Link href="/" className="focus-ring rounded-lg shrink-0">
-            <BrandMark size="md" />
+            <BrandMark size="sm" />
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Animated Nexus Entry Button in Header */}
+            {/* Animated Nexus Entry Button in Header — sm and up */}
             <Link 
               href="https://nexus.masar-platform.org" 
-              className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-2.5 sm:px-4 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-3.5 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95 shrink-0"
             >
               <Trophy size={14} className="text-amber-400 shrink-0" />
-              <span className="hidden sm:inline">بوابة نكسس للمدارس (NEXUS)</span>
-              <span className="sm:hidden">بوابة NEXUS</span>
+              <span>بوابة NEXUS للمدارس</span>
             </Link>
 
             <Link 
               href="/auth/login" 
               className="focus-ring rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition active:scale-95 shadow-2xs shrink-0"
             >
-              تسجيل الدخول
+              دخول
             </Link>
 
             <Link 
@@ -268,7 +267,7 @@ export default function Home() {
               <div className="space-y-5 text-right">
                 
                 {/* Header Pills */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                   <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-600 px-3.5 py-1 text-xs font-black text-white shadow-xs">
                     <Sparkles size={14} />
                     <span>تعليمي • علاجي • خطط فردية</span>

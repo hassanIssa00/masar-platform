@@ -74,15 +74,16 @@ export default function RegisterPage() {
   const [childName, setChildName] = useState('');
   const [grade, setGrade] = useState(grades[0]);
   const [email, setEmail] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<Country>(ALL_COUNTRIES[0]); // Default Egypt
+  const [selectedCountry, setSelectedCountry] = useState<Country>(ALL_COUNTRIES[0]);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Errors State
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Track field touch status for instant live error feedback
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
 
   const filteredCountries = useMemo(() => {
     if (!countrySearch.trim()) return ALL_COUNTRIES;
@@ -92,67 +93,83 @@ export default function RegisterPage() {
     );
   }, [countrySearch]);
 
-  const countWords = (str: string) => {
-    return str.trim().split(/\s+/).filter(Boolean).length;
+  const countWords = (str: string) => str.trim().split(/\s+/).filter(Boolean).length;
+
+  // Live Evaluated Errors
+  const getParentNameError = (): string => {
+    if (accountType !== 'parent') return '';
+    if (!parentName.trim()) return 'اسم ولي الأمر مطلوب';
+    if (countWords(parentName) < 3) return 'اسم ولي الأمر غير مكتمل، يجب كتابة 3 أسماء على الأقل (مثال: أحمد محمد علي)';
+    return '';
   };
 
-  const validateForm = (): boolean => {
-    const errs: Record<string, string> = {};
+  const getChildNameError = (): string => {
+    if (!childName.trim()) return accountType === 'parent' ? 'اسم الطالب مطلوب' : 'اسم الطالب الكامل مطلوب';
+    if (countWords(childName) < 4) return 'اسم الطالب غير مكتمل، يجب كتابة 4 أسماء على الأقل (مثال: يوسف أحمد محمد علي)';
+    return '';
+  };
 
-    // 1. Parent Name Validation (3+ words)
-    if (accountType === 'parent') {
-      const pWords = countWords(parentName);
-      if (!parentName.trim()) {
-        errs.parentName = 'يرجى كتابة اسم ولي الأمر الكامل';
-      } else if (pWords < 3) {
-        errs.parentName = 'اسم ولي الأمر يجب أن يكون ثلاثياً على الأقل (مثال: أحمد محمد علي)';
-      }
+  const getEmailError = (): string => {
+    const clean = email.trim().toLowerCase();
+    if (!clean) return 'البريد الإلكتروني مطلوب';
+    if (!clean.includes('@')) return 'البريد الإلكتروني ينقصه علامة @ (مثال: name@example.com)';
+    if (!clean.endsWith('.com')) return 'البريد الإلكتروني يجب أن ينتهي بـ .com (مثال: name@example.com)';
+    const regex = /^[^\s@]+@[^\s@]+\.com$/;
+    if (!regex.test(clean)) return 'صيغة البريد غير صحيحة (مثال: name@example.com)';
+    
+    // Duplicate check
+    const accounts = getAccounts();
+    if (accounts.some((a) => a.email.toLowerCase() === clean)) {
+      return 'هذا البريد الإلكتروني مسجل بالفعل لدى حساب آخر. يمكنك تسجيل الدخول بدلاً من ذلك.';
     }
+    return '';
+  };
 
-    // 2. Child / Student Name Validation (4+ words)
-    const cWords = countWords(childName);
-    if (!childName.trim()) {
-      errs.childName = accountType === 'parent' ? 'يرجى كتابة اسم الطالب' : 'يرجى كتابة اسم الطالب الكامل';
-    } else if (cWords < 4) {
-      errs.childName = 'اسم الطالب يجب أن يكون رباعياً على الأقل (مثال: يوسف أحمد محمد علي)';
-    }
+  const getPhoneError = (): string => {
+    const clean = phone.replace(/\D/g, '');
+    if (!clean) return 'رقم الهاتف / الواتساب مطلوب';
+    if (clean.length < 8) return 'رقم الهاتف ناقص، يرجى كتابة الرقم كاملاً (8 أرقام على الأقل)';
+    return '';
+  };
 
-    // 3. Email Validation (must contain @ and end with .com)
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) {
-      errs.email = 'يرجى كتابة البريد الإلكتروني';
-    } else if (!cleanEmail.includes('@') || !cleanEmail.endsWith('.com')) {
-      errs.email = 'البريد الإلكتروني يجب أن يحتوي على @ وينتهي بـ .com (مثال: name@example.com)';
-    } else {
-      // Check duplicate
-      const accounts = getAccounts();
-      const isDuplicate = accounts.some((a) => a.email.toLowerCase() === cleanEmail);
-      if (isDuplicate) {
-        errs.email = 'هذا البريد الإلكتروني مسجل بالفعل لدى حساب آخر. يمكنك تسجيل الدخول بدلاً من ذلك.';
-      }
-    }
+  const getPasswordError = (): string => {
+    if (!password) return 'كلمة المرور مطلوبة';
+    if (password.length < 6) return 'كلمة المرور ضعيفة جداً، يجب كتابة 6 أحرف/أرقام على الأقل';
+    return '';
+  };
 
-    // 4. Phone Validation
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (!cleanPhone) {
-      errs.phone = 'يرجى كتابة رقم الهاتف / الواتساب';
-    } else if (cleanPhone.length < 7) {
-      errs.phone = 'يرجى كتابة رقم هاتف صحيح';
-    }
+  // Errors map for display
+  const errors = useMemo(() => {
+    return {
+      parentName: getParentNameError(),
+      childName: getChildNameError(),
+      email: getEmailError(),
+      phone: getPhoneError(),
+      password: getPasswordError(),
+    };
+  }, [parentName, childName, email, phone, password, accountType]);
 
-    // 5. Password Validation
-    if (!password || password.length < 4) {
-      errs.password = 'يرجى كتابة كلمة مرور مكونة من 4 أحرف/أرقام على الأقل';
-    }
+  const hasErrors = useMemo(() => {
+    if (accountType === 'parent' && errors.parentName) return true;
+    return !!(errors.childName || errors.email || errors.phone || errors.password);
+  }, [errors, accountType]);
 
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    
-    if (!validateForm()) {
+    setSubmitted(true);
+    setTouched({
+      parentName: true,
+      childName: true,
+      email: true,
+      phone: true,
+      password: true,
+    });
+
+    if (hasErrors) {
       return;
     }
 
@@ -226,10 +243,8 @@ export default function RegisterPage() {
 
     setTimeout(() => {
       if (accountType === 'parent') {
-        // Parent accounts go straight to their dashboard
         router.push('/parent');
       } else {
-        // Student accounts start wizard
         router.push('/student/new');
       }
     }, 600);
@@ -261,7 +276,6 @@ export default function RegisterPage() {
             type="button"
             onClick={() => {
               setAccountType('parent');
-              setErrors({});
             }}
             className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
               accountType === 'parent'
@@ -277,7 +291,6 @@ export default function RegisterPage() {
             type="button"
             onClick={() => {
               setAccountType('student');
-              setErrors({});
             }}
             className={`flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-black transition ${
               accountType === 'student'
@@ -300,12 +313,11 @@ export default function RegisterPage() {
                 value={parentName}
                 onChange={(val) => {
                   setParentName(val);
-                  if (errors.parentName) setErrors((e) => ({ ...e, parentName: '' }));
+                  markTouched('parentName');
                 }}
+                onBlur={() => markTouched('parentName')}
                 placeholder="مثال: أحمد محمد علي"
-                error={errors.parentName}
-                hint="يجب أن يتكون اسم ولي الأمر من 3 أسماء على الأقل"
-                required
+                error={(touched.parentName || submitted) ? errors.parentName : ''}
               />
 
               <Field
@@ -313,12 +325,11 @@ export default function RegisterPage() {
                 value={childName}
                 onChange={(val) => {
                   setChildName(val);
-                  if (errors.childName) setErrors((e) => ({ ...e, childName: '' }));
+                  markTouched('childName');
                 }}
+                onBlur={() => markTouched('childName')}
                 placeholder="مثال: يوسف أحمد محمد علي"
-                error={errors.childName}
-                hint="يجب أن يتكون اسم الطالب من 4 أسماء على الأقل"
-                required
+                error={(touched.childName || submitted) ? errors.childName : ''}
               />
             </>
           ) : (
@@ -327,12 +338,11 @@ export default function RegisterPage() {
               value={childName}
               onChange={(val) => {
                 setChildName(val);
-                if (errors.childName) setErrors((e) => ({ ...e, childName: '' }));
+                markTouched('childName');
               }}
+              onBlur={() => markTouched('childName')}
               placeholder="مثال: يوسف أحمد محمد علي"
-              error={errors.childName}
-              hint="يجب أن يتكون اسم الطالب من 4 أسماء على الأقل"
-              required
+              error={(touched.childName || submitted) ? errors.childName : ''}
             />
           )}
 
@@ -356,23 +366,26 @@ export default function RegisterPage() {
             value={email}
             onChange={(val) => {
               setEmail(val);
-              if (errors.email) setErrors((e) => ({ ...e, email: '' }));
+              markTouched('email');
             }}
+            onBlur={() => markTouched('email')}
             placeholder="name@example.com"
             type="email"
-            error={errors.email}
-            hint="يجب أن يحتوي على @ وينتهي بـ .com"
-            required
+            error={(touched.email || submitted) ? errors.email : ''}
           />
 
           {/* Phone Field with Modern Country Selector */}
-          <div className="block">
+          <div className="block text-right">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs sm:text-sm font-black text-slate-700">رقم الهاتف / الواتساب</span>
               <span className="text-[11px] font-bold text-slate-400">اختر الدولة واكتب الرقم</span>
             </div>
 
-            <div className="relative flex items-center rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition">
+            <div className={`relative flex items-center rounded-xl border bg-slate-50 transition ${
+              (touched.phone || submitted) && errors.phone
+                ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-500/20'
+                : 'border-slate-200 focus-within:border-teal-600 focus-within:bg-white'
+            }`}>
               
               {/* Country Trigger Button */}
               <button
@@ -392,11 +405,11 @@ export default function RegisterPage() {
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
-                  if (errors.phone) setErrors((e) => ({ ...e, phone: '' }));
+                  markTouched('phone');
                 }}
+                onBlur={() => markTouched('phone')}
                 className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-400"
                 placeholder={`مثال: ${selectedCountry.example}`}
-                required
               />
 
               {/* Country Picker Dropdown Modal / Popover */}
@@ -460,9 +473,9 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {errors.phone && (
-              <p className="mt-1 flex items-center gap-1 text-xs font-bold text-rose-600">
-                <AlertCircle size={13} />
+            {(touched.phone || submitted) && errors.phone && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-black text-rose-600">
+                <AlertCircle size={14} className="shrink-0" />
                 <span>{errors.phone}</span>
               </p>
             )}
@@ -474,12 +487,12 @@ export default function RegisterPage() {
             value={password}
             onChange={(val) => {
               setPassword(val);
-              if (errors.password) setErrors((e) => ({ ...e, password: '' }));
+              markTouched('password');
             }}
+            onBlur={() => markTouched('password')}
             placeholder="اكتب كلمة مرور قوية"
             type="password"
-            error={errors.password}
-            required
+            error={(touched.password || submitted) ? errors.password : ''}
           />
 
           <button 
@@ -517,20 +530,18 @@ function Field({
   label,
   value,
   onChange,
+  onBlur,
   placeholder,
   type = 'text',
   error,
-  hint,
-  required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   type?: string;
   error?: string;
-  hint?: string;
-  required?: boolean;
 }) {
   return (
     <label className="block text-right">
@@ -539,21 +550,19 @@ function Field({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
         className={`w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none transition ${
           error
-            ? 'border-rose-400 bg-rose-50/50 text-slate-900 focus:border-rose-600'
+            ? 'border-rose-500 bg-rose-50/50 text-slate-900 ring-2 ring-rose-500/20 focus:border-rose-600'
             : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-teal-600 focus:bg-white'
         }`}
         placeholder={placeholder}
-        required={required}
       />
       {error ? (
-        <p className="mt-1 flex items-center gap-1 text-xs font-bold text-rose-600">
-          <AlertCircle size={13} className="shrink-0" />
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-black text-rose-600">
+          <AlertCircle size={14} className="shrink-0" />
           <span>{error}</span>
         </p>
-      ) : hint ? (
-        <p className="mt-1 text-[11px] font-bold text-slate-400">{hint}</p>
       ) : null}
     </label>
   );
