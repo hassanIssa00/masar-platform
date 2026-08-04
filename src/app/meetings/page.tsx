@@ -6,7 +6,8 @@ import {
   Video, VideoOff, Mic, MicOff, Monitor, PhoneOff, Copy,
   Trash2, CalendarClock, PenTool, Radio, User,
   ShieldCheck, AlertTriangle, Users, Eraser, RotateCcw,
-  VolumeX, UserX, MessageSquare, Plus, Sparkles, LogIn, ArrowRight
+  VolumeX, UserX, MessageSquare, Plus, Sparkles, LogIn, ArrowRight,
+  Volume2, Check, Smartphone
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -18,7 +19,7 @@ import { doc, setDoc, onSnapshot, collection, addDoc, getDoc } from 'firebase/fi
 type MeetingRecord = {
   id: string;
   roomCode: string;
-  hostToken: string;   // secret UUID — only doctor has this
+  hostToken: string;
   title: string;
   targetName: string;
   date: string;
@@ -27,6 +28,17 @@ type MeetingRecord = {
   zoomUrl?: string;
   notes: string;
   createdAt: number;
+};
+
+type ParticipantInfo = {
+  id: string;
+  name: string;
+  role: 'host' | 'guest';
+  joinedAt: number;
+  kicked?: boolean;
+  forceMuted?: boolean;
+  micOn?: boolean;
+  videoOn?: boolean;
 };
 
 /* ═══════════════ LOCAL STORAGE HELPERS ═══════════════ */
@@ -50,7 +62,6 @@ const RTC: RTCConfiguration = {
   ],
 };
 
-/* ═══════════════ HELPERS ═══════════════ */
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -58,7 +69,11 @@ function makeId() {
 /* ═══════════════ PAGE ENTRY ═══════════════ */
 export default function MeetingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-900 grid place-items-center"><div className="h-10 w-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 grid place-items-center">
+        <div className="h-12 w-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
       <MeetingsContent />
     </Suspense>
   );
@@ -74,7 +89,7 @@ function MeetingsContent() {
 
   const [ready,         setReady]         = useState(false);
   const [sessionUser,   setSessionUser]   = useState<{ name: string; role: string } | null>(null);
-  const [isHost,        setIsHost]        = useState(false);  // host role in this call
+  const [isHost,        setIsHost]        = useState(false);
   const [meetings,      setMeetings]      = useState<MeetingRecord[]>([]);
   const [students,      setStudents]      = useState<StudentRecord[]>([]);
   const [inCall,        setInCall]        = useState<{ roomCode: string; title: string; participantName: string } | null>(null);
@@ -108,7 +123,6 @@ function MeetingsContent() {
     setStudents(getStudents());
 
     if (roomParam) {
-      // Fetch room title from Firestore if available
       getDoc(doc(db, 'masar_rooms', roomParam))
         .then((snap) => {
           if (snap.exists()) {
@@ -127,7 +141,6 @@ function MeetingsContent() {
         .catch(() => {})
         .finally(() => setReady(true));
 
-      // If user is already logged in on Masar (and not explicit token matching), automatically set inCall for student/parent
       if (session && !tokenParam) {
         setIsHost(false);
         setInCall({
@@ -146,7 +159,6 @@ function MeetingsContent() {
     setTimeout(() => setCopyMsg(''), 4000);
   };
 
-  /* ── Doctor creates a meeting ── */
   const createMeeting = () => {
     if (!form.title) return;
     const roomCode  = `MASAR-${makeId().slice(0, 8).toUpperCase()}`;
@@ -188,7 +200,6 @@ function MeetingsContent() {
     flash('تم حذف الجلسة.');
   };
 
-  /* ── Copy guest link ── */
   const copyGuestLink = async (m: MeetingRecord) => {
     const guestLink = `${origin}/meetings?room=${m.roomCode}`;
     const text = [
@@ -203,7 +214,6 @@ function MeetingsContent() {
     flash('✅ تم نسخ رابط الضيف! أرسله للطلاب وأولياء الأمور.');
   };
 
-  /* ── Doctor opens room as host ── */
   const openAsHost = (m: MeetingRecord) => {
     setIsHost(true);
     setInCall({
@@ -213,7 +223,6 @@ function MeetingsContent() {
     });
   };
 
-  /* ── Instant meeting ── */
   const startInstant = () => {
     const roomCode  = `MASAR-LIVE-${makeId().slice(0, 6).toUpperCase()}`;
     const hostToken = makeId();
@@ -247,7 +256,6 @@ function MeetingsContent() {
     });
   };
 
-  /* ── Guest Form Submission ── */
   const handleGuestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestNameInput.trim() || !roomParam) return;
@@ -280,71 +288,75 @@ function MeetingsContent() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     2. GUEST JOIN LANDING PAGE (Unauthenticated Guest opening link)
-     Design: Custom standalone glassmorphic room join page
+     2. GUEST JOIN LANDING PAGE (Fully Mobile Responsive & Modern)
   ═══════════════════════════════════════════════════════════ */
   if (roomParam && !sessionUser && !tokenParam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-teal-950 to-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 text-slate-100 flex flex-col items-center justify-center p-3 sm:p-6 relative overflow-hidden font-sans" dir="rtl">
 
-        {/* Dynamic Background Glows */}
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient Glows */}
+        <div className="absolute top-10 right-10 w-72 h-72 sm:w-96 sm:h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute bottom-10 left-10 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Main Card */}
-        <div className="w-full max-w-lg bg-slate-900/80 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-8 shadow-2xl relative z-10 space-y-6">
+        {/* Guest Join Card */}
+        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-5 sm:p-8 shadow-2xl relative z-10 space-y-5">
 
-          {/* Header Badge */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-5">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 grid place-items-center shadow-lg shadow-teal-500/20">
-                <Video size={24} className="text-white" />
+              <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 grid place-items-center shadow-lg shadow-teal-500/20 shrink-0">
+                <Video size={22} className="text-white" />
               </div>
               <div>
-                <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">منصة مسار الطبية والتأهيلية</span>
-                <h1 className="text-lg font-black text-white">غرفة الجلسات المباشرة</h1>
+                <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">منصة مسار الطبية</span>
+                <h1 className="text-base sm:text-lg font-black text-white">غرفة الجلسات المباشرة</h1>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" /> متاح الآن
             </span>
           </div>
 
-          {/* Session Details */}
-          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 space-y-2">
-            <p className="text-xs font-bold text-slate-400">اسم الجلسة:</p>
-            <h2 className="text-base font-black text-white">{roomTitle}</h2>
+          {/* Meeting Title Card */}
+          <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl p-4 space-y-1.5">
+            <p className="text-[11px] font-bold text-slate-400">جلسة علاجيّة مباشرة:</p>
+            <h2 className="text-sm sm:text-base font-black text-white leading-snug">{roomTitle}</h2>
             <div className="flex items-center gap-2 pt-2 border-t border-slate-700/40 text-xs font-bold text-teal-300">
-              <User size={14} /> د. إسماعيل عيسى (المضيف)
+              <User size={14} className="text-teal-400 shrink-0" /> د. إسماعيل عيسى (استشاري التخاطب)
             </div>
           </div>
 
-          {/* Name Input Form */}
+          {/* Guest Name Form */}
           <form onSubmit={handleGuestSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-black text-slate-300 mb-2">
-                أدخل اسمك الكامل للانضمام للجلسة:
+              <label className="block text-xs font-black text-slate-200 mb-1.5">
+                اكتب اسمك الكامل للانضمام للجلسة:
               </label>
-              <input
-                type="text"
-                required
-                value={guestNameInput}
-                onChange={(e) => setGuestNameInput(e.target.value)}
-                placeholder="مثال: أحمد المحمد"
-                className="w-full bg-slate-950 border border-teal-500/40 focus:border-teal-400 rounded-2xl px-4 py-3.5 text-sm font-bold text-white placeholder-slate-500 outline-none transition shadow-inner"
-              />
+
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={guestNameInput}
+                  onChange={(e) => setGuestNameInput(e.target.value)}
+                  placeholder="مثال: أحمد المحمد"
+                  className="w-full bg-slate-950 border border-teal-500/40 focus:border-teal-400 rounded-2xl px-4 py-3.5 text-base sm:text-sm font-bold text-white placeholder-slate-500 outline-none transition shadow-inner"
+                />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+              </div>
             </div>
 
-            {/* Note about camera & mic default state */}
-            <div className="flex items-center gap-2 bg-teal-950/40 border border-teal-800/50 rounded-xl p-3 text-xs font-bold text-teal-200">
-              <ShieldCheck size={16} className="text-teal-400 shrink-0" />
-              <span>ملاحظة: المايك والكاميرا مقفولان تلقائياً عند دخولك لحفظ خصوصيتك.</span>
+            {/* Privacy notice */}
+            <div className="flex items-start gap-2 bg-teal-950/40 border border-teal-800/50 rounded-xl p-3 text-[11px] font-bold text-teal-200 leading-relaxed">
+              <ShieldCheck size={16} className="text-teal-400 shrink-0 mt-0.5" />
+              <span>ملاحظة للأمان: المايك والكاميرا مقفولان افتراضياً عند دخولك لحفظ خصوصيتك، ويمكنك تشغيلهما بلمسة زر.</span>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={guestJoining}
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black py-4 rounded-2xl transition shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 text-sm active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black py-3.5 sm:py-4 rounded-2xl transition shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98]"
             >
               {guestJoining ? (
                 <span>جاري الانضمام...</span>
@@ -357,10 +369,11 @@ function MeetingsContent() {
             </button>
           </form>
 
-          {/* Footer branding */}
-          <p className="text-center text-[11px] font-bold text-slate-500 pt-2">
-            جميع الحقوق محفوظة © منصة مسار للدكتور إسماعيل عيسى
-          </p>
+          {/* Mobile indicator */}
+          <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500 pt-1">
+            <Smartphone size={12} className="text-teal-500" />
+            <span>متوافق تماماً مع جميع الهواتف والأجهزة</span>
+          </div>
         </div>
       </div>
     );
@@ -399,10 +412,10 @@ function MeetingsContent() {
       <Navbar />
       <div className="flex">
         <Sidebar desktopOnly />
-        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
 
           {/* Header */}
-          <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-black text-teal-700 uppercase tracking-widest">نظام الجلسات المباشرة</p>
@@ -413,10 +426,10 @@ function MeetingsContent() {
               </div>
               <div className="flex flex-wrap items-center gap-3 self-start">
                 <button onClick={startInstant}
-                  className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm active:scale-95">
+                  className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm active:scale-95">
                   <Video size={16} /> 🚀 بدء بث فوري الآن
                 </button>
-                <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 border border-teal-200 px-4 py-2 text-xs font-black text-teal-800">
+                <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 border border-teal-200 px-3.5 py-1.5 text-xs font-black text-teal-800">
                   <Radio size={14} className="animate-pulse text-teal-500" /> د. إسماعيل عيسى (المضيف)
                 </span>
               </div>
@@ -432,7 +445,7 @@ function MeetingsContent() {
           <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
 
             {/* Schedule Form */}
-            <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 xl:sticky xl:top-24 xl:self-start">
+            <aside className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4 xl:sticky xl:top-24 xl:self-start">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700"><Plus size={20} /></span>
                 <div>
@@ -506,14 +519,14 @@ function MeetingsContent() {
             </aside>
 
             {/* Meetings List */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <CalendarClock size={22} className="text-teal-600" />
                 <h2 className="text-lg font-black text-slate-950">الجلسات المجدولة</h2>
               </div>
 
               {meetings.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+                <div className="rounded-2xl border border-dashed border-slate-300 p-8 sm:p-12 text-center">
                   <Video size={40} className="mx-auto text-slate-300 mb-3" />
                   <p className="text-sm font-black text-slate-400">لا توجد جلسات بعد. أنشئ أول جلسة من النموذج.</p>
                 </div>
@@ -600,8 +613,7 @@ function MeetingsContent() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CALL STUDIO — WebRTC P2P with Firestore signaling
-   Participant default state: MIC & CAMERA OFF by default upon join!
+   CALL STUDIO — WebRTC P2P + Realtime Controls + Mobile Responsive
 ═══════════════════════════════════════════════════════════ */
 function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, guestLink, onLeave }: {
   roomCode: string;
@@ -623,56 +635,67 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
 
   const [localStream,   setLocalStream]   = useState<MediaStream | null>(null);
   const [hasRemote,     setHasRemote]     = useState(false);
-  const [micOn,         setMicOn]         = useState(false);   // DEFAULT OFF UPON JOIN
-  const [videoOn,       setVideoOn]       = useState(false); // DEFAULT OFF UPON JOIN
+  const [micOn,         setMicOn]         = useState(false);   // DEFAULT OFF
+  const [videoOn,       setVideoOn]       = useState(false); // DEFAULT OFF
   const [screenSharing, setScreenSharing] = useState(false);
-  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [activeTab,     setActiveTab]     = useState<'video' | 'chat' | 'participants' | 'whiteboard'>('video');
   const [cameraError,   setCameraError]   = useState<string | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
-  const [participants,  setParticipants]  = useState<Array<{ id: string; name: string }>>([]);
+  const [participants,  setParticipants]  = useState<ParticipantInfo[]>([]);
   const [chatMessages,  setChatMessages]  = useState<Array<{ name: string; text: string; time: string }>>([]);
   const [chatInput,     setChatInput]     = useState('');
   const [linkCopied,    setLinkCopied]    = useState(false);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
-  /* ── Acquire camera/mic on mount, but default tracks to DISABLED ── */
+  /* ── Acquire camera/mic with cross-platform mobile constraints ── */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-    if (!isSecure) { setCameraError('تحتاج HTTPS لتشغيل الكاميرا والمايك.'); return; }
+    if (!isSecure) { setCameraError('تحتاج اتصال آمن (HTTPS) لتشغيل الكاميرا والمايك.'); return; }
 
     let cancelled = false;
     setCameraLoading(true);
 
+    // Using flexible video/audio constraints so mobile phones don't fail OverconstrainedError
     navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      video: { facingMode: 'user' },
       audio: true,
     }).then((stream) => {
       if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
-      
-      // DISABLING ALL TRACKS BY DEFAULT UPON JOIN (USER PRIVACY)
+
+      // Default all tracks to disabled upon join for privacy
       stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       stream.getVideoTracks().forEach((t) => { t.enabled = false; });
 
       setLocalStream(stream);
       setCameraLoading(false);
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(() => {});
       }
     }).catch((err) => {
       if (cancelled) return;
       setCameraLoading(false);
       if (err.name === 'NotAllowedError') {
-        setCameraError('رُفض إذن الكاميرا. اسمح بالكاميرا والمايك من المتصفح عند التشغيل.');
+        setCameraError('رُفض إذن الكاميرا. اضغط على أيقونة القفل في المتصفح واسمح بالكاميرا والمايك.');
       } else if (err.name === 'NotFoundError') {
-        setCameraError('لا توجد كاميرا أو مايك متصل بالجهاز.');
+        setCameraError('لم يتم العثور على كاميرا أو مايك.');
       } else {
-        setCameraError('خطأ في الكاميرا: ' + err.message);
+        setCameraError('تعذر فتح الكاميرا: ' + err.message);
       }
     });
 
     return () => { cancelled = true; };
   }, []);
+
+  /* ── Update local video ref srcObject whenever videoOn or localStream changes ── */
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [videoOn, localStream]);
 
   /* ── WebRTC P2P + Firestore signaling ── */
   useEffect(() => {
@@ -680,11 +703,13 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
 
     const pc = new RTCPeerConnection(RTC);
     pcRef.current = pc;
+
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
     pc.ontrack = (event) => {
       if (remoteVideoRef.current && event.streams[0]) {
         remoteVideoRef.current.srcObject = event.streams[0];
+        remoteVideoRef.current.play().catch(() => {});
         setHasRemote(true);
       }
     };
@@ -700,7 +725,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       };
       pc.createOffer().then((offer) => {
         pc.setLocalDescription(offer);
-        setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } }, { merge: true });
+        setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } }, { merge: true }).catch(() => {});
       }).catch(() => {});
 
       unsubs.push(onSnapshot(roomRef, (snap) => {
@@ -737,27 +762,37 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       }));
     }
 
-    /* ── Participant presence ── */
+    /* ── Sync my presence with live micOn & videoOn state ── */
     const myDocRef = doc(db, 'masar_rooms', roomCode, 'participants', myId.current);
-    setDoc(myDocRef, { name: myName, role: isHost ? 'host' : 'guest', joinedAt: Date.now(), kicked: false }).catch(() => {});
+    setDoc(myDocRef, {
+      name: myName,
+      role: isHost ? 'host' : 'guest',
+      joinedAt: Date.now(),
+      kicked: false,
+      micOn: false,
+      videoOn: false,
+      forceMuted: false,
+    }, { merge: true }).catch(() => {});
 
-    // Listen to active participants list for Host & Everyone
+    // Listen to active participants
     unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'participants'), (snap) => {
       const ps = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as { name: string; kicked?: boolean }) }))
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<ParticipantInfo, 'id'>) }))
         .filter((p) => !p.kicked);
       setParticipants(ps);
     }));
 
-    // Guest: watch own doc for kick/force-mute commands
+    // Guest: watch own doc for doctor commands (kick / forceMute)
     if (!isHost) {
       unsubs.push(onSnapshot(myDocRef, (snap) => {
-        const d = snap.data();
+        const d = snap.data() as ParticipantInfo | undefined;
         if (!d) return;
         if (d.kicked) { onLeaveRef.current(); return; }
         if (typeof d.forceMuted === 'boolean') {
-          localStream?.getAudioTracks().forEach((t) => { t.enabled = !d.forceMuted; });
-          setMicOn(!d.forceMuted);
+          if (d.forceMuted) {
+            localStream?.getAudioTracks().forEach((t) => { t.enabled = false; });
+            setMicOn(false);
+          }
         }
       }));
     }
@@ -784,6 +819,8 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     const next = !micOn;
     localStream.getAudioTracks().forEach((t) => { t.enabled = next; });
     setMicOn(next);
+    // sync to firestore
+    setDoc(doc(db, 'masar_rooms', roomCode, 'participants', myId.current), { micOn: next }, { merge: true }).catch(() => {});
   };
 
   const toggleVideo = () => {
@@ -791,7 +828,12 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     const next = !videoOn;
     localStream.getVideoTracks().forEach((t) => { t.enabled = next; });
     setVideoOn(next);
-    if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+    // sync to firestore
+    setDoc(doc(db, 'masar_rooms', roomCode, 'participants', myId.current), { videoOn: next }, { merge: true }).catch(() => {});
   };
 
   const toggleScreenShare = async () => {
@@ -804,7 +846,10 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
         const sender = pcRef.current.getSenders().find((s) => s.track?.kind === 'video');
         await sender?.replaceTrack(camTrack).catch(() => {});
       }
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(() => {});
+      }
       setScreenSharing(false);
     } else {
       try {
@@ -815,6 +860,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
         await sender?.replaceTrack(screenTrack).catch(() => {});
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = new MediaStream([screenTrack]);
+          localVideoRef.current.play().catch(() => {});
         }
         screenTrack.onended = async () => {
           const camTrack = localStream.getVideoTracks()[0];
@@ -822,7 +868,10 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
             const s = pcRef.current?.getSenders().find((s) => s.track?.kind === 'video');
             await s?.replaceTrack(camTrack).catch(() => {});
           }
-          if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStream;
+            localVideoRef.current.play().catch(() => {});
+          }
           screenStreamRef.current = null;
           setScreenSharing(false);
         };
@@ -831,23 +880,29 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     }
   };
 
-  /* ── Host: mute one participant ── */
-  const muteParticipant = (pid: string) => {
+  /* ── Host Control: toggle mute / unmute specific participant ── */
+  const toggleMuteParticipant = (pid: string, isCurrentlyMuted?: boolean) => {
     if (!isHost) return;
-    setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), { forceMuted: true, micMuted: true }, { merge: true }).catch(() => {});
+    const targetState = !isCurrentlyMuted;
+    setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), {
+      forceMuted: targetState,
+      micOn: !targetState,
+    }, { merge: true }).catch(() => {});
   };
 
-  /* ── Host: kick one participant ── */
+  /* ── Host Control: kick participant ── */
   const kickParticipant = (pid: string) => {
     if (!isHost) return;
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), { kicked: true }, { merge: true }).catch(() => {});
   };
 
-  /* ── Host: mute everyone ── */
+  /* ── Host Control: mute all participants ── */
   const muteAll = () => {
     if (!isHost) return;
     participants.forEach((p) => {
-      if (p.id !== myId.current) muteParticipant(p.id);
+      if (p.id !== myId.current) {
+        setDoc(doc(db, 'masar_rooms', roomCode, 'participants', p.id), { forceMuted: true, micOn: false }, { merge: true }).catch(() => {});
+      }
     });
   };
 
@@ -863,14 +918,12 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     setChatInput('');
   };
 
-  /* ── Copy guest link ── */
   const copyGuestLink = async () => {
     await navigator.clipboard.writeText(guestLink);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 3000);
   };
 
-  /* ── Leave ── */
   const handleLeave = () => {
     localStream?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -879,236 +932,288 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
 
   /* ═════════════ RENDER STUDIO ═════════════ */
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans" dir="rtl">
       {isMasarUser && <Navbar />}
-      <div className="flex">
-        {isMasarUser && isHost && <Sidebar desktopOnly />}
-        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
 
-          {/* Call Banner */}
-          <div className="overflow-hidden rounded-3xl border-2 border-teal-500 bg-white shadow-xl">
+      <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto p-2 sm:p-4 gap-3">
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-l from-teal-50 to-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
-                <div>
-                  <h1 className="font-black text-slate-900 text-base">{title}</h1>
-                  <p className="text-xs font-bold text-teal-600">
-                    رمز الغرفة: <span className="font-black text-slate-700">{roomCode}</span>
-                    {isHost && <span className="mr-2 text-amber-600 font-black">· أنت المضيف</span>}
-                    {!isHost && <span className="mr-2 text-teal-700 font-black">· مرحباً بك يا {myName}</span>}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {isHost && (
-                  <>
-                    <button onClick={copyGuestLink}
-                      className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition border ${linkCopied ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'}`}>
-                      <Copy size={13} /> {linkCopied ? 'تم النسخ ✅' : 'نسخ رابط الضيف'}
-                    </button>
-                    <button onClick={muteAll}
-                      className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-black text-amber-800 hover:bg-amber-100 transition">
-                      <VolumeX size={13} /> كتم الجميع
-                    </button>
-                  </>
-                )}
-                <button onClick={() => setShowWhiteboard(!showWhiteboard)}
-                  className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition border ${showWhiteboard ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'}`}>
-                  <PenTool size={14} /> السبورة
-                </button>
-                <button onClick={handleLeave}
-                  className="flex items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2 text-xs font-black text-white hover:bg-rose-600 transition">
-                  <PhoneOff size={14} /> {isHost ? 'إنهاء الجلسة' : 'مغادرة'}
-                </button>
-              </div>
+        {/* Top Header Bar */}
+        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
+            <div>
+              <h1 className="font-black text-white text-sm sm:text-base leading-tight">{title}</h1>
+              <p className="text-xs font-bold text-teal-400">
+                رمز الغرفة: <span className="text-slate-300 font-black">{roomCode}</span>
+                {isHost && <span className="mr-2 text-amber-400 font-black">· أنت المضيف</span>}
+                {!isHost && <span className="mr-2 text-teal-300 font-black">· مرحباً بك {myName}</span>}
+              </p>
             </div>
+          </div>
 
-            {/* Call Body */}
-            <div className="grid lg:grid-cols-12 min-h-[520px]">
+          <div className="flex flex-wrap items-center gap-2">
+            {isHost && (
+              <>
+                <button onClick={copyGuestLink}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black transition border ${linkCopied ? 'bg-teal-600 text-white border-teal-500' : 'bg-slate-700 text-teal-300 border-slate-600 hover:bg-slate-600'}`}>
+                  <Copy size={13} /> {linkCopied ? 'تم النسخ ✅' : 'نسخ رابط الضيف'}
+                </button>
+                <button onClick={muteAll}
+                  className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-300 hover:bg-amber-500/20 transition">
+                  <VolumeX size={13} /> كتم الجميع
+                </button>
+              </>
+            )}
+            <button onClick={handleLeave}
+              className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-rose-500 transition shadow-md">
+              <PhoneOff size={14} /> {isHost ? 'إنهاء الجلسة' : 'مغادرة'}
+            </button>
+          </div>
+        </div>
 
-              {/* Video / Whiteboard */}
-              <div className="lg:col-span-8 p-4 space-y-4 bg-slate-50">
+        {/* Mobile View Selector Tabs (< md) */}
+        <div className="flex md:hidden bg-slate-800 border border-slate-700 rounded-xl p-1 gap-1">
+          <button onClick={() => setActiveTab('video')}
+            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'video' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
+            <Video size={14} /> الفيديو
+          </button>
+          <button onClick={() => setActiveTab('participants')}
+            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'participants' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
+            <Users size={14} /> الحضور ({participants.length})
+          </button>
+          <button onClick={() => setActiveTab('chat')}
+            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'chat' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
+            <MessageSquare size={14} /> المحادثة
+          </button>
+          <button onClick={() => setActiveTab('whiteboard')}
+            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
+            <PenTool size={14} /> السبورة
+          </button>
+        </div>
 
-                {showWhiteboard ? (
-                  <InteractiveWhiteboard roomCode={roomCode} />
-                ) : (
-                  <div className="grid sm:grid-cols-2 gap-4 min-h-[360px]">
+        {/* Main Grid Studio Layout */}
+        <div className="flex-1 grid md:grid-cols-12 gap-3 min-h-0">
 
-                    {/* Local Video */}
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[240px]">
-                      <video
-                        ref={localVideoRef}
-                        autoPlay playsInline muted
-                        className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} ${!screenSharing ? 'scale-x-[-1]' : ''}`}
-                      />
-                      {(!videoOn || cameraError || cameraLoading) && (
-                        <div className="absolute inset-0 grid place-items-center bg-slate-800 p-4 text-center">
-                          {cameraLoading && (
-                            <div className="space-y-2">
-                              <div className="h-10 w-10 rounded-full border-4 border-teal-400 border-t-transparent animate-spin mx-auto" />
-                              <p className="text-xs font-black text-slate-200">جاري تجهيز الكاميرا...</p>
-                            </div>
-                          )}
-                          {!cameraLoading && cameraError && (
-                            <div className="space-y-2">
-                              <ShieldCheck size={44} className="mx-auto text-amber-400" />
-                              <p className="text-xs font-black text-amber-200 max-w-[200px]">⚠️ {cameraError}</p>
-                            </div>
-                          )}
-                          {!cameraLoading && !cameraError && !videoOn && (
-                            <div className="space-y-2">
-                              <VideoOff size={44} className="mx-auto text-slate-400" />
-                              <p className="text-xs font-black text-slate-300">الكاميرا مقفولة (اضغط الزر بالأسفل لتشغيلها)</p>
-                            </div>
-                          )}
+          {/* Video / Whiteboard Container */}
+          <div className={`md:col-span-8 flex flex-col gap-3 ${activeTab !== 'video' && activeTab !== 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
+
+            {activeTab === 'whiteboard' ? (
+              <InteractiveWhiteboard roomCode={roomCode} />
+            ) : (
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[340px]">
+
+                {/* Local Video Card */}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-inner min-h-[220px] flex flex-col justify-center">
+                  <video
+                    ref={localVideoRef}
+                    autoPlay playsInline muted
+                    className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} ${!screenSharing ? 'scale-x-[-1]' : ''}`}
+                  />
+
+                  {(!videoOn || cameraError || cameraLoading) && (
+                    <div className="absolute inset-0 grid place-items-center bg-slate-900/90 p-4 text-center">
+                      {cameraLoading && (
+                        <div className="space-y-2">
+                          <div className="h-9 w-9 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mx-auto" />
+                          <p className="text-xs font-black text-slate-300">جاري تجهيز الكاميرا...</p>
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/60 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                        {myName} (أنت)
-                      </div>
-                      {screenSharing && (
-                        <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 مشاركة شاشة</div>
+                      {!cameraLoading && cameraError && (
+                        <div className="space-y-2">
+                          <ShieldCheck size={36} className="mx-auto text-amber-400" />
+                          <p className="text-xs font-bold text-amber-200 max-w-[200px] leading-snug">{cameraError}</p>
+                        </div>
                       )}
-                      <div className="absolute bottom-3 left-3 z-10">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${micOn ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                          {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
+                      {!cameraLoading && !cameraError && !videoOn && (
+                        <div className="space-y-2">
+                          <div className="h-14 w-14 rounded-full bg-slate-800 border border-slate-700 grid place-items-center mx-auto text-slate-500">
+                            <VideoOff size={28} />
+                          </div>
+                          <p className="text-xs font-black text-slate-300">الكاميرا مقفولة</p>
+                          <p className="text-[10px] font-bold text-slate-500">اضغط زر الكاميرا بالأسفل لتشغيلها</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                    {myName} (أنت)
+                  </div>
+
+                  {screenSharing && (
+                    <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 مشاركة الشاشة</div>
+                  )}
+
+                  <div className="absolute bottom-3 left-3 z-10">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black shadow ${micOn ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+                      {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Remote Video Card */}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-inner min-h-[220px] flex flex-col justify-center">
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay playsInline
+                    className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
+                  />
+
+                  {!hasRemote && (
+                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-900 to-teal-950 p-4 text-center">
+                      <div className="space-y-3">
+                        <div className="h-14 w-14 rounded-full bg-teal-500/20 border border-teal-500/40 grid place-items-center mx-auto animate-pulse">
+                          <User size={30} className="text-teal-400" />
+                        </div>
+                        <p className="text-xs font-black text-white">
+                          {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور إسماعيل...'}
+                        </p>
+                        {isHost && (
+                          <button onClick={copyGuestLink}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-teal-500 transition">
+                            <Copy size={11} /> انسخ رابط الضيف
+                          </button>
+                        )}
+                        {!isHost && (
+                          <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">
+                            متصل بالبث ✓
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                    {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Floating Control Bar for Mic, Video, Screen, Whiteboard */}
+            <div className="flex items-center justify-center gap-2 sm:gap-3 bg-slate-800/90 border border-slate-700/80 rounded-2xl p-2.5 shadow-xl">
+              <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
+                {micOn ? <Mic size={20} /> : <MicOff size={20} />}
+              </CtrlBtn>
+
+              <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
+                {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
+              </CtrlBtn>
+
+              <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف الشاشة' : 'مشاركة الشاشة'}>
+                <Monitor size={20} />
+              </CtrlBtn>
+
+              <button onClick={() => setActiveTab(activeTab === 'whiteboard' ? 'video' : 'whiteboard')}
+                className={`grid h-11 px-3 place-items-center rounded-xl border font-black text-xs transition flex items-center gap-1.5 ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white border-teal-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'}`}>
+                <PenTool size={18} />
+                <span className="hidden sm:inline">السبورة</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Participants + Chat Side Panel */}
+          <div className={`md:col-span-4 bg-slate-800/90 border border-slate-700 rounded-2xl p-4 flex-col gap-4 ${activeTab === 'video' || activeTab === 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
+
+            {/* Active Participants List */}
+            <div className={`space-y-2 ${activeTab === 'chat' ? 'hidden md:block' : 'block'}`}>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-700">
+                <h3 className="text-xs font-black text-slate-200 flex items-center gap-1.5">
+                  <Users size={15} className="text-teal-400" /> الحضور المتصلين ({participants.length})
+                </h3>
+                {isHost && (
+                  <span className="text-[10px] font-black text-amber-400 bg-amber-400/10 rounded-full px-2 py-0.5 border border-amber-400/20">تحكّم الدكتور</span>
+                )}
+              </div>
+
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {participants.length === 0 && (
+                  <p className="text-[11px] font-bold text-slate-400 text-center py-3">جاري تحميل قائمة الحضور...</p>
+                )}
+
+                {participants.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 p-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 grid place-items-center text-xs font-black shrink-0">
+                        {p.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-white truncate">{p.name}</p>
+                        <span className="text-[10px] font-bold text-slate-400 block">
+                          {p.role === 'host' ? '🎙 المضيف' : p.micOn ? '🎙 مايك شغال' : '🔇 مكتوم'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Remote Video */}
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[240px]">
-                      <video
-                        ref={remoteVideoRef}
-                        autoPlay playsInline
-                        className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
-                      />
-                      {!hasRemote && (
-                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-teal-900 to-slate-900 p-4 text-center">
-                          <div className="space-y-3">
-                            <div className="h-16 w-16 rounded-full bg-teal-400/20 border-2 border-teal-400/40 grid place-items-center mx-auto animate-pulse">
-                              <User size={36} className="text-teal-300" />
-                            </div>
-                            <p className="text-xs font-black text-white">
-                              {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور إسماعيل...'}
-                            </p>
-                            {isHost && (
-                              <button onClick={copyGuestLink}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/80 px-3 py-1.5 text-[10px] font-black text-white hover:bg-teal-600 transition">
-                                <Copy size={11} /> انسخ رابط الضيف وأرسله
-                              </button>
-                            )}
-                            {!isHost && (
-                              <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">
-                                متصل بالغرفة ✓
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/60 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                        {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
+                    {/* Doctor Host Controls: Toggle Mute & Kick */}
+                    {isHost && p.id !== myId.current && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => toggleMuteParticipant(p.id, p.forceMuted || !p.micOn)}
+                          className={`p-2 rounded-lg border transition ${p.forceMuted || !p.micOn ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 hover:bg-rose-500/30' : 'bg-slate-700 border-slate-600 text-emerald-400 hover:bg-slate-600'}`}
+                          title={p.forceMuted || !p.micOn ? 'إلغاء الكتم' : 'كتم المايك'}
+                        >
+                          {p.forceMuted || !p.micOn ? <MicOff size={14} /> : <Mic size={14} />}
+                        </button>
+
+                        <button
+                          onClick={() => kickParticipant(p.id)}
+                          className="p-2 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30 transition"
+                          title="طرد من الجلسة"
+                        >
+                          <UserX size={14} />
+                        </button>
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Controls Bar */}
-                <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
-                    {micOn ? <Mic size={20} /> : <MicOff size={20} />}
-                  </CtrlBtn>
-                  <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
-                    {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
-                  </CtrlBtn>
-                  <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف مشاركة الشاشة' : 'مشاركة الشاشة'}>
-                    <Monitor size={20} />
-                  </CtrlBtn>
-                  <button onClick={handleLeave}
-                    className="flex items-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-xs font-black text-white hover:bg-rose-600 transition">
-                    <PhoneOff size={18} /> مغادرة
-                  </button>
-                </div>
-              </div>
-
-              {/* Participants + Chat Panel */}
-              <div className="lg:col-span-4 border-r border-slate-100 bg-white p-4 flex flex-col gap-4">
-
-                {/* Participants list */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <h3 className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                      <Users size={14} className="text-teal-600" /> الحضور الحاليين ({participants.length})
-                    </h3>
-                    {isHost && (
-                      <span className="text-[10px] font-black text-amber-600 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">تحكّم المضيف</span>
                     )}
                   </div>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {participants.length === 0 && (
-                      <p className="text-[10px] font-bold text-slate-400 text-center py-3">جاري تحميل قائمة الحضور...</p>
-                    )}
-                    {participants.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="h-6 w-6 rounded-full bg-teal-100 text-teal-700 grid place-items-center text-[10px] font-black shrink-0">
-                            {p.name.charAt(0)}
-                          </div>
-                          <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
-                        </div>
-                        {isHost && p.id !== myId.current && (
-                          <div className="flex gap-1 shrink-0">
-                            <button onClick={() => muteParticipant(p.id)}
-                              className="p-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition"
-                              title="كتم المايك">
-                              <MicOff size={12} />
-                            </button>
-                            <button onClick={() => kickParticipant(p.id)}
-                              className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-500 hover:bg-rose-100 transition"
-                              title="طرد من الجلسة">
-                              <UserX size={12} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Chat */}
-                <div className="flex-1 flex flex-col gap-2 border-t border-slate-100 pt-3 min-h-0">
-                  <h3 className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                    <MessageSquare size={14} className="text-teal-600" /> محادثة الجلسة
-                  </h3>
-                  <div className="flex-1 space-y-2 max-h-64 overflow-y-auto">
-                    {chatMessages.length === 0 && (
-                      <p className="text-[10px] font-bold text-slate-400 text-center py-3">لا توجد رسائل بعد</p>
-                    )}
-                    {chatMessages.map((msg, i) => (
-                      <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                        <p className="text-[10px] font-black text-teal-700">
-                          {msg.name} <span className="text-slate-400 font-bold">· {msg.time}</span>
-                        </p>
-                        <p className="mt-0.5 text-xs font-bold text-slate-800">{msg.text}</p>
-                      </div>
-                    ))}
-                    <div ref={chatBottomRef} />
-                  </div>
-                  <div className="flex gap-2 mt-auto">
-                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && sendChat()}
-                      placeholder="اكتب رسالة..."
-                      className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-teal-500" />
-                    <button onClick={sendChat}
-                      className="rounded-xl bg-teal-600 px-3.5 py-2 text-xs font-black text-white hover:bg-teal-700 transition">إرسال</button>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
+
+            {/* Live Chat Panel */}
+            <div className={`flex-1 flex flex-col gap-2 border-t border-slate-700 pt-3 min-h-0 ${activeTab === 'participants' ? 'hidden md:flex' : 'flex'}`}>
+              <h3 className="text-xs font-black text-slate-200 flex items-center gap-1.5">
+                <MessageSquare size={15} className="text-teal-400" /> محادثة الجلسة
+              </h3>
+
+              <div className="flex-1 space-y-2 max-h-60 overflow-y-auto pr-1">
+                {chatMessages.length === 0 && (
+                  <p className="text-[11px] font-bold text-slate-500 text-center py-4">لا توجد رسائل بعد في المحادثة</p>
+                )}
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-2.5">
+                    <p className="text-[10px] font-black text-teal-400">
+                      {msg.name} <span className="text-slate-500 font-bold">· {msg.time}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs font-bold text-slate-200 leading-normal">{msg.text}</p>
+                  </div>
+                ))}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Chat Input */}
+              <div className="flex gap-2 mt-auto">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                  placeholder="اكتب رسالتك..."
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-teal-500"
+                />
+                <button
+                  onClick={sendChat}
+                  className="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-500 transition shadow"
+                >
+                  إرسال
+                </button>
+              </div>
+            </div>
+
           </div>
-        </main>
+
+        </div>
       </div>
     </div>
   );
@@ -1186,16 +1291,16 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
   const COLORS = ['#000000', '#0f766e', '#dc2626', '#2563eb', '#7c3aed', '#d97706'];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <span className="text-xs font-black text-teal-700 flex items-center gap-1.5">
+    <div className="rounded-2xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-sm space-y-3 flex-1 flex flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
+        <span className="text-xs font-black text-teal-400 flex items-center gap-1.5">
           <PenTool size={15} /> السبورة التفاعلية
         </span>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+          <div className="flex bg-slate-900 rounded-xl p-1 gap-1 border border-slate-700">
             {(['pen', 'eraser'] as const).map((t) => (
               <button key={t} onClick={() => setTool(t)}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${tool === t ? 'bg-teal-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}>
+                className={`px-3 py-1 rounded-lg text-xs font-black transition ${tool === t ? 'bg-teal-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
                 {t === 'pen' ? 'قلم' : <span className="flex items-center gap-1"><Eraser size={13} /> ممحاة</span>}
               </button>
             ))}
@@ -1204,18 +1309,18 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
             <div className="flex gap-1.5 items-center">
               {COLORS.map((c) => (
                 <button key={c} onClick={() => setColor(c)} style={{ backgroundColor: c }}
-                  className={`h-6 w-6 rounded-full transition ${color === c ? 'ring-2 ring-offset-1 ring-slate-500 scale-125' : ''}`} />
+                  className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full transition ${color === c ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : ''}`} />
               ))}
             </div>
           )}
           <button onClick={clearAll}
-            className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-600 hover:bg-rose-100 transition">
+            className="flex items-center gap-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-black text-rose-400 hover:bg-rose-500/20 transition">
             <RotateCcw size={13} /> مسح الكل
           </button>
         </div>
       </div>
-      <div className="relative h-[320px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <canvas ref={canvasRef} width={900} height={320}
+      <div className="relative flex-1 min-h-[260px] w-full overflow-hidden rounded-xl border border-slate-700 bg-white">
+        <canvas ref={canvasRef} width={900} height={350}
           onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
           onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
           className="h-full w-full cursor-crosshair touch-none" />
@@ -1230,7 +1335,7 @@ function CtrlBtn({ active, onClick, title, children }: {
 }) {
   return (
     <button onClick={onClick} title={title}
-      className={`grid h-11 w-11 place-items-center rounded-xl border transition ${active ? 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200' : 'bg-rose-500 text-white border-rose-500 hover:bg-rose-600'}`}>
+      className={`grid h-11 w-11 place-items-center rounded-xl border transition ${active ? 'bg-slate-700 text-emerald-400 border-slate-600 hover:bg-slate-600' : 'bg-rose-600 text-white border-rose-500 hover:bg-rose-500'}`}>
       {children}
     </button>
   );
