@@ -102,7 +102,7 @@ function ReportsContent() {
         <div className="flex">
           {!parentMode && <Sidebar />}
           <main className={`min-w-0 flex-1 px-4 py-6 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
-            {!parentMode && <button onClick={() => setSelectedId(null)} className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
+            {!parentMode && <button onClick={() => setSelectedId(null)} className="no-print mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
               <ArrowRight size={17} />
               العودة إلى التقارير
             </button>}
@@ -426,7 +426,7 @@ function ReportsContent() {
                     <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{cleanReportText(report.summary)}</p>
                     <div className="mt-5 flex gap-3">
                       <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
-                      <button onClick={() => window.print()} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
+                      <button onClick={() => window.print()} className="no-print rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
                       <button
                         onClick={() => {
                           deleteReport(report.id);
@@ -452,7 +452,7 @@ function ReportsContent() {
 
 function ReportSection({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6">
+    <section className="print-report-section mt-6">
       <h2 className="mb-3 flex items-center justify-end gap-2 text-xl font-black text-slate-950">
         <span>{number}. {title}</span>
         <span className="h-7 w-1.5 rounded-full bg-indigo-700" />
