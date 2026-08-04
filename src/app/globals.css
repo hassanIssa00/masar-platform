@@ -151,110 +151,55 @@ button {
 .landing-console::before {
   position: absolute;
   inset: -1px;
-  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
   content: "";
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.55), transparent 38%, rgba(255, 255, 255, 0.16));
-  opacity: 0.72;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.45), rgba(255, 255, 255, 0.08), rgba(37, 99, 235, 0.35));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  nav {
-    animation: nav-drop 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  main > :is(header, section, article, div) {
-    animation: page-section-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  main > :is(header, section, article, div):nth-child(2) {
-    animation-delay: 70ms;
-  }
-
-  main > :is(header, section, article, div):nth-child(3) {
-    animation-delay: 140ms;
-  }
-
-  main > :is(header, section, article, div):nth-child(4) {
-    animation-delay: 210ms;
-  }
-
-  .motion-fade-up {
-    animation: fade-up 760ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .motion-fade-in {
-    animation: fade-in 760ms ease-out;
-  }
-
-  .motion-scale-in {
-    animation: scale-in 660ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .motion-slide-left {
-    animation: slide-left 760ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .motion-float {
-    animation: float-panel 5.5s ease-in-out infinite;
-  }
-
-  .motion-path {
-    animation: path-glow 2.8s ease-in-out infinite;
-  }
-
-  .motion-scan {
-    animation: scan-line 3.2s ease-in-out infinite;
-  }
-
-  .shine-sweep::after {
-    animation: shine 4.8s ease-in-out infinite;
-  }
-
-  .hero-image-drift {
-    animation: hero-drift 16s ease-in-out infinite alternate;
-  }
-
-  .stagger > * {
-    animation: fade-up 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .stagger > *:nth-child(1) { animation-delay: 80ms; }
-  .stagger > *:nth-child(2) { animation-delay: 150ms; }
-  .stagger > *:nth-child(3) { animation-delay: 220ms; }
-  .stagger > *:nth-child(4) { animation-delay: 290ms; }
-  .stagger > *:nth-child(5) { animation-delay: 360ms; }
-  .stagger > *:nth-child(6) { animation-delay: 430ms; }
-  .stagger > *:nth-child(7) { animation-delay: 500ms; }
-  .stagger > *:nth-child(8) { animation-delay: 570ms; }
+.motion-fade-up {
+  animation: fade-up 650ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes nav-drop {
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.motion-fade-in {
+  animation: fade-in 450ms ease-out forwards;
 }
 
-@keyframes page-section-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.motion-scale-in {
+  animation: scale-in 420ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.motion-slide-left {
+  animation: slide-left 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.motion-float {
+  animation: float-panel 7s ease-in-out infinite;
+}
+
+.motion-path {
+  animation: path-glow 4.5s ease-in-out infinite;
+}
+
+.motion-scan {
+  animation: scan-line 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.shine-sweep::after {
+  animation: shine 6.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.hero-image-drift {
+  animation: hero-drift 18s ease-in-out infinite alternate;
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(22px);
   }
   to {
     opacity: 1;
@@ -270,7 +215,7 @@ button {
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
@@ -321,36 +266,123 @@ button {
   }
 }
 
+/* HIGH QUALITY PRINT & PDF ALIGNMENT STYLES */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 18mm 14mm 14mm 14mm;
+  }
+
+  /* Hide all non-report UI */
   nav,
   aside,
-  .no-print {
+  .no-print,
+  [class*="Sidebar"],
+  [class*="Navbar"] {
     display: none !important;
   }
 
-  body {
-    background: white;
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 10pt !important;
   }
 
+  /* Reset all wrappers so report fills the page */
+  .flex, .min-h-screen {
+    display: block !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* The report card itself */
   .clinical-report {
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
-    border: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
     box-shadow: none !important;
-    page-break-after: always;
+    border-radius: 0 !important;
+    background: white !important;
+    /* Prevent first content from touching top edge */
+    padding-top: 4mm !important;
   }
 
+  /* Preserve colours in print */
   .clinical-report * {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* Prevent mid-element page breaks */
+  .clinical-report header {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-before: avoid !important;
   }
 
   .clinical-report section,
-  .clinical-report article,
-  .clinical-report table,
+  .clinical-report article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 6mm !important;
+  }
+
   .clinical-report footer {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 8mm !important;
+  }
+
+  /* Ensure grids are symmetric */
+  .clinical-report .grid {
+    display: grid !important;
+  }
+
+  /* Tables */
+  .clinical-report table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  .clinical-report th,
+  .clinical-report td {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Two-column grids stay two columns in print */
+  @supports (display: grid) {
+    .clinical-report .md\:grid-cols-2 {
+      grid-template-columns: 1fr 1fr !important;
+    }
+    .clinical-report .md\:grid-cols-3 {
+      grid-template-columns: 1fr 1fr 1fr !important;
+    }
+  }
+  /* Each numbered section: avoid break inside, but allow break before */
+  .print-report-section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* When a section is forced onto a new page, give it breathing room at top */
+  .print-report-section h2 {
+    padding-top: 6mm !important;
+    margin-top: 0 !important;
+  }
+
+  /* Specifically the first child section after a page break gets more room */
+  .clinical-report .print-report-section:first-of-type h2 {
+    padding-top: 2mm !important;
   }
 }

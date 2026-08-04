@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2, Sparkles, ChevronDown } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
@@ -91,15 +91,20 @@ function PlacementAssessmentContent() {
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [searchParams]);
+  }, [searchParams, router]);
 
-  const isStudentFlow = Boolean(studentIdParam);
+  const isStudentFlow = Boolean(studentIdParam || localStorage.getItem?.('masar.current-student-id'));
 
   useEffect(() => {
     if (!finished || !isStudentFlow || !savedStudentId) return;
 
     const timeout = window.setTimeout(() => {
-      router.push(`/kids?student=${savedStudentId}`);
+      // Route to the correct dashboard based on the registered account type
+      const activeMode = typeof window !== 'undefined'
+        ? localStorage.getItem('masar_active_mode')
+        : null;
+      const dest = activeMode === 'parent' ? '/parent' : '/kids';
+      router.push(`${dest}?student=${savedStudentId}`);
     }, 1400);
 
     return () => window.clearTimeout(timeout);
@@ -126,8 +131,15 @@ function PlacementAssessmentContent() {
 
   const speak = (text: string) => void speakWithMasarVoice(text, { lang: /[a-zA-Z]/.test(text) ? 'en-US' : 'ar-SA', rate: 0.84 });
 
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  useEffect(() => {
+    setShowExplanation(false);
+  }, [index, gradeKey]);
+
   const choose = (answer: string) => {
     setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: answer }));
+    setShowExplanation(true);
   };
 
   const resetForGrade = (key: PlacementGradeKey) => {
@@ -338,9 +350,28 @@ function PlacementAssessmentContent() {
                 </div>
 
                 {selected && (
-                  <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm font-black text-slate-500">التفسير</p>
-                    <p className="mt-1 text-sm font-bold leading-7 text-slate-700">{current.explanation}</p>
+                  <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50/70 p-4 transition-all shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowExplanation(!showExplanation)}
+                        className="flex items-center gap-2 text-sm font-black text-blue-900 hover:text-blue-950 cursor-pointer"
+                      >
+                        <Sparkles size={16} className="text-blue-600 animate-pulse" />
+                        <span>{showExplanation ? 'إخفاء التفسير والتحليل' : '💡 فتح التفسير والتحليل الشارح للاستجابة'}</span>
+                        <ChevronDown size={16} className={`transition-transform duration-300 ${showExplanation ? 'rotate-180' : ''}`} />
+                      </button>
+                      <span className="rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-900 border border-emerald-300">
+                        تم تسجيل الإجابة ✓
+                      </span>
+                    </div>
+
+                    {showExplanation && (
+                      <div className="mt-3 border-t border-blue-200/80 pt-3 text-sm font-bold leading-7 text-slate-800 animate-fadeIn">
+                        <p className="text-xs font-black text-blue-700">التفسير الإكلينيكي والمهارات المستهدفة:</p>
+                        <p className="mt-1 text-sm font-bold text-slate-800">{current.explanation}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
