@@ -6,16 +6,22 @@ import { useRouter } from 'next/navigation';
 import {
   BarChart3, CalendarClock, ChevronLeft, ChevronRight, ClipboardCheck,
   CreditCard, BookOpen, FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
-  PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X
+  PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X,
+  ClipboardList, Users, Building2, Bot
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 import { clearSession } from '@/lib/localDb';
 
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
+  { name: 'خطط IEP الفردية', path: '/iep', icon: ClipboardList },
   { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
+  { name: 'إدارة الحضور والغياب', path: '/attendance', icon: ClipboardCheck },
+  { name: 'قائمة الانتظار CRM', path: '/waitlist', icon: Users },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
+  { name: 'مساعد الذكاء الاصطناعي', path: '/ai-assistant', icon: Bot },
+  { name: 'الفروع والعيادات', path: '/branches', icon: Building2 },
   { name: 'الفواتير والمالية', path: '/invoices', icon: CreditCard },
   { name: 'الأنشطة والواجبات', path: '/homework', icon: BookOpen },
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
