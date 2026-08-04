@@ -120,7 +120,7 @@ export default function ParentDashboard() {
                 <span>بوابة ولي الأمر التفاعلية</span>
               </span>
               <h1 className="mt-2 text-2xl md:text-3xl font-black text-slate-950">
-                أهلاً بك أ. {parentName} في منصة مَسَار 🌸
+                أهلاً بك أ. {parentName} في منصة مَسَار
               </h1>
               <p className="mt-2 max-w-3xl text-xs md:text-sm font-bold leading-relaxed text-slate-600">
                 متابعة الخطة العلاجية والتقارير المعتمدة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
