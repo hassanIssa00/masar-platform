@@ -9,6 +9,7 @@ import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
 import { ActivityRecord, getActivities, getReports, getSession, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { trackEvent } from '@/lib/analyticsTracker';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function DashboardPage() {
       setActivities(getActivities());
       setSurveysCount(getSurveys().length);
     });
+    // Track dashboard visit
+    trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/dashboard' });
   }, [router]);
 
   const averageScore = useMemo(() => {
