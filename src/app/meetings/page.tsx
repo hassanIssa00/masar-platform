@@ -11,6 +11,8 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, onSnapshot, collection, addDoc } from 'firebase/firestore';
 
 /* ─────────────── Types ─────────────── */
 type MeetingRecord = {
@@ -90,6 +92,8 @@ function MeetingsContent() {
 
   /* ── WebRTC ── */
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -211,6 +215,106 @@ function MeetingsContent() {
   useEffect(() => {
     mediaStream?.getAudioTracks().forEach(t => { t.enabled = micOn; });
   }, [micOn, mediaStream]);
+
+  /* ─────────────── Native WebRTC P2P Signaling via Firestore ─────────────── */
+  useEffect(() => {
+    if (!activeCallRoom || !mediaStream) {
+      setHasRemoteVideo(false);
+      return;
+    }
+
+    const rtcConfig: RTCConfiguration = {
+      iceServers: [
+        { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+      ]
+    };
+
+    let pc: RTCPeerConnection | null = new RTCPeerConnection(rtcConfig);
+    let unsubCall: (() => void) | null = null;
+    let unsubCandidates: (() => void) | null = null;
+
+    // Attach local stream tracks to PC
+    mediaStream.getTracks().forEach(track => {
+      pc?.addTrack(track, mediaStream);
+    });
+
+    // Handle incoming remote track
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current && event.streams[0]) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+        setHasRemoteVideo(true);
+      }
+    };
+
+    const roomRef = doc(db, 'masar_rooms', activeCallRoom.roomCode);
+    const callerCandidatesCol = collection(roomRef, 'callerCandidates');
+    const calleeCandidatesCol = collection(roomRef, 'calleeCandidates');
+
+    if (isHost) {
+      // Host / Doctor
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          addDoc(callerCandidatesCol, event.candidate.toJSON()).catch(() => {});
+        }
+      };
+
+      pc.createOffer().then(offer => {
+        pc?.setLocalDescription(offer);
+        setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp }, updated: Date.now() }, { merge: true });
+      }).catch(() => {});
+
+      unsubCall = onSnapshot(roomRef, snapshot => {
+        const data = snapshot.data();
+        if (pc && pc.signalingState !== 'closed' && !pc.currentRemoteDescription && data?.answer) {
+          pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
+        }
+      });
+
+      unsubCandidates = onSnapshot(calleeCandidatesCol, snapshot => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            pc?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+          }
+        });
+      });
+    } else {
+      // Student / Attendee
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          addDoc(calleeCandidatesCol, event.candidate.toJSON()).catch(() => {});
+        }
+      };
+
+      unsubCall = onSnapshot(roomRef, async snapshot => {
+        const data = snapshot.data();
+        if (pc && pc.signalingState !== 'closed' && data?.offer && !pc.currentRemoteDescription) {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await setDoc(roomRef, { answer: { type: answer.type, sdp: answer.sdp } }, { merge: true });
+          } catch {
+            // ignore retry errors
+          }
+        }
+      });
+
+      unsubCandidates = onSnapshot(callerCandidatesCol, snapshot => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            pc?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+          }
+        });
+      });
+    }
+
+    return () => {
+      unsubCall?.();
+      unsubCandidates?.();
+      pc?.close();
+      pc = null;
+    };
+  }, [activeCallRoom, mediaStream, isHost]);
 
   /* ─────────────── Data bootstrap ─────────────── */
   useEffect(() => {
@@ -431,13 +535,78 @@ function MeetingsContent() {
                   {showWhiteboard ? (
                     <InteractiveWhiteboard roomCode={activeCallRoom.roomCode} />
                   ) : (
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner h-[480px]">
-                      <iframe
-                        src={`https://meet.jit.si/MasarEdu_${activeCallRoom.roomCode.replace(/[^a-zA-Z0-9]/g, '_')}#userInfo.displayName="${encodeURIComponent(isHost ? 'د. إسماعيل عيسى' : 'طالب / ولي أمر')}"&config.prejoinPageEnabled=false&config.lang="ar"`}
-                        allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
-                        className="h-full w-full border-0"
-                        title="غرفة الاجتماع المباشرة"
-                      />
+                    <div className="grid sm:grid-cols-2 gap-4 min-h-[380px]">
+                      {/* Local Video */}
+                      <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[260px]">
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} transform -scale-x-100`}
+                        />
+                        {(!videoOn || cameraError || cameraLoading) && (
+                          <div className="absolute inset-0 grid place-items-center bg-slate-800 p-4 text-center">
+                            {cameraLoading && (
+                              <div className="space-y-2">
+                                <div className="h-10 w-10 rounded-full border-4 border-teal-400 border-t-transparent animate-spin mx-auto" />
+                                <p className="text-xs font-black text-slate-200">جاري فتح الكاميرا...</p>
+                              </div>
+                            )}
+                            {!cameraLoading && cameraError && (
+                              <div className="space-y-2">
+                                <ShieldCheck size={44} className="mx-auto text-amber-400" />
+                                <p className="text-xs font-black text-amber-200">⚠️ {cameraError}</p>
+                              </div>
+                            )}
+                            {!cameraLoading && !cameraError && !videoOn && (
+                              <div className="space-y-2">
+                                <VideoOff size={44} className="mx-auto text-slate-400" />
+                                <p className="text-xs font-black text-slate-300">الكاميرا متوقفة</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 z-10 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                          {isHost ? 'د. إسماعيل عيسى — المضيف' : 'كاميرتك المحلية'}
+                        </div>
+                        <div className="absolute bottom-3 left-3 z-10 flex gap-1.5">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${micOn ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                            {micOn ? '🎙 صوت' : '🔇 كتوم'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Remote Video */}
+                      <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[260px]">
+                        <video
+                          ref={remoteVideoRef}
+                          autoPlay
+                          playsInline
+                          className={`absolute inset-0 h-full w-full object-cover ${hasRemoteVideo ? 'opacity-100' : 'opacity-0'}`}
+                        />
+                        {!hasRemoteVideo && (
+                          <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-teal-900 to-slate-900 p-4 text-center">
+                            <div className="space-y-3">
+                              <div className="h-16 w-16 rounded-full bg-teal-400/20 border-2 border-teal-400/40 grid place-items-center mx-auto animate-pulse">
+                                <User size={36} className="text-teal-300" />
+                              </div>
+                              <p className="text-xs font-black text-white">
+                                {isHost ? activeCallRoom.targetName : 'د. إسماعيل عيسى'}
+                              </p>
+                              <p className="text-[11px] font-bold text-teal-200">
+                                {isHost ? 'في انتظار انضمام الطالب للجلسة...' : 'في انتظار بدء الدكتور للجلسة...'}
+                              </p>
+                              <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">
+                                متصل مع المنصة ✓
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 z-10 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                          {isHost ? 'المشارك / الطالب' : 'د. إسماعيل عيسى (المضيف)'}
+                        </div>
+                      </div>
                     </div>
                   )}
 
