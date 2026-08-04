@@ -100,7 +100,7 @@ export default function Sidebar({ open: externalOpen = false, onClose, desktopOn
       <aside
         className={`
           sticky top-[65px] h-[calc(100vh-65px)] shrink-0 overflow-y-auto border-l border-slate-200 bg-white
-          transition-all duration-300 ease-in-out z-40 text-slate-800 font-sans text-xs
+          transition-all duration-300 ease-in-out z-40 text-slate-800 font-sans
           lg:flex lg:flex-col
           ${isMobileShow ? 'fixed top-0 right-0 z-50 h-full w-72 flex flex-col shadow-2xl translate-x-0' : 'hidden lg:flex lg:flex-col'}
           ${collapsed && !isMobileShow ? 'w-20' : 'w-72'}
@@ -147,10 +147,10 @@ export default function Sidebar({ open: externalOpen = false, onClose, desktopOn
                   onClick={() => { setMobileOpen(false); onClose?.(); }}
                   title={collapsed && !isMobileShow ? name : undefined}
                   className={`
-                    focus-ring flex items-center rounded-xl transition group border
+                    focus-ring flex items-center rounded-xl transition group border font-black
                     ${isActive
-                      ? 'bg-teal-50/90 text-teal-800 border-teal-200/80 font-black'
-                      : 'border-transparent text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 font-bold'
+                      ? 'bg-teal-50/90 text-teal-800 border-teal-200/80'
+                      : 'border-transparent text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
                     }
                     ${collapsed && !isMobileShow ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-[13px]'}
                   `}
@@ -186,10 +186,10 @@ export default function Sidebar({ open: externalOpen = false, onClose, desktopOn
                     onClick={() => { setMobileOpen(false); onClose?.(); }}
                     title={collapsed && !isMobileShow ? program.shortTitle : undefined}
                     className={`
-                      focus-ring rounded-xl transition border
+                      focus-ring rounded-xl transition border font-black
                       ${isActive
-                        ? 'bg-teal-50/90 text-teal-800 border-teal-200/80 font-black'
-                        : 'border-transparent text-slate-700 hover:bg-slate-50 font-bold'
+                        ? 'bg-teal-50/90 text-teal-800 border-teal-200/80'
+                        : 'border-transparent text-slate-700 hover:bg-slate-50'
                       }
                       ${collapsed && !isMobileShow ? 'flex justify-center p-2.5' : 'px-3 py-2 text-[13px]'}
                     `}
