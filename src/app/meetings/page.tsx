@@ -7,7 +7,7 @@ import {
   Trash2, CalendarClock, PenTool, Radio, User,
   ShieldCheck, AlertTriangle, Users, Eraser, RotateCcw,
   VolumeX, UserX, MessageSquare, Plus, Sparkles, LogIn, ArrowRight,
-  Volume2, Check, Smartphone
+  Smartphone
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -70,8 +70,8 @@ function makeId() {
 export default function MeetingsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-950 grid place-items-center">
-        <div className="h-12 w-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-slate-50 grid place-items-center">
+        <div className="h-10 w-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <MeetingsContent />
@@ -288,49 +288,49 @@ function MeetingsContent() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     2. GUEST JOIN LANDING PAGE (Fully Mobile Responsive & Modern)
+     2. GUEST JOIN LANDING PAGE (White / Light Theme)
   ═══════════════════════════════════════════════════════════ */
   if (roomParam && !sessionUser && !tokenParam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 text-slate-100 flex flex-col items-center justify-center p-3 sm:p-6 relative overflow-hidden font-sans" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/40 to-slate-100 text-slate-900 flex flex-col items-center justify-center p-3 sm:p-6 relative overflow-hidden font-sans" dir="rtl">
 
         {/* Ambient Glows */}
-        <div className="absolute top-10 right-10 w-72 h-72 sm:w-96 sm:h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute bottom-10 left-10 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-10 right-10 w-72 h-72 sm:w-96 sm:h-96 bg-teal-200/30 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute bottom-10 left-10 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-200/30 rounded-full blur-3xl pointer-events-none" />
 
         {/* Guest Join Card */}
-        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-5 sm:p-8 shadow-2xl relative z-10 space-y-5">
+        <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 space-y-6">
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 grid place-items-center shadow-lg shadow-teal-500/20 shrink-0">
-                <Video size={22} className="text-white" />
+              <div className="h-12 w-12 rounded-2xl bg-teal-50 border border-teal-200 grid place-items-center shadow-sm shrink-0">
+                <Video size={24} className="text-teal-600" />
               </div>
               <div>
-                <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">منصة مسار الطبية</span>
-                <h1 className="text-base sm:text-lg font-black text-white">غرفة الجلسات المباشرة</h1>
+                <span className="text-[10px] font-black tracking-widest text-teal-700 uppercase">منصة مسار الطبية</span>
+                <h1 className="text-base sm:text-lg font-black text-slate-950">غرفة الجلسات المباشرة</h1>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" /> متاح الآن
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" /> متاح الآن
             </span>
           </div>
 
           {/* Meeting Title Card */}
-          <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl p-4 space-y-1.5">
-            <p className="text-[11px] font-bold text-slate-400">جلسة علاجيّة مباشرة:</p>
-            <h2 className="text-sm sm:text-base font-black text-white leading-snug">{roomTitle}</h2>
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-700/40 text-xs font-bold text-teal-300">
-              <User size={14} className="text-teal-400 shrink-0" /> د. إسماعيل عيسى (استشاري التخاطب)
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-1.5">
+            <p className="text-[11px] font-bold text-slate-500">جلسة علاجيّة مباشرة:</p>
+            <h2 className="text-sm sm:text-base font-black text-slate-900 leading-snug">{roomTitle}</h2>
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 text-xs font-bold text-teal-700">
+              <User size={15} className="text-teal-600 shrink-0" /> د. إسماعيل عيسى (استشاري التخاطب)
             </div>
           </div>
 
           {/* Guest Name Form */}
           <form onSubmit={handleGuestSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-black text-slate-200 mb-1.5">
-                اكتب اسمك الكامل للانضمام للجلسة:
+              <label className="block text-xs font-black text-slate-800 mb-1.5">
+                أدخل اسمك الكامل للانضمام للجلسة:
               </label>
 
               <div className="relative">
@@ -340,23 +340,23 @@ function MeetingsContent() {
                   value={guestNameInput}
                   onChange={(e) => setGuestNameInput(e.target.value)}
                   placeholder="مثال: أحمد المحمد"
-                  className="w-full bg-slate-950 border border-teal-500/40 focus:border-teal-400 rounded-2xl px-4 py-3.5 text-base sm:text-sm font-bold text-white placeholder-slate-500 outline-none transition shadow-inner"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-teal-600 rounded-2xl px-4 py-3.5 text-base sm:text-sm font-bold text-slate-900 placeholder-slate-400 outline-none transition shadow-sm"
                 />
-                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
 
             {/* Privacy notice */}
-            <div className="flex items-start gap-2 bg-teal-950/40 border border-teal-800/50 rounded-xl p-3 text-[11px] font-bold text-teal-200 leading-relaxed">
-              <ShieldCheck size={16} className="text-teal-400 shrink-0 mt-0.5" />
-              <span>ملاحظة للأمان: المايك والكاميرا مقفولان افتراضياً عند دخولك لحفظ خصوصيتك، ويمكنك تشغيلهما بلمسة زر.</span>
+            <div className="flex items-start gap-2 bg-teal-50 border border-teal-200 rounded-xl p-3 text-[11px] font-bold text-teal-800 leading-relaxed">
+              <ShieldCheck size={16} className="text-teal-600 shrink-0 mt-0.5" />
+              <span>تنبيه: المايك والكاميرا مقفولان تلقائياً عند دخولك لحفظ خصوصيتك، ويمكنك تشغيلهما في أي وقت بلمسة زر.</span>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={guestJoining}
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black py-3.5 sm:py-4 rounded-2xl transition shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98]"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-3.5 sm:py-4 rounded-2xl transition shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98]"
             >
               {guestJoining ? (
                 <span>جاري الانضمام...</span>
@@ -370,9 +370,9 @@ function MeetingsContent() {
           </form>
 
           {/* Mobile indicator */}
-          <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500 pt-1">
-            <Smartphone size={12} className="text-teal-500" />
-            <span>متوافق تماماً مع جميع الهواتف والأجهزة</span>
+          <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 pt-1">
+            <Smartphone size={12} className="text-teal-600" />
+            <span>متوافق مع جميع الهواتف الذكية والأجهزة</span>
           </div>
         </div>
       </div>
@@ -405,7 +405,7 @@ function MeetingsContent() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     4. DOCTOR MANAGEMENT PANEL
+     4. DOCTOR MANAGEMENT PANEL (Original Masar Platform Style)
   ═══════════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
@@ -613,7 +613,7 @@ function MeetingsContent() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CALL STUDIO — WebRTC P2P + Realtime Controls + Mobile Responsive
+   CALL STUDIO — WebRTC P2P + Realtime Controls + Masar Style
 ═══════════════════════════════════════════════════════════ */
 function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, guestLink, onLeave }: {
   roomCode: string;
@@ -635,8 +635,8 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
 
   const [localStream,   setLocalStream]   = useState<MediaStream | null>(null);
   const [hasRemote,     setHasRemote]     = useState(false);
-  const [micOn,         setMicOn]         = useState(false);   // DEFAULT OFF
-  const [videoOn,       setVideoOn]       = useState(false); // DEFAULT OFF
+  const [micOn,         setMicOn]         = useState(false);
+  const [videoOn,       setVideoOn]       = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [activeTab,     setActiveTab]     = useState<'video' | 'chat' | 'participants' | 'whiteboard'>('video');
   const [cameraError,   setCameraError]   = useState<string | null>(null);
@@ -647,7 +647,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
   const [linkCopied,    setLinkCopied]    = useState(false);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
-  /* ── Acquire camera/mic with cross-platform mobile constraints ── */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
@@ -656,14 +655,12 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     let cancelled = false;
     setCameraLoading(true);
 
-    // Using flexible video/audio constraints so mobile phones don't fail OverconstrainedError
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user' },
       audio: true,
     }).then((stream) => {
       if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
 
-      // Default all tracks to disabled upon join for privacy
       stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       stream.getVideoTracks().forEach((t) => { t.enabled = false; });
 
@@ -678,7 +675,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       if (cancelled) return;
       setCameraLoading(false);
       if (err.name === 'NotAllowedError') {
-        setCameraError('رُفض إذن الكاميرا. اضغط على أيقونة القفل في المتصفح واسمح بالكاميرا والمايك.');
+        setCameraError('رُفض إذن الكاميرا. اضغط على أيقونة القفل واسمح بالكاميرا والمايك.');
       } else if (err.name === 'NotFoundError') {
         setCameraError('لم يتم العثور على كاميرا أو مايك.');
       } else {
@@ -689,7 +686,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     return () => { cancelled = true; };
   }, []);
 
-  /* ── Update local video ref srcObject whenever videoOn or localStream changes ── */
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
@@ -697,7 +693,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     }
   }, [videoOn, localStream]);
 
-  /* ── WebRTC P2P + Firestore signaling ── */
   useEffect(() => {
     if (!localStream) return;
 
@@ -762,7 +757,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       }));
     }
 
-    /* ── Sync my presence with live micOn & videoOn state ── */
     const myDocRef = doc(db, 'masar_rooms', roomCode, 'participants', myId.current);
     setDoc(myDocRef, {
       name: myName,
@@ -774,7 +768,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       forceMuted: false,
     }, { merge: true }).catch(() => {});
 
-    // Listen to active participants
     unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'participants'), (snap) => {
       const ps = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<ParticipantInfo, 'id'>) }))
@@ -782,7 +775,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       setParticipants(ps);
     }));
 
-    // Guest: watch own doc for doctor commands (kick / forceMute)
     if (!isHost) {
       unsubs.push(onSnapshot(myDocRef, (snap) => {
         const d = snap.data() as ParticipantInfo | undefined;
@@ -797,7 +789,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       }));
     }
 
-    /* ── Chat listener ── */
     unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'chat'), (snap) => {
       const msgs = snap.docs
         .map((d) => d.data() as { name: string; text: string; time: string; ts: number })
@@ -813,13 +804,11 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     };
   }, [localStream, isHost, roomCode, myName]);
 
-  /* ── Controls ── */
   const toggleMic = () => {
     if (!localStream) return;
     const next = !micOn;
     localStream.getAudioTracks().forEach((t) => { t.enabled = next; });
     setMicOn(next);
-    // sync to firestore
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', myId.current), { micOn: next }, { merge: true }).catch(() => {});
   };
 
@@ -832,7 +821,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       localVideoRef.current.srcObject = localStream;
       localVideoRef.current.play().catch(() => {});
     }
-    // sync to firestore
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', myId.current), { videoOn: next }, { merge: true }).catch(() => {});
   };
 
@@ -880,7 +868,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     }
   };
 
-  /* ── Host Control: toggle mute / unmute specific participant ── */
   const toggleMuteParticipant = (pid: string, isCurrentlyMuted?: boolean) => {
     if (!isHost) return;
     const targetState = !isCurrentlyMuted;
@@ -890,13 +877,11 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     }, { merge: true }).catch(() => {});
   };
 
-  /* ── Host Control: kick participant ── */
   const kickParticipant = (pid: string) => {
     if (!isHost) return;
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), { kicked: true }, { merge: true }).catch(() => {});
   };
 
-  /* ── Host Control: mute all participants ── */
   const muteAll = () => {
     if (!isHost) return;
     participants.forEach((p) => {
@@ -906,7 +891,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     });
   };
 
-  /* ── Send chat ── */
   const sendChat = () => {
     if (!chatInput.trim()) return;
     addDoc(collection(db, 'masar_rooms', roomCode, 'chat'), {
@@ -930,290 +914,295 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     onLeaveRef.current();
   };
 
-  /* ═════════════ RENDER STUDIO ═════════════ */
+  /* ═════════════ RENDER STUDIO (Masar Clean Light UI) ═════════════ */
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans" dir="rtl">
+    <div className="min-h-screen bg-slate-50 text-slate-950 flex flex-col font-sans" dir="rtl">
       {isMasarUser && <Navbar />}
 
-      <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto p-2 sm:p-4 gap-3">
+      <div className="flex">
+        {isMasarUser && isHost && <Sidebar desktopOnly />}
 
-        {/* Top Header Bar */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
-            <div>
-              <h1 className="font-black text-white text-sm sm:text-base leading-tight">{title}</h1>
-              <p className="text-xs font-bold text-teal-400">
-                رمز الغرفة: <span className="text-slate-300 font-black">{roomCode}</span>
-                {isHost && <span className="mr-2 text-amber-400 font-black">· أنت المضيف</span>}
-                {!isHost && <span className="mr-2 text-teal-300 font-black">· مرحباً بك {myName}</span>}
-              </p>
-            </div>
-          </div>
+        <main className="min-w-0 flex-1 p-3 sm:p-6 space-y-4">
 
-          <div className="flex flex-wrap items-center gap-2">
-            {isHost && (
-              <>
-                <button onClick={copyGuestLink}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black transition border ${linkCopied ? 'bg-teal-600 text-white border-teal-500' : 'bg-slate-700 text-teal-300 border-slate-600 hover:bg-slate-600'}`}>
-                  <Copy size={13} /> {linkCopied ? 'تم النسخ ✅' : 'نسخ رابط الضيف'}
-                </button>
-                <button onClick={muteAll}
-                  className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-300 hover:bg-amber-500/20 transition">
-                  <VolumeX size={13} /> كتم الجميع
-                </button>
-              </>
-            )}
-            <button onClick={handleLeave}
-              className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-rose-500 transition shadow-md">
-              <PhoneOff size={14} /> {isHost ? 'إنهاء الجلسة' : 'مغادرة'}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile View Selector Tabs (< md) */}
-        <div className="flex md:hidden bg-slate-800 border border-slate-700 rounded-xl p-1 gap-1">
-          <button onClick={() => setActiveTab('video')}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'video' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
-            <Video size={14} /> الفيديو
-          </button>
-          <button onClick={() => setActiveTab('participants')}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'participants' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
-            <Users size={14} /> الحضور ({participants.length})
-          </button>
-          <button onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'chat' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
-            <MessageSquare size={14} /> المحادثة
-          </button>
-          <button onClick={() => setActiveTab('whiteboard')}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white shadow' : 'text-slate-400'}`}>
-            <PenTool size={14} /> السبورة
-          </button>
-        </div>
-
-        {/* Main Grid Studio Layout */}
-        <div className="flex-1 grid md:grid-cols-12 gap-3 min-h-0">
-
-          {/* Video / Whiteboard Container */}
-          <div className={`md:col-span-8 flex flex-col gap-3 ${activeTab !== 'video' && activeTab !== 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
-
-            {activeTab === 'whiteboard' ? (
-              <InteractiveWhiteboard roomCode={roomCode} />
-            ) : (
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[340px]">
-
-                {/* Local Video Card */}
-                <div className="relative overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-inner min-h-[220px] flex flex-col justify-center">
-                  <video
-                    ref={localVideoRef}
-                    autoPlay playsInline muted
-                    className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} ${!screenSharing ? 'scale-x-[-1]' : ''}`}
-                  />
-
-                  {(!videoOn || cameraError || cameraLoading) && (
-                    <div className="absolute inset-0 grid place-items-center bg-slate-900/90 p-4 text-center">
-                      {cameraLoading && (
-                        <div className="space-y-2">
-                          <div className="h-9 w-9 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mx-auto" />
-                          <p className="text-xs font-black text-slate-300">جاري تجهيز الكاميرا...</p>
-                        </div>
-                      )}
-                      {!cameraLoading && cameraError && (
-                        <div className="space-y-2">
-                          <ShieldCheck size={36} className="mx-auto text-amber-400" />
-                          <p className="text-xs font-bold text-amber-200 max-w-[200px] leading-snug">{cameraError}</p>
-                        </div>
-                      )}
-                      {!cameraLoading && !cameraError && !videoOn && (
-                        <div className="space-y-2">
-                          <div className="h-14 w-14 rounded-full bg-slate-800 border border-slate-700 grid place-items-center mx-auto text-slate-500">
-                            <VideoOff size={28} />
-                          </div>
-                          <p className="text-xs font-black text-slate-300">الكاميرا مقفولة</p>
-                          <p className="text-[10px] font-bold text-slate-500">اضغط زر الكاميرا بالأسفل لتشغيلها</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                    {myName} (أنت)
-                  </div>
-
-                  {screenSharing && (
-                    <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 مشاركة الشاشة</div>
-                  )}
-
-                  <div className="absolute bottom-3 left-3 z-10">
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black shadow ${micOn ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-                      {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
-                    </span>
-                  </div>
+          {/* Call Banner */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
+                <div>
+                  <h1 className="font-black text-slate-950 text-base sm:text-lg">{title}</h1>
+                  <p className="text-xs font-bold text-teal-700">
+                    رمز الغرفة: <span className="text-slate-900 font-black">{roomCode}</span>
+                    {isHost && <span className="mr-2 text-amber-600 font-black">· أنت المضيف</span>}
+                    {!isHost && <span className="mr-2 text-teal-800 font-black">· مرحباً بك {myName}</span>}
+                  </p>
                 </div>
-
-                {/* Remote Video Card */}
-                <div className="relative overflow-hidden rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-inner min-h-[220px] flex flex-col justify-center">
-                  <video
-                    ref={remoteVideoRef}
-                    autoPlay playsInline
-                    className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
-                  />
-
-                  {!hasRemote && (
-                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-900 to-teal-950 p-4 text-center">
-                      <div className="space-y-3">
-                        <div className="h-14 w-14 rounded-full bg-teal-500/20 border border-teal-500/40 grid place-items-center mx-auto animate-pulse">
-                          <User size={30} className="text-teal-400" />
-                        </div>
-                        <p className="text-xs font-black text-white">
-                          {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور إسماعيل...'}
-                        </p>
-                        {isHost && (
-                          <button onClick={copyGuestLink}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-teal-500 transition">
-                            <Copy size={11} /> انسخ رابط الضيف
-                          </button>
-                        )}
-                        {!isHost && (
-                          <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">
-                            متصل بالبث ✓
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                    {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
-                  </div>
-                </div>
-
               </div>
-            )}
 
-            {/* Floating Control Bar for Mic, Video, Screen, Whiteboard */}
-            <div className="flex items-center justify-center gap-2 sm:gap-3 bg-slate-800/90 border border-slate-700/80 rounded-2xl p-2.5 shadow-xl">
-              <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
-                {micOn ? <Mic size={20} /> : <MicOff size={20} />}
-              </CtrlBtn>
+              <div className="flex flex-wrap items-center gap-2">
+                {isHost && (
+                  <>
+                    <button onClick={copyGuestLink}
+                      className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition border ${linkCopied ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}>
+                      <Copy size={13} /> {linkCopied ? 'تم النسخ ✅' : 'نسخ رابط الضيف'}
+                    </button>
+                    <button onClick={muteAll}
+                      className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-black text-amber-800 hover:bg-amber-100 transition">
+                      <VolumeX size={13} /> كتم الجميع
+                    </button>
+                  </>
+                )}
+                <button onClick={handleLeave}
+                  className="flex items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2 text-xs font-black text-white hover:bg-rose-600 transition shadow-sm">
+                  <PhoneOff size={14} /> {isHost ? 'إنهاء الجلسة' : 'مغادرة'}
+                </button>
+              </div>
+            </div>
 
-              <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
-                {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
-              </CtrlBtn>
-
-              <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف الشاشة' : 'مشاركة الشاشة'}>
-                <Monitor size={20} />
-              </CtrlBtn>
-
-              <button onClick={() => setActiveTab(activeTab === 'whiteboard' ? 'video' : 'whiteboard')}
-                className={`grid h-11 px-3 place-items-center rounded-xl border font-black text-xs transition flex items-center gap-1.5 ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white border-teal-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'}`}>
-                <PenTool size={18} />
-                <span className="hidden sm:inline">السبورة</span>
+            {/* Mobile Selector (< md) */}
+            <div className="flex md:hidden bg-slate-100 rounded-xl p-1 gap-1">
+              <button onClick={() => setActiveTab('video')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${activeTab === 'video' ? 'bg-teal-600 text-white' : 'text-slate-600'}`}>
+                📹 الفيديو
+              </button>
+              <button onClick={() => setActiveTab('participants')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${activeTab === 'participants' ? 'bg-teal-600 text-white' : 'text-slate-600'}`}>
+                👥 الحضور ({participants.length})
+              </button>
+              <button onClick={() => setActiveTab('chat')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${activeTab === 'chat' ? 'bg-teal-600 text-white' : 'text-slate-600'}`}>
+                💬 المحادثة
+              </button>
+              <button onClick={() => setActiveTab('whiteboard')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white' : 'text-slate-600'}`}>
+                🎨 السبورة
               </button>
             </div>
-          </div>
 
-          {/* Participants + Chat Side Panel */}
-          <div className={`md:col-span-4 bg-slate-800/90 border border-slate-700 rounded-2xl p-4 flex-col gap-4 ${activeTab === 'video' || activeTab === 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
+            {/* Studio Body Grid */}
+            <div className="grid md:grid-cols-12 gap-4">
 
-            {/* Active Participants List */}
-            <div className={`space-y-2 ${activeTab === 'chat' ? 'hidden md:block' : 'block'}`}>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-700">
-                <h3 className="text-xs font-black text-slate-200 flex items-center gap-1.5">
-                  <Users size={15} className="text-teal-400" /> الحضور المتصلين ({participants.length})
-                </h3>
-                {isHost && (
-                  <span className="text-[10px] font-black text-amber-400 bg-amber-400/10 rounded-full px-2 py-0.5 border border-amber-400/20">تحكّم الدكتور</span>
-                )}
-              </div>
+              {/* Video / Whiteboard Column */}
+              <div className={`md:col-span-8 flex flex-col gap-4 ${activeTab !== 'video' && activeTab !== 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
 
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {participants.length === 0 && (
-                  <p className="text-[11px] font-bold text-slate-400 text-center py-3">جاري تحميل قائمة الحضور...</p>
-                )}
+                {activeTab === 'whiteboard' ? (
+                  <InteractiveWhiteboard roomCode={roomCode} />
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3 min-h-[340px]">
 
-                {participants.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 p-2.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="h-7 w-7 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 grid place-items-center text-xs font-black shrink-0">
-                        {p.name.charAt(0)}
+                    {/* Local Video Card */}
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[220px] flex flex-col justify-center">
+                      <video
+                        ref={localVideoRef}
+                        autoPlay playsInline muted
+                        className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} ${!screenSharing ? 'scale-x-[-1]' : ''}`}
+                      />
+
+                      {(!videoOn || cameraError || cameraLoading) && (
+                        <div className="absolute inset-0 grid place-items-center bg-slate-900/90 p-4 text-center">
+                          {cameraLoading && (
+                            <div className="space-y-2">
+                              <div className="h-9 w-9 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mx-auto" />
+                              <p className="text-xs font-black text-slate-300">جاري تجهيز الكاميرا...</p>
+                            </div>
+                          )}
+                          {!cameraLoading && cameraError && (
+                            <div className="space-y-2">
+                              <ShieldCheck size={36} className="mx-auto text-amber-400" />
+                              <p className="text-xs font-bold text-amber-200 max-w-[200px] leading-snug">{cameraError}</p>
+                            </div>
+                          )}
+                          {!cameraLoading && !cameraError && !videoOn && (
+                            <div className="space-y-2">
+                              <div className="h-14 w-14 rounded-full bg-slate-800 border border-slate-700 grid place-items-center mx-auto text-slate-500">
+                                <VideoOff size={28} />
+                              </div>
+                              <p className="text-xs font-black text-slate-300">الكاميرا مقفولة</p>
+                              <p className="text-[10px] font-bold text-slate-500">اضغط زر الكاميرا بالأسفل لتشغيلها</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                        {myName} (أنت)
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-white truncate">{p.name}</p>
-                        <span className="text-[10px] font-bold text-slate-400 block">
-                          {p.role === 'host' ? '🎙 المضيف' : p.micOn ? '🎙 مايك شغال' : '🔇 مكتوم'}
+
+                      {screenSharing && (
+                        <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 مشاركة الشاشة</div>
+                      )}
+
+                      <div className="absolute bottom-3 left-3 z-10">
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black shadow ${micOn ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+                          {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Doctor Host Controls: Toggle Mute & Kick */}
-                    {isHost && p.id !== myId.current && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => toggleMuteParticipant(p.id, p.forceMuted || !p.micOn)}
-                          className={`p-2 rounded-lg border transition ${p.forceMuted || !p.micOn ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 hover:bg-rose-500/30' : 'bg-slate-700 border-slate-600 text-emerald-400 hover:bg-slate-600'}`}
-                          title={p.forceMuted || !p.micOn ? 'إلغاء الكتم' : 'كتم المايك'}
-                        >
-                          {p.forceMuted || !p.micOn ? <MicOff size={14} /> : <Mic size={14} />}
-                        </button>
+                    {/* Remote Video Card */}
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner min-h-[220px] flex flex-col justify-center">
+                      <video
+                        ref={remoteVideoRef}
+                        autoPlay playsInline
+                        className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
+                      />
 
-                        <button
-                          onClick={() => kickParticipant(p.id)}
-                          className="p-2 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30 transition"
-                          title="طرد من الجلسة"
-                        >
-                          <UserX size={14} />
-                        </button>
+                      {!hasRemote && (
+                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-teal-900 to-slate-900 p-4 text-center">
+                          <div className="space-y-3">
+                            <div className="h-14 w-14 rounded-full bg-teal-400/20 border border-teal-400/40 grid place-items-center mx-auto animate-pulse">
+                              <User size={30} className="text-teal-300" />
+                            </div>
+                            <p className="text-xs font-black text-white">
+                              {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور إسماعيل...'}
+                            </p>
+                            {isHost && (
+                              <button onClick={copyGuestLink}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-teal-700 transition">
+                                <Copy size={11} /> انسخ رابط الضيف
+                              </button>
+                            )}
+                            {!isHost && (
+                              <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">
+                                متصل بالبث ✓
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                        {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
                       </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* Control Toolbar */}
+                <div className="flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                  <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
+                    {micOn ? <Mic size={20} /> : <MicOff size={20} />}
+                  </CtrlBtn>
+
+                  <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
+                    {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
+                  </CtrlBtn>
+
+                  <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف الشاشة' : 'مشاركة الشاشة'}>
+                    <Monitor size={20} />
+                  </CtrlBtn>
+
+                  <button onClick={() => setActiveTab(activeTab === 'whiteboard' ? 'video' : 'whiteboard')}
+                    className={`grid h-11 px-4 place-items-center rounded-xl border font-black text-xs transition flex items-center gap-1.5 ${activeTab === 'whiteboard' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}>
+                    <PenTool size={18} />
+                    <span className="hidden sm:inline">السبورة</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Side Column: Participants + Chat */}
+              <div className={`md:col-span-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 flex-col gap-4 ${activeTab === 'video' || activeTab === 'whiteboard' ? 'hidden md:flex' : 'flex'}`}>
+
+                {/* Participants */}
+                <div className={`space-y-2 ${activeTab === 'chat' ? 'hidden md:block' : 'block'}`}>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <Users size={15} className="text-teal-600" /> الحضور المتصلين ({participants.length})
+                    </h3>
+                    {isHost && (
+                      <span className="text-[10px] font-black text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">تحكّم الدكتور</span>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Live Chat Panel */}
-            <div className={`flex-1 flex flex-col gap-2 border-t border-slate-700 pt-3 min-h-0 ${activeTab === 'participants' ? 'hidden md:flex' : 'flex'}`}>
-              <h3 className="text-xs font-black text-slate-200 flex items-center gap-1.5">
-                <MessageSquare size={15} className="text-teal-400" /> محادثة الجلسة
-              </h3>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {participants.length === 0 && (
+                      <p className="text-[11px] font-bold text-slate-400 text-center py-3">جاري تحميل قائمة الحضور...</p>
+                    )}
 
-              <div className="flex-1 space-y-2 max-h-60 overflow-y-auto pr-1">
-                {chatMessages.length === 0 && (
-                  <p className="text-[11px] font-bold text-slate-500 text-center py-4">لا توجد رسائل بعد في المحادثة</p>
-                )}
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-2.5">
-                    <p className="text-[10px] font-black text-teal-400">
-                      {msg.name} <span className="text-slate-500 font-bold">· {msg.time}</span>
-                    </p>
-                    <p className="mt-0.5 text-xs font-bold text-slate-200 leading-normal">{msg.text}</p>
+                    {participants.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-7 w-7 rounded-full bg-teal-50 text-teal-700 border border-teal-200 grid place-items-center text-xs font-black shrink-0">
+                            {p.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
+                            <span className="text-[10px] font-bold text-slate-500 block">
+                              {p.role === 'host' ? '🎙 المضيف' : p.micOn ? '🎙 مايك شغال' : '🔇 مكتوم'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Doctor Host Controls */}
+                        {isHost && p.id !== myId.current && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => toggleMuteParticipant(p.id, p.forceMuted || !p.micOn)}
+                              className={`p-2 rounded-lg border transition ${p.forceMuted || !p.micOn ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                              title={p.forceMuted || !p.micOn ? 'إلغاء الكتم' : 'كتم المايك'}
+                            >
+                              {p.forceMuted || !p.micOn ? <MicOff size={14} /> : <Mic size={14} />}
+                            </button>
+
+                            <button
+                              onClick={() => kickParticipant(p.id)}
+                              className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition"
+                              title="طرد من الجلسة"
+                            >
+                              <UserX size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                <div ref={chatBottomRef} />
+                </div>
+
+                {/* Chat */}
+                <div className={`flex-1 flex flex-col gap-2 border-t border-slate-200 pt-3 min-h-0 ${activeTab === 'participants' ? 'hidden md:flex' : 'flex'}`}>
+                  <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <MessageSquare size={15} className="text-teal-600" /> محادثة الجلسة
+                  </h3>
+
+                  <div className="flex-1 space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {chatMessages.length === 0 && (
+                      <p className="text-[11px] font-bold text-slate-400 text-center py-4">لا توجد رسائل بعد</p>
+                    )}
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+                        <p className="text-[10px] font-black text-teal-700">
+                          {msg.name} <span className="text-slate-400 font-bold">· {msg.time}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs font-bold text-slate-800 leading-normal">{msg.text}</p>
+                      </div>
+                    ))}
+                    <div ref={chatBottomRef} />
+                  </div>
+
+                  <div className="flex gap-2 mt-auto">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                      placeholder="اكتب رسالتك..."
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600"
+                    />
+                    <button
+                      onClick={sendChat}
+                      className="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm"
+                    >
+                      إرسال
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
-              {/* Chat Input */}
-              <div className="flex gap-2 mt-auto">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendChat()}
-                  placeholder="اكتب رسالتك..."
-                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-teal-500"
-                />
-                <button
-                  onClick={sendChat}
-                  className="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-500 transition shadow"
-                >
-                  إرسال
-                </button>
-              </div>
             </div>
-
           </div>
-
-        </div>
+        </main>
       </div>
     </div>
   );
@@ -1291,16 +1280,16 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
   const COLORS = ['#000000', '#0f766e', '#dc2626', '#2563eb', '#7c3aed', '#d97706'];
 
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-sm space-y-3 flex-1 flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
-        <span className="text-xs font-black text-teal-400 flex items-center gap-1.5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm space-y-3 flex-1 flex flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <span className="text-xs font-black text-teal-700 flex items-center gap-1.5">
           <PenTool size={15} /> السبورة التفاعلية
         </span>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-slate-900 rounded-xl p-1 gap-1 border border-slate-700">
+          <div className="flex bg-slate-100 rounded-xl p-1 gap-1 border border-slate-200">
             {(['pen', 'eraser'] as const).map((t) => (
               <button key={t} onClick={() => setTool(t)}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${tool === t ? 'bg-teal-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                className={`px-3 py-1 rounded-lg text-xs font-black transition ${tool === t ? 'bg-teal-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}>
                 {t === 'pen' ? 'قلم' : <span className="flex items-center gap-1"><Eraser size={13} /> ممحاة</span>}
               </button>
             ))}
@@ -1314,12 +1303,12 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
             </div>
           )}
           <button onClick={clearAll}
-            className="flex items-center gap-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-black text-rose-400 hover:bg-rose-500/20 transition">
+            className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-600 hover:bg-rose-100 transition">
             <RotateCcw size={13} /> مسح الكل
           </button>
         </div>
       </div>
-      <div className="relative flex-1 min-h-[260px] w-full overflow-hidden rounded-xl border border-slate-700 bg-white">
+      <div className="relative flex-1 min-h-[260px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
         <canvas ref={canvasRef} width={900} height={350}
           onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
           onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
@@ -1335,7 +1324,7 @@ function CtrlBtn({ active, onClick, title, children }: {
 }) {
   return (
     <button onClick={onClick} title={title}
-      className={`grid h-11 w-11 place-items-center rounded-xl border transition ${active ? 'bg-slate-700 text-emerald-400 border-slate-600 hover:bg-slate-600' : 'bg-rose-600 text-white border-rose-500 hover:bg-rose-500'}`}>
+      className={`grid h-11 w-11 place-items-center rounded-xl border transition ${active ? 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200' : 'bg-rose-500 text-white border-rose-500 hover:bg-rose-600'}`}>
       {children}
     </button>
   );
