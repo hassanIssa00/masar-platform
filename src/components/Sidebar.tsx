@@ -152,7 +152,7 @@ export default function Sidebar({ open: externalOpen = false, onClose, desktopOn
                       ? 'bg-teal-50/90 text-teal-800 border-teal-200/80'
                       : 'border-transparent text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
                     }
-                    ${collapsed && !isMobileShow ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-[13px]'}
+                    ${collapsed && !isMobileShow ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 text-[15px]'}
                   `}
                 >
                   <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition ${
@@ -191,7 +191,7 @@ export default function Sidebar({ open: externalOpen = false, onClose, desktopOn
                         ? 'bg-teal-50/90 text-teal-800 border-teal-200/80'
                         : 'border-transparent text-slate-700 hover:bg-slate-50'
                       }
-                      ${collapsed && !isMobileShow ? 'flex justify-center p-2.5' : 'px-3 py-2 text-[13px]'}
+                      ${collapsed && !isMobileShow ? 'flex justify-center p-2.5' : 'px-3 py-2.5 text-[15px]'}
                     `}
                   >
                     <span className="flex items-center gap-3">
