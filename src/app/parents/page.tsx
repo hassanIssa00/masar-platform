@@ -21,13 +21,10 @@ export default function ParentsManagementPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [messageBody, setMessageBody] = useState('');
-  const [zoomUrlInput, setZoomUrlInput] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
+  const [selectedReportId, setSelectedReportId] = useState<string>('');
+  const [messages, setMessages] = useState<MessageRecord[]>([]);
 
-  // Auth Guard: Only Doctor/Admin can access
+  // Auth Guard & Data Loading: Only Doctor/Admin can access
   useEffect(() => {
     queueMicrotask(() => {
       const session = getSession();
@@ -39,10 +36,12 @@ export default function ParentsManagementPage() {
       const allStudents = getStudents();
       const allAccounts = getAccounts();
       const allReports = getReports();
+      const allMessages = getMessages();
 
       setStudents(allStudents);
       setAccounts(allAccounts);
       setReports(allReports);
+      setMessages(allMessages);
       if (allStudents.length > 0) {
         setSelectedStudentId(allStudents[0].id);
       }
@@ -72,13 +71,30 @@ export default function ParentsManagementPage() {
     return getCredentialByEmailOrPhone(linkedParentAccount.email);
   }, [linkedParentAccount]);
 
-  // Find latest student report
+  // Find all student reports (up to 3 types: survey answers, student test, clinical analysis)
   const studentReports = useMemo(() => {
     if (!selectedStudent) return [];
     return reports.filter((r) => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName);
   }, [reports, selectedStudent]);
 
-  const latestReport = studentReports[0] ?? null;
+  // Set default selected report when student changes
+  useEffect(() => {
+    if (studentReports.length > 0) {
+      setSelectedReportId(studentReports[0].id);
+    } else {
+      setSelectedReportId('');
+    }
+  }, [selectedStudentId, studentReports]);
+
+  const selectedReportToSend = studentReports.find((r) => r.id === selectedReportId) ?? studentReports[0] ?? null;
+
+  // Find active chat thread for selected student
+  const chatThread = useMemo(() => {
+    if (!selectedStudent) return [];
+    return messages
+      .filter((m) => m.studentId === selectedStudent.id || m.studentId === 'student_assessment')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [messages, selectedStudent]);
 
   // Search filter
   const filteredStudents = useMemo(() => {
@@ -100,7 +116,7 @@ export default function ParentsManagementPage() {
   // Actions
   const sendDirectMessage = () => {
     if (!messageBody.trim() || !selectedStudent) return;
-    saveMessage({
+    const newMsg = saveMessage({
       studentId: selectedStudent.id,
       from: 'doctor',
       to: 'parent',
@@ -108,12 +124,14 @@ export default function ParentsManagementPage() {
       read: false,
     });
     setMessageBody('');
+    setMessages(getMessages());
     showNotification(`تم إرسال الرسالة بنجاح لولي أمر ${selectedStudent.fullName} ✅`);
   };
 
   const sendReportNotification = () => {
-    if (!selectedStudent || !latestReport) return;
-    const text = `📋 تم اعتماد وإرسال التقرير التشخيصي للطالب (${selectedStudent.fullName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الان.`;
+    if (!selectedStudent || !selectedReportToSend) return;
+    const reportTitle = selectedReportToSend.program || 'التقرير التشخيصي المعالج';
+    const text = `📋 تم إرسال وتحديد التقرير الرسمي (${reportTitle}) للطالب (${selectedStudent.fullName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الآن.`;
     saveMessage({
       studentId: selectedStudent.id,
       from: 'doctor',
@@ -121,7 +139,8 @@ export default function ParentsManagementPage() {
       body: text,
       read: false,
     });
-    showNotification(`تم إرسال التقرير والتوصيات إلى حساب ولي أمر ${selectedStudent.fullName} بنجاح 📄✅`);
+    setMessages(getMessages());
+    showNotification(`تم إرسال (${reportTitle}) إلى بوابة ولي أمر ${selectedStudent.fullName} بنجاح 📄✅`);
   };
 
   const sendZoomInvite = () => {
@@ -136,6 +155,7 @@ export default function ParentsManagementPage() {
       read: false,
     });
     setZoomUrlInput('');
+    setMessages(getMessages());
     showNotification(`تم إرسال رابط اجتماع Zoom لولي أمر ${selectedStudent.fullName} بنجاح 📹✅`);
   };
 
@@ -319,25 +339,52 @@ export default function ParentsManagementPage() {
 
                     <div className="grid gap-6 md:grid-cols-2">
 
-                      {/* Tool 1: Dispatch Report */}
+                      {/* Tool 1: Dispatch Selected Report */}
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3 flex flex-col justify-between">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-teal-800">
                             <FileText size={20} />
-                            <h4 className="font-black text-sm">إرسال التقرير والمسار المعتمد</h4>
+                            <h4 className="font-black text-sm">حدد التقرير المطلوب إرساله لولي الأمر</h4>
                           </div>
-                          <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                            {latestReport
-                              ? `التقرير الحالي المتاح: (${latestReport.summary.slice(0, 90)}...)`
-                              : 'أكمل التقييم الأول للطالب حتى يتوفر تقرير تحليلي للإرسال.'}
-                          </p>
+
+                          {studentReports.length > 0 ? (
+                            <div className="space-y-2">
+                              <label className="block text-[11px] font-black text-slate-500">اختر من تقارير الطالب المتاحة ({studentReports.length}):</label>
+                              <select
+                                value={selectedReportId}
+                                onChange={(e) => setSelectedReportId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-black text-slate-900 outline-none focus:border-teal-600"
+                              >
+                                {studentReports.map((r) => (
+                                  <option key={r.id} value={r.id}>
+                                    📄 {r.program} ({r.date}) — نتيجة {r.score}%
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedReportToSend && (
+                                <div className="rounded-xl border border-teal-200 bg-teal-50/80 p-3 text-[11px] font-bold text-teal-950 space-y-1">
+                                  <p className="font-black text-teal-900">📌 التقرير المكتوب: {selectedReportToSend.program}</p>
+                                  <p className="line-clamp-2 text-slate-600">{selectedReportToSend.summary}</p>
+                                  <div className="pt-1 flex items-center justify-between text-[10px] text-teal-800 font-black">
+                                    <span>تاريخ الإصدار: {selectedReportToSend.date}</span>
+                                    <span>الدرجة: {selectedReportToSend.score}%</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs font-bold text-slate-500 leading-relaxed bg-white p-3 rounded-xl border border-slate-200">
+                              لا توجد تقارير منشأة لهذا الطالب بعد. أكمل الاستبيان أو الاختبار لتوليد التقارير الثلاثة.
+                            </p>
+                          )}
                         </div>
+
                         <button
                           onClick={sendReportNotification}
-                          disabled={!latestReport}
+                          disabled={!selectedReportToSend}
                           className="w-full rounded-xl bg-teal-600 py-3 text-xs font-black text-white hover:bg-teal-700 transition disabled:opacity-50 shadow-sm cursor-pointer"
                         >
-                          إرسال التقرير إلى بوابة ولي الأمر 📤
+                          إرسال التقرير المحدد إلى بوابة ولي الأمر 📤
                         </button>
                       </div>
 
@@ -348,12 +395,13 @@ export default function ParentsManagementPage() {
                             <Video size={20} />
                             <h4 className="font-black text-sm">إرسال رابط اجتماع Zoom</h4>
                           </div>
+                          <p className="text-xs font-bold text-slate-500">أنشئ اجتماع Zoom جديد وأرسل الدعوة المباشرة لولي الأمر لينضم بضغطة واحدة.</p>
                           <input
                             type="text"
                             value={zoomUrlInput}
                             onChange={(e) => setZoomUrlInput(e.target.value)}
                             placeholder="ضع رابط Zoom هنا (مثال: https://zoom.us/j/...)"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-600"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-600"
                           />
                         </div>
                         <button
@@ -366,26 +414,85 @@ export default function ParentsManagementPage() {
 
                     </div>
 
-                    {/* Tool 3: Direct Message Composer */}
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                      <div className="flex items-center gap-2 text-slate-800">
-                        <MessageSquare size={20} className="text-teal-600" />
-                        <h4 className="font-black text-sm">إرسال رسالة / تعليمات تشخيصية مباشرة</h4>
+                    {/* Tool 3: Live Interactive Chat Box with Full History */}
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare size={20} className="text-teal-400" />
+                          <div>
+                            <h4 className="font-black text-sm">محادثة الشات المباشرة مع ولي الأمر</h4>
+                            <p className="text-[11px] font-bold text-slate-400">سجل الرسائل المتبادلة للطالب ({selectedStudent.fullName})</p>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-teal-900/80 text-teal-300 border border-teal-700 px-3 py-1 text-xs font-black">
+                          {chatThread.length} رسالة مسجلة
+                        </span>
                       </div>
-                      <textarea
-                        value={messageBody}
-                        onChange={(e) => setMessageBody(e.target.value)}
-                        placeholder="اكتب ملاحظة أو توجيه تشخيصي لولي الأمر ليستلمه في حسابه..."
-                        className="w-full min-h-[90px] rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-900 outline-none focus:border-teal-600"
-                      />
-                      <button
-                        onClick={sendDirectMessage}
-                        disabled={!messageBody.trim()}
-                        className="rounded-xl bg-teal-600 px-6 py-3 text-xs font-black text-white hover:bg-teal-700 transition disabled:opacity-50 shadow-sm cursor-pointer flex items-center gap-2"
-                      >
-                        <Send size={15} />
-                        <span>إرسال الرسالة إلى بوابة ولي الأمر</span>
-                      </button>
+
+                      {/* Chat History View */}
+                      <div className="min-h-[260px] max-h-[360px] overflow-y-auto p-4 bg-slate-50/80 space-y-3">
+                        {chatThread.length > 0 ? (
+                          chatThread.map((msg) => {
+                            const isDoctor = msg.from === 'doctor';
+                            return (
+                              <div
+                                key={msg.id}
+                                className={`flex flex-col max-w-[85%] ${
+                                  isDoctor ? 'mr-auto items-end' : 'ml-auto items-start'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 mb-1 px-1">
+                                  <span className={`text-[10px] font-black ${isDoctor ? 'text-teal-800' : 'text-slate-600'}`}>
+                                    {isDoctor ? '👨‍⚕️ د. إسماعيل عيسى' : `👨‍👦 ولي أمر ${selectedStudent.fullName}`}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400">
+                                    {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <div
+                                  className={`rounded-2xl p-3.5 text-xs font-bold leading-relaxed shadow-2xs whitespace-pre-wrap ${
+                                    isDoctor
+                                      ? 'bg-teal-700 text-white rounded-tl-none'
+                                      : 'bg-white border border-slate-200 text-slate-900 rounded-tr-none'
+                                  }`}
+                                >
+                                  {msg.body}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="grid place-items-center py-12 text-center text-slate-400">
+                            <MessageSquare size={36} className="text-slate-300 mb-2" />
+                            <p className="text-xs font-bold">لا توجد رسائل سابقة في هذا الشات.</p>
+                            <p className="text-[11px] text-slate-400 mt-1">اكتب رسالتك بالأسفل لتبدأ المحادثة المباشرة مع ولي الأمر.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Input Bar */}
+                      <div className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
+                        <textarea
+                          value={messageBody}
+                          onChange={(e) => setMessageBody(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              sendDirectMessage();
+                            }
+                          }}
+                          placeholder="اكتب رسالة لولي الأمر واضغط Enter لإرسالها بالشات..."
+                          className="flex-1 min-h-[44px] max-h-[100px] rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 resize-none"
+                        />
+                        <button
+                          onClick={sendDirectMessage}
+                          disabled={!messageBody.trim()}
+                          className="rounded-xl bg-teal-700 px-5 py-3 text-xs font-black text-white hover:bg-teal-800 transition disabled:opacity-40 shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                        >
+                          <Send size={15} />
+                          <span>إرسال</span>
+                        </button>
+                      </div>
                     </div>
 
                   </section>
