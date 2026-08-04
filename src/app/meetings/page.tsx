@@ -13,7 +13,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, collection, addDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, addDoc, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
 
 /* ═══════════════ TYPES ═══════════════ */
 type MeetingRecord = {
@@ -722,9 +722,17 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
     pc.ontrack = (event) => {
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+      const stream = event.streams[0] || new MediaStream(event.track ? [event.track] : []);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
         remoteVideoRef.current.play().catch(() => {});
+        setHasRemote(true);
+      }
+    };
+
+    // Also catch tracks added later
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
         setHasRemote(true);
       }
     };
@@ -735,26 +743,51 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     const unsubs: Array<() => void> = [];
 
     if (isHost) {
-      pc.onicecandidate = (e) => {
-        if (e.candidate) addDoc(callerCands, e.candidate.toJSON()).catch(() => {});
-      };
-      pc.createOffer().then((offer) => {
-        pc.setLocalDescription(offer);
-        setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } }, { merge: true }).catch(() => {});
-      }).catch(() => {});
+      // ── Host: wipe stale signaling data first, then create fresh offer ──
+      const startHostSignaling = async () => {
+        try {
+          // Clear old offer/answer so guest gets a fresh one
+          await setDoc(roomRef, { offer: null, answer: null }, { merge: true });
+          // Delete old ICE candidates
+          const [oldCaller, oldCallee] = await Promise.all([
+            getDocs(callerCands),
+            getDocs(calleeCands),
+          ]);
+          await Promise.all([
+            ...oldCaller.docs.map((d) => deleteDoc(d.ref)),
+            ...oldCallee.docs.map((d) => deleteDoc(d.ref)),
+          ]);
+        } catch { /* ignore cleanup errors */ }
 
-      unsubs.push(onSnapshot(roomRef, (snap) => {
-        const d = snap.data();
-        if (pc.signalingState !== 'closed' && !pc.currentRemoteDescription && d?.answer) {
-          pc.setRemoteDescription(new RTCSessionDescription(d.answer)).catch(() => {});
-        }
-      }));
-      unsubs.push(onSnapshot(calleeCands, (snap) => {
-        snap.docChanges().forEach((ch) => {
-          if (ch.type === 'added') pc.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(() => {});
-        });
-      }));
+        if (pc.signalingState === 'closed') return;
+
+        pc.onicecandidate = (e) => {
+          if (e.candidate) addDoc(callerCands, e.candidate.toJSON()).catch(() => {});
+        };
+
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } }, { merge: true });
+        } catch { /* ignore */ }
+
+        unsubs.push(onSnapshot(roomRef, (snap) => {
+          const d = snap.data();
+          if (pc.signalingState !== 'closed' && !pc.currentRemoteDescription && d?.answer) {
+            pc.setRemoteDescription(new RTCSessionDescription(d.answer)).catch(() => {});
+          }
+        }));
+        unsubs.push(onSnapshot(calleeCands, (snap) => {
+          snap.docChanges().forEach((ch) => {
+            if (ch.type === 'added') pc.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(() => {});
+          });
+        }));
+      };
+
+      startHostSignaling();
+
     } else {
+      // ── Guest: watch for offer and respond ──
       pc.onicecandidate = (e) => {
         if (e.candidate) addDoc(calleeCands, e.candidate.toJSON()).catch(() => {});
       };
