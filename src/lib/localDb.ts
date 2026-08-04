@@ -96,6 +96,19 @@ const KEYS = {
   messages: 'masar.messages.v1',
 };
 
+// Flag stored after a data purge — prevents stale local data being re-pushed to cloud
+export const CLEARED_FLAG_KEY = 'masar.dataCleared.v1';
+
+export function isDataCleared(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!localStorage.getItem(CLEARED_FLAG_KEY);
+}
+
+export function markDataCleared() {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(CLEARED_FLAG_KEY, new Date().toISOString());
+}
+
 function readList<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
 
@@ -356,6 +369,8 @@ export function clearAllMockData() {
   localStorage.removeItem(KEYS.surveys);
   localStorage.removeItem(KEYS.activity);
   localStorage.removeItem(KEYS.messages);
+  // Mark cleared so firestoreSync won't push stale items back up
+  markDataCleared();
 }
 
 export function getSyncSnapshot() {

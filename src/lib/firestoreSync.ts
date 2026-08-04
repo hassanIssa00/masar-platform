@@ -7,10 +7,9 @@ import {
   getDocs,
   deleteDoc,
   onSnapshot,
-  query,
-  orderBy,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { isDataCleared } from './localDb';
 import type {
   AccountRecord,
   StudentRecord,
@@ -61,39 +60,42 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
 export async function pullCloudDataToLocal() {
   if (typeof window === 'undefined') return;
 
+  // If the admin cleared data, NEVER push stale local records back to cloud.
+  const dataWasCleared = isDataCleared();
+
   const syncCollection = async <T>(collectionName: string, localKey: string) => {
     try {
       const snap = await getDocs(collection(db, collectionName));
-      if (!snap.empty) {
-        const cloudItems: T[] = snap.docs.map((docSnap) => docSnap.data() as T);
-        // Merge cloud items into local storage
-        const rawLocal = localStorage.getItem(localKey);
-        const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
-        
-        const mergedMap = new Map<string, any>();
-        localItems.forEach((item) => {
-          if (item.id || item.accountId) mergedMap.set(item.id || item.accountId, item);
-        });
-        cloudItems.forEach((item: any) => {
-          if (item.id || item.accountId) mergedMap.set(item.id || item.accountId, item);
-        });
 
-        const finalMerged = Array.from(mergedMap.values());
-        writeLocal(localKey, finalMerged);
-        
-        // Push any local items missing in cloud up to cloud
-        localItems.forEach((item) => {
-          const id = item.id || item.accountId;
-          if (id) syncDocToCloud(collectionName, id, item);
-        });
+      if (!snap.empty) {
+        // Cloud has real data — pull it into localStorage (cloud is the source of truth)
+        const cloudItems: T[] = snap.docs.map((docSnap) => docSnap.data() as T);
+        writeLocal(localKey, cloudItems);
+
+        // Only push local-only items up if data has NOT been deliberately cleared
+        if (!dataWasCleared) {
+          const rawLocal = localStorage.getItem(localKey);
+          const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
+          localItems.forEach((item) => {
+            const id = item.id || item.accountId;
+            const inCloud = cloudItems.some((c: any) => (c.id || c.accountId) === id);
+            if (id && !inCloud) syncDocToCloud(collectionName, id, item);
+          });
+        }
       } else {
-        // Cloud is empty, push existing local items up
-        const rawLocal = localStorage.getItem(localKey);
-        const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
-        localItems.forEach((item) => {
-          const id = item.id || item.accountId;
-          if (id) syncDocToCloud(collectionName, id, item);
-        });
+        // Cloud is empty
+        if (dataWasCleared) {
+          // Purge was deliberate — wipe localStorage as well so nothing leaks back
+          writeLocal(localKey, []);
+        } else {
+          // Cloud is empty, but no purge flag — push local items up (first-run scenario)
+          const rawLocal = localStorage.getItem(localKey);
+          const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
+          localItems.forEach((item) => {
+            const id = item.id || item.accountId;
+            if (id) syncDocToCloud(collectionName, id, item);
+          });
+        }
       }
     } catch (e) {
       console.error(`Sync error for ${collectionName}:`, e);
@@ -111,7 +113,7 @@ export async function pullCloudDataToLocal() {
   ]);
 }
 
-// Realtime listeners setup
+// Realtime listeners — always mirrors cloud state into localStorage
 export function subscribeToCloudUpdates(onUpdate?: () => void) {
   if (typeof window === 'undefined') return () => {};
 
@@ -120,11 +122,10 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   const setupListener = (collectionName: string, localKey: string) => {
     try {
       const unsub = onSnapshot(collection(db, collectionName), (snap) => {
-        if (!snap.empty) {
-          const items = snap.docs.map((d) => d.data());
-          writeLocal(localKey, items);
-          if (onUpdate) onUpdate();
-        }
+        // Always write what cloud says (even an empty array) so localStorage stays in sync
+        const items = snap.docs.map((d) => d.data());
+        writeLocal(localKey, items);
+        if (onUpdate) onUpdate();
       });
       unsubscribes.push(unsub);
     } catch (e) {
