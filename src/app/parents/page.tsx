@@ -22,7 +22,7 @@ export default function ParentsManagementPage() {
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [selectedReportId, setSelectedReportId] = useState<string>('');
+  const [selectedReportIds, setSelectedReportIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [zoomUrlInput, setZoomUrlInput] = useState('');
@@ -82,16 +82,21 @@ export default function ParentsManagementPage() {
     return reports.filter((r) => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName);
   }, [reports, selectedStudent]);
 
-  // Set default selected report when student changes
+  // Reset selections when student changes
   useEffect(() => {
-    if (studentReports.length > 0) {
-      setSelectedReportId(studentReports[0].id);
-    } else {
-      setSelectedReportId('');
-    }
-  }, [selectedStudentId, studentReports]);
+    setSelectedReportIds(new Set());
+  }, [selectedStudentId]);
 
-  const selectedReportToSend = studentReports.find((r) => r.id === selectedReportId) ?? studentReports[0] ?? null;
+  const toggleReportId = (id: string) => {
+    setSelectedReportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedReportsToSend = studentReports.filter((r) => selectedReportIds.has(r.id));
 
   // Find active chat thread for selected student
   const chatThread = useMemo(() => {
@@ -134,18 +139,22 @@ export default function ParentsManagementPage() {
   };
 
   const sendReportNotification = () => {
-    if (!selectedStudent || !selectedReportToSend) return;
-    const reportTitle = selectedReportToSend.program || 'التقرير التشخيصي المعالج';
-    const text = `📋 تم إرسال وتحديد التقرير الرسمي (${reportTitle}) للطالب (${selectedStudent.fullName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الآن.`;
-    saveMessage({
-      studentId: selectedStudent.id,
-      from: 'doctor',
-      to: 'parent',
-      body: text,
-      read: false,
+    if (!selectedStudent || selectedReportsToSend.length === 0) return;
+    selectedReportsToSend.forEach((report) => {
+      const reportTitle = report.program || 'التقرير التشخيصي المعالج';
+      const text = `📋 تم إرسال وتحديد التقرير الرسمي (${reportTitle}) للطالب (${selectedStudent.fullName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الآن.`;
+      saveMessage({
+        studentId: selectedStudent.id,
+        from: 'doctor',
+        to: 'parent',
+        body: text,
+        read: false,
+      });
     });
     setMessages(getMessages());
-    showNotification(`تم إرسال (${reportTitle}) إلى بوابة ولي أمر ${selectedStudent.fullName} بنجاح 📄✅`);
+    const titles = selectedReportsToSend.map((r) => r.program).join('، ');
+    showNotification(`تم إرسال (${titles}) إلى بوابة ولي أمر ${selectedStudent.fullName} بنجاح 📄✅`);
+    setSelectedReportIds(new Set());
   };
 
   const sendZoomInvite = () => {
@@ -354,27 +363,48 @@ export default function ParentsManagementPage() {
 
                           {studentReports.length > 0 ? (
                             <div className="space-y-2">
-                              <label className="block text-[11px] font-black text-slate-500">اختر من تقارير الطالب المتاحة ({studentReports.length}):</label>
-                              <select
-                                value={selectedReportId}
-                                onChange={(e) => setSelectedReportId(e.target.value)}
-                                className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-black text-slate-900 outline-none focus:border-teal-600"
-                              >
-                                {studentReports.map((r) => (
-                                  <option key={r.id} value={r.id}>
-                                    📄 {r.program} ({r.date}) — نتيجة {r.score}%
-                                  </option>
-                                ))}
-                              </select>
-                              {selectedReportToSend && (
-                                <div className="rounded-xl border border-teal-200 bg-teal-50/80 p-3 text-[11px] font-bold text-teal-950 space-y-1">
-                                  <p className="font-black text-teal-900">📌 التقرير المكتوب: {selectedReportToSend.program}</p>
-                                  <p className="line-clamp-2 text-slate-600">{selectedReportToSend.summary}</p>
-                                  <div className="pt-1 flex items-center justify-between text-[10px] text-teal-800 font-black">
-                                    <span>تاريخ الإصدار: {selectedReportToSend.date}</span>
-                                    <span>الدرجة: {selectedReportToSend.score}%</span>
-                                  </div>
-                                </div>
+                              <label className="block text-[11px] font-black text-slate-500">
+                                اختر التقارير التي تريد إرسالها لولي الأمر ({studentReports.length} متاح):
+                              </label>
+                              <div className="grid gap-2">
+                                {studentReports.map((r) => {
+                                  const checked = selectedReportIds.has(r.id);
+                                  return (
+                                    <label
+                                      key={r.id}
+                                      className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition select-none ${
+                                        checked
+                                          ? 'border-teal-500 bg-teal-50 shadow-xs'
+                                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleReportId(r.id)}
+                                        className="mt-0.5 h-4 w-4 accent-teal-600 shrink-0 cursor-pointer"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className={`text-[11px] font-black truncate ${ checked ? 'text-teal-900' : 'text-slate-800' }`}>
+                                          📄 {r.program}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                                          {r.date} — نتيجة {r.score}%
+                                        </p>
+                                      </div>
+                                      {checked && (
+                                        <span className="mr-auto shrink-0 rounded-full bg-teal-600 px-2 py-0.5 text-[9px] font-black text-white">
+                                          محدد ✓
+                                        </span>
+                                      )}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              {selectedReportsToSend.length > 0 && (
+                                <p className="text-[10px] font-black text-teal-700 bg-teal-50 rounded-xl border border-teal-200 px-3 py-2">
+                                  ✅ سيتم إرسال {selectedReportsToSend.length} تقرير/تقارير دفعة واحدة
+                                </p>
                               )}
                             </div>
                           ) : (
@@ -386,10 +416,10 @@ export default function ParentsManagementPage() {
 
                         <button
                           onClick={sendReportNotification}
-                          disabled={!selectedReportToSend}
+                          disabled={selectedReportsToSend.length === 0}
                           className="w-full rounded-xl bg-teal-600 py-3 text-xs font-black text-white hover:bg-teal-700 transition disabled:opacity-50 shadow-sm cursor-pointer"
                         >
-                          إرسال التقرير المحدد إلى بوابة ولي الأمر 📤
+                          إرسال التقارير المحددة ({selectedReportsToSend.length}) إلى بوابة ولي الأمر 📤
                         </button>
                       </div>
 
