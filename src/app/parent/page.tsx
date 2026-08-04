@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus } from 'lucide-react';
+import {
+  ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
+  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare
+} from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
-import { getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord, saveMessage, StudentRecord } from '@/lib/localDb';
 
 export default function ParentDashboard() {
   const router = useRouter();
@@ -16,6 +19,8 @@ export default function ParentDashboard() {
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [parentName, setParentName] = useState('ولي الأمر');
   const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [replyText, setReplyText] = useState('');
+  const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -47,15 +52,22 @@ export default function ParentDashboard() {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [router]);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
+  
   const studentReports = useMemo(
     () => reports.filter((report) => !selectedStudent || report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName),
     [reports, selectedStudent],
   );
-  const latestReport = studentReports[0];
-  const studentMessages = messages.filter((message) => selectedStudent && message.studentId === selectedStudent.id).slice(0, 4);
+
+  const studentMessages = useMemo(
+    () => messages
+      .filter((message) => selectedStudent && (message.studentId === selectedStudent.id || message.studentId === 'student_assessment'))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [messages, selectedStudent]
+  );
+
   const assignedSlugs = useMemo(() => {
     if (!selectedStudent) return [];
     return selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
@@ -65,27 +77,58 @@ export default function ParentDashboard() {
     return curriculumPrograms.filter((program) => assignedSlugs.includes(program.slug));
   }, [assignedSlugs]);
 
+  const latestReport = studentReports[0];
   const isUnderDoctorReview = selectedStudent?.reviewStatus === 'awaiting-doctor-review' || latestReport?.status === 'pending';
-  const parentReportText = isUnderDoctorReview
-    ? 'تم استلام ملف الطالب وإرساله إلى د. إسماعيل. سيتم اعتماد المسار المناسب بعد مراجعة التقرير والإجابات التفصيلية.'
-    : latestReport?.summary ?? 'أكمل بيانات الطالب والاستبيان حتى تظهر حالة المتابعة هنا.';
+
+  // Doctor must explicitly dispatch a report via message for it to show in the parent portal!
+  const isReportDispatchedByDoctor = (reportType: string) => {
+    return studentMessages.some((m) => m.from === 'doctor' && (
+      m.body.includes('تم إرسال وتحديد التقرير') ||
+      m.body.includes('التقرير الرسمي') ||
+      m.body.includes('تم اعتماد وإرسال التقرير')
+    ));
+  };
+
+  const handleSendReply = () => {
+    if (!replyText.trim() || !selectedStudent) return;
+    saveMessage({
+      studentId: selectedStudent.id,
+      from: 'parent',
+      to: 'doctor',
+      body: replyText.trim(),
+      read: false,
+    });
+    setReplyText('');
+    setMessages(getMessages());
+  };
+
+  const toggleTaskCompleted = (taskId: string) => {
+    setCompletedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950">
+    <div className="min-h-screen bg-[var(--background)] text-slate-950 font-sans" dir="rtl">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-        <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 space-y-6">
+        
+        {/* Header: Warm welcome to Parent */}
+        <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-black text-teal-800">بوابة ولي الأمر</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">متابعة الطالب من نفس تقارير الدكتور</h1>
-              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
-                أهلاً {parentName}. هذه الصفحة تعرض البيانات الفعلية المحفوظة في المنصة: الاختبار، التقرير، توصيات المنزل، وحالة المتابعة.
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-black text-teal-800 border border-teal-200">
+                <Sparkles size={14} className="text-teal-600" />
+                <span>بوابة ولي الأمر التفاعلية</span>
+              </span>
+              <h1 className="mt-2 text-2xl md:text-3xl font-black text-slate-950">
+                أهلاً بك أ. {parentName} في منصة مَسَار 🌸
+              </h1>
+              <p className="mt-2 max-w-3xl text-xs md:text-sm font-bold leading-relaxed text-slate-600">
+                متابعة الخطة العلاجية والتقارير المعتمدة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Link href="/auth/login" className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">تبديل الحساب</Link>
-              <Link href="/student/new" className="rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">إضافة طالب جديد</Link>
+              <Link href="/auth/login" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 hover:bg-slate-50 transition shadow-2xs">تبديل الحساب</Link>
+              <Link href="/student/new" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm">إضافة طفل جديد</Link>
             </div>
           </div>
         </header>
@@ -93,134 +136,344 @@ export default function ParentDashboard() {
         <SyncStatus />
 
         {students.length === 0 ? (
-          <section className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-            <UserRoundPlus className="mx-auto text-slate-500" size={36} />
+          <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+            <UserRoundPlus className="mx-auto text-slate-400" size={48} />
             <h2 className="mt-4 text-2xl font-black text-slate-950">لا يوجد طالب محفوظ بعد</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm font-bold leading-7 text-slate-600">
-              أضف بيانات الطفل أولاً، ثم سيظهر استبيان ولي الأمر الشامل ويرسل التقريرين إلى د. إسماعيل للمراجعة.
+            <p className="mx-auto mt-2 max-w-xl text-xs md:text-sm font-bold leading-relaxed text-slate-600">
+              أضف بيانات الطفل أولاً، ثم سيظهر استبيان ولي الأمر الشامل لتحديد المستوى وبدء التقييم.
             </p>
-            <Link href="/student/new" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+            <Link href="/student/new" className="mt-5 inline-flex rounded-xl bg-teal-700 px-5 py-3 text-xs font-black text-white">
               إضافة بيانات الطالب
             </Link>
           </section>
         ) : (
-          <section className="mt-6 grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-black text-slate-950">الأبناء المسجلون</h2>
-              <div className="mt-4 grid gap-3">
-                {students.map((student) => (
-                  <button
-                    key={student.id}
-                    onClick={() => setSelectedStudentId(student.id)}
-                    className={`rounded-lg border p-4 text-right transition ${selectedStudent?.id === student.id ? 'border-teal-700 bg-teal-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
-                  >
-                    <p className="font-black text-slate-950">{student.fullName}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-500">{student.grade}</p>
-                  </button>
-                ))}
+          <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+            
+            {/* Sidebar Student Selection */}
+            <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h2 className="text-base font-black text-slate-950">الأبناء المسجلون ({students.length})</h2>
+              <div className="grid gap-2">
+                {students.map((student) => {
+                  const isSelected = selectedStudent?.id === student.id;
+                  return (
+                    <button
+                      key={student.id}
+                      onClick={() => setSelectedStudentId(student.id)}
+                      className={`flex items-center gap-3 rounded-xl border p-3.5 text-right transition cursor-pointer ${
+                        isSelected
+                          ? 'border-teal-700 bg-teal-50 shadow-2xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 font-black text-sm">
+                        {student.fullName.slice(0, 1)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-slate-950 text-sm truncate">{student.fullName}</p>
+                        <p className="mt-0.5 text-xs font-bold text-slate-500 truncate">{student.grade}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </aside>
 
-            <div className="grid gap-6">
-              <section className="grid gap-4 md:grid-cols-3">
-                {[
-                  { label: 'حالة التقرير', value: latestReport ? 'قيد مراجعة الدكتور' : 'لم يبدأ', icon: ClipboardCheck },
-                  { label: 'التقارير', value: String(studentReports.length), icon: FileText },
-                  { label: 'المسارات المعتمدة', value: assignedProgramsList.length > 0 ? `${assignedProgramsList.length} مسارات` : 'قيد مراجعة الدكتور', icon: Home },
-                ].map(({ label, value, icon: Icon }) => (
-                  <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                    <Icon className="text-teal-700" size={22} />
-                    <p className="mt-4 text-sm font-black text-slate-500">{label}</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
-                  </article>
-                ))}
+            <div className="space-y-6">
+
+              {/* Status Overview Cards */}
+              <section className="grid gap-4 sm:grid-cols-3">
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                  <ClipboardCheck className="text-teal-700" size={24} />
+                  <p className="text-xs font-black text-slate-500">حالة التقييم</p>
+                  <p className="text-lg font-black text-slate-950">
+                    {latestReport ? 'تم الحفظ والتقييم' : 'قيد الانتظار'}
+                  </p>
+                </article>
+
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                  <FileText className="text-blue-700" size={24} />
+                  <p className="text-xs font-black text-slate-500">التقارير المتاحة</p>
+                  <p className="text-lg font-black text-slate-950">
+                    {studentReports.length} تقارير تشخيصية
+                  </p>
+                </article>
+
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                  <Home className="text-amber-700" size={24} />
+                  <p className="text-xs font-black text-slate-500">المسارات العلاجية المعتمدة</p>
+                  <p className="text-lg font-black text-slate-950">
+                    {assignedProgramsList.length > 0
+                      ? `${assignedProgramsList.length} مسارات معتمدة`
+                      : 'قيد مراجعة د. إسماعيل'}
+                  </p>
+                </article>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              {/* Multi-Track Display Card */}
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div>
-                    <p className="text-sm font-black text-teal-800">حالة ملف الطالب</p>
-                    <h2 className="mt-1 text-2xl font-black text-slate-950">
+                    <p className="text-xs font-black text-teal-800">حالة ملف الطالب والمسارات</p>
+                    <h2 className="text-lg font-black text-slate-950 mt-0.5">
                       {assignedProgramsList.length > 0
-                        ? `تم اعتماد ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
+                        ? `تم اعتماد المسارات العلاجية: ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
                         : latestReport
-                        ? 'قيد مراجعة د. إسماعيل'
-                        : 'لم يتم إرسال الاستبيان بعد'}
+                        ? 'ملف الطالب قيد مراجعة د. إسماعيل عيسى'
+                        : 'لم يتم استكمال التقييم بعد'}
                     </h2>
                   </div>
-                  {latestReport && !isUnderDoctorReview && (
-                    <Link href={`/reports?report=${latestReport.id}`} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
-                      فتح التقرير
-                      <ArrowLeft size={16} />
-                    </Link>
-                  )}
                 </div>
-                <p className="mt-4 text-sm font-bold leading-8 text-slate-600">
-                  {parentReportText}
-                </p>
-              </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black text-teal-800">تقارير الطفل</p>
-                    <h2 className="text-xl font-black text-slate-950">الملفات التي يرسلها د. إسماعيل</h2>
+                {assignedProgramsList.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {assignedProgramsList.map((program) => (
+                      <div key={program.slug} className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-full bg-teal-700 text-white px-2.5 py-0.5 text-[10px] font-black">
+                            مسار معتمد ✓
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500">{program.modules.length} وحدات</span>
+                        </div>
+                        <h3 className="font-black text-slate-950 text-sm">{program.title}</h3>
+                        <p className="text-xs font-bold text-slate-600 leading-relaxed">{program.promise}</p>
+                      </div>
+                    ))}
                   </div>
-                  {selectedStudent && (
-                    <Link href={`/messages?student=${selectedStudent.id}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700">
-                      <MessageSquareText size={17} />
-                      الرسائل
-                    </Link>
-                  )}
+                ) : (
+                  <p className="text-xs font-bold leading-relaxed text-slate-600 bg-slate-50 p-4 rounded-xl">
+                    سيظهر هنا تفاصيل المسارات العلاجية المعتمدة فور قيام د. إسماعيل بعرض التقرير واعتماد الخطة المناسبة لطالك.
+                  </p>
+                )}
+              </section>
+
+              {/* Reports Section: Only displays if Doctor explicitly dispatched them */}
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                <div>
+                  <p className="text-xs font-black text-teal-800">تقارير الطفل المعتمدة</p>
+                  <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المرسلة من د. إسماعيل</h2>
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {getParentReportSlots(studentReports).map((slot) => (
-                    <article key={slot.title} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <FileText className={slot.report ? 'text-teal-700' : 'text-slate-400'} size={22} />
-                      <h3 className="mt-3 font-black text-slate-950">{slot.title}</h3>
-                      <p className="mt-2 min-h-12 text-xs font-bold leading-6 text-slate-500">{slot.description}</p>
-                      {slot.report ? (
-                        <Link href={`/reports?report=${slot.report.id}&mode=parent`} className="mt-4 inline-flex w-full justify-center rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white">
-                          فتح التقرير
-                        </Link>
-                      ) : (
-                        <span className="mt-4 inline-flex w-full justify-center rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-400 ring-1 ring-slate-200">
-                          لم يرسل بعد
-                        </span>
-                      )}
-                    </article>
-                  ))}
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    {
+                      title: 'إجابات ولي الأمر',
+                      description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها.',
+                      report: studentReports.find((r) => r.type === 'survey-answers'),
+                    },
+                    {
+                      title: 'إجابات الطالب',
+                      description: 'نتيجة اختبار الطالب التفصيلية كما راجعها الدكتور.',
+                      report: studentReports.find((r) => r.type === 'student-assessment-answers'),
+                    },
+                    {
+                      title: 'التقرير التحليلي والخطة',
+                      description: 'التقرير النهائي وتوصيات د. إسماعيل عيسى.',
+                      report: studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'clinical-analysis'),
+                    },
+                  ].map((slot) => {
+                    const isDispatched = slot.report && isReportDispatchedByDoctor(slot.report.type);
+                    return (
+                      <article key={slot.title} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                        <div className="space-y-2">
+                          <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={24} />
+                          <h3 className="font-black text-slate-950 text-sm">{slot.title}</h3>
+                          <p className="text-xs font-bold text-slate-500 leading-relaxed min-h-[36px]">{slot.description}</p>
+                        </div>
+
+                        {isDispatched ? (
+                          <Link
+                            href={`/reports?report=${slot.report!.id}&mode=parent`}
+                            className="inline-flex w-full justify-center rounded-xl bg-slate-950 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition"
+                          >
+                            فتح التقرير المعتمد 📄
+                          </Link>
+                        ) : (
+                          <div className="rounded-xl bg-white border border-slate-200 p-2.5 text-center text-xs font-black text-slate-400">
+                            لم يرسل بعد من الدكتور
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-xl font-black text-slate-950">آخر الرسائل</h2>
-                <div className="mt-4 grid gap-3">
-                  {studentMessages.length ? studentMessages.map((message) => (
-                    <article key={message.id} className="rounded-lg bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">{message.from === 'doctor' ? 'د. إسماعيل' : 'ولي الأمر'}</p>
-                      <p className="mt-2 text-sm font-bold leading-7 text-slate-700">{message.body}</p>
-                    </article>
-                  )) : (
-                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-500">لا توجد رسائل بعد.</p>
+              {/* Live Interactive Chat Box with Dr. Ismail */}
+              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden space-y-0">
+                <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={20} className="text-teal-400" />
+                    <div>
+                      <h3 className="font-black text-sm">محادثة الشات المباشرة مع د. إسماعيل عيسى</h3>
+                      <p className="text-[11px] font-bold text-slate-400">يمكنك الرد والتواصل المباشر بشأن متابعة الطفل</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-teal-900/80 text-teal-300 border border-teal-700 px-3 py-1 text-xs font-black">
+                    {studentMessages.length} رسالة
+                  </span>
+                </div>
+
+                {/* Chat Message History */}
+                <div className="min-h-[260px] max-h-[360px] overflow-y-auto p-4 bg-slate-50 space-y-3">
+                  {studentMessages.length > 0 ? (
+                    studentMessages.map((msg) => {
+                      const isDoctor = msg.from === 'doctor';
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col max-w-[85%] ${
+                            isDoctor ? 'ml-auto items-start' : 'mr-auto items-end'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1 px-1">
+                            <span className={`text-[10px] font-black ${isDoctor ? 'text-teal-800' : 'text-slate-600'}`}>
+                              {isDoctor ? '👨‍⚕️ د. إسماعيل عيسى' : `👨‍👦 ولي الأمر (${parentName})`}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400">
+                              {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div
+                            className={`rounded-2xl p-3.5 text-xs font-bold leading-relaxed shadow-2xs whitespace-pre-wrap ${
+                              isDoctor
+                                ? 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                                : 'bg-teal-700 text-white rounded-tr-none'
+                            }`}
+                          >
+                            {msg.body}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="grid place-items-center py-12 text-center text-slate-400">
+                      <MessageSquare size={36} className="text-slate-300 mb-2" />
+                      <p className="text-xs font-bold">لا توجد رسائل سابقة في الشات بعد.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">اكتب ردك بالأسفل ليتواصل د. إسماعيل معك مباشرة.</p>
+                    </div>
                   )}
+                </div>
+
+                {/* Chat Reply Bar */}
+                <div className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendReply();
+                      }
+                    }}
+                    placeholder="اكتب ردك أو استفسارك للدكتور إسماعيل..."
+                    className="flex-1 min-h-[44px] max-h-[100px] rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 resize-none"
+                  />
+                  <button
+                    onClick={handleSendReply}
+                    disabled={!replyText.trim()}
+                    className="rounded-xl bg-teal-700 px-5 py-3 text-xs font-black text-white hover:bg-teal-800 transition disabled:opacity-40 shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <Send size={15} />
+                    <span>إرسال الرد</span>
+                  </button>
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-xl font-black text-slate-950">واجب المنزل لهذا الأسبوع</h2>
-                <div className="mt-4 grid gap-3">
-                  {(isUnderDoctorReview
-                    ? [
-                      'اقرأ مع الطفل قصة قصيرة لمدة 5 دقائق بدون تصحيح زائد أو ضغط.',
-                      'استخدم لعبة صوتية بسيطة: اسمع الحرف ثم ابحث عن شيء في البيت يبدأ بنفس الصوت.',
-                      'سجل ملاحظة واحدة يومياً عن التركيز أو القراءة أو الكتابة لإضافتها في المتابعة.',
-                    ]
-                    : latestReport?.recommendations.slice(0, 4) ?? ['أضف بيانات الطالب وأكمل الاستبيان حتى تظهر توصيات منزلية مناسبة.']).map((item) => (
-                    <p key={item} className="rounded-lg bg-slate-50 p-4 text-sm font-bold leading-7 text-slate-700">{item}</p>
-                  ))}
+              {/* Interactive Home Assignments & Story Cards */}
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <p className="text-xs font-black text-teal-800">التدريب والتطبيق المنزلي</p>
+                    <h2 className="text-lg font-black text-slate-950 mt-0.5">واجب المنزل لهذا الأسبوع (مهام تفاعلية)</h2>
+                  </div>
+                  <span className="rounded-full bg-amber-100 text-amber-900 px-3 py-1 text-xs font-black">
+                    مهمة قصيرة 5 دقائق يومياً ⭐
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+
+                  {/* Task 1: Illustrated Story Task */}
+                  <article className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-sky-900">📖 القراءة المصورة</span>
+                        <span className="text-[10px] font-bold text-sky-700">5 دقائق</span>
+                      </div>
+                      <h3 className="font-black text-slate-950 text-sm">قصة الأسد الصغير الشجاع</h3>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                        اقرأ مع الطفل القصة القصيرة المصورة مرة واحدة، ثم اسأله عن بطل القصة وكيف تصرف عند المواجهة.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => toggleTaskCompleted('story_task')}
+                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                        completedTasks['story_task']
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white border border-sky-300 text-sky-950 hover:bg-sky-100'
+                      }`}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{completedTasks['story_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
+                    </button>
+                  </article>
+
+                  {/* Task 2: Audio & Phonetics Task */}
+                  <article className="rounded-xl border border-purple-200 bg-purple-50/70 p-4 space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-purple-900">🎵 التمييز السمعي</span>
+                        <span className="text-[10px] font-bold text-purple-700">3 دقائق</span>
+                      </div>
+                      <h3 className="font-black text-slate-950 text-sm">لعبة الأصوات المنزلية</h3>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                        انطق حرفاً مستهدفاً (مثلاً: حرف "س")، واطلب من الطفل البحث عن شيء بالمنزل يبدأ بنفس الحرف.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => toggleTaskCompleted('audio_task')}
+                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                        completedTasks['audio_task']
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white border border-purple-300 text-purple-950 hover:bg-purple-100'
+                      }`}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{completedTasks['audio_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
+                    </button>
+                  </article>
+
+                  {/* Task 3: Observation Log */}
+                  <article className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-900">📝 الملاحظة اليومية</span>
+                        <span className="text-[10px] font-bold text-amber-700">دقيقة واحدة</span>
+                      </div>
+                      <h3 className="font-black text-slate-950 text-sm">ملاحظة الانتباه والتركيز</h3>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                        سجل ملاحظة بسيطة بالشات لدكتور إسماعيل عن مدى تركيز وقراءة الطفل أثناء الواجب المنزلي اليوم.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => toggleTaskCompleted('note_task')}
+                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                        completedTasks['note_task']
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white border border-amber-300 text-amber-950 hover:bg-amber-100'
+                      }`}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{completedTasks['note_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
+                    </button>
+                  </article>
+
                 </div>
               </section>
+
             </div>
           </section>
         )}
@@ -229,22 +482,4 @@ export default function ParentDashboard() {
   );
 }
 
-function getParentReportSlots(reports: ReportRecord[]) {
-  return [
-    {
-      title: 'إجابات ولي الأمر',
-      description: 'نسخة الأسئلة والإجابات التي سجلها ولي الأمر.',
-      report: reports.find((report) => report.type === 'survey-answers'),
-    },
-    {
-      title: 'إجابات الطالب',
-      description: 'نتيجة اختبار الطالب التفصيلية كما راجعها الدكتور.',
-      report: reports.find((report) => report.type === 'student-assessment-answers'),
-    },
-    {
-      title: 'التقرير التحليلي',
-      description: 'الخطة والملاحظات التي يعتمدها د. إسماعيل.',
-      report: reports.find((report) => report.type === 'student-assessment-analysis') ?? reports.find((report) => report.type === 'clinical-analysis'),
-    },
-  ];
-}
+
