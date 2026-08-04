@@ -282,9 +282,9 @@ export default function Home() {
 
                 {/* Headline */}
                 <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl tracking-tight">
-                  <span className="block text-2xl sm:text-3xl font-black tracking-widest text-slate-800 mb-2">مَسَار</span>
+                  <span className="block font-black tracking-widest text-slate-900 mb-1" style={{fontSize:'inherit'}}>مَسَار</span>
                   اكتشف طفلك. طوّر قدراته.{' '}
-                  <span className="bg-gradient-to-l from-blue-700 via-indigo-600 to-blue-900 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-l from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
                     غيّر مستقبله.
                   </span>
                 </h1>
