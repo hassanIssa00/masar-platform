@@ -6,11 +6,12 @@ export const metadata: Metadata = {
   description: 'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لكل طالب.',
   icons: {
     icon: [
-      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon.ico' },
       { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
     ],
     apple: { url: '/apple-touch-icon.png', sizes: '48x48', type: 'image/png' },
-    shortcut: '/favicon-32.png',
+    shortcut: '/favicon.ico',
   },
   openGraph: {
     title: 'د. إسماعيل عيسى | اكتشف طفلك — طوّر قدراته — غيّر مستقبله',
