@@ -180,7 +180,7 @@ export default function ParentsManagementPage() {
     <div className="min-h-screen bg-[var(--background)] text-slate-950 font-sans" dir="rtl">
       <Navbar />
       <div className="flex">
-        <Sidebar />
+        <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8 space-y-6">
 
           {/* Header */}
@@ -543,3 +543,4 @@ export default function ParentsManagementPage() {
     </div>
   );
 }
+
