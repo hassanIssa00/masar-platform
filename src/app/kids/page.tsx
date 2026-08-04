@@ -170,11 +170,26 @@ function KidsDashboardContent() {
                   <p className="text-sm font-black">{status.description}</p>
                 </div>
               </div>
-              <div className="grid min-h-48 place-items-center bg-slate-950 p-6 text-white">
-                <div className="text-center">
-                  <Gamepad2 className="mx-auto" size={56} />
-                  <p className="mt-4 text-4xl font-black">{games.length}</p>
-                  <p className="mt-1 text-sm font-bold text-white/70">ألعاب تفاعلية متاحة</p>
+              {/* Student Photo & Profile Card */}
+              <div className="grid min-h-48 place-items-center bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 p-6 text-white text-center border-r lg:border-r-0 lg:border-l border-slate-800">
+                <div className="flex flex-col items-center gap-3">
+                  {student?.photoUrl ? (
+                    <div
+                      className="h-28 w-28 rounded-2xl bg-cover bg-center ring-4 ring-teal-500/40 shadow-xl border-2 border-white/20"
+                      style={{ backgroundImage: `url(${student.photoUrl})` }}
+                    />
+                  ) : (
+                    <div className="grid h-28 w-28 place-items-center rounded-2xl bg-teal-800/80 text-teal-200 ring-4 ring-teal-500/30 border-2 border-teal-400/40 shadow-xl">
+                      <UserRound size={56} />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-black text-white">{student?.fullName || 'اسم الطالب'}</p>
+                    <p className="mt-0.5 text-xs font-bold text-teal-300">{student?.grade || 'الصف الدراسي'}</p>
+                    <span className="mt-2 inline-block rounded-full bg-white/10 px-3 py-1 text-[10px] font-black text-white/80 ring-1 ring-white/15">
+                      صورة الطالب المعتمدة 📸
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
