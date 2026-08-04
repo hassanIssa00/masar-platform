@@ -126,12 +126,6 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="grid gap-3 md:hidden">
-                {latestReports.map((report) => (
-                  <StudentRowCard key={report.id} report={report} />
-                ))}
-              </div>
-
               {latestReports.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
                   <p className="font-black text-slate-950">لا توجد حالات محفوظة بعد</p>
@@ -141,37 +135,11 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ) : (
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[760px] text-right">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-xs font-black text-slate-500">
-                      <th className="py-3">الطالب</th>
-                      <th className="py-3">المسار</th>
-                      <th className="py-3">أولوية التدخل</th>
-                      <th className="py-3">القرار</th>
-                      <th className="py-3">التقدم</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latestReports.map((report) => (
-                      <tr key={report.id} className="border-b border-slate-100 last:border-0">
-                        <td className="py-4">
-                          <p className="font-black text-slate-950">{report.studentName}</p>
-                          <p className="text-sm font-bold text-slate-500">{report.grade}</p>
-                        </td>
-                        <td className="py-4 text-sm font-bold text-slate-800">{report.program}</td>
-                        <td className="py-4 text-sm font-bold text-slate-600">{report.summary}</td>
-                        <td className="py-4">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{report.status === 'completed' ? 'مكتمل' : 'قيد المراجعة'}</span>
-                        </td>
-                        <td className="py-4">
-                          <Progress value={report.score} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                <div className="grid gap-3">
+                  {latestReports.map((report) => (
+                    <ReportCard key={report.id} report={report} />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -228,20 +196,44 @@ export default function DashboardPage() {
   );
 }
 
-function StudentRowCard({ report }: { report: ReportRecord }) {
+function ReportCard({ report }: { report: ReportRecord }) {
+  const isCompleted = report.status === 'completed';
   return (
-    <article className="rounded-lg bg-slate-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-black text-slate-950">{report.studentName}</h3>
-          <p className="text-sm font-bold text-slate-500">{report.grade} · {report.program}</p>
+    <article className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      {/* Top row: student info + status badge + score */}
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
+        <div className="min-w-0">
+          <p className="text-[14px] font-black text-slate-950 leading-tight">{report.studentName}</p>
+          <p className="mt-0.5 text-[12px] font-bold text-slate-500">{report.grade}</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">{report.score}%</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`rounded-full px-3 py-1 text-[11px] font-black ${isCompleted ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
+            {isCompleted ? 'مكتمل' : 'قيد المراجعة'}
+          </span>
+          <span className="text-[13px] font-black text-slate-700 w-10 text-left">{report.score}%</span>
+        </div>
       </div>
-      <p className="mt-3 text-sm font-bold leading-6 text-slate-600">{report.summary}</p>
-      <div className="mt-3">
-        <Progress value={report.score} />
+      {/* Progress bar */}
+      <div className="px-4 py-2.5">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${report.score}%`, backgroundColor: report.score >= 70 ? '#0f766e' : report.score >= 40 ? '#d97706' : '#ef4444' }}
+          />
+        </div>
       </div>
+      {/* Program label */}
+      {report.program && (
+        <div className="px-4 pb-2">
+          <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">{report.program}</span>
+        </div>
+      )}
+      {/* Summary — fully contained, no overflow */}
+      {report.summary && (
+        <div className="mx-4 mb-4 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
+          <p className="text-[12px] font-bold text-slate-600 leading-relaxed">{report.summary}</p>
+        </div>
+      )}
     </article>
   );
 }
