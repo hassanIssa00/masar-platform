@@ -86,6 +86,31 @@ export type MessageRecord = {
   read?: boolean;
 };
 
+export type IkhlasDailyLogRecord = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  date: string;
+  attendance: 'present' | 'absent' | 'late';
+  performanceScore: number;
+  summaryReport: string;
+  exitTime?: string;
+  exitLoggedAt?: string;
+  parentNotified?: boolean;
+  lateAlertSent?: boolean;
+  createdAt: string;
+};
+
+export type IkhlasCommunityPost = {
+  id: string;
+  title: string;
+  content: string;
+  type: 'homework' | 'announcement' | 'photo' | 'alert';
+  dueDate?: string;
+  author: string;
+  createdAt: string;
+};
+
 const KEYS = {
   accounts: 'masar.accounts.v1',
   students: 'masar.students.v1',
@@ -94,6 +119,8 @@ const KEYS = {
   session: 'masar.session.v1',
   activity: 'masar.activity.v1',
   messages: 'masar.messages.v1',
+  ikhlasLogs: 'masar.ikhlasLogs.v1',
+  ikhlasPosts: 'masar.ikhlasPosts.v1',
 };
 
 // Flag stored after a data purge — prevents stale local data being re-pushed to cloud
@@ -358,6 +385,56 @@ export function saveMessage(message: Omit<MessageRecord, 'id' | 'createdAt'>) {
     refId: next.studentId,
     title: 'رسالة جديدة',
     detail: `${next.from === 'doctor' ? 'د. إسماعيل' : 'ولي الأمر'}: ${next.body.slice(0, 70)}`,
+  });
+  return next;
+}
+
+// ── Ikhlas Jeddah 1st Grade Class Helpers ──
+export function getIkhlasLogs() {
+  return readList<IkhlasDailyLogRecord>(KEYS.ikhlasLogs);
+}
+
+export function saveIkhlasLog(log: Omit<IkhlasDailyLogRecord, 'id' | 'createdAt'> & { id?: string }) {
+  const logs = getIkhlasLogs();
+  const existingIdx = log.id ? logs.findIndex((l) => l.id === log.id) : -1;
+  
+  const next: IkhlasDailyLogRecord = {
+    ...log,
+    id: log.id || createId('ikhlas_log'),
+    createdAt: new Date().toISOString(),
+  };
+
+  let updatedList: IkhlasDailyLogRecord[];
+  if (existingIdx >= 0) {
+    updatedList = [...logs];
+    updatedList[existingIdx] = next;
+  } else {
+    updatedList = [next, ...logs];
+  }
+
+  writeList(KEYS.ikhlasLogs, updatedList);
+  syncDocToCloud('ikhlasLogs', next.id, next);
+  return next;
+}
+
+export function getIkhlasPosts() {
+  return readList<IkhlasCommunityPost>(KEYS.ikhlasPosts);
+}
+
+export function saveIkhlasPost(post: Omit<IkhlasCommunityPost, 'id' | 'createdAt'>) {
+  const posts = getIkhlasPosts();
+  const next: IkhlasCommunityPost = {
+    ...post,
+    id: createId('ikhlas_post'),
+    createdAt: new Date().toISOString(),
+  };
+
+  writeList(KEYS.ikhlasPosts, [next, ...posts]);
+  syncDocToCloud('ikhlasPosts', next.id, next);
+  saveActivity({
+    type: 'account',
+    title: `واجب/منشور جديد - فصل الإخلاص: ${next.title}`,
+    detail: next.content.slice(0, 80),
   });
   return next;
 }

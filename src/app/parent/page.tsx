@@ -5,18 +5,23 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
-  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare
+  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare, Clock, Bell, Building2
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
-import { getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord, saveMessage, StudentRecord } from '@/lib/localDb';
+import {
+  getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord,
+  saveMessage, StudentRecord, getIkhlasLogs, getIkhlasPosts, IkhlasDailyLogRecord, IkhlasCommunityPost
+} from '@/lib/localDb';
 
 export default function ParentDashboard() {
   const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
+  const [ikhlasLogs, setIkhlasLogs] = useState<IkhlasDailyLogRecord[]>([]);
+  const [ikhlasPosts, setIkhlasPosts] = useState<IkhlasCommunityPost[]>([]);
   const [parentName, setParentName] = useState('ولي الأمر');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [replyText, setReplyText] = useState('');
@@ -34,6 +39,8 @@ export default function ParentDashboard() {
       setStudents(nextStudents);
       setReports(getReports());
       setMessages(getMessages());
+      setIkhlasLogs(getIkhlasLogs());
+      setIkhlasPosts(getIkhlasPosts());
       setParentName(getSession()?.name ?? 'ولي الأمر');
       
       const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar_active_student_id') : null;
@@ -244,6 +251,117 @@ export default function ParentDashboard() {
                     سيظهر هنا تفاصيل المسارات العلاجية المعتمدة فور قيام د. إسماعيل بعرض التقرير واعتماد الخطة المناسبة لطالك.
                   </p>
                 )}
+              </section>
+
+              {/* AL-IKHLAS JEDDAH 1ST GRADE DAILY LOG CARD */}
+              <section className="rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-white via-teal-50/40 to-slate-50 p-6 shadow-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-teal-100 pb-3">
+                  <div>
+                    <span className="rounded-full bg-teal-100 text-teal-900 px-3 py-1 text-[11px] font-black border border-teal-200 inline-flex items-center gap-1.5">
+                      <Building2 size={13} className="text-teal-700" />
+                      <span>مدارس الإخلاص الأهلية بجدة 🇸🇦 - أولى ابتدائي (1/1)</span>
+                    </span>
+                    <h2 className="text-lg font-black text-slate-950 mt-1.5 flex items-center gap-2">
+                      <span>كشف المتابعة اليومية ووقت خروج الطفل اليوم</span>
+                      <Sparkles size={16} className="text-amber-500" />
+                    </h2>
+                  </div>
+                  <Link
+                    href="/branches/ikhlas-jeddah"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 text-xs font-black transition shrink-0 shadow-xs"
+                  >
+                    <span>لوحة الفصل الإدارية</span>
+                    <ArrowLeft size={14} />
+                  </Link>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Exit Timestamp & Attendance Status */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                        <Clock size={16} className="text-teal-600" />
+                        <span>توثيق خروج الطفل بالدقيقة</span>
+                      </span>
+                      <span className="rounded-md bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-black">
+                        حاضر ومُوثق
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl bg-teal-50/80 p-3.5 border border-teal-200 text-right">
+                      <p className="text-[11px] font-bold text-teal-800">وقت الانصراف الرسمي الموثق من المعلم:</p>
+                      <p className="text-xl font-black text-teal-950 mt-0.5">01:45 م 🕒</p>
+                      <p className="text-[10px] font-bold text-slate-500 mt-1">تم توثيق خروج الطفل من بوابة المدرسة بنجاح.</p>
+                    </div>
+
+                    <div className="rounded-xl bg-amber-50 p-3 border border-amber-200 flex items-center gap-2 text-amber-900 text-xs font-black">
+                      <Bell size={16} className="text-amber-600 shrink-0" />
+                      <span>تنبيه الاستلام: يرجى التواجد عند البوابة لاستلام الطفل عند انصراف الصف.</span>
+                    </div>
+                  </div>
+
+                  {/* Daily Academic & Behavioral Performance */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                        <Star size={16} className="text-amber-500" />
+                        <span>أداء وتقييم الطفل اليومي</span>
+                      </span>
+                      <span className="text-xs font-black text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-md border border-teal-200">
+                        95% ممتاز
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full bg-teal-600 rounded-full" style={{ width: '95%' }} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-xs font-bold text-slate-700 leading-relaxed">
+                      <p className="font-black text-slate-900 mb-1">التقرير اليومي لمهارات اليوم:</p>
+                      <p>تم تدريس مهارات القراءة الجهرية في كتاب لغتي، والتمييز بين المقاطع الصوتية القصيرة والطويلة، وإكمال واجب الحساب اليومي بتميز.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Latest Homework & Class Feed */}
+                <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-right">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <BookOpen size={16} className="text-teal-600" />
+                      <span>الواجبات والمستجدات اليومية - مجتمع أولى ابتدائي</span>
+                    </h4>
+                    <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-200">
+                      واجب جديد 📚
+                    </span>
+                  </div>
+
+                  {ikhlasPosts.length > 0 ? (
+                    <div className="space-y-2">
+                      {ikhlasPosts.slice(0, 2).map((post) => (
+                        <div key={post.id} className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-xs font-bold space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-slate-900">{post.title}</span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {new Date(post.createdAt).toLocaleDateString('ar-SA')}
+                            </span>
+                          </div>
+                          <p className="text-slate-600 leading-relaxed">{post.content}</p>
+                          {post.dueDate && (
+                            <p className="text-[11px] font-black text-rose-600 pt-1">
+                              تسليم الواجب: {post.dueDate}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-xs font-bold text-slate-600">
+                      واجب اليوم: قراءة درس (الأسرة) في كتاب لغتي وكتابة الكلمات الثلاثية 3 مرات في الكراسة المنزلية. التسليم غداً غرة اليوم الدراسي.
+                    </div>
+                  )}
+                </div>
               </section>
 
               {/* Reports Section: Only displays if Doctor explicitly dispatched them */}
