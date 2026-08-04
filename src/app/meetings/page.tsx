@@ -6,7 +6,7 @@ import {
   Video, VideoOff, Mic, MicOff, Monitor, PhoneOff, Copy,
   Trash2, CalendarClock, PenTool, Radio, User,
   ShieldCheck, AlertTriangle, Users, Eraser, RotateCcw,
-  VolumeX, UserX, MessageSquare, Plus,
+  VolumeX, UserX, MessageSquare, Plus, Sparkles, LogIn, ArrowRight
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -58,28 +58,31 @@ function makeId() {
 /* ═══════════════ PAGE ENTRY ═══════════════ */
 export default function MeetingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 grid place-items-center"><div className="h-10 w-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <MeetingsContent />
     </Suspense>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MAIN COMPONENT — decides: management panel vs call studio
+   MAIN COMPONENT — decides: Management, Guest Join, or Studio
 ═══════════════════════════════════════════════════════════ */
 function MeetingsContent() {
   const sp          = useSearchParams();
   const roomParam   = sp.get('room');   // ?room=MASAR-ROOM-xxxx
   const tokenParam  = sp.get('t');      // ?t=<hostToken>  (doctor only)
 
-  const [ready,     setReady]    = useState(false);
-  const [isDoctor,  setIsDoctor] = useState(false);  // logged-in as doctor
-  const [isHost,    setIsHost]   = useState(false);  // host role in this call
-  const [meetings,  setMeetings] = useState<MeetingRecord[]>([]);
-  const [students,  setStudents] = useState<StudentRecord[]>([]);
-  const [inCall,    setInCall]   = useState<{ roomCode: string; title: string } | null>(null);
-  const [copyMsg,   setCopyMsg]  = useState('');
-  const [origin,    setOrigin]   = useState('');
+  const [ready,         setReady]         = useState(false);
+  const [sessionUser,   setSessionUser]   = useState<{ name: string; role: string } | null>(null);
+  const [isHost,        setIsHost]        = useState(false);  // host role in this call
+  const [meetings,      setMeetings]      = useState<MeetingRecord[]>([]);
+  const [students,      setStudents]      = useState<StudentRecord[]>([]);
+  const [inCall,        setInCall]        = useState<{ roomCode: string; title: string; participantName: string } | null>(null);
+  const [guestNameInput, setGuestNameInput] = useState('');
+  const [guestJoining,  setGuestJoining]  = useState(false);
+  const [roomTitle,     setRoomTitle]     = useState('جلسة تفاعلية مباشرة');
+  const [copyMsg,       setCopyMsg]       = useState('');
+  const [origin,        setOrigin]        = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -96,31 +99,42 @@ function MeetingsContent() {
     if (typeof window !== 'undefined') setOrigin(window.location.origin);
 
     const session = getSession();
-    setIsDoctor(session?.role === 'doctor');
+    if (session) {
+      setSessionUser({ name: session.name || 'مستخدم مسار', role: session.role });
+    } else {
+      setSessionUser(null);
+    }
     setMeetings(readMeetings());
     setStudents(getStudents());
 
     if (roomParam) {
-      /* ── Joining a room from a shared link ── */
-      if (tokenParam) {
-        // Verify host token against Firestore (secure, cross-device)
-        getDoc(doc(db, 'masar_rooms', roomParam))
-          .then((snap) => {
+      // Fetch room title from Firestore if available
+      getDoc(doc(db, 'masar_rooms', roomParam))
+        .then((snap) => {
+          if (snap.exists()) {
             const data = snap.data();
-            const validHost = data?.hostToken === tokenParam;
-            setIsHost(validHost);
-            setInCall({ roomCode: roomParam, title: data?.title || 'جلسة مباشرة' });
-          })
-          .catch(() => {
-            setIsHost(false);
-            setInCall({ roomCode: roomParam, title: 'جلسة مباشرة' });
-          })
-          .finally(() => setReady(true));
-      } else {
-        // No token → always guest
+            if (data?.title) setRoomTitle(data.title);
+            if (tokenParam && data?.hostToken === tokenParam) {
+              setIsHost(true);
+              setInCall({
+                roomCode: roomParam,
+                title: data?.title || 'جلسة مباشرة',
+                participantName: session?.name || 'د. إسماعيل عيسى (المضيف)',
+              });
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setReady(true));
+
+      // If user is already logged in on Masar (and not explicit token matching), automatically set inCall for student/parent
+      if (session && !tokenParam) {
         setIsHost(false);
-        setInCall({ roomCode: roomParam, title: 'جلسة مباشرة' });
-        setReady(true);
+        setInCall({
+          roomCode: roomParam,
+          title: roomTitle,
+          participantName: session.name || 'طالب مسار',
+        });
       }
     } else {
       setReady(true);
@@ -138,7 +152,6 @@ function MeetingsContent() {
     const roomCode  = `MASAR-${makeId().slice(0, 8).toUpperCase()}`;
     const hostToken = makeId();
 
-    // Store host token in Firestore so it can be verified from any device
     setDoc(doc(db, 'masar_rooms', roomCode), {
       hostToken,
       title: form.title,
@@ -175,7 +188,7 @@ function MeetingsContent() {
     flash('تم حذف الجلسة.');
   };
 
-  /* ── Copy guest link (no token — anyone can join as guest) ── */
+  /* ── Copy guest link ── */
   const copyGuestLink = async (m: MeetingRecord) => {
     const guestLink = `${origin}/meetings?room=${m.roomCode}`;
     const text = [
@@ -190,10 +203,14 @@ function MeetingsContent() {
     flash('✅ تم نسخ رابط الضيف! أرسله للطلاب وأولياء الأمور.');
   };
 
-  /* ── Doctor opens room as host (using their secret host token) ── */
+  /* ── Doctor opens room as host ── */
   const openAsHost = (m: MeetingRecord) => {
     setIsHost(true);
-    setInCall({ roomCode: m.roomCode, title: m.title });
+    setInCall({
+      roomCode: m.roomCode,
+      title: m.title,
+      participantName: sessionUser?.name || 'د. إسماعيل عيسى (المضيف)',
+    });
   };
 
   /* ── Instant meeting ── */
@@ -206,6 +223,7 @@ function MeetingsContent() {
       targetName: 'جميع الحضور',
       createdAt: Date.now(),
     }).catch(() => {});
+
     const meeting: MeetingRecord = {
       id: `mtg_${Date.now()}`,
       roomCode,
@@ -222,49 +240,160 @@ function MeetingsContent() {
     writeMeetings(updated);
     setMeetings(updated);
     setIsHost(true);
-    setInCall({ roomCode, title: meeting.title });
+    setInCall({
+      roomCode,
+      title: meeting.title,
+      participantName: sessionUser?.name || 'د. إسماعيل عيسى (المضيف)',
+    });
+  };
+
+  /* ── Guest Form Submission ── */
+  const handleGuestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestNameInput.trim() || !roomParam) return;
+    setGuestJoining(true);
+    setIsHost(false);
+    setInCall({
+      roomCode: roomParam,
+      title: roomTitle,
+      participantName: guestNameInput.trim(),
+    });
   };
 
   if (!ready) return null;
 
-  /* ══════════════════════════
-     IN CALL — full video studio
-  ══════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     1. IN CALL STUDIO (Active Call for Host or Guest/Student)
+  ═══════════════════════════════════════════════════════════ */
   if (inCall) {
     return (
       <CallStudio
         roomCode={inCall.roomCode}
         title={inCall.title}
+        participantName={inCall.participantName}
         isHost={isHost}
+        isMasarUser={!!sessionUser}
         guestLink={`${origin}/meetings?room=${inCall.roomCode}`}
         onLeave={() => { setInCall(null); setIsHost(false); }}
       />
     );
   }
 
-  /* ══════════════════════════
-     GUEST WITH NO ROOM — info page
-  ══════════════════════════ */
-  if (!isDoctor) {
+  /* ═══════════════════════════════════════════════════════════
+     2. GUEST JOIN LANDING PAGE (Unauthenticated Guest opening link)
+     Design: Custom standalone glassmorphic room join page
+  ═══════════════════════════════════════════════════════════ */
+  if (roomParam && !sessionUser && !tokenParam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-900 to-slate-900 flex items-center justify-center p-4" dir="rtl">
-        <div className="text-center p-10 rounded-3xl bg-white shadow-2xl border border-slate-200 max-w-md w-full">
-          <div className="h-20 w-20 rounded-full bg-teal-50 border-4 border-teal-200 grid place-items-center mx-auto mb-5">
-            <Video size={40} className="text-teal-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-teal-950 to-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans" dir="rtl">
+
+        {/* Dynamic Background Glows */}
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Main Card */}
+        <div className="w-full max-w-lg bg-slate-900/80 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-8 shadow-2xl relative z-10 space-y-6">
+
+          {/* Header Badge */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 grid place-items-center shadow-lg shadow-teal-500/20">
+                <Video size={24} className="text-white" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">منصة مسار الطبية والتأهيلية</span>
+                <h1 className="text-lg font-black text-white">غرفة الجلسات المباشرة</h1>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" /> متاح الآن
+            </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">منصة مسار</h1>
-          <p className="text-lg font-black text-teal-700 mt-1">الجلسات التفاعلية المباشرة</p>
-          <p className="text-sm font-bold text-slate-500 mt-3 leading-relaxed">
-            للانضمام لجلسة مباشرة، استخدم الرابط الخاص الذي أرسله لك د. إسماعيل عيسى عبر واتساب أو رسالة المنصة.
+
+          {/* Session Details */}
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 space-y-2">
+            <p className="text-xs font-bold text-slate-400">اسم الجلسة:</p>
+            <h2 className="text-base font-black text-white">{roomTitle}</h2>
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-700/40 text-xs font-bold text-teal-300">
+              <User size={14} /> د. إسماعيل عيسى (المضيف)
+            </div>
+          </div>
+
+          {/* Name Input Form */}
+          <form onSubmit={handleGuestSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-black text-slate-300 mb-2">
+                أدخل اسمك الكامل للانضمام للجلسة:
+              </label>
+              <input
+                type="text"
+                required
+                value={guestNameInput}
+                onChange={(e) => setGuestNameInput(e.target.value)}
+                placeholder="مثال: أحمد المحمد"
+                className="w-full bg-slate-950 border border-teal-500/40 focus:border-teal-400 rounded-2xl px-4 py-3.5 text-sm font-bold text-white placeholder-slate-500 outline-none transition shadow-inner"
+              />
+            </div>
+
+            {/* Note about camera & mic default state */}
+            <div className="flex items-center gap-2 bg-teal-950/40 border border-teal-800/50 rounded-xl p-3 text-xs font-bold text-teal-200">
+              <ShieldCheck size={16} className="text-teal-400 shrink-0" />
+              <span>ملاحظة: المايك والكاميرا مقفولان تلقائياً عند دخولك لحفظ خصوصيتك.</span>
+            </div>
+
+            <button
+              type="submit"
+              disabled={guestJoining}
+              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black py-4 rounded-2xl transition shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 text-sm active:scale-[0.98]"
+            >
+              {guestJoining ? (
+                <span>جاري الانضمام...</span>
+              ) : (
+                <>
+                  <span>الانضمام للجلسة الآن</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Footer branding */}
+          <p className="text-center text-[11px] font-bold text-slate-500 pt-2">
+            جميع الحقوق محفوظة © منصة مسار للدكتور إسماعيل عيسى
           </p>
         </div>
       </div>
     );
   }
 
-  /* ══════════════════════════
-     DOCTOR MANAGEMENT PANEL
-  ══════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     3. GUEST WITH NO ROOM PARAM & NOT DOCTOR
+  ═══════════════════════════════════════════════════════════ */
+  if (sessionUser?.role !== 'doctor') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
+        <Navbar />
+        <div className="flex">
+          <Sidebar desktopOnly />
+          <main className="min-w-0 flex-1 px-4 py-12 lg:px-8">
+            <div className="max-w-md mx-auto text-center p-8 rounded-3xl bg-white shadow-xl border border-slate-200">
+              <div className="h-16 w-16 rounded-2xl bg-teal-50 border border-teal-200 grid place-items-center mx-auto mb-4 text-teal-600">
+                <Video size={32} />
+              </div>
+              <h1 className="text-xl font-black text-slate-900">منصة مسار الجلسات المباشرة</h1>
+              <p className="text-xs font-bold text-slate-500 mt-2 leading-relaxed">
+                للانضمام إلى أية جلسة علاجية مباشرة، يرجى الضغط على الرابط الخاص بالجلسة المُنظّمة لك من قِبل الدكتور إسماعيل عيسى.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     4. DOCTOR MANAGEMENT PANEL
+  ═══════════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
       <Navbar />
@@ -302,7 +431,7 @@ function MeetingsContent() {
 
           <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
 
-            {/* ── Schedule Form ── */}
+            {/* Schedule Form */}
             <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 xl:sticky xl:top-24 xl:self-start">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700"><Plus size={20} /></span>
@@ -376,7 +505,7 @@ function MeetingsContent() {
               </div>
             </aside>
 
-            {/* ── Meetings List ── */}
+            {/* Meetings List */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <CalendarClock size={22} className="text-teal-600" />
@@ -407,7 +536,6 @@ function MeetingsContent() {
                           </p>
                           {m.notes && <p className="text-xs font-bold text-slate-400">ملاحظة: {m.notes}</p>}
 
-                          {/* Guest link preview */}
                           {m.type === 'internal' && origin && (
                             <div className="mt-2 rounded-xl bg-slate-100 border border-slate-200 p-2.5">
                               <p className="text-[10px] font-black text-slate-500 mb-0.5">رابط الضيف (للطلاب / أولياء الأمور):</p>
@@ -473,13 +601,14 @@ function MeetingsContent() {
 
 /* ═══════════════════════════════════════════════════════════
    CALL STUDIO — WebRTC P2P with Firestore signaling
-   Host controls: mute all, mute one, kick
-   Everyone: camera, mic, screen share, chat, whiteboard
+   Participant default state: MIC & CAMERA OFF by default upon join!
 ═══════════════════════════════════════════════════════════ */
-function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
+function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, guestLink, onLeave }: {
   roomCode: string;
   title: string;
+  participantName: string;
   isHost: boolean;
+  isMasarUser: boolean;
   guestLink: string;
   onLeave: () => void;
 }) {
@@ -488,14 +617,14 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
   const pcRef           = useRef<RTCPeerConnection | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const myId            = useRef(makeId());
-  const myName          = isHost ? 'د. إسماعيل عيسى (المضيف)' : 'ضيف';
+  const myName          = participantName || (isHost ? 'د. إسماعيل عيسى (المضيف)' : 'ضيف');
   const onLeaveRef      = useRef(onLeave);
   onLeaveRef.current    = onLeave;
 
   const [localStream,   setLocalStream]   = useState<MediaStream | null>(null);
   const [hasRemote,     setHasRemote]     = useState(false);
-  const [micOn,         setMicOn]         = useState(true);
-  const [videoOn,       setVideoOn]       = useState(true);
+  const [micOn,         setMicOn]         = useState(false);   // DEFAULT OFF UPON JOIN
+  const [videoOn,       setVideoOn]       = useState(false); // DEFAULT OFF UPON JOIN
   const [screenSharing, setScreenSharing] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [cameraError,   setCameraError]   = useState<string | null>(null);
@@ -506,7 +635,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
   const [linkCopied,    setLinkCopied]    = useState(false);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
-  /* ── Start camera on mount ── */
+  /* ── Acquire camera/mic on mount, but default tracks to DISABLED ── */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
@@ -520,17 +649,21 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
       audio: true,
     }).then((stream) => {
       if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+      
+      // DISABLING ALL TRACKS BY DEFAULT UPON JOIN (USER PRIVACY)
+      stream.getAudioTracks().forEach((t) => { t.enabled = false; });
+      stream.getVideoTracks().forEach((t) => { t.enabled = false; });
+
       setLocalStream(stream);
       setCameraLoading(false);
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
-        localVideoRef.current.play().catch(() => {});
       }
     }).catch((err) => {
       if (cancelled) return;
       setCameraLoading(false);
       if (err.name === 'NotAllowedError') {
-        setCameraError('رُفض إذن الكاميرا. اسمح بالكاميرا والمايك من المتصفح.');
+        setCameraError('رُفض إذن الكاميرا. اسمح بالكاميرا والمايك من المتصفح عند التشغيل.');
       } else if (err.name === 'NotFoundError') {
         setCameraError('لا توجد كاميرا أو مايك متصل بالجهاز.');
       } else {
@@ -562,7 +695,6 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
     const unsubs: Array<() => void> = [];
 
     if (isHost) {
-      // HOST: create offer → listen for answer + callee ICE
       pc.onicecandidate = (e) => {
         if (e.candidate) addDoc(callerCands, e.candidate.toJSON()).catch(() => {});
       };
@@ -584,7 +716,6 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
       }));
 
     } else {
-      // GUEST: wait for offer → create answer → listen for caller ICE
       pc.onicecandidate = (e) => {
         if (e.candidate) addDoc(calleeCands, e.candidate.toJSON()).catch(() => {});
       };
@@ -610,15 +741,13 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
     const myDocRef = doc(db, 'masar_rooms', roomCode, 'participants', myId.current);
     setDoc(myDocRef, { name: myName, role: isHost ? 'host' : 'guest', joinedAt: Date.now(), kicked: false }).catch(() => {});
 
-    // Host: watch all participants
-    if (isHost) {
-      unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'participants'), (snap) => {
-        const ps = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as { name: string; kicked?: boolean }) }))
-          .filter((p) => !p.kicked);
-        setParticipants(ps);
-      }));
-    }
+    // Listen to active participants list for Host & Everyone
+    unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'participants'), (snap) => {
+      const ps = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as { name: string; kicked?: boolean }) }))
+        .filter((p) => !p.kicked);
+      setParticipants(ps);
+    }));
 
     // Guest: watch own doc for kick/force-mute commands
     if (!isHost) {
@@ -734,7 +863,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
     setChatInput('');
   };
 
-  /* ── Copy guest link (host only, shown in call banner) ── */
+  /* ── Copy guest link ── */
   const copyGuestLink = async () => {
     await navigator.clipboard.writeText(guestLink);
     setLinkCopied(true);
@@ -748,12 +877,12 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
     onLeaveRef.current();
   };
 
-  /* ═════════════ RENDER ═════════════ */
+  /* ═════════════ RENDER STUDIO ═════════════ */
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950" dir="rtl">
-      <Navbar />
+      {isMasarUser && <Navbar />}
       <div className="flex">
-        {isHost && <Sidebar desktopOnly />}
+        {isMasarUser && isHost && <Sidebar desktopOnly />}
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
 
           {/* Call Banner */}
@@ -767,7 +896,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                   <p className="text-xs font-bold text-teal-600">
                     رمز الغرفة: <span className="font-black text-slate-700">{roomCode}</span>
                     {isHost && <span className="mr-2 text-amber-600 font-black">· أنت المضيف</span>}
-                    {!isHost && <span className="mr-2 text-slate-400 font-bold">· وضع الضيف</span>}
+                    {!isHost && <span className="mr-2 text-teal-700 font-black">· مرحباً بك يا {myName}</span>}
                   </p>
                 </div>
               </div>
@@ -799,7 +928,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
             {/* Call Body */}
             <div className="grid lg:grid-cols-12 min-h-[520px]">
 
-              {/* ── Video / Whiteboard ── */}
+              {/* Video / Whiteboard */}
               <div className="lg:col-span-8 p-4 space-y-4 bg-slate-50">
 
                 {showWhiteboard ? (
@@ -819,7 +948,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                           {cameraLoading && (
                             <div className="space-y-2">
                               <div className="h-10 w-10 rounded-full border-4 border-teal-400 border-t-transparent animate-spin mx-auto" />
-                              <p className="text-xs font-black text-slate-200">جاري فتح الكاميرا...</p>
+                              <p className="text-xs font-black text-slate-200">جاري تجهيز الكاميرا...</p>
                             </div>
                           )}
                           {!cameraLoading && cameraError && (
@@ -831,20 +960,20 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                           {!cameraLoading && !cameraError && !videoOn && (
                             <div className="space-y-2">
                               <VideoOff size={44} className="mx-auto text-slate-400" />
-                              <p className="text-xs font-black text-slate-300">الكاميرا متوقفة</p>
+                              <p className="text-xs font-black text-slate-300">الكاميرا مقفولة (اضغط الزر بالأسفل لتشغيلها)</p>
                             </div>
                           )}
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                        {isHost ? 'د. إسماعيل عيسى (أنت)' : 'كاميرتك'}
+                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/60 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                        {myName} (أنت)
                       </div>
                       {screenSharing && (
-                        <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 شاشة</div>
+                        <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 مشاركة شاشة</div>
                       )}
                       <div className="absolute bottom-3 left-3 z-10">
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${micOn ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                          {micOn ? '🎙' : '🔇'}
+                          {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
                         </span>
                       </div>
                     </div>
@@ -863,7 +992,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                               <User size={36} className="text-teal-300" />
                             </div>
                             <p className="text-xs font-black text-white">
-                              {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار الدكتور...'}
+                              {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور إسماعيل...'}
                             </p>
                             {isHost && (
                               <button onClick={copyGuestLink}
@@ -879,7 +1008,7 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                           </div>
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
+                      <div className="absolute top-3 right-3 z-10 rounded-full bg-black/60 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
                         {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
                       </div>
                     </div>
@@ -904,44 +1033,49 @@ function CallStudio({ roomCode, title, isHost, guestLink, onLeave }: {
                 </div>
               </div>
 
-              {/* ── Participants + Chat Panel ── */}
+              {/* Participants + Chat Panel */}
               <div className="lg:col-span-4 border-r border-slate-100 bg-white p-4 flex flex-col gap-4">
 
-                {/* Participants (host only) */}
-                {isHost && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <h3 className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                        <Users size={14} className="text-teal-600" /> الحضور ({participants.length})
-                      </h3>
+                {/* Participants list */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h3 className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                      <Users size={14} className="text-teal-600" /> الحضور الحاليين ({participants.length})
+                    </h3>
+                    {isHost && (
                       <span className="text-[10px] font-black text-amber-600 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">تحكّم المضيف</span>
-                    </div>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {participants.length === 0 && (
-                        <p className="text-[10px] font-bold text-slate-400 text-center py-3">في انتظار الحضور...</p>
-                      )}
-                      {participants.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                          <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
-                          {p.id !== myId.current && (
-                            <div className="flex gap-1 shrink-0">
-                              <button onClick={() => muteParticipant(p.id)}
-                                className="p-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition"
-                                title="كتم المايك">
-                                <MicOff size={12} />
-                              </button>
-                              <button onClick={() => kickParticipant(p.id)}
-                                className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-500 hover:bg-rose-100 transition"
-                                title="طرد من الجلسة">
-                                <UserX size={12} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                )}
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {participants.length === 0 && (
+                      <p className="text-[10px] font-bold text-slate-400 text-center py-3">جاري تحميل قائمة الحضور...</p>
+                    )}
+                    {participants.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-6 w-6 rounded-full bg-teal-100 text-teal-700 grid place-items-center text-[10px] font-black shrink-0">
+                            {p.name.charAt(0)}
+                          </div>
+                          <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
+                        </div>
+                        {isHost && p.id !== myId.current && (
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => muteParticipant(p.id)}
+                              className="p-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition"
+                              title="كتم المايك">
+                              <MicOff size={12} />
+                            </button>
+                            <button onClick={() => kickParticipant(p.id)}
+                              className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-500 hover:bg-rose-100 transition"
+                              title="طرد من الجلسة">
+                              <UserX size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Chat */}
                 <div className="flex-1 flex flex-col gap-2 border-t border-slate-100 pt-3 min-h-0">
