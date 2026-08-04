@@ -337,11 +337,11 @@ export default function Home() {
                   {/* Full Display Image (Uncropped) */}
                   <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100">
                     <Image 
-                      src="/brand/masar_child_learning.jpg" 
-                      alt="طفل يتفاعل مع الأخصائي على منصة مسار التفاعلية" 
+                      src="/dr-ismail-student.jpg" 
+                      alt="د. إسماعيل عيسى مع طالبه في جلسة تعليم علاجي تفاعلية" 
                       fill 
                       priority
-                      className="object-cover group-hover:scale-102 transition duration-700" 
+                      className="object-cover object-center group-hover:scale-102 transition duration-700" 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
