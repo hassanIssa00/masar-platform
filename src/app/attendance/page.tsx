@@ -13,6 +13,7 @@ import {
 } from '@/lib/attendance';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
 import { createNotification } from '@/lib/notifications';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function AttendancePage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -117,6 +118,17 @@ export default function AttendancePage() {
               </button>
             </div>
           </div>
+
+          <FeatureGuideBanner
+            title="نظام تتبع الحضور الذكي والتنبيه الفوري"
+            description="واجهة تفاعلية لتسجيل حضور وتأخر وغياب الطلاب في كل جلسة مع ربط مباشر بإرسال التنبيهات الفورية لأولياء الأمور."
+            benefits={[
+              'يضمن التواصل المباشر والسريع مع الأسرة فور رصد الغياب دون تأخير.',
+              'يربط نسبة الحضور بالتحسن الأكاديمي لإبراز أهمية الالتزام.',
+              'يُوفر تقارير حضور تراكمية دقيقة للمدير والاستشاري.'
+            ]}
+            modernShift="الالتزام والانضباط في الحضور هو عامل حاسم في نجاح الخطة العلاجية، وتتبع الحضور الرقمي يُحلل تأثير الغياب على التراجع أو البطء في تحقيق أهداف الطفل."
+          />
 
           {/* Toast Notification */}
           {toastMessage && (

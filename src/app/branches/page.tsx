@@ -8,6 +8,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getLocalBranches, createBranch, updateBranch, deleteBranch, type BranchRecord } from '@/lib/branches';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState<BranchRecord[]>([]);
@@ -67,6 +68,17 @@ export default function BranchesPage() {
               <Plus size={18} /> إضافة فرع جديد
             </button>
           </div>
+
+          <FeatureGuideBanner
+            title="إدارة العيادات والفروع المتعددة (Multi-Branch Clinic System)"
+            description="لوحة تشغيل مركزي للتحكم بجميع الفروع الإقليمية والمحلية للمركز، توزيع الأطباء، ومتابعة الطلاب في كل موقع."
+            benefits={[
+              'تُمكّن المؤسسة من التوسع وفتح فروع جديدة مع توحيد المعايير والجودة الطبية.',
+              'تُقدم تقارير أداء مجمعة ومقارنة بين الفروع لتحديد الأنسب تشغيلياً.',
+              'تمنح مدير كل فرع صلاحيات محددة لإدارة فريقه والطلاب المسجلين بفرعه.'
+            ]}
+            modernShift="التوسع في المراكز الطبية والتعليمية الحديثة يتطلب بنية تشغيل سحابية موحدة (Multi-Tenant/Multi-Branch Architecture) تضمن الربط اللحظي بين الفروع دون تشتت الإدارة."
+          />
 
           {/* Summary Stats */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

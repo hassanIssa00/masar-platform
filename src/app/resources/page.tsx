@@ -12,6 +12,7 @@ import {
   type ResourceItem, type ResourceCategory, type ResourceDomain, type DifficultyLevel,
   CATEGORY_LABELS, DOMAIN_LABELS_RES, DIFFICULTY_LABELS
 } from '@/lib/resources';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 const CATEGORY_ICONS: Record<ResourceCategory, React.ReactNode> = {
   worksheet: <FileText size={18} />,
@@ -99,6 +100,17 @@ export default function ResourcesPage() {
               <Plus size={18} /> رفع مورد جديد
             </button>
           </div>
+
+          <FeatureGuideBanner
+            title="مكتبة الموارد التشاركية (Resource Library)"
+            description="مستودع رقمي محمي يضم جميع الوسائل، أوراق العمل، التمارين والتطبيقات السلوكية والأكاديمية المعتمدة بالمركز لتبادلها بين الفريق الطبي والأسرة."
+            benefits={[
+              'تمنع عشوائية المواد المستخدمة وتوفر محتوى موحّد وعالي الجودة للجلسات.',
+              'تسمح بنقل التمارين والواجبات إلى المنزل بسهولة بضغطة زر مع متابعة التحميل.',
+              'تُصنّف الموارد حسب الصعوبة والفئة العمرية والمجال العلاجي لتوفير الوقت.'
+            ]}
+            modernShift="الانتقال إلى الموارد العلاجية المفتوحة والتشاركية (Open Therapeutic Educational Resources) يضمن استمرارية العلاج واستدامة التدريب في كافة بيئات الطفل بنفس الكفاءة."
+          />
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

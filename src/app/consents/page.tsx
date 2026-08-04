@@ -12,6 +12,7 @@ import {
   type ConsentForm, CONSENT_TYPE_LABELS, CONSENT_STATUS_COLORS, CONSENT_STATUS_LABELS
 } from '@/lib/consents';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function ConsentsPage() {
   const [consents, setConsents] = useState<ConsentForm[]>([]);
@@ -120,6 +121,17 @@ export default function ConsentsPage() {
               <Plus size={18} /> إنشاء نموذج موافقة جديد
             </button>
           </div>
+
+          <FeatureGuideBanner
+            title="الموافقات الرقمية وحماية البيانات (Consent Management)"
+            description="منظومة إلكترونية موثقة لجمع وتوثيق موافقات أولياء الأمور على البرامج العلاجية والتصوير وتداول البيانات الطبية بشكل قانوني آمن."
+            benefits={[
+              'تحمي المركز والأخصائي قانونياً وتوفر سجل تتبع موثق لكل موافقة.',
+              'تسهل على أولياء الأمور التوقيع الإلكتروني السريع من جوالاتهم بدون أوراق.',
+              'تُنبه الإدارة تلقائياً عند اقتراب انتهاء صلاحية أي موافقة لتجديدها.'
+            ]}
+            modernShift="الأمان وحماية خصوصية بيانات الطفل الطبية والنفسية هو حجر الزاوية في المعايير العالمية الحديثة (HIPAA & GDPR)، ونقل المعاملات من الورق إلى التوقيع الرقمي المعتمد يعزز الثقة والموثوقية."
+          />
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">

@@ -12,6 +12,7 @@ import { getLocalInvoices } from '@/lib/invoices';
 import { getLocalAttendance } from '@/lib/attendance';
 import { getLocalWaitlist } from '@/lib/waitlist';
 import { getLocalIEPs } from '@/lib/iep';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function BIDashboardPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -62,6 +63,17 @@ export default function BIDashboardPage() {
               تحديث بيانات أوتوماتيكي مباشر
             </span>
           </div>
+
+          <FeatureGuideBanner
+            title="لوحة ذكاء الأعمال والتحليلات (Business Intelligence)"
+            description="مركز قيادة وإحصائيات مجمعة يُعطي إدارة المركز رؤية شمولية دقيقة حول النمو المالي، نسب احتجاز الطلاب، كفاءة الجلسات ومؤشرات النجاح الاستراتيجي."
+            benefits={[
+              'تُمكّن الإدارة من اتخاذ قرارات مدروسة مبنية على الأرقام الحقيقية بدلاً من التقديرات.',
+              'تُحلل العائد المالي وتُحدد أكثر البرامج العلاجية نمواً وإقبالاً.',
+              'تُوفر تقارير أداء دورية لمتابعة استدامة العمل وتطور جودة الخدمات.'
+            ]}
+            modernShift="الادارة المبنية على البيانات (Data-Driven Healthcare & Education Management) هي الركيزة الأساسية للتحول الرقمي في المؤسسات الناجحة حول العالم."
+          />
 
           {/* KPI Cards Grid */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

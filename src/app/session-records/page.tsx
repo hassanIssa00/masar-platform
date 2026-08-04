@@ -13,6 +13,7 @@ import {
   COOPERATION_LABELS, COOPERATION_COLORS, RATING_LABELS
 } from '@/lib/sessionRecords';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function SessionRecordsPage() {
   const [records, setRecords] = useState<SessionRecord[]>([]);
@@ -104,6 +105,17 @@ export default function SessionRecordsPage() {
               <Plus size={18} /> توثيق جلسة جديدة
             </button>
           </div>
+
+          <FeatureGuideBanner
+            title="السجل الطبي للجلسات (Clinical Session Records)"
+            description="نظام توثيق طبي إلكتروني دقيق يسجل محتوى كل جلسة علاجيّة، الأهداف المنفذة، درجة انتباه وتعاون الطفل، والنتائج المرحلية فور انتهائها."
+            benefits={[
+              'يُلغي الاعتماد على الذاكرة الشخصية أو الأوراق المفقودة في متابعة تطور الطالب.',
+              'يسمح للأخصائي الجديد بمراجعة التاريخ الطبي الكامل للطفل بدقة وسرعة.',
+              'يوفر بيانات إحصائية دقيقة لتقييم أداء وتفاعل الطالب عبر الجلسات المتتالية.'
+            ]}
+            modernShift="التوثيق الإكلينيكي الإلكتروني (Electronic Health & Therapy Records - EHTR) هو الأساس في الممارسة الطبية الحديثة، حيث يُحوّل الانطباعات الشفهية إلى سجل تاريخي علمي رصين."
+          />
 
           {/* Records Grid */}
           {records.length === 0 ? (

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 import {
   getLocalWaitlist,
   createWaitlistEntry,
@@ -172,7 +173,7 @@ export default function WaitlistPage() {
               <div>
                 <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
                   <Users className="w-8 h-8 text-teal-600" />
-                  قائمة الانتظار وإدارة العملاء
+                  قائمة الانتظار وإدارة العملاء (Waitlist CRM)
                 </h1>
                 <p className="text-gray-500 font-bold mt-1">تتبع رحلة العميل من التسجيل حتى بدء الجلسات</p>
               </div>

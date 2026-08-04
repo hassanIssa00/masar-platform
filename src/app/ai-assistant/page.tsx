@@ -8,6 +8,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 interface Recommendation {
   id: string;
@@ -153,6 +154,17 @@ export default function AIAssistantPage() {
               </select>
             </div>
           </div>
+
+          <FeatureGuideBanner
+            title="مساعد الجلسات بالذكاء الاصطناعي (AI Session Assistant)"
+            description="مستشار ذكي يُحلل أداء وسجلات الطالب لحظياً لمساعدة الأخصائي في اتخاذ القرارات السريرية واختيار أفضل الأنشطة العلاجية المناسبة للطفل أثناء الجلسة."
+            benefits={[
+              'يُمكّن الأخصائي من الاستفادة من تحليلات الذكاء الاصطناعي التنبؤية لتفادي تشتت الطفل.',
+              'يقترح تكييف السرعة والصعوبة لحظياً بناءً على تاريخ استجابة الطالب سابقاً.',
+              'يُلخص نتائج الجلسة ويُولد خطة العمل المنزلية تلقائياً لتوفير الوقت.'
+            ]}
+            modernShift="دمج نماذج الذكاء الاصطناعي التشخيصية (Clinical AI Co-pilot) في الجلسات يُمثل قمة التحول التكنولوجي في التعليم والتربية الخاصة، حيث يُصبح القرار العلاجي مبنياً على تحليل البيانات الضخمة بدقة متناهية."
+          />
 
           {/* Main Grid: Left AI Chatbot, Right AI Recommendations */}
           <div className="grid gap-6 lg:grid-cols-3">

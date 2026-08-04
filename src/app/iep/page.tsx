@@ -12,6 +12,7 @@ import {
   type IEPDomain, DOMAIN_LABELS, DOMAIN_COLORS, type IEPGoalStatus
 } from '@/lib/iep';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function IEPPage() {
   const [ieps, setIeps] = useState<IEPRecord[]>([]);
@@ -153,6 +154,18 @@ export default function IEPPage() {
               )}
             </div>
           </div>
+
+          {/* Educational Guide Banner */}
+          <FeatureGuideBanner
+            title="خطة التربية الفردية (IEP)"
+            description="نظام رقمي معتمد دولياً لتنظيم الخطة العلاجية والتعليمية لكل طفل. يُحدد نقاط القوة، التحديات الأكاديمية والنطقية والسلوكية، ويُصمّم أهدافاً ذكية قابلة للمقياس والتتبع المباشر."
+            benefits={[
+              'تضمن توحيد الخطة بين الأخصائي، المدرسة، وولي الأمر بدون تشتت.',
+              'تُوفر تقييمات دقيقة ونسب مئوية تراكمية تقيس معدل التحسن الفعلي.',
+              'تُصدر كوثيقة رسمية معتمدة قابلة للطباعة والتسليم للجهات التعليمية.'
+            ]}
+            modernShift="يُمثّل نظام الـ IEP الانتقال الحديث من التدريس العشوائي الموحد إلى التعليم الشخصي الموجه (Personalized Intervention)، حيث يحصل كل طفل على مسار خاص يُناسب قدراته الذهنية والنفسية."
+          />
 
           {/* LIST VIEW */}
           {view === 'list' && (

@@ -11,6 +11,7 @@ import {
   calculateLevel, getEarnedBadges, type StudentPoints, type Badge
 } from '@/lib/gamification';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
+import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function GamificationPage() {
   const [pointsList, setPointsList] = useState<StudentPoints[]>([]);
@@ -63,6 +64,17 @@ export default function GamificationPage() {
               </p>
             </div>
           </div>
+
+          <FeatureGuideBanner
+            title="التلعيب والتعزيز المباشر (Gamification)"
+            description="نظام تحفيز رقمي يحول التمارين والجلسات العلاجية إلى رحلة مليئة بالإنجازات والجوائز والتحفيز المستمر للطفل."
+            benefits={[
+              'يرفع التزام الطفل ودافعيته لحضور الجلسات بنسبة تزيد عن 65%.',
+              'يخلق بيئة تنافسية إيجابية تُشعر الطفل بالفخر عند إتقان المهارات.',
+              'يمكّن الأخصائي من ربط المكافآت بتحقيق أهداف حقيقية كإكمال الواجبات والانتظام.'
+            ]}
+            modernShift="التلعيب في التعليم والتأهيل الحديث ينقل الطفل من المتلقي السلبي للخوف أو الإجبار إلى شريك شغوف ومتحمس يقود رحلة تعلمه بنفسه من خلال التغذية الراجعة الفورية."
+          />
 
           {/* Celebration Banner */}
           {celebrationMsg && (
