@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Clock, BookOpen, Video, MessageSquare, Camera,
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
-  Home, User, Loader2,
+  Home, User, Loader2, Heart, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 
@@ -24,13 +24,28 @@ export default function SchoolParentPage() {
   const [tab, setTab] = useState<Tab>('home');
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [parentName, setParentName] = useState<string>('');
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
 
-  // للواجب
+  // الواجب
   const [openHw, setOpenHw] = useState<any>(null);
   const [myAnswer, setMyAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('user_name') || localStorage.getItem('masar_user');
+      if (storedName) {
+        try {
+          const parsed = JSON.parse(storedName);
+          setParentName(parsed.name || parsed);
+        } catch {
+          setParentName(storedName);
+        }
+      }
+    }
+  }, []);
 
   const studentId = typeof window !== 'undefined'
     ? (localStorage.getItem('school_student_id') ?? 'demo-student')
@@ -70,146 +85,163 @@ export default function SchoolParentPage() {
     { key: 'report' as Tab,    label: 'التقارير',  icon: BarChart3 },
   ];
 
+  const displayName = parentName ? `أهلاً بك أ. ${parentName} 👋` : 'أهلاً بك يا ولي الأمر 👋';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white" dir="rtl">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-indigo-900/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
+    <div className="min-h-screen bg-slate-50 text-slate-900" dir="rtl">
+      {/* Header - White Elegant Theme */}
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-3.5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-base font-black text-white flex items-center gap-2">
-              👨‍👦 بوابة ولي الأمر
+            <h1 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
+              {displayName}
             </h1>
-            <p className="text-xs text-indigo-300">مدارس الإخلاص الأهلية — فصل 1/1</p>
+            <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              مدارس الإخلاص الأهلية بجدة — متابعة فصل 1/1
+            </p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-indigo-600/40 border border-indigo-500/40 flex items-center justify-center">
-            <User className="w-5 h-5 text-indigo-300" />
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
+            <User className="w-6 h-6 text-emerald-700" />
           </div>
         </div>
       </div>
 
-      {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-xl border-t border-white/10">
-        <div className="max-w-2xl mx-auto grid grid-cols-7 gap-0.5 px-1 py-1.5">
+      {/* Bottom Nav - Light Mode Glass */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl">
+        <div className="max-w-2xl mx-auto grid grid-cols-7 gap-0.5 px-1 py-2">
           {tabs.map((t) => {
             const Icon = t.icon;
+            const active = tab === t.key;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${tab === t.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-slate-300'}`}>
-                <Icon className="w-4 h-4" />
-                <span className="text-[9px] font-bold">{t.label}</span>
+                className={`flex flex-col items-center gap-1 py-1.5 rounded-xl transition-all ${
+                  active ? 'text-emerald-700 bg-emerald-50 font-black shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                }`}>
+                <Icon className={`w-4 h-4 ${active ? 'text-emerald-700 stroke-[2.5]' : ''}`} />
+                <span className="text-[10px]">{t.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-24 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
         {loading && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
           </div>
         )}
 
+        {/* ══════════════ الرئيسية ══════════════ */}
         {!loading && tab === 'home' && (
           <div className="space-y-4">
             {/* تنبيه تأخر استلام الطفل العاجل */}
             {dashboard?.todayLog?.lateAlertSent && (
-              <div className="bg-rose-500/20 border-2 border-rose-500/80 rounded-2xl p-4 flex items-center gap-3 animate-pulse shadow-lg shadow-rose-500/20">
-                <div className="w-12 h-12 rounded-full bg-rose-500/30 flex items-center justify-center shrink-0">
-                  <Bell className="w-6 h-6 text-rose-400" />
+              <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-4.5 flex items-center gap-3.5 animate-pulse shadow-md shadow-rose-100">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-200 flex items-center justify-center shrink-0">
+                  <Bell className="w-6 h-6 text-rose-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-rose-300">🚨 تنبيه عاجل من إدارة المدرسة!</p>
-                  <p className="text-xs text-rose-200 mt-0.5">
+                  <p className="text-sm font-black text-rose-900">🚨 تنبيه عاجل من إدارة المدرسة!</p>
+                  <p className="text-xs text-rose-700 mt-0.5 font-bold">
                     نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة المدرسة.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* وقت الخروج */}
+            {/* وقت الخروج الموثق بالدقيقة */}
             {dashboard?.todayLog?.exitTime && (
-              <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5 text-emerald-400" />
+              <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4.5 flex items-center gap-4 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <Clock className="w-6 h-6 text-emerald-700" />
                 </div>
-                <div>
-                  <p className="text-xs text-emerald-400 font-bold">وقت خروج ابنك اليوم</p>
-                  <p className="text-2xl font-black text-emerald-300">{dashboard.todayLog.exitTime}</p>
+                <div className="flex-1">
+                  <p className="text-xs text-emerald-800 font-bold">توقيت خروج ابنك الموثق اليوم 🕒</p>
+                  <p className="text-3xl font-black text-emerald-900 mt-0.5">{dashboard.todayLog.exitTime}</p>
                 </div>
-                <CheckCircle className="w-6 h-6 text-emerald-400 mr-auto" />
+                <CheckCircle className="w-7 h-7 text-emerald-600 shrink-0" />
               </div>
             )}
 
-            {/* الأداء اليومي */}
+            {/* تقييم الأداء اليومي */}
             {dashboard?.todayLog && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-xs text-slate-400 mb-2 font-bold">📊 أداء ابنك اليوم</p>
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-slate-700">📊 تقييم أداء ابنك اليومي في الفصل</p>
+                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
+                    {dashboard.todayLog.attendance === 'present' ? '✅ حاضر' : dashboard.todayLog.attendance === 'absent' ? '❌ غائب' : '⏰ متأخر'}
+                  </span>
+                </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
+                  <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
                       style={{ width: `${dashboard.todayLog.performanceScore}%` }} />
                   </div>
-                  <span className="text-lg font-black text-blue-400">{dashboard.todayLog.performanceScore}%</span>
+                  <span className="text-xl font-black text-emerald-700">{dashboard.todayLog.performanceScore}%</span>
                 </div>
-                <p className="text-xs mt-2 text-slate-400">
-                  الحضور: {dashboard.todayLog.attendance === 'present' ? '✅ حاضر' : dashboard.todayLog.attendance === 'absent' ? '❌ غائب' : '⏰ متأخر'}
-                </p>
               </div>
             )}
 
-            {/* واجبات مفتوحة */}
+            {/* واجبات مطلوبة */}
             {dashboard?.openHomework?.length > 0 && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
-                <p className="text-xs text-amber-400 font-black mb-2 flex items-center gap-1">
-                  <Bell className="w-3.5 h-3.5" /> {dashboard.openHomework.length} واجبات مطلوبة
-                </p>
-                {dashboard.openHomework.slice(0, 2).map((hw: any) => (
-                  <div key={hw.id} className="flex items-center justify-between py-1.5">
-                    <span className="text-sm text-white">{hw.title}</span>
-                    <span className="text-xs text-amber-400">{new Date(hw.dueDate).toLocaleDateString('ar-SA')}</span>
-                  </div>
-                ))}
-                <button onClick={() => setTab('homework')} className="text-xs text-amber-400 hover:text-amber-300 mt-1 flex items-center gap-1">
-                  عرض الكل <ChevronLeft className="w-3 h-3" />
-                </button>
+              <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-amber-900 font-black flex items-center gap-1.5">
+                    <Bell className="w-4 h-4 text-amber-600" /> {dashboard.openHomework.length} واجبات إلكترونية مطلوبة
+                  </p>
+                  <button onClick={() => setTab('homework')} className="text-xs text-amber-700 font-bold hover:underline flex items-center gap-0.5">
+                    عرض الكل <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {dashboard.openHomework.slice(0, 2).map((hw: any) => (
+                    <div key={hw.id} className="bg-white border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">{hw.title}</span>
+                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
+                        تسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* اجتماع قادم */}
+            {/* اجتماع فيديو قادم */}
             {dashboard?.upcomingMeetings?.[0] && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4">
-                <p className="text-xs text-green-400 font-black mb-1 flex items-center gap-1"><Video className="w-3.5 h-3.5" /> اجتماع قادم</p>
-                <p className="text-sm font-bold text-white">{dashboard.upcomingMeetings[0].title}</p>
-                <p className="text-xs text-slate-400 mb-2">{new Date(dashboard.upcomingMeetings[0].scheduledAt).toLocaleString('ar-SA')}</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-3xl p-5 shadow-sm space-y-2">
+                <p className="text-xs text-blue-900 font-black flex items-center gap-1.5"><Video className="w-4 h-4 text-blue-600" /> اجتماع ميتنج قادم</p>
+                <p className="text-sm font-black text-slate-900">{dashboard.upcomingMeetings[0].title}</p>
+                <p className="text-xs text-slate-600">{new Date(dashboard.upcomingMeetings[0].scheduledAt).toLocaleString('ar-SA')}</p>
                 <a href={dashboard.upcomingMeetings[0].meetingUrl} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all">
-                  <Video className="w-3 h-3" /> انضم للاجتماع
+                  className="mt-2 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-xl font-black transition-all shadow-sm">
+                  <Video className="w-3.5 h-3.5" /> انضمام للاجتماع المباشر
                 </a>
               </div>
             )}
 
-            {/* آخر تقرير أسبوعي */}
+            {/* التقرير الأسبوعي */}
             {dashboard?.latestWeeklyReport && (
-              <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/30 rounded-2xl p-4">
-                <p className="text-xs text-violet-400 font-black mb-2 flex items-center gap-1"><Star className="w-3.5 h-3.5" /> التقرير الأسبوعي</p>
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
+                <p className="text-xs text-slate-800 font-black flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500 fill-amber-500" /> التقرير الأسبوعي الشامل</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-lg font-black text-violet-300">{dashboard.latestWeeklyReport.attendanceDays}/5</p>
-                    <p className="text-xs text-slate-500">أيام الحضور</p>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-lg font-black text-emerald-700">{dashboard.latestWeeklyReport.attendanceDays}/5</p>
+                    <p className="text-[10px] text-slate-500 font-bold">أيام الحضور</p>
                   </div>
-                  <div>
-                    <p className="text-lg font-black text-violet-300">{dashboard.latestWeeklyReport.avgPerformance}%</p>
-                    <p className="text-xs text-slate-500">متوسط الأداء</p>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-lg font-black text-blue-700">{dashboard.latestWeeklyReport.avgPerformance}%</p>
+                    <p className="text-[10px] text-slate-500 font-bold">متوسط الأداء</p>
                   </div>
-                  <div>
-                    <p className="text-lg font-black text-violet-300">{dashboard.latestWeeklyReport.homeworkDone}/{dashboard.latestWeeklyReport.homeworkTotal}</p>
-                    <p className="text-xs text-slate-500">الواجبات</p>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-lg font-black text-amber-600">{dashboard.latestWeeklyReport.homeworkDone}/{dashboard.latestWeeklyReport.homeworkTotal}</p>
+                    <p className="text-[10px] text-slate-500 font-bold">الواجبات</p>
                   </div>
                 </div>
                 {dashboard.latestWeeklyReport.teacherNotes && (
-                  <p className="text-xs text-slate-400 mt-2 border-t border-white/10 pt-2">
-                    💬 {dashboard.latestWeeklyReport.teacherNotes}
+                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    💬 <span className="font-bold">ملاحظات المعلم:</span> {dashboard.latestWeeklyReport.teacherNotes}
                   </p>
                 )}
               </div>
@@ -217,45 +249,64 @@ export default function SchoolParentPage() {
           </div>
         )}
 
+        {/* ══════════════ جدول الحصص ══════════════ */}
         {!loading && tab === 'schedule' && (
           <div className="space-y-3">
-            <h2 className="text-base font-black text-white">📅 جدول اليوم — {todayName}</h2>
-            {dashboard?.todaySchedule?.length === 0 && <p className="text-slate-400 text-center py-8">🌙 اليوم إجازة</p>}
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-600" /> جدول حصص اليوم — {todayName}
+            </h2>
+            {dashboard?.todaySchedule?.length === 0 && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                🌙 اليوم إجازة رسمية
+              </div>
+            )}
             {dashboard?.todaySchedule?.map((p: any) => {
-              const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+              const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-slate-100 text-slate-800 border-slate-200';
               return (
-                <div key={p.periodNumber} className={`flex items-center gap-3 p-3 rounded-xl border ${colorClass}`}>
-                  <span className="text-xs font-black w-5 text-center opacity-60">{p.periodNumber}</span>
-                  <span className="flex-1 font-bold text-sm">{p.subjectName}</span>
-                  <span className="text-xs opacity-70">{p.startTime} – {p.endTime}</span>
+                <div key={p.periodNumber} className={`flex items-center gap-3.5 p-3.5 rounded-2xl border ${colorClass} shadow-sm`}>
+                  <div className="w-8 h-8 rounded-xl bg-white/80 border border-slate-200 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-black">{p.periodNumber}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-black text-sm">{p.subjectName}</p>
+                  </div>
+                  <span className="text-xs font-bold opacity-80">{p.startTime} – {p.endTime}</span>
                 </div>
               );
             })}
           </div>
         )}
 
+        {/* ══════════════ الواجبات ══════════════ */}
         {!loading && tab === 'homework' && (
           <div className="space-y-4">
-            <h2 className="text-base font-black text-white">📚 الواجبات المطلوبة</h2>
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-emerald-600" /> الواجبات الإلكترونية
+            </h2>
+
             {openHw ? (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                <button onClick={() => { setOpenHw(null); setMyAnswer(''); }} className="text-xs text-slate-400 flex items-center gap-1">
-                  <ChevronLeft className="w-3 h-3" /> رجوع
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
+                <button onClick={() => { setOpenHw(null); setMyAnswer(''); }} className="text-xs text-slate-500 font-bold flex items-center gap-1 hover:text-slate-800">
+                  <ChevronLeft className="w-3.5 h-3.5" /> رجوع للقائمة
                 </button>
-                <h3 className="font-black text-white text-lg">{openHw.title}</h3>
-                <p className="text-sm text-slate-400">{openHw.description}</p>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">{openHw.title}</h3>
+                  <p className="text-xs text-slate-600 mt-1">{openHw.description}</p>
+                </div>
                 {openHw.type === 'MULTIPLE_CHOICE' ? (
                   <div className="space-y-2">
                     {(openHw.options as string[]).map((opt: string, i: number) => (
                       <button key={i} onClick={() => setMyAnswer(opt)}
-                        className={`w-full text-right p-3 rounded-xl border text-sm font-bold transition-all ${myAnswer === opt ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-white/20 text-slate-300 hover:border-white/40'}`}>
+                        className={`w-full text-right p-3.5 rounded-2xl border text-xs font-bold transition-all ${
+                          myAnswer === opt ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-emerald-300'
+                        }`}>
                         {opt}
                       </button>
                     ))}
                   </div>
                 ) : (
                   <textarea placeholder="اكتب إجابتك هنا..." value={myAnswer} onChange={(e) => setMyAnswer(e.target.value)} rows={4}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 transition resize-none" />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 transition resize-none" />
                 )}
                 <button disabled={!myAnswer || submitting || submitted.includes(openHw.id)}
                   onClick={async () => {
@@ -269,9 +320,9 @@ export default function SchoolParentPage() {
                     setOpenHw(null);
                     setMyAnswer('');
                   }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-black transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md">
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  {submitted.includes(openHw.id) ? 'تم الإرسال ✅' : 'إرسال الإجابة'}
+                  {submitted.includes(openHw.id) ? 'تم الإرسال بنجاح! ✅' : 'إرسال الإجابة للمعلم'}
                 </button>
               </div>
             ) : (
@@ -279,134 +330,151 @@ export default function SchoolParentPage() {
                 {dashboard?.openHomework?.map((hw: any) => {
                   const done = submitted.includes(hw.id);
                   return (
-                    <div key={hw.id} className={`rounded-2xl border p-4 cursor-pointer transition-all ${done ? 'border-green-500/30 bg-green-500/5 opacity-60' : 'border-white/10 bg-white/5 hover:border-indigo-500/50'}`}
-                      onClick={() => !done && setOpenHw(hw)}>
-                      <div className="flex items-start justify-between gap-2">
+                    <div key={hw.id} onClick={() => !done && setOpenHw(hw)}
+                      className={`bg-white border rounded-3xl p-4 transition-all cursor-pointer shadow-sm ${
+                        done ? 'border-emerald-200 bg-emerald-50/50 opacity-70' : 'border-slate-200 hover:border-emerald-400'
+                      }`}>
+                      <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-black text-white">{hw.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{hw.description}</p>
-                          <p className="text-xs text-amber-400 mt-1">⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</p>
+                          <p className="font-black text-sm text-slate-900">{hw.title}</p>
+                          <p className="text-xs text-slate-600 mt-0.5">{hw.description}</p>
+                          <p className="text-[10px] text-amber-700 font-bold mt-1.5">⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</p>
                         </div>
                         {done ? (
-                          <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
                         ) : (
-                          <span className="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded-full shrink-0 font-bold">ابدأ</span>
+                          <span className="text-xs bg-emerald-600 text-white font-bold px-3 py-1 rounded-full shrink-0">حلّ الواجب</span>
                         )}
                       </div>
                     </div>
                   );
                 })}
-                {!dashboard?.openHomework?.length && <p className="text-slate-500 text-center py-10">✅ لا توجد واجبات مطلوبة الآن!</p>}
+                {!dashboard?.openHomework?.length && (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                    ✅ لا توجد واجبات مطلوبة حالياً
+                  </div>
+                )}
               </>
             )}
           </div>
         )}
 
+        {/* ══════════════ الاجتماعات ══════════════ */}
         {!loading && tab === 'meetings' && (
           <div className="space-y-3">
-            <h2 className="text-base font-black text-white">📹 الاجتماعات</h2>
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Video className="w-4 h-4 text-emerald-600" /> اجتماعات الفيديو
+            </h2>
             {dashboard?.upcomingMeetings?.map((m: any) => (
-              <div key={m.id} className="bg-white/5 border border-green-500/20 rounded-2xl p-4">
-                <p className="font-black text-white">{m.title}</p>
-                <p className="text-xs text-slate-400 mt-1">{new Date(m.scheduledAt).toLocaleString('ar-SA')} — {m.duration} دقيقة</p>
-                {m.notes && <p className="text-xs text-slate-400 mt-1">📝 {m.notes}</p>}
+              <div key={m.id} className="bg-white border border-slate-200 rounded-3xl p-4.5 space-y-2 shadow-sm">
+                <p className="font-black text-slate-900 text-base">{m.title}</p>
+                <p className="text-xs text-slate-600">{new Date(m.scheduledAt).toLocaleString('ar-SA')} ({m.duration} دقيقة)</p>
                 <a href={m.meetingUrl} target="_blank" rel="noreferrer"
-                  className="mt-3 inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-xl font-black transition-all">
-                  <Video className="w-4 h-4" /> الانضمام للاجتماع
+                  className="mt-2 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-xl font-black transition-all shadow-sm">
+                  <Video className="w-3.5 h-3.5" /> الانضمام للغرفة الان
                 </a>
               </div>
             ))}
-            {!dashboard?.upcomingMeetings?.length && <p className="text-slate-500 text-center py-10">لا توجد اجتماعات قادمة</p>}
+            {!dashboard?.upcomingMeetings?.length && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                لا توجد اجتماعات قادمة
+              </div>
+            )}
           </div>
         )}
 
+        {/* ══════════════ المجتمع ══════════════ */}
         {!loading && tab === 'community' && (
           <div className="space-y-3">
-            <h2 className="text-base font-black text-white">💬 مجتمع الآباء</h2>
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-600" /> مجتمع وتنبيهات الآباء
+            </h2>
             {dashboard?.communityPosts?.map((p: any) => (
-              <div key={p.id} className={`rounded-2xl border p-4 ${p.pinned ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/10 bg-white/5'}`}>
-                {p.pinned && <span className="text-xs text-amber-400 font-bold mb-1 block">📌 مثبّت</span>}
-                <p className="text-sm text-white">{p.body}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-slate-500">{p.author?.name}</span>
-                  <span className="text-xs text-slate-600">•</span>
-                  <span className="text-xs text-slate-600">{new Date(p.createdAt).toLocaleDateString('ar-SA')}</span>
-                </div>
+              <div key={p.id} className={`bg-white border rounded-3xl p-4.5 shadow-sm space-y-2 ${p.pinned ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
+                {p.pinned && <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full inline-block">📌 إعلان مثبّت</span>}
+                <p className="text-xs text-slate-900 font-bold leading-relaxed">{p.body}</p>
+                <p className="text-[10px] text-slate-400">{new Date(p.createdAt).toLocaleString('ar-SA')}</p>
               </div>
             ))}
-            {!dashboard?.communityPosts?.length && <p className="text-slate-500 text-center py-10">لا توجد منشورات بعد</p>}
+            {!dashboard?.communityPosts?.length && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                لا توجد منشورات بعد
+              </div>
+            )}
           </div>
         )}
 
+        {/* ══════════════ الصور ══════════════ */}
         {!loading && tab === 'photos' && (
-          <div className="space-y-4">
-            <h2 className="text-base font-black text-white">📸 صور من الفصل</h2>
+          <div className="space-y-3">
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-emerald-600" /> صور الفصل اليومية
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               {dashboard?.recentPhotos?.map((ph: any) => (
-                <div key={ph.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                <div key={ph.id} className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                   <img src={ph.photoUrl} alt={ph.caption ?? ''} className="w-full h-36 object-cover" />
-                  {ph.caption && <p className="text-xs text-slate-400 p-2">{ph.caption}</p>}
-                  <div className="px-2 pb-2 flex gap-1 flex-wrap">
+                  {ph.caption && <p className="text-xs text-slate-700 p-2.5 font-bold">{ph.caption}</p>}
+                  <div className="p-2 pt-0 flex gap-1.5">
                     {['❤️', '👏', '🌟', '😊'].map((emoji) => (
                       <button key={emoji} onClick={() => reactPhoto(ph.id, emoji)}
                         className="text-sm hover:scale-125 transition-transform">
                         {emoji}
                       </button>
                     ))}
-                    {reactionSent[ph.id] && <span className="text-xs text-green-400">✓</span>}
+                    {reactionSent[ph.id] && <span className="text-xs text-emerald-600 font-bold">✓</span>}
                   </div>
                 </div>
               ))}
-              {!dashboard?.recentPhotos?.length && <div className="col-span-2 text-slate-500 text-center py-10">لا توجد صور بعد</div>}
+              {!dashboard?.recentPhotos?.length && (
+                <div className="col-span-2 bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                  لا توجد صور بعد
+                </div>
+              )}
             </div>
           </div>
         )}
 
+        {/* ══════════════ التقارير ══════════════ */}
         {!loading && tab === 'report' && (
-          <div className="space-y-4">
-            <h2 className="text-base font-black text-white">📊 تقارير ابنك</h2>
+          <div className="space-y-3">
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-emerald-600" /> التقرير الأسبوعي لتقييم طفلك
+            </h2>
             {dashboard?.latestWeeklyReport ? (
-              <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/30 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-violet-300">التقرير الأسبوعي</h3>
-                  <span className="text-xs text-slate-500">
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-black text-slate-900 text-base">التقرير التراكمي الأسبوعي</h3>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
                     {dashboard.latestWeeklyReport.weekStart} — {dashboard.latestWeeklyReport.weekEnd}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  {[
-                    { label: 'أيام الحضور', value: `${dashboard.latestWeeklyReport.attendanceDays}/5`, color: 'text-blue-400' },
-                    { label: 'متوسط الأداء', value: `${dashboard.latestWeeklyReport.avgPerformance}%`, color: 'text-green-400' },
-                    { label: 'الواجبات', value: `${dashboard.latestWeeklyReport.homeworkDone}/${dashboard.latestWeeklyReport.homeworkTotal}`, color: 'text-amber-400' },
-                  ].map((s) => (
-                    <div key={s.label} className="bg-white/5 rounded-xl p-3">
-                      <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-                      <p className="text-xs text-slate-500 mt-1">{s.label}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-3 gap-2.5 text-center">
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-xl font-black text-emerald-700">{dashboard.latestWeeklyReport.attendanceDays}/5</p>
+                    <p className="text-[10px] text-slate-500 font-bold">أيام الحضور</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-xl font-black text-blue-700">{dashboard.latestWeeklyReport.avgPerformance}%</p>
+                    <p className="text-[10px] text-slate-500 font-bold">متوسط الأداء</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <p className="text-xl font-black text-amber-600">{dashboard.latestWeeklyReport.homeworkDone}/{dashboard.latestWeeklyReport.homeworkTotal}</p>
+                    <p className="text-[10px] text-slate-500 font-bold">الواجبات</p>
+                  </div>
                 </div>
                 {dashboard.latestWeeklyReport.teacherNotes && (
-                  <div className="bg-white/5 rounded-xl p-3">
-                    <p className="text-xs text-violet-400 font-bold mb-1">ملاحظات المعلم:</p>
-                    <p className="text-sm text-white">{dashboard.latestWeeklyReport.teacherNotes}</p>
+                  <div className="bg-emerald-50/50 border border-emerald-200 p-3.5 rounded-2xl text-xs text-slate-800">
+                    <p className="font-black text-emerald-900 mb-1">💬 ملاحظات وتوصيات المعلم:</p>
+                    <p>{dashboard.latestWeeklyReport.teacherNotes}</p>
                   </div>
                 )}
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 font-bold mb-2">أداء اليوم:</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-2.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
-                        style={{ width: `${dashboard.todayLog?.performanceScore ?? 0}%` }} />
-                    </div>
-                    <span className="text-sm font-black text-violet-400">{dashboard.todayLog?.performanceScore ?? 0}%</span>
-                  </div>
-                </div>
               </div>
             ) : (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-                <Star className="w-10 h-10 text-violet-400 mx-auto mb-3" />
-                <p className="text-slate-400">لا يوجد تقرير أسبوعي بعد</p>
-                <p className="text-xs text-slate-600 mt-1">يتم إرساله كل يوم خميس</p>
+              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                <Star className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+                <p className="font-bold">لا يوجد تقرير أسبوعي بعد</p>
+                <p className="text-xs text-slate-400 mt-1">يتم إصدار التقرير الأسبوعي كل يوم خميس</p>
               </div>
             )}
           </div>
