@@ -23,7 +23,7 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
-        <Sidebar />
+        <Sidebar desktopOnly />
         <main className="min-w-0 flex-1">
           <section className="border-b border-slate-200 bg-white">
             <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1fr_420px] lg:px-8">

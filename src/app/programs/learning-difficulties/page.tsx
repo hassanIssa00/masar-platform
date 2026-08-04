@@ -51,7 +51,7 @@ export default function LearningDifficultiesPage() {
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
-        <Sidebar />
+        <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
           <header className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-black text-teal-800">البرامج العلاجية والتدخلية</p>

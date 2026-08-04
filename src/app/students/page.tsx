@@ -51,7 +51,7 @@ export default function StudentsControlPage() {
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
-        <Sidebar />
+        <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
           <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

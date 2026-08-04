@@ -100,7 +100,7 @@ function ReportsContent() {
       <div className="min-h-screen bg-[var(--background)] text-slate-950">
         {!parentMode && <Navbar />}
         <div className="flex">
-          {!parentMode && <Sidebar />}
+          {!parentMode && <Sidebar desktopOnly />}
           <main className={`min-w-0 flex-1 px-4 py-6 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
             {!parentMode && <button onClick={() => setSelectedId(null)} className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
               <ArrowRight size={17} />
@@ -354,7 +354,7 @@ function ReportsContent() {
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
-        <Sidebar />
+        <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
           <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

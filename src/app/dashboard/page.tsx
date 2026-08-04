@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Heart, Star, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
@@ -41,34 +41,48 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
-          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <p className="text-sm font-black text-teal-800">مركز التشغيل العلاجي</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">قرارات مبنية على قياس، لا على الانطباع</h1>
-                <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
-                  تابع الطلاب حسب المهارة الحالية، دقة الأداء، نوع المساعدة، وقرار الجلسة التالية. الواجهة مصممة للاستخدام اليومي السريع على المكتب والموبايل.
-                </p>
+      <div className="flex" dir="rtl">
+        <Sidebar desktopOnly />
+        <main className="min-w-0 flex-1 px-4 py-5 lg:px-8">
+
+          {/* ✨ WELCOME HERO — Dr. Ismail */}
+          <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-l from-teal-700 via-teal-800 to-slate-900 p-5 shadow-xl text-white" dir="rtl">
+            <div className="flex items-center gap-4">
+              {/* Avatar placeholder */}
+              <div className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/30 shadow-lg bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center">
+                <span className="text-2xl font-black text-white">د</span>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800">
-                  <UserRoundPlus size={17} />
-                  إضافة طالب
-                </Link>
-                <Link href="/assessment" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
-                  <ClipboardCheck size={17} />
-                  اختبارات المستوى
-                </Link>
-                <Link href="/kids" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">
-                  <Gamepad2 size={17} />
-                  ألعاب الطالب
-                </Link>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black text-teal-300 tracking-wider">مرحباً بك في منصة مَسَار 👋</p>
+                <h1 className="mt-0.5 text-xl font-black text-white leading-snug">د. إسماعيل عيسى</h1>
+                <p className="mt-1 text-xs font-bold text-teal-200/80">استشاري التعليم العلاجي وصعوبات التعلم</p>
+              </div>
+              <div className="hidden sm:flex flex-col items-end gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-teal-100">
+                  <Star size={12} className="text-amber-400" />
+                  {students.length} طالب مسجل
+                </div>
+                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-teal-100">
+                  <Heart size={12} className="text-rose-400" />
+                  {reports.length} تقرير مكتمل
+                </div>
               </div>
             </div>
-          </header>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <Link href="/student/new" className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition px-3 py-2.5 text-xs font-black text-white">
+                <UserRoundPlus size={14} />
+                إضافة طالب
+              </Link>
+              <Link href="/assessment" className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition px-3 py-2.5 text-xs font-black text-white">
+                <ClipboardCheck size={14} />
+                اختبار مستوى
+              </Link>
+              <Link href="/parents" className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition px-3 py-2.5 text-xs font-black text-white">
+                <FileText size={14} />
+                إرسال تقارير
+              </Link>
+            </div>
+          </div>
 
           <SyncStatus />
 
