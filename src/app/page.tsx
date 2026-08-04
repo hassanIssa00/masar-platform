@@ -618,13 +618,13 @@ export default function Home() {
             </div>
 
             {/* Nexus Mockup Image Section (Light Frame with Real Official Image) */}
-            <div className="relative rounded-3xl border border-slate-200 bg-white p-3 shadow-xl overflow-hidden group">
-              <div className="relative h-[280px] sm:h-[380px] w-full rounded-2xl overflow-hidden bg-slate-900">
+            <div className="relative rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden group">
+              <div className="relative h-[360px] sm:h-[480px] w-full overflow-hidden bg-slate-900">
                 <Image 
                   src="/brand/nexus-school-hero.webp" 
                   alt="نظام نكسس للمدارس والمسابقات" 
                   fill 
-                  className="object-cover group-hover:scale-102 transition duration-700" 
+                  className="object-cover object-center group-hover:scale-102 transition duration-700" 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
                 
