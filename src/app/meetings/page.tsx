@@ -37,6 +37,7 @@ type ParticipantInfo = {
   joinedAt: number;
   kicked?: boolean;
   forceMuted?: boolean;
+  forceVideoOff?: boolean;
   micOn?: boolean;
   videoOn?: boolean;
 };
@@ -809,13 +810,25 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       }));
     }
 
-    /* ── Presence ── */
+    return () => {
+      unsubs.forEach((u) => u());
+      pc.close();
+      pcRef.current = null;
+    };
+  }, [localStream, isHost, roomCode, myName]);
+
+  /* ── Presence & Listener ── */
+  useEffect(() => {
     const myDocRef = doc(db, 'masar_rooms', roomCode, 'participants', myId.current);
+    const roomRef   = doc(db, 'masar_rooms', roomCode);
+    const unsubs: Array<() => void> = [];
+
     setDoc(myDocRef, {
       name: myName, role: isHost ? 'host' : 'guest',
-      joinedAt: Date.now(), kicked: false, micOn: false, videoOn: false, forceMuted: false,
+      joinedAt: Date.now(), kicked: false, micOn: false, videoOn: false, forceMuted: false, forceVideoOff: false,
     }, { merge: true }).catch(() => {});
 
+    // Listen to all participants
     unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'participants'), (snap) => {
       const ps = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<ParticipantInfo, 'id'>) }))
@@ -823,6 +836,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       setParticipants(ps);
     }));
 
+    // Non-host listens for force mute / force video off / whiteboard sync / kick
     if (!isHost) {
       unsubs.push(onSnapshot(myDocRef, (snap) => {
         const d = snap.data() as ParticipantInfo | undefined;
@@ -832,8 +846,22 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
           localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = false; });
           setMicOn(false);
         }
+        if (d.forceVideoOff) {
+          localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = false; });
+          setVideoOn(false);
+        }
       }));
     }
+
+    // Room doc listener (for Whiteboard tab sync)
+    unsubs.push(onSnapshot(roomRef, (snap) => {
+      const d = snap.data();
+      if (d && typeof d.whiteboardActive === 'boolean') {
+        if (!isHost) {
+          setActiveTab(d.whiteboardActive ? 'whiteboard' : 'video');
+        }
+      }
+    }));
 
     /* ── Chat ── */
     unsubs.push(onSnapshot(collection(db, 'masar_rooms', roomCode, 'chat'), (snap) => {
@@ -846,10 +874,8 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
 
     return () => {
       unsubs.forEach((u) => u());
-      pc.close();
-      pcRef.current = null;
     };
-  }, [localStream, isHost, roomCode, myName]);
+  }, [isHost, roomCode, myName]);
 
   /* ── Toggle mic ── */
   const toggleMic = () => {
@@ -868,7 +894,6 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     const next = !videoOn;
     stream.getVideoTracks().forEach((t) => { t.enabled = next; });
     setVideoOn(next);
-    // Ensure video element always has the stream as srcObject
     if (localVideoRef.current) {
       if (localVideoRef.current.srcObject !== stream) {
         localVideoRef.current.srcObject = stream;
@@ -878,57 +903,92 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', myId.current), { videoOn: next }, { merge: true }).catch(() => {});
   };
 
-  /* ── Screen share ── */
+  /* ── Screen share (with robust camera recovery) ── */
   const toggleScreenShare = async () => {
     const pc = pcRef.current;
     const stream = localStreamRef.current;
     if (!pc || !stream) return;
+
     if (screenSharing) {
+      // STOP screen share
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
-      const camTrack = stream.getVideoTracks()[0];
-      if (camTrack) {
-        const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-        await sender?.replaceTrack(camTrack).catch(() => {});
+
+      let camTrack = stream.getVideoTracks()[0];
+      if (!camTrack || camTrack.readyState === 'ended') {
+        try {
+          const fresh = await navigator.mediaDevices.getUserMedia({ video: true, audio: micOn });
+          fresh.getVideoTracks().forEach((t) => { t.enabled = videoOn; });
+          localStreamRef.current = fresh;
+          setLocalStream(fresh);
+          camTrack = fresh.getVideoTracks()[0];
+        } catch { /* fallback */ }
       }
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+
+      if (camTrack) {
+        camTrack.enabled = videoOn;
+        const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+        if (sender) await sender.replaceTrack(camTrack).catch(() => {});
+      }
+
+      if (localVideoRef.current && localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
         localVideoRef.current.play().catch(() => {});
       }
       setScreenSharing(false);
     } else {
+      // START screen share
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         screenStreamRef.current = screenStream;
         const screenTrack = screenStream.getVideoTracks()[0];
         const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-        await sender?.replaceTrack(screenTrack).catch(() => {});
+        if (sender) await sender.replaceTrack(screenTrack).catch(() => {});
+
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = new MediaStream([screenTrack]);
           localVideoRef.current.play().catch(() => {});
         }
+
         screenTrack.onended = async () => {
-          const camT = stream.getVideoTracks()[0];
-          if (camT) {
-            const s2 = pcRef.current?.getSenders().find((s) => s.track?.kind === 'video');
-            await s2?.replaceTrack(camT).catch(() => {});
+          screenStreamRef.current = null;
+          let camTrack = localStreamRef.current?.getVideoTracks()[0];
+          if (!camTrack || camTrack.readyState === 'ended') {
+            try {
+              const fresh = await navigator.mediaDevices.getUserMedia({ video: true, audio: micOn });
+              fresh.getVideoTracks().forEach((t) => { t.enabled = videoOn; });
+              localStreamRef.current = fresh;
+              setLocalStream(fresh);
+              camTrack = fresh.getVideoTracks()[0];
+            } catch { /* fallback */ }
           }
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
+          if (camTrack && pcRef.current) {
+            camTrack.enabled = videoOn;
+            const sender2 = pcRef.current.getSenders().find((s) => s.track?.kind === 'video');
+            await sender2?.replaceTrack(camTrack).catch(() => {});
+          }
+          if (localVideoRef.current && localStreamRef.current) {
+            localVideoRef.current.srcObject = localStreamRef.current;
             localVideoRef.current.play().catch(() => {});
           }
-          screenStreamRef.current = null;
           setScreenSharing(false);
         };
         setScreenSharing(true);
-      } catch { /* cancelled */ }
+      } catch { /* user cancelled */ }
     }
   };
 
+  /* ── Doctor Host Controls ── */
   const toggleMuteParticipant = (pid: string, isCurrentlyMuted?: boolean) => {
     if (!isHost) return;
     const next = !isCurrentlyMuted;
     setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), { forceMuted: next, micOn: !next }, { merge: true }).catch(() => {});
+  };
+
+  const toggleCameraParticipant = (pid: string, isCurrentlyOff?: boolean) => {
+    if (!isHost) return;
+    const next = !isCurrentlyOff;
+    setDoc(doc(db, 'masar_rooms', roomCode, 'participants', pid), { forceVideoOff: next, videoOn: !next }, { merge: true }).catch(() => {});
   };
 
   const kickParticipant = (pid: string) => {
@@ -943,6 +1003,14 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
         setDoc(doc(db, 'masar_rooms', roomCode, 'participants', p.id), { forceMuted: true, micOn: false }, { merge: true }).catch(() => {});
       }
     });
+  };
+
+  const toggleWhiteboardTab = () => {
+    const next = activeTab !== 'whiteboard';
+    setActiveTab(next ? 'whiteboard' : 'video');
+    if (isHost) {
+      setDoc(doc(db, 'masar_rooms', roomCode), { whiteboardActive: next }, { merge: true }).catch(() => {});
+    }
   };
 
   const sendChat = () => {
@@ -973,7 +1041,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
       {isMasarUser && <Navbar />}
       <div className="flex">
         {isMasarUser && isHost && <Sidebar desktopOnly />}
-        <main className="min-w-0 flex-1 p-3 sm:p-6 space-y-4">
+        <main className="min-w-0 flex-1 p-3 sm:p-6 space-y-4 max-w-7xl mx-auto w-full">
 
           {/* Permission Banner — shown if denied or loading */}
           {permStatus === 'loading' && (
@@ -997,18 +1065,18 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
             </div>
           )}
 
-          {/* Call Banner */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+          {/* Call Container */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-5">
 
             {/* Top Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-rose-500 animate-ping shrink-0" />
+                <span className="h-3.5 w-3.5 rounded-full bg-rose-500 animate-ping shrink-0" />
                 <div>
-                  <h1 className="font-black text-slate-950 text-base sm:text-lg">{title}</h1>
+                  <h1 className="font-black text-slate-950 text-base sm:text-xl">{title}</h1>
                   <p className="text-xs font-bold text-teal-700">
                     رمز الغرفة: <span className="text-slate-900 font-black">{roomCode}</span>
-                    {isHost && <span className="mr-2 text-amber-600 font-black">· أنت المضيف</span>}
+                    {isHost && <span className="mr-2 text-amber-600 font-black">· أنت المضيف (الدكتور)</span>}
                     {!isHost && <span className="mr-2 text-teal-800 font-black">· مرحباً بك {myName}</span>}
                   </p>
                 </div>
@@ -1033,227 +1101,222 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
               </div>
             </div>
 
-            {/* Mobile Tab Bar */}
-            <div className="flex md:hidden bg-slate-100 rounded-xl p-1 gap-1">
-              {(['video','participants','chat','whiteboard'] as const).map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-2 text-[10px] font-black rounded-lg transition ${
-                    activeTab === tab ? 'bg-teal-600 text-white' : 'text-slate-600'
-                  }`}>
-                  {tab === 'video' ? '📹 الفيديو' : tab === 'participants' ? `👥 (${participants.length})` : tab === 'chat' ? '💬 المحادثة' : '🎨 السبورة'}
-                </button>
-              ))}
-            </div>
+            {/* MAIN FULL-WIDTH VIDEO / WHITEBOARD STACK */}
+            <div className="w-full">
 
-            {/* Body Grid */}
-            <div className="grid md:grid-cols-12 gap-4">
+              {activeTab === 'whiteboard' ? (
+                <InteractiveWhiteboard roomCode={roomCode} />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Left: Video / Whiteboard */}
-              <div className={`md:col-span-8 flex flex-col gap-4 ${
-                activeTab !== 'video' && activeTab !== 'whiteboard' ? 'hidden md:flex' : 'flex'
-              }`}>
+                  {/* ── LOCAL VIDEO (PROMINENT LARGE BOX) ── */}
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 min-h-[300px] sm:min-h-[400px] lg:min-h-[460px] flex flex-col justify-center shadow-lg">
+                    <video
+                      ref={localVideoRef}
+                      autoPlay playsInline muted
+                      style={{ display: videoOn ? 'block' : 'none' }}
+                      className={`absolute inset-0 h-full w-full object-cover ${!screenSharing ? 'scale-x-[-1]' : ''}`}
+                    />
 
-                {activeTab === 'whiteboard' ? (
-                  <InteractiveWhiteboard roomCode={roomCode} />
-                ) : (
-                  <div className="grid sm:grid-cols-2 gap-3">
-
-                    {/* ── LOCAL VIDEO ── */}
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 min-h-[200px] sm:min-h-[240px]">
-                      {/* video element ALWAYS rendered — srcObject set, track enabled controls what's shown */}
-                      <video
-                        ref={localVideoRef}
-                        autoPlay playsInline muted
-                        style={{ display: videoOn ? 'block' : 'none' }}
-                        className={`absolute inset-0 h-full w-full object-cover ${!screenSharing ? 'scale-x-[-1]' : ''}`}
-                      />
-
-                      {/* Overlay when video OFF */}
-                      {!videoOn && (
-                        <div className="absolute inset-0 grid place-items-center bg-slate-900 p-4 text-center">
-                          {permStatus === 'loading' ? (
-                            <div className="space-y-2">
-                              <div className="h-9 w-9 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mx-auto" />
-                              <p className="text-xs font-black text-slate-300">جاري تجهيز الكاميرا...</p>
+                    {/* Overlay when video OFF */}
+                    {!videoOn && (
+                      <div className="absolute inset-0 grid place-items-center bg-slate-900 p-4 text-center">
+                        {permStatus === 'loading' ? (
+                          <div className="space-y-2">
+                            <div className="h-10 w-10 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mx-auto" />
+                            <p className="text-xs font-black text-slate-300">جاري تجهيز الكاميرا...</p>
+                          </div>
+                        ) : permStatus === 'denied' || permStatus === 'nodevice' ? (
+                          <div className="space-y-2 px-2">
+                            <AlertTriangle size={36} className="mx-auto text-amber-400" />
+                            <p className="text-xs font-bold text-amber-200 leading-snug">لا يوجد وصول للكاميرا</p>
+                            <button onClick={requestMedia} className="rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700">
+                              إعادة المحاولة
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="h-16 w-16 rounded-full bg-slate-800 border border-slate-700 grid place-items-center mx-auto">
+                              <VideoOff size={32} className="text-slate-500" />
                             </div>
-                          ) : permStatus === 'denied' || permStatus === 'nodevice' ? (
-                            <div className="space-y-2 px-2">
-                              <AlertTriangle size={32} className="mx-auto text-amber-400" />
-                              <p className="text-[10px] font-bold text-amber-200 leading-snug">لا يوجد وصول للكاميرا</p>
-                              <button onClick={requestMedia} className="rounded-xl bg-teal-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-teal-700">
-                                إعادة المحاولة
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="h-14 w-14 rounded-full bg-slate-800 border border-slate-700 grid place-items-center mx-auto">
-                                <VideoOff size={28} className="text-slate-500" />
-                              </div>
-                              <p className="text-xs font-black text-slate-300">الكاميرا مقفولة</p>
-                              <p className="text-[10px] text-slate-500">اضغط 📹 بالأسفل لتشغيلها</p>
-                            </div>
+                            <p className="text-sm font-black text-slate-200">الكاميرا مقفولة</p>
+                            <p className="text-xs text-slate-400">اضغط أيقونة الكاميرا بالأسفل لتشغيلها</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="absolute top-3 right-3 z-10 rounded-full bg-black/75 backdrop-blur px-3 py-1 text-xs font-black text-white shadow">
+                      {myName} (أنت)
+                    </div>
+                    {screenSharing && (
+                      <div className="absolute top-3 left-3 z-10 rounded-full bg-teal-600 px-2.5 py-1 text-xs font-black text-white shadow">📺 مشاركة الشاشة</div>
+                    )}
+                    <div className="absolute bottom-3 left-3 z-10">
+                      <span className={`rounded-full px-3 py-1 text-xs font-black shadow ${
+                        micOn ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                      }`}>
+                        {micOn ? '🎙 المايك شغال' : '🔇 المايك مكتوم'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── REMOTE VIDEO (PROMINENT LARGE BOX) ── */}
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 min-h-[300px] sm:min-h-[400px] lg:min-h-[460px] flex flex-col justify-center shadow-lg">
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay playsInline
+                      className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
+                    />
+                    {!hasRemote && (
+                      <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-teal-950 via-slate-900 to-slate-950 p-6 text-center">
+                        <div className="space-y-3">
+                          <div className="h-16 w-16 rounded-full bg-teal-500/20 border border-teal-400/30 grid place-items-center mx-auto animate-pulse">
+                            <User size={32} className="text-teal-300" />
+                          </div>
+                          <p className="text-sm font-black text-white">
+                            {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور...'}
+                          </p>
+                          {isHost && (
+                            <button onClick={copyGuestLink}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 shadow-md">
+                              <Copy size={12} /> انسخ رابط الضيف
+                            </button>
+                          )}
+                          {!isHost && (
+                            <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-black text-emerald-300">متصل بالبث ✓</span>
                           )}
                         </div>
-                      )}
-
-                      <div className="absolute top-2 right-2 z-10 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-black text-white">
-                        {myName} (أنت)
                       </div>
-                      {screenSharing && (
-                        <div className="absolute top-2 left-2 z-10 rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white">📺 شاشتك</div>
-                      )}
-                      <div className="absolute bottom-2 left-2 z-10">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                          micOn ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                        }`}>
-                          {micOn ? '🎙 شغال' : '🔇 مكتوم'}
-                        </span>
-                      </div>
+                    )}
+                    <div className="absolute top-3 right-3 z-10 rounded-full bg-black/75 backdrop-blur px-3 py-1 text-xs font-black text-white shadow">
+                      {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
                     </div>
+                  </div>
 
-                    {/* ── REMOTE VIDEO ── */}
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 min-h-[200px] sm:min-h-[240px]">
-                      <video
-                        ref={remoteVideoRef}
-                        autoPlay playsInline
-                        className={`absolute inset-0 h-full w-full object-cover ${hasRemote ? 'opacity-100' : 'opacity-0'}`}
-                      />
-                      {!hasRemote && (
-                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-teal-900 to-slate-900 p-4 text-center">
-                          <div className="space-y-3">
-                            <div className="h-14 w-14 rounded-full bg-teal-400/20 border border-teal-400/40 grid place-items-center mx-auto animate-pulse">
-                              <User size={28} className="text-teal-300" />
-                            </div>
-                            <p className="text-xs font-black text-white">
-                              {isHost ? 'في انتظار انضمام المشارك...' : 'في انتظار فتح بث الدكتور...'}
-                            </p>
-                            {isHost && (
-                              <button onClick={copyGuestLink}
-                                className="inline-flex items-center gap-1 rounded-full bg-teal-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-teal-700">
-                                <Copy size={10} /> انسخ رابط الضيف
-                              </button>
-                            )}
-                            {!isHost && (
-                              <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[10px] font-black text-emerald-300">متصل بالبث ✓</span>
-                            )}
+                </div>
+              )}
+
+              {/* ── Control Bar ── */}
+              <div className="flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm mt-4">
+                <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
+                  {micOn ? <Mic size={20} /> : <MicOff size={20} />}
+                </CtrlBtn>
+                <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
+                  {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
+                </CtrlBtn>
+                <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف الشاشة' : 'مشاركة الشاشة'}>
+                  <Monitor size={20} />
+                </CtrlBtn>
+                <button onClick={toggleWhiteboardTab}
+                  className={`flex h-11 items-center gap-2 px-4 rounded-xl border text-xs font-black transition ${
+                    activeTab === 'whiteboard' ? 'bg-teal-600 text-white border-teal-600 shadow-md' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                  }`}>
+                  <PenTool size={18} />
+                  <span>السبورة التفاعلية</span>
+                </button>
+              </div>
+
+            </div>
+
+            {/* ── BOTTOM SECTION: PARTICIPANTS & CHAT SIDE BY SIDE ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t border-slate-100 pt-5">
+
+              {/* PARTICIPANTS CARD */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Users size={16} className="text-teal-600" /> الحضور المتصلين ({participants.length})
+                  </h3>
+                  {isHost && (
+                    <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">تحكّم الدكتور</span>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {participants.length === 0 && (
+                    <p className="text-xs font-bold text-slate-400 text-center py-4">جاري الاتصال...</p>
+                  )}
+                  {participants.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-teal-50 text-teal-700 border border-teal-200 grid place-items-center text-xs font-black shrink-0">
+                          {p.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 mt-0.5">
+                            <span>{p.role === 'host' ? '👑 المضيف' : 'مشارك'}</span>
+                            <span>· {p.micOn ? '🎙 مايك شغال' : '🔇 مكتوم'}</span>
+                            <span>· {p.videoOn ? '📹 كاميرا شغالة' : '📷 كاميرا مقفولة'}</span>
                           </div>
                         </div>
-                      )}
-                      <div className="absolute top-2 right-2 z-10 rounded-full bg-black/70 px-2.5 py-0.5 text-[10px] font-black text-white">
-                        {isHost ? 'المشارك' : 'د. إسماعيل عيسى'}
                       </div>
+
+                      {/* Doctor Controls: Mic & Camera & Kick */}
+                      {isHost && p.id !== myId.current && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Toggle Mic */}
+                          <button onClick={() => toggleMuteParticipant(p.id, p.forceMuted || !p.micOn)}
+                            className={`p-2 rounded-xl border transition ${
+                              p.forceMuted || !p.micOn
+                                ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                                : 'bg-slate-100 border-slate-200 text-emerald-700 hover:bg-slate-200'
+                            }`} title={p.forceMuted || !p.micOn ? 'إلغاء كتم المايك' : 'كتم المايك'}>
+                            {p.forceMuted || !p.micOn ? <MicOff size={14} /> : <Mic size={14} />}
+                          </button>
+
+                          {/* Toggle Camera */}
+                          <button onClick={() => toggleCameraParticipant(p.id, p.forceVideoOff || !p.videoOn)}
+                            className={`p-2 rounded-xl border transition ${
+                              p.forceVideoOff || !p.videoOn
+                                ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                                : 'bg-slate-100 border-slate-200 text-teal-700 hover:bg-slate-200'
+                            }`} title={p.forceVideoOff || !p.videoOn ? 'إلغاء قفل الكاميرا' : 'قفل الكاميرا'}>
+                            {p.forceVideoOff || !p.videoOn ? <VideoOff size={14} /> : <Video size={14} />}
+                          </button>
+
+                          {/* Kick */}
+                          <button onClick={() => kickParticipant(p.id)}
+                            className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition" title="طرد">
+                            <UserX size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                  </div>
-                )}
-
-                {/* ── Control Bar ── */}
-                <div className="flex items-center justify-center gap-2 sm:gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                  <CtrlBtn active={micOn} onClick={toggleMic} title={micOn ? 'كتم المايك' : 'تشغيل المايك'}>
-                    {micOn ? <Mic size={20} /> : <MicOff size={20} />}
-                  </CtrlBtn>
-                  <CtrlBtn active={videoOn} onClick={toggleVideo} title={videoOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}>
-                    {videoOn ? <Video size={20} /> : <VideoOff size={20} />}
-                  </CtrlBtn>
-                  <CtrlBtn active={!screenSharing} onClick={toggleScreenShare} title={screenSharing ? 'إيقاف الشاشة' : 'مشاركة الشاشة'}>
-                    <Monitor size={20} />
-                  </CtrlBtn>
-                  <button onClick={() => setActiveTab(activeTab === 'whiteboard' ? 'video' : 'whiteboard')}
-                    className={`flex h-11 items-center gap-1.5 px-3 rounded-xl border text-xs font-black transition ${
-                      activeTab === 'whiteboard' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                    }`}>
-                    <PenTool size={18} />
-                    <span className="hidden sm:inline">السبورة</span>
+              {/* CHAT CARD */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-200">
+                  <MessageSquare size={16} className="text-teal-600" /> محادثة الجلسة
+                </h3>
+                <div className="flex-1 space-y-2 max-h-56 overflow-y-auto">
+                  {chatMessages.length === 0 && (
+                    <p className="text-xs font-bold text-slate-400 text-center py-4">لا توجد رسائل بعد</p>
+                  )}
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+                      <p className="text-[10px] font-black text-teal-700">{msg.name} <span className="text-slate-400">· {msg.time}</span></p>
+                      <p className="mt-0.5 text-xs font-bold text-slate-800">{msg.text}</p>
+                    </div>
+                  ))}
+                  <div ref={chatBottomRef} />
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendChat()} placeholder="اكتب رسالتك..."
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600" />
+                  <button onClick={sendChat}
+                    className="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm">
+                    إرسال
                   </button>
                 </div>
               </div>
 
-              {/* ── Right: Participants + Chat ── */}
-              <div className={`md:col-span-4 bg-slate-50 border border-slate-200 rounded-2xl p-4 flex-col gap-4 ${
-                activeTab === 'video' || activeTab === 'whiteboard' ? 'hidden md:flex' : 'flex'
-              }`}>
-
-                {/* Participants */}
-                <div className={activeTab === 'chat' ? 'hidden md:block' : 'block'}>
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                    <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <Users size={14} className="text-teal-600" /> الحضور ({participants.length})
-                    </h3>
-                    {isHost && (
-                      <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">تحكّم الدكتور</span>
-                    )}
-                  </div>
-                  <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto">
-                    {participants.length === 0 && (
-                      <p className="text-[11px] font-bold text-slate-400 text-center py-3">لا أحد متصل بعد...</p>
-                    )}
-                    {participants.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="h-7 w-7 rounded-full bg-teal-50 text-teal-700 border border-teal-200 grid place-items-center text-xs font-black shrink-0">
-                            {p.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-black text-slate-900 truncate">{p.name}</p>
-                            <span className="text-[10px] font-bold text-slate-400">
-                              {p.role === 'host' ? '👑 المضيف' : p.micOn ? '🎙 شغال' : '🔇 مكتوم'}
-                            </span>
-                          </div>
-                        </div>
-                        {isHost && p.id !== myId.current && (
-                          <div className="flex gap-1 shrink-0">
-                            <button onClick={() => toggleMuteParticipant(p.id, p.forceMuted || !p.micOn)}
-                              className={`p-1.5 rounded-lg border transition ${
-                                p.forceMuted || !p.micOn
-                                  ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
-                                  : 'bg-slate-100 border-slate-200 text-emerald-700 hover:bg-slate-200'
-                              }`} title={p.forceMuted || !p.micOn ? 'إلغاء الكتم' : 'كتم المايك'}>
-                              {p.forceMuted || !p.micOn ? <MicOff size={13} /> : <Mic size={13} />}
-                            </button>
-                            <button onClick={() => kickParticipant(p.id)}
-                              className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition" title="طرد">
-                              <UserX size={13} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Chat */}
-                <div className={`flex-1 flex flex-col gap-2 border-t border-slate-200 pt-3 min-h-0 ${
-                  activeTab === 'participants' ? 'hidden md:flex' : 'flex'
-                }`}>
-                  <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <MessageSquare size={14} className="text-teal-600" /> محادثة الجلسة
-                  </h3>
-                  <div className="flex-1 space-y-2 max-h-56 overflow-y-auto">
-                    {chatMessages.length === 0 && (
-                      <p className="text-[11px] text-slate-400 text-center py-4">لا توجد رسائل بعد</p>
-                    )}
-                    {chatMessages.map((msg, i) => (
-                      <div key={i} className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
-                        <p className="text-[10px] font-black text-teal-700">{msg.name} <span className="text-slate-400">· {msg.time}</span></p>
-                        <p className="mt-0.5 text-xs font-bold text-slate-800">{msg.text}</p>
-                      </div>
-                    ))}
-                    <div ref={chatBottomRef} />
-                  </div>
-                  <div className="flex gap-2">
-                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && sendChat()} placeholder="اكتب رسالتك..."
-                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-teal-600" />
-                    <button onClick={sendChat}
-                      className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition">
-                      إرسال
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-
             </div>
+
           </div>
         </main>
       </div>
@@ -1261,7 +1324,7 @@ function CallStudio({ roomCode, title, participantName, isHost, isMasarUser, gue
   );
 }
 
-/* ═══════════════ INTERACTIVE WHITEBOARD ═══════════════ */
+/* ═══════════════ INTERACTIVE WHITEBOARD (Firestore Synced) ═══════════════ */
 function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
   const canvasRef  = useRef<HTMLCanvasElement | null>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -1270,64 +1333,110 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
   const [color, setColor]     = useState('#0f766e');
   const [tool, setTool]       = useState<'pen' | 'eraser'>('pen');
 
-  useEffect(() => {
+  const drawLineOnCanvas = (fx: number, fy: number, tx: number, ty: number, strokeColor: string, strokeWidth: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    if (!ctx) return;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+  };
+
+  const clearCanvasLocally = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  useEffect(() => {
+    clearCanvasLocally();
+
+    // 1. BroadcastChannel for same-browser tab sync
     if (typeof BroadcastChannel !== 'undefined') {
       const bc = new BroadcastChannel(`masar_wb_${roomCode}`);
       channelRef.current = bc;
       bc.onmessage = (e) => {
         const { type: t, ...d } = e.data;
-        const c2 = canvasRef.current?.getContext('2d');
-        if (!c2) return;
         if (t === 'draw') {
-          c2.strokeStyle = d.color; c2.lineWidth = d.lw;
-          c2.lineCap = 'round'; c2.lineJoin = 'round';
-          c2.beginPath(); c2.moveTo(d.fx, d.fy); c2.lineTo(d.tx, d.ty); c2.stroke();
+          drawLineOnCanvas(d.fx, d.fy, d.tx, d.ty, d.color, d.lw);
         } else if (t === 'clear') {
-          c2.fillStyle = '#fff'; c2.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+          clearCanvasLocally();
         }
       };
-      return () => bc.close();
     }
+
+    // 2. Firestore network sync for cross-device
+    const strokesRef = collection(db, 'masar_rooms', roomCode, 'whiteboard_strokes');
+    const unsub = onSnapshot(strokesRef, (snap) => {
+      snap.docChanges().forEach((ch) => {
+        if (ch.type === 'added') {
+          const d = ch.doc.data();
+          if (d.clear) {
+            clearCanvasLocally();
+          } else if (typeof d.fx === 'number') {
+            drawLineOnCanvas(d.fx, d.fy, d.tx, d.ty, d.color, d.lw);
+          }
+        }
+      });
+    });
+
+    return () => {
+      channelRef.current?.close();
+      unsub();
+    };
   }, [roomCode]);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
     const r = canvas.getBoundingClientRect();
     const cx = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const cy = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    return { x: cx - r.left, y: cy - r.top };
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    return { x: (cx - r.left) * scaleX, y: (cy - r.top) * scaleY };
   };
 
   const stroke = (fx: number, fy: number, tx: number, ty: number) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) return;
     const sc = tool === 'eraser' ? '#ffffff' : color;
     const lw = tool === 'eraser' ? 24 : 4;
-    ctx.strokeStyle = sc; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
+    drawLineOnCanvas(fx, fy, tx, ty, sc, lw);
+
     channelRef.current?.postMessage({ type: 'draw', color: sc, lw, fx, fy, tx, ty });
+
+    addDoc(collection(db, 'masar_rooms', roomCode, 'whiteboard_strokes'), {
+      color: sc, lw, fx, fy, tx, ty, ts: Date.now(),
+    }).catch(() => {});
   };
 
   const onStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     setDrawing(true);
     lastPosRef.current = getPos(e, canvasRef.current!);
   };
+
   const onMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!drawing || !lastPosRef.current) return;
     const cur = getPos(e, canvasRef.current!);
     stroke(lastPosRef.current.x, lastPosRef.current.y, cur.x, cur.y);
     lastPosRef.current = cur;
   };
+
   const onEnd = () => { setDrawing(false); lastPosRef.current = null; };
+
   const clearAll = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (ctx && canvas) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    clearCanvasLocally();
     channelRef.current?.postMessage({ type: 'clear' });
+    addDoc(collection(db, 'masar_rooms', roomCode, 'whiteboard_strokes'), {
+      clear: true, ts: Date.now(),
+    }).catch(() => {});
   };
 
   const COLORS = ['#000000', '#0f766e', '#dc2626', '#2563eb', '#7c3aed', '#d97706'];
@@ -1336,7 +1445,7 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm space-y-3 flex-1 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <span className="text-xs font-black text-teal-700 flex items-center gap-1.5">
-          <PenTool size={15} /> السبورة التفاعلية
+          <PenTool size={15} /> السبورة التفاعلية M-Board
         </span>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 rounded-xl p-1 gap-1 border border-slate-200">
@@ -1361,8 +1470,8 @@ function InteractiveWhiteboard({ roomCode }: { roomCode: string }) {
           </button>
         </div>
       </div>
-      <div className="relative flex-1 min-h-[260px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <canvas ref={canvasRef} width={900} height={350}
+      <div className="relative flex-1 min-h-[320px] sm:min-h-[420px] w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <canvas ref={canvasRef} width={900} height={450}
           onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
           onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
           className="h-full w-full cursor-crosshair touch-none" />
