@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Heart, Star, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -56,25 +57,31 @@ export default function DashboardPage() {
         <main className="min-w-0 flex-1 px-4 py-5 lg:px-8">
 
           {/* ✨ WELCOME HERO — Dr. Ismail */}
-          <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-l from-teal-700 via-teal-800 to-slate-900 p-5 shadow-xl text-white" dir="rtl">
-            <div className="flex items-center gap-4">
-              {/* Avatar placeholder */}
-              <div className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/30 shadow-lg bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center">
-                <span className="text-2xl font-black text-white">د</span>
+          <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-l from-teal-700 via-teal-800 to-slate-900 p-6 shadow-xl text-white" dir="rtl">
+            <div className="flex items-center gap-5">
+              {/* Doctor real photo */}
+              <div className="relative h-24 w-24 shrink-0 rounded-2xl overflow-hidden ring-3 ring-white/30 shadow-xl">
+                <Image
+                  src="/dr-ismail.jpg"
+                  alt="د. إسماعيل عيسى"
+                  fill
+                  className="object-cover object-top"
+                  priority
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-black text-teal-300 tracking-wider">مرحباً بك في منصة مَسَار 👋</p>
-                <h1 className="mt-0.5 text-xl font-black text-white leading-snug">د. إسماعيل عيسى</h1>
-                <p className="mt-1 text-xs font-bold text-teal-200/80">استشاري التعليم العلاجي وصعوبات التعلم</p>
-              </div>
-              <div className="hidden sm:flex flex-col items-end gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-teal-100">
-                  <Star size={12} className="text-amber-400" />
-                  {students.length} طالب مسجل
-                </div>
-                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-teal-100">
-                  <Heart size={12} className="text-rose-400" />
-                  {reports.length} تقرير مكتمل
+                <h1 className="mt-1 text-2xl font-black text-white leading-snug">د. إسماعيل عيسى</h1>
+                <p className="mt-1.5 text-sm font-bold text-teal-200/80">استشاري التعليم العلاجي وصعوبات التعلم</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
+                    <Star size={12} className="text-amber-400" />
+                    {students.length} طالب مسجل
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
+                    <Heart size={12} className="text-rose-400" />
+                    {reports.length} تقرير مكتمل
+                  </div>
                 </div>
               </div>
             </div>
