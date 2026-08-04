@@ -50,7 +50,10 @@ const targetOptions = [
 /* ─────────────── LocalStorage Helpers ─────────────── */
 function readMeetings(): MeetingRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(KEY) || '[]') as MeetingRecord[]; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || '[]') as MeetingRecord[];
+    return raw.filter(m => !m.id.startsWith('meeting_demo_'));
+  }
   catch { return []; }
 }
 function writeMeetings(meetings: MeetingRecord[]) {
@@ -215,35 +218,8 @@ function MeetingsContent() {
       const nextStudents = getStudents();
       setStudents(nextStudents);
 
-      let existing = readMeetings();
-      if (existing.length === 0) {
-        const demo1: MeetingRecord = {
-          id: 'meeting_demo_1',
-          targetId: nextStudents[0]?.id || 'class_g1',
-          targetName: nextStudents[0]?.fullName || 'فصل الصف الأول الابتدائي',
-          roomCode: 'MASAR-ROOM-8802',
-          title: 'جلسة تأسيس قرائي ونطق مباشر',
-          date: new Date().toISOString().slice(0, 10),
-          time: '11:00',
-          type: 'internal',
-          link: `${typeof window !== 'undefined' ? window.location.origin : ''}/meetings?room=MASAR-ROOM-8802&role=student`,
-          notes: 'تقييم وتدريب على المخارج الصوتية والقاموس المفيد.',
-        };
-        const demo2: MeetingRecord = {
-          id: 'meeting_demo_2',
-          targetId: 'all_students',
-          targetName: 'جميع الطلاب وأولياء الأمور',
-          roomCode: 'ZOOM-892-1049',
-          title: 'لقاء Zoom المباشر مع د. إسماعيل عيسى',
-          date: new Date().toISOString().slice(0, 10),
-          time: '08:00 م',
-          type: 'zoom',
-          link: 'https://zoom.us/j/99988877766',
-          notes: 'لقاء استشاري مفتوح والإجابة على تساؤلات أولياء الأمور عبر زوم.',
-        };
-        writeMeetings([demo1, demo2]);
-        existing = [demo1, demo2];
-      }
+      const existing = readMeetings();
+      writeMeetings(existing);
       setMeetings(existing);
       setForm(f => ({ ...f, targetId: f.targetId || (nextStudents[0]?.id || targetOptions[0].id) }));
 
@@ -455,77 +431,13 @@ function MeetingsContent() {
                   {showWhiteboard ? (
                     <InteractiveWhiteboard roomCode={activeCallRoom.roomCode} />
                   ) : (
-                    <div className="grid sm:grid-cols-2 gap-4 h-[380px]">
-
-                      {/* Local Video */}
-                      <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner">
-                        {/* Video element always mounted so the ref is available */}
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className={`absolute inset-0 h-full w-full object-cover ${videoOn && !cameraError ? 'opacity-100' : 'opacity-0'} transform -scale-x-100`}
-                        />
-
-                        {/* Overlay when no video */}
-                        {(!videoOn || cameraError || cameraLoading) && (
-                          <div className="absolute inset-0 grid place-items-center bg-slate-800 p-4 text-center">
-                            {cameraLoading && (
-                              <div className="space-y-2">
-                                <div className="h-10 w-10 rounded-full border-4 border-teal-400 border-t-transparent animate-spin mx-auto" />
-                                <p className="text-xs font-black text-slate-200">جاري فتح الكاميرا...</p>
-                              </div>
-                            )}
-                            {!cameraLoading && cameraError && (
-                              <div className="space-y-2">
-                                <ShieldCheck size={44} className="mx-auto text-amber-400" />
-                                <p className="text-xs font-black text-amber-200">⚠️ {cameraError}</p>
-                              </div>
-                            )}
-                            {!cameraLoading && !cameraError && !videoOn && (
-                              <div className="space-y-2">
-                                <VideoOff size={44} className="mx-auto text-slate-400" />
-                                <p className="text-xs font-black text-slate-300">الكاميرا متوقفة</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Label */}
-                        <div className="absolute top-3 right-3 z-10 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                          {isHost ? 'د. إسماعيل عيسى — المضيف' : 'كاميرتك المحلية'}
-                        </div>
-                        <div className="absolute bottom-3 left-3 z-10 flex gap-1.5">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${micOn ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                            {micOn ? '🎙 صوت' : '🔇 كتوم'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Remote Video Placeholder */}
-                      <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-teal-800 to-slate-800 shadow-inner">
-                        <div className="absolute inset-0 grid place-items-center text-center p-4">
-                          <div className="space-y-3">
-                            <div className="h-16 w-16 rounded-full bg-teal-400/20 border-2 border-teal-400/40 grid place-items-center mx-auto">
-                              <User size={36} className="text-teal-300" />
-                            </div>
-                            <p className="text-xs font-black text-white">
-                              {isHost ? activeCallRoom.targetName : 'د. إسماعيل عيسى'}
-                            </p>
-                            <p className="text-[11px] font-bold text-teal-200">
-                              {isHost ? 'بث الطلاب والحضور' : 'استشاري المنصة'}
-                            </p>
-                            <span className="inline-block rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-black text-emerald-300">
-                              متصل ✓
-                            </span>
-                          </div>
-                        </div>
-                        <div className="absolute top-3 right-3 rounded-full bg-black/50 backdrop-blur px-3 py-1 text-[11px] font-black text-white">
-                          {isHost ? 'الطلاب والحضور' : 'المضيف'}
-                        </div>
-                      </div>
-
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-900 shadow-inner h-[480px]">
+                      <iframe
+                        src={`https://meet.jit.si/MasarEdu_${activeCallRoom.roomCode.replace(/[^a-zA-Z0-9]/g, '_')}#userInfo.displayName="${encodeURIComponent(isHost ? 'د. إسماعيل عيسى' : 'طالب / ولي أمر')}"&config.prejoinPageEnabled=false&config.lang="ar"`}
+                        allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
+                        className="h-full w-full border-0"
+                        title="غرفة الاجتماع المباشرة"
+                      />
                     </div>
                   )}
 
