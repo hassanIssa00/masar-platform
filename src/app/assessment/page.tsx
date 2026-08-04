@@ -99,7 +99,12 @@ function PlacementAssessmentContent() {
     if (!finished || !isStudentFlow || !savedStudentId) return;
 
     const timeout = window.setTimeout(() => {
-      router.push(`/kids?student=${savedStudentId}`);
+      // Route to the correct dashboard based on the registered account type
+      const activeMode = typeof window !== 'undefined'
+        ? localStorage.getItem('masar_active_mode')
+        : null;
+      const dest = activeMode === 'parent' ? '/parent' : '/kids';
+      router.push(`${dest}?student=${savedStudentId}`);
     }, 1400);
 
     return () => window.clearTimeout(timeout);
