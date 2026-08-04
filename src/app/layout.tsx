@@ -12,6 +12,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+import CloudSyncProvider from '@/components/CloudSyncProvider';
+
 export default function RootLayout({
   children,
 }: {
@@ -20,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body>
-        {children}
+        <CloudSyncProvider>{children}</CloudSyncProvider>
       </body>
     </html>
   );

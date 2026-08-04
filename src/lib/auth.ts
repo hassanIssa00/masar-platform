@@ -1,6 +1,7 @@
 'use client';
 
 import { AccountRecord, getAccounts, saveAccount, UserRole } from '@/lib/localDb';
+import { syncDocToCloud } from './firestoreSync';
 
 type CredentialRecord = {
   accountId: string;
@@ -77,6 +78,7 @@ export function saveCredential(account: AccountRecord, password: string) {
   };
 
   writeCredentials([next, ...records.filter((item) => item.accountId !== account.id && item.email !== next.email)]);
+  syncDocToCloud('credentials', account.id, next);
 }
 
 export function ensureDemoAccount(email: string) {

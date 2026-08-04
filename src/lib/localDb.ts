@@ -1,5 +1,7 @@
 'use client';
 
+import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+
 export type UserRole = 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
 
 export type AccountRecord = {
@@ -118,6 +120,7 @@ function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {
   };
 
   writeList(KEYS.activity, [next, ...activities].slice(0, 80));
+  syncDocToCloud('activities', next.id, next);
   return next;
 }
 
@@ -146,6 +149,7 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
   };
 
   writeList(KEYS.accounts, [next, ...accounts.filter((item) => item.id !== next.id)]);
+  syncDocToCloud('accounts', next.id, next);
   saveActivity({
     type: 'account',
     refId: next.id,
@@ -199,6 +203,7 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   };
 
   writeList(KEYS.students, [next, ...students.filter((item) => item.id !== next.id)]);
+  syncDocToCloud('students', next.id, next);
   saveActivity({
     type: 'student',
     refId: next.id,
@@ -222,6 +227,7 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   };
 
   writeList(KEYS.students, [next, ...students.filter((item) => item.id !== studentId)]);
+  syncDocToCloud('students', next.id, next);
   saveActivity({
     type: 'student',
     refId: next.id,
@@ -236,11 +242,14 @@ export function deleteStudent(studentId: string) {
   const student = students.find((item) => item.id === studentId);
   // Remove student
   writeList(KEYS.students, students.filter((item) => item.id !== studentId));
+  deleteDocFromCloud('students', studentId);
   // Remove all their reports
   const reports = readList<ReportRecord>(KEYS.reports);
+  reports.filter((item) => item.studentId === studentId).forEach((r) => deleteDocFromCloud('reports', r.id));
   writeList(KEYS.reports, reports.filter((item) => item.studentId !== studentId));
   // Remove all their messages
   const messages = readList<MessageRecord>(KEYS.messages);
+  messages.filter((item) => item.studentId === studentId).forEach((m) => deleteDocFromCloud('messages', m.id));
   writeList(KEYS.messages, messages.filter((item) => item.studentId !== studentId));
   if (student) {
     saveActivity({
@@ -265,6 +274,7 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
   };
 
   writeList(KEYS.reports, [next, ...reports.filter((item) => item.id !== next.id)]);
+  syncDocToCloud('reports', next.id, next);
   saveActivity({
     type: 'report',
     refId: next.id,
@@ -278,6 +288,7 @@ export function deleteReport(reportId: string) {
   const reports = getReports();
   const report = reports.find((item) => item.id === reportId);
   writeList(KEYS.reports, reports.filter((item) => item.id !== reportId));
+  deleteDocFromCloud('reports', reportId);
   if (report) {
     saveActivity({
       type: 'report',
@@ -301,6 +312,7 @@ export function saveSurvey(survey: Omit<SurveySubmission, 'id' | 'submittedAt'>)
   };
 
   writeList(KEYS.surveys, [next, ...surveys]);
+  syncDocToCloud('surveys', next.id, next);
   saveActivity({
     type: 'survey',
     refId: next.id,
@@ -327,6 +339,7 @@ export function saveMessage(message: Omit<MessageRecord, 'id' | 'createdAt'>) {
   };
 
   writeList(KEYS.messages, [next, ...messages]);
+  syncDocToCloud('messages', next.id, next);
   saveActivity({
     type: 'account',
     refId: next.studentId,
