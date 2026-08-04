@@ -379,12 +379,12 @@ export default function Home() {
         <section className="py-16 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-8">
             
-            <div className="text-center space-y-3">
-              <span className="px-4 py-1.5 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-black inline-flex items-center gap-2">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
+              <span className="inline-flex items-center gap-2 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-black px-4 py-1.5 shadow-2xs">
                 <MousePointerClick size={16} className="text-cyan-700 animate-bounce" />
                 <span>تجربة تفاعلية حية</span>
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">جرب عينة من أسئلة التقييم التفاعلية</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">جرب عينة من أسئلة التقييم التفاعلية</h2>
               <p className="text-slate-600 font-bold text-sm max-w-xl mx-auto">
                 اضغط على الخيارات المتاحة واستمع للنطق الصوتي لتجربة بيئة الطفل التفاعلية
               </p>
@@ -476,7 +476,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
             {/* Section Header */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
               <span className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-100 px-4 py-1.5 text-xs font-black text-teal-900 shadow-2xs">
                 <Trophy size={16} className="text-teal-700 animate-bounce" />
                 <span>المنظومة المزدوجة المتكاملة</span>
@@ -651,11 +651,11 @@ export default function Home() {
         <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
-                بيئة التأهيل البصري والحسي
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+                <span>بيئة التأهيل البصري والحسي</span>
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">
                 معامل تعلم وتدريب مصممة خصيصاً للطفل
               </h2>
               <p className="text-slate-600 font-bold text-sm sm:text-base">
@@ -702,11 +702,11 @@ export default function Home() {
         <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <span className="px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black">
-                اختبارات تحديد المستوى الـ 7
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black shadow-2xs">
+                <span>اختبارات تحديد المستوى الـ 7</span>
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">
                 اختر المستوى الدراسي لمعاينة تفاصيل الاختبار
               </h2>
               <p className="text-slate-600 font-bold text-sm sm:text-base">
@@ -809,11 +809,11 @@ export default function Home() {
         <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
           <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-10">
             
-            <div className="text-center space-y-4">
-              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
-                تجارب وقصص نجاح
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+                <span>تجارب وقصص نجاح</span>
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">قصص تحول واقعية للأطفال والطلاب</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">قصص تحول واقعية للأطفال والطلاب</h2>
             </div>
 
             {/* Testimonials Switcher */}
@@ -861,11 +861,11 @@ export default function Home() {
         <section className="py-20 border-t border-slate-200 bg-white relative">
           <div className="mx-auto max-w-4xl px-5 lg:px-8 space-y-10">
             
-            <div className="text-center space-y-4">
-              <span className="px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
-                إجابات واستفسارات
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+                <span>إجابات واستفسارات</span>
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">الأسئلة الشائعة حول المنصة</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">الأسئلة الشائعة حول المنصة</h2>
             </div>
 
             <div className="space-y-4">
