@@ -25,21 +25,54 @@ export default function LoginPage() {
     trackEvent('visit', { page: '/login' });
   }, []);
 
-  const loginAsDoctor = () => {
-    const account = ensureDemoAccount('dr.ismail@masar.com');
-    if (!account) return;
+  const loginAs = (type: 'doctor' | 'masar_student' | 'ikhlas_student' | 'masar_parent' | 'ikhlas_parent') => {
+    if (typeof window !== 'undefined') {
+      let email = 'dr.ismail@masar.com';
+      let name = 'د. إسماعيل عيسى';
+      let role = 'doctor';
+      let targetUrl = '/branches/ikhlas-jeddah';
 
-    setSession(account);
-    router.push('/dashboard');
-  };
+      if (type === 'doctor') {
+        email = 'dr.ismail@masar.com';
+        name = 'د. إسماعيل عيسى';
+        role = 'doctor';
+        targetUrl = '/branches/ikhlas-jeddah';
+      } else if (type === 'masar_student') {
+        email = 'student.masar@masar.com';
+        name = 'أحمد محمد سيد (طالب مسار)';
+        role = 'student';
+        targetUrl = '/kids';
+      } else if (type === 'ikhlas_student') {
+        email = 'student.ikhlas@masar.com';
+        name = 'يوسف خالد (طالب - الإخلاص صف أول)';
+        role = 'student';
+        targetUrl = '/school-student';
+      } else if (type === 'masar_parent') {
+        email = 'parent.masar@masar.com';
+        name = 'أبو أحمد (ولي أمر مسار)';
+        role = 'parent';
+        targetUrl = '/parent';
+      } else if (type === 'ikhlas_parent') {
+        email = 'parent.ikhlas@masar.com';
+        name = 'أبو يوسف (ولي أمر - الإخلاص صف أول)';
+        role = 'parent';
+        targetUrl = '/school-parent';
+      }
 
-  const loginAsParent = () => {
-    const account = ensureDemoAccount('parent@masar.com');
-    if (!account) return;
+      const account = ensureDemoAccount(email) || {
+        id: 'acc_' + Date.now(),
+        name,
+        email,
+        role: role as any,
+        createdAt: new Date().toISOString(),
+      };
 
-    setSession(account);
-    const hasStudent = getStudents().length > 0;
-    router.push(hasStudent ? '/parent' : '/student/new');
+      setSession(account);
+      localStorage.setItem('user_name', JSON.stringify({ name }));
+      localStorage.setItem('masar_active_mode', role);
+      trackEvent('login', { userId: type, userName: name });
+      router.push(targetUrl);
+    }
   };
 
   const fillDemo = (type: 'doctor' | 'parent') => {
@@ -188,16 +221,87 @@ export default function LoginPage() {
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
 
-          {(loginError || loginMessage) && (
-            <div className={`mt-5 flex items-start gap-3 rounded-2xl p-4 text-xs sm:text-sm font-bold leading-relaxed ${
-              loginError ? 'bg-rose-50 text-rose-900 border border-rose-200' : 'bg-teal-50 text-teal-950 border border-teal-200'
-            }`}>
-              {loginError ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}
-              <span>{loginError || loginMessage}</span>
-            </div>
-          )}
+          {/* ⚡ Quick 1-Click Login Shortcuts */}
+          <div className="mt-6 bg-slate-50 border border-slate-200 rounded-3xl p-4 space-y-2.5 text-right">
+            <p className="text-xs font-black text-slate-800 flex items-center justify-between">
+              <span>⚡ تسجيل دخول فوري بنقرة واحدة (بدون كلمة مرور):</span>
+              <span className="text-[10px] text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full font-bold">وصول سريـع</span>
+            </p>
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4 text-right">
+            <div className="grid grid-cols-1 gap-2">
+              {/* 1. Doctor Ismail */}
+              <button
+                type="button"
+                onClick={() => loginAs('doctor')}
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-sm transition-all hover:scale-[1.01]"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center text-sm">👨‍⚕️</span>
+                  <span>حساب د. إسماعيل عيسى (طبيب أطفال / لوحة التشغيل)</span>
+                </span>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg">دخول فوري ➔</span>
+              </button>
+
+              {/* 2. Student in Ikhlas Grade 1 */}
+              <button
+                type="button"
+                onClick={() => loginAs('ikhlas_student')}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-950 font-bold text-xs shadow-2xs transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs">🏫</span>
+                  <span>طالب فـي فصل مدارس الإخلاص الأهلية (صف أول)</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-black">دخول ➔</span>
+              </button>
+
+              {/* 3. Student in Masar */}
+              <button
+                type="button"
+                onClick={() => loginAs('masar_student')}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-xs shadow-2xs transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center text-xs">🎓</span>
+                  <span>طالب فـي منصة مسار (التجربة التفاعلية)</span>
+                </span>
+                <span className="text-[10px] text-indigo-700 font-black">دخول ➔</span>
+              </button>
+
+              {/* 4. Parent in Ikhlas Grade 1 */}
+              <button
+                type="button"
+                onClick={() => loginAs('ikhlas_parent')}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-amber-300 hover:bg-amber-50 text-amber-950 font-bold text-xs shadow-2xs transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs">👨‍👩‍👦</span>
+                  <span>ولي أمر فـي مدارس الإخلاص الأهلية (صف أول)</span>
+                </span>
+                <span className="text-[10px] text-amber-700 font-black">دخول ➔</span>
+              </button>
+
+              {/* 5. Parent in Masar */}
+              <button
+                type="button"
+                onClick={() => loginAs('masar_parent')}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-xs shadow-2xs transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center text-xs">🏡</span>
+                  <span>ولي أمر فـي منصة مسار</span>
+                </span>
+                <span className="text-[10px] text-teal-700 font-black">دخول ➔</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative my-4 text-center">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+            <span className="relative bg-white px-3 text-[10px] font-black text-slate-400">أو ادخل بالبريد الإلكتروني</span>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 text-right">
             <label className="block">
               <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">البريد الإلكتروني أو رقم الهاتف</span>
               <input
