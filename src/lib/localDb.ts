@@ -50,7 +50,8 @@ export type ReportRecord = {
     | 'survey-answers'
     | 'clinical-analysis'
     | 'student-assessment-answers'
-    | 'student-assessment-analysis';
+    | 'student-assessment-analysis'
+    | 'parent-teacher';
   summary: string;
   recommendations: string[];
   answers: Array<{ question: string; answer: string }>;
