@@ -14,6 +14,7 @@ import { clearSession } from '@/lib/localDb';
 
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
+  { name: 'مساعد الذكاء الاصطناعي 🤖', path: '/ai-assistant', icon: Bot },
   { name: 'لوحة ذكاء الأعمال BI', path: '/bi-dashboard', icon: BarChart3 },
   { name: 'خطط IEP الفردية', path: '/iep', icon: ClipboardList },
   { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
@@ -22,7 +23,6 @@ const adminLinks = [
   { name: 'قائمة الانتظار CRM', path: '/waitlist', icon: Users },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
-  { name: 'مساعد الذكاء الاصطناعي', path: '/ai-assistant', icon: Bot },
   { name: 'فصل 1/1 الإخلاص بجدة 🏫', path: '/branches/ikhlas-jeddah', icon: Building2 },
   { name: 'بوابة ولي الأمر 👨‍👦', path: '/school-parent', icon: Users },
   { name: 'بوابة الطالب 🎒', path: '/school-student', icon: BookOpen },
