@@ -31,6 +31,7 @@ const adminLinks = [
   { name: 'الأنشطة والواجبات', path: '/homework', icon: BookOpen },
   { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
   { name: 'التقارير', path: '/reports', icon: FileText },
+  { name: '🖨️ بروفة التقارير الرسمية', path: '/reports/preview', icon: FileText },
   { name: 'لوحة الأخصائي', path: '/specialist', icon: Stethoscope },
   { name: 'الرسائل', path: '/messages', icon: MessageSquareText },
   { name: 'اجتماعات Zoom', path: '/meetings', icon: CalendarClock },
