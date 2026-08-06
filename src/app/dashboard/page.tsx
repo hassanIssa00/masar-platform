@@ -11,6 +11,7 @@ import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
 import { ActivityRecord, getActivities, getReports, getSession, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
+import MasarAIAgent from '@/components/MasarAIAgent';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -85,6 +86,30 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* 🔗 Quick Access Switcher for Dr. Ismail */}
+            <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-black text-amber-300 ml-2">تنقل سريع للدكتور:</span>
+              <Link href="/dashboard" className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                🏥 اللوحة الرئيسية
+              </Link>
+              <Link href="/branches/ikhlas-jeddah" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                🏫 فصل الإخلاص (جدة)
+              </Link>
+              <Link href="/ai-assistant" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                🤖 مساعد مسار الذكي
+              </Link>
+              <Link href="/bi-dashboard" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                📊 التحليلات BI
+              </Link>
+              <Link href="/iep" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                📋 خطط IEP
+              </Link>
+              <Link href="/meetings" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+                📹 غرف الحصص
+              </Link>
+            </div>
+
             <div className="mt-4 grid grid-cols-3 gap-2">
               <Link href="/student/new" className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition px-3 py-2.5 text-xs font-black text-white">
                 <UserRoundPlus size={14} />
@@ -199,6 +224,8 @@ export default function DashboardPage() {
           </section>
         </main>
       </div>
+      {/* 🤖 Masar AI Agent Widget */}
+      <MasarAIAgent />
     </div>
   );
 }

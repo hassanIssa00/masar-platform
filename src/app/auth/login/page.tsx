@@ -36,7 +36,7 @@ export default function LoginPage() {
         email = 'dr.ismail@masar.com';
         name = 'د. إسماعيل عيسى';
         role = 'doctor';
-        targetUrl = '/branches/ikhlas-jeddah';
+        targetUrl = '/dashboard';
       } else if (type === 'masar_student') {
         email = 'student.masar@masar.com';
         name = 'أحمد محمد سيد (طالب مسار)';
