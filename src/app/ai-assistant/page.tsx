@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { getStudents, type StudentRecord } from '@/lib/localDb';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
+import MasarAIAgent from '@/components/MasarAIAgent';
 
 interface Recommendation {
   id: string;
@@ -282,6 +283,8 @@ export default function AIAssistantPage() {
 
         </main>
       </div>
+      {/* 🤖 Masar AI Agent — Full Autonomous Control */}
+      <MasarAIAgent />
     </div>
   );
 }

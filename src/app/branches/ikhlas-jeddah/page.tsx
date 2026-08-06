@@ -15,6 +15,7 @@ import {
   type Period,
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/localDb';
+import MasarAIAgent from '@/components/MasarAIAgent';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -1098,6 +1099,9 @@ export default function IkhlasJeddahPage() {
         )}
 
       </div>
+
+      {/* 🤖 Masar Autonomous AI Agent — Floating Widget */}
+      <MasarAIAgent branch="IKHLAS_JEDDAH" />
     </div>
   );
 }
