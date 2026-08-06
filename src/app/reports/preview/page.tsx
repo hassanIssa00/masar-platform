@@ -631,6 +631,7 @@ export default function ReportsPreviewPage() {
             {/* White paper simulation */}
             <div className="p-6 md:p-10 print:p-0">
               <div
+                id="printable-area"
                 className="rounded-2xl print:rounded-none print:shadow-none"
                 style={{
                   background: 'white',
@@ -649,9 +650,40 @@ export default function ReportsPreviewPage() {
       </div>
 
       <style jsx global>{`
+        /* ── إخفاء كل UI وإظهار التقرير فقط ── */
         @media print {
-          .print\\:hidden { display: none !important; }
-          body { background: white !important; }
+          body * { visibility: hidden !important; }
+
+          #printable-area,
+          #printable-area * { visibility: visible !important; }
+
+          #printable-area {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            padding: 16mm 18mm !important;
+            background: white !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+          }
+
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+
+          table  { page-break-inside: avoid !important; }
+          tr     { page-break-inside: avoid !important; }
+          h4     { page-break-after: avoid !important; }
         }
       `}</style>
     </div>

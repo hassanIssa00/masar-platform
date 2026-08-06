@@ -601,9 +601,49 @@ export default function PrintableReportModal({
 
       <style>{`
         @media print {
-          .print\\:hidden { display: none !important; }
-          body { background: white !important; margin: 0; }
-          #printable-area { padding: 20px !important; }
+          /* ── إخفاء كل حاجة غير التقرير ── */
+          body * { visibility: hidden !important; }
+
+          /* ── إظهار التقرير فقط ── */
+          #printable-area,
+          #printable-area * { visibility: visible !important; }
+
+          /* ── تثبيت التقرير في أعلى الصفحة ── */
+          #printable-area {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            padding: 20mm 18mm !important;
+            background: white !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+          }
+
+          /* ── إعدادات صفحة A4 ── */
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
+
+          /* ── ألوان وخلفيات للطباعة ── */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+
+          /* ── منع قطع الجداول والعناصر ── */
+          table { page-break-inside: avoid !important; }
+          tr { page-break-inside: avoid !important; }
+          div { page-break-inside: avoid !important; }
+
+          /* ── إزالة الـ overflow من الـ modal ── */
+          .fixed, [class*="overflow"] {
+            overflow: visible !important;
+            position: static !important;
+          }
         }
       `}</style>
     </div>
