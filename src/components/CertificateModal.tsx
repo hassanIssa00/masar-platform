@@ -387,38 +387,38 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT 2026-08-08 010014 ── */}
+            {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT (PERFECT SYMMETRY) ── */}
             <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
-              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule */}
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule Box */}
+              <div style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '10px 18px', display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'right', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 240 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b' }}>
                   {isAr ? 'يعتمد هذه الشهادة رسمياً من:' : 'Officially certified by:'}
                 </span>
-                <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: 0 }}>
-                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', margin: 0 }}>
+                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education Consultant'}
                 </p>
 
                 {/* Signature Underline Rule */}
-                <div style={{ borderBottom: '1px solid #cbd5e1', width: 200, marginTop: 12, paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 900, color: '#94a3b8' }}>
+                <div style={{ borderBottom: '1px solid #cbd5e1', width: '100%', marginTop: 8, paddingTop: 2, display: 'flex', justifyContent: 'flex-start' }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: '#94a3b8' }}>
                     {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
                   </span>
                 </div>
               </div>
 
               {/* LEFT (RTL last): Dashed Digital Seal Box with Dual Logos */}
-              <div style={{ background: '#f8fafc', border: '1.5px dashed #818cf8', borderRadius: 14, padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
+              <div style={{ background: '#ffffff', border: '1.5px dashed #818cf8', borderRadius: 14, padding: '10px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 240 }}>
                 {/* Dual Logos (Masar x Nexus) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src="/brand/masar-logo.png" alt="منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
                   <span style={{ color: '#4f46e5', fontWeight: 900, fontSize: 12 }}>×</span>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src="/brand/nexus-logo-new.webp" alt="نظام نكسس" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
                 </div>
