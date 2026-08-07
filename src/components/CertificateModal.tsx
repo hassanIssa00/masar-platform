@@ -191,7 +191,6 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     const el = document.getElementById('printable-certificate');
     if (!el) return;
 
-    // Collect all stylesheets from main page to pass into print window
     const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
       .map((s) => s.outerHTML)
       .join('\n');
@@ -211,58 +210,65 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #ffffff !important;
-      font-family: Arial, sans-serif !important;
-    }
     @page {
       size: A4 landscape !important;
       margin: 0 !important;
     }
-    @media print {
-      html, body {
-        width: 297mm !important;
-        height: 210mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      #printable-certificate {
-        width: 297mm !important;
-        height: 209mm !important;
-        max-width: 297mm !important;
-        max-height: 209mm !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-      }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 297mm !important;
+      height: 210mm !important;
+      overflow: hidden !important;
+      background: #ffffff !important;
     }
     #print-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      min-height: 100vh;
-      padding: 10px;
+      width: 297mm !important;
+      height: 210mm !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
+    #printable-certificate {
+      width: 297mm !important;
+      height: 210mm !important;
+      min-height: unset !important;
+      max-height: 210mm !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    #printable-certificate * {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .print\\:hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div id="print-wrapper">
     ${el.outerHTML}
   </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() { window.close(); }, 500);
+      }, 800);
+    };
+  </script>
 </body>
 </html>`);
     win.document.close();
-
-    setTimeout(() => {
-      try {
-        win.focus();
-        win.print();
-        win.close();
-      } catch (e) {}
-    }, 600);
   };
+
 
   const englishProgramTitle = (t: string) => {
     if (t.includes('قراءة') || t.includes('فونيك')) return 'Reading & Phonological Awareness Program';
