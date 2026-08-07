@@ -454,7 +454,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             </div>
 
             {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT (PERFECT SYMMETRY) ── */}
-            <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
+            <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
               {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule (Clean, No Box) */}
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
