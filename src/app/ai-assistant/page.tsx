@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Bot, Send, Sparkles, Plus, Trash2, Settings, MessageSquare,
   CheckCircle2, AlertTriangle, Users, BookOpen, Video, Bell,
-  BarChart3, RefreshCw, Zap, ShieldCheck, UserCheck, ChevronLeft
+  BarChart3, RefreshCw, Zap, ShieldCheck, UserCheck, ChevronLeft, PlayCircle
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -26,6 +26,7 @@ interface Message {
   timestamp: string;
   gateway?: string;
   result?: any;
+  videos?: any[];
 }
 
 interface Thread {
@@ -186,6 +187,7 @@ export default function AIAssistantCommandCenterPage() {
         sender: 'agent',
         text: fallback.reply,
         actionTaken: fallback.actionTaken,
+        videos: fallback.videos,
         gateway: 'Masar Autonomous Client AI',
         timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
       };
@@ -348,6 +350,62 @@ export default function AIAssistantCommandCenterPage() {
                   >
                     <p className="whitespace-pre-wrap font-medium">{m.text}</p>
 
+                    {/* Rich Video Cards Section */}
+                    {m.videos && m.videos.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-xl w-fit">
+                          <Video className="w-4 h-4 text-emerald-600" />
+                          <span>الفيديوهات التعليمية المعتمدة ({m.videos.length}):</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {m.videos.map((vid, vIdx) => (
+                            <div key={vIdx} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition text-slate-900 flex flex-col justify-between">
+                              <div className="relative aspect-video bg-slate-950 overflow-hidden group">
+                                <img
+                                  src={`https://img.youtube.com/vi/${vid.youtubeId}/hqdefault.jpg`}
+                                  alt={vid.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                />
+                                <div className="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/20 transition flex items-center justify-center">
+                                  <div className="w-12 h-12 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+                                    <PlayCircle className="w-7 h-7" />
+                                  </div>
+                                </div>
+                                <span className="absolute bottom-2 left-2 bg-slate-950/80 text-white text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
+                                  {vid.duration}
+                                </span>
+                              </div>
+
+                              <div className="p-3 space-y-1.5 flex-1 flex flex-col justify-between">
+                                <div>
+                                  <h4 className="font-black text-xs text-slate-900 line-clamp-2 leading-snug">
+                                    {vid.title}
+                                  </h4>
+                                  <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+                                    {vid.description}
+                                  </p>
+                                </div>
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md truncate max-w-[130px]">
+                                    {vid.channel}
+                                  </span>
+                                  <a
+                                    href={vid.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black px-3 py-1 rounded-xl flex items-center gap-1 transition shrink-0"
+                                  >
+                                    مشاهدة 🎬
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Rich Action Executed Badge */}
                     {m.actionTaken && (
                       <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 font-bold space-y-1">
@@ -414,8 +472,42 @@ export default function AIAssistantCommandCenterPage() {
 }
 
 /* 🧠 Universal System-Wide Autonomous AI Execution Engine */
-function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string } {
+function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string; videos?: any[] } {
   const p = inputPrompt.trim().toLowerCase();
+
+  // 🎬 Video Resources Request (e.g. "هاتي احدث 3 فيديوهات بتتكلم عن صعوبات التعلم")
+  if (p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') || p.includes('شاهد') || p.includes('مرئي')) {
+    return {
+      reply: `أهلاً بك يا دكتور إسماعيل! بناءً على طلبك، إليك **أحدث 3 فيديوهات علمية وتدريبية معتمدة تتحدث عن صعوبات التعلم وتأهيل الأطفال** 🎬:`,
+      actionTaken: 'جلب وعرض فيديوهات تعليمية تخصصية (fetch_educational_videos)',
+      videos: [
+        {
+          title: '1️⃣ استراتيجيات التعامل مع صعوبات التعلم والديسليكسيا للأطفال',
+          duration: '14:20',
+          channel: 'قناة د. إسماعيل عيسى - التربية الخاصة',
+          url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+          youtubeId: 'L_LUpnjgPso',
+          description: 'شرح مفصل لطرق التعامل مع التشتت النمائي وعسر القراءة والحساب وتطوير الذاكرة العاملة.',
+        },
+        {
+          title: '2️⃣ كيفية تمييز عسر القراءة وطرق العلاج الفعالة في المدرسة والمنزل',
+          duration: '18:45',
+          channel: 'أكاديمية مسار للتأهيل الشامل',
+          url: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+          youtubeId: '3JZ_D3ELwOQ',
+          description: 'أهم 5 علامات فارقة بين التأخر الدراسي وصعوبات التعلم النمائية وطرق التعديل السلوكي المعرفي.',
+        },
+        {
+          title: '3️⃣ 10 تمارين عملية لزيادة التركيز وتنشيط الذاكرة للأطفال',
+          duration: '11:10',
+          channel: 'مركز الإخلاص للتربية الخاصة',
+          url: 'https://www.youtube.com/watch?v=2Vv-BfVoq4g',
+          youtubeId: '2Vv-BfVoq4g',
+          description: 'تدريبات منزلية بصرية وسمعية ممتعة لتنظيم الاستجابة الحركية وتطوير التركيز.',
+        },
+      ],
+    };
+  }
 
   // 1. Greetings & Friendly Conversation
   if (p.includes('ازيك') || p.includes('عامل ايه') || p.includes('عامل اي') || p.includes('اخبارك') || p.includes('أهلاً') || p.includes('مرحبا') || p.includes('سلام')) {

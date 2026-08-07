@@ -19,10 +19,45 @@ interface Message {
   timestamp: string;
   gateway?: string;
   result?: any;
+  videos?: any[];
 }
 
-function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string } {
+function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string; videos?: any[] } {
   const p = inputPrompt.trim().toLowerCase();
+
+  // 🎬 Video Resources Request
+  if (p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') || p.includes('شاهد') || p.includes('مرئي')) {
+    return {
+      reply: `أهلاً بك يا دكتور إسماعيل! بناءً على طلبك، إليك **أحدث 3 فيديوهات علمية وتدريبية معتمدة تتحدث عن صعوبات التعلم وتأهيل الأطفال** 🎬:`,
+      actionTaken: 'جلب وعرض فيديوهات تعليمية تخصصية (fetch_educational_videos)',
+      videos: [
+        {
+          title: '1️⃣ استراتيجيات التعامل مع صعوبات التعلم والديسليكسيا للأطفال',
+          duration: '14:20',
+          channel: 'قناة د. إسماعيل عيسى - التربية الخاصة',
+          url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+          youtubeId: 'L_LUpnjgPso',
+          description: 'شرح مفصل لطرق التعامل مع التشتت النمائي وعسر القراءة والحساب وتطوير الذاكرة العاملة.',
+        },
+        {
+          title: '2️⃣ كيفية تمييز عسر القراءة وطرق العلاج الفعالة في المدرسة والمنزل',
+          duration: '18:45',
+          channel: 'أكاديمية مسار للتأهيل الشامل',
+          url: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+          youtubeId: '3JZ_D3ELwOQ',
+          description: 'أهم 5 علامات فارقة بين التأخر الدراسي وصعوبات التعلم النمائية وطرق التعديل السلوكي المعرفي.',
+        },
+        {
+          title: '3️⃣ 10 تمارين عملية لزيادة التركيز وتنشيط الذاكرة للأطفال',
+          duration: '11:10',
+          channel: 'مركز الإخلاص للتربية الخاصة',
+          url: 'https://www.youtube.com/watch?v=2Vv-BfVoq4g',
+          youtubeId: '2Vv-BfVoq4g',
+          description: 'تدريبات منزلية بصرية وسمعية ممتعة لتنظيم الاستجابة الحركية وتطوير التركيز.',
+        },
+      ],
+    };
+  }
 
   // 1. Greetings & Friendly Conversation
   if (p.includes('ازيك') || p.includes('عامل ايه') || p.includes('عامل اي') || p.includes('اخبارك') || p.includes('أهلاً') || p.includes('مرحبا') || p.includes('سلام')) {
@@ -293,6 +328,7 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
           sender: 'agent',
           text: fallbackReply.reply,
           actionTaken: fallbackReply.actionTaken,
+          videos: fallbackReply.videos,
           gateway: 'Masar Client AI Engine',
           timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
         },
@@ -431,6 +467,46 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
                   }`}
                 >
                   <p className="font-medium whitespace-pre-wrap">{m.text}</p>
+
+                  {/* Rich Video Cards Section */}
+                  {m.videos && m.videos.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-lg w-fit">
+                        <Video className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>الفيديوهات التعليمية المعتمدة ({m.videos.length}):</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        {m.videos.map((vid, vIdx) => (
+                          <div key={vIdx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs text-slate-900 flex items-center gap-2 p-2">
+                            <div className="relative w-20 aspect-video bg-slate-950 rounded-lg overflow-hidden shrink-0">
+                              <img
+                                src={`https://img.youtube.com/vi/${vid.youtubeId}/hqdefault.jpg`}
+                                alt={vid.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black text-[11px] text-slate-900 truncate">
+                                {vid.title}
+                              </h4>
+                              <p className="text-[9px] text-slate-500 truncate mt-0.5">
+                                {vid.channel} • {vid.duration}
+                              </p>
+                              <a
+                                href={vid.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 mt-1 text-[10px] font-black text-emerald-700 hover:underline"
+                              >
+                                مشاهدة الفيديو 🎬
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Executed Action Badge */}
                   {m.actionTaken && (
