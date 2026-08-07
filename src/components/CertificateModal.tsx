@@ -201,21 +201,11 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 </p>
               </div>
 
-              {/* ── FOOTER: SEALS & SIGNATURE ── like the report modal ── */}
-              <div className="pt-5 border-t-2 border-slate-200 flex items-end justify-between gap-4">
+              {/* ── FOOTER: SIGNATURE + SINGLE MASAR SEAL ── */}
+              <div className="pt-5 mt-2 border-t-2 border-amber-200 flex items-end justify-between gap-6">
 
-                {/* LEFT: MASAR Seal (same style as PrintableReportModal) */}
-                <div className="flex flex-col items-center gap-1.5 text-center">
-                  <div className="rounded-lg border-2 border-dashed border-teal-400 p-3 bg-teal-50 text-center">
-                    <BrandMark size="md" showText={false} />
-                    <p className="mt-1 text-[10px] font-black text-teal-800">{isAr ? 'الختم الرقمي المعتمد' : 'Digital Certified Seal'}</p>
-                    <p className="text-[9px] font-bold text-teal-600">مَسَار · MASAR</p>
-                  </div>
-                  <p className="text-[10px] font-black text-slate-500">{isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}</p>
-                </div>
-
-                {/* CENTER: Doctor Signature (same style as PrintableReportModal) */}
-                <div className="flex-1 text-center space-y-1.5">
+                {/* DOCTOR SIGNATURE — takes up left/right main space */}
+                <div className="flex-1 space-y-1.5">
                   <p className="text-[11px] font-bold text-slate-500">{isAr ? 'يعتمد هذا الإنجاز رسمياً من:' : 'This achievement is officially certified by:'}</p>
                   <h3 className="text-xl font-black text-indigo-950" style={{ fontFamily: 'Georgia, serif' }}>
                     {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
@@ -223,20 +213,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   <p className="text-[11px] font-bold text-slate-600">
                     {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Difficulties Consultant'}
                   </p>
-                  <div className="mt-2 h-px w-48 bg-slate-300 mx-auto" />
+                  <div className="mt-3 h-px w-52 bg-slate-300" />
                   <p className="text-[10px] font-bold text-slate-400">{isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}</p>
                 </div>
 
-                {/* RIGHT: NEXUS Seal */}
-                <div className="flex flex-col items-center gap-1.5 text-center">
-                  <div className="rounded-lg border-2 border-dashed border-indigo-400 p-3 bg-indigo-50 text-center">
-                    <div className="h-10 w-10 mx-auto rounded-full bg-gradient-to-br from-indigo-600 to-slate-900 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-black">NXS</span>
-                    </div>
-                    <p className="mt-1 text-[10px] font-black text-indigo-800">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
-                    <p className="text-[9px] font-bold text-indigo-600">NEXUS · نيكسس</p>
+                {/* MASAR SEAL ONLY — clean, no BrandMark dual-logo */}
+                <div className="flex flex-col items-center gap-1.5 text-center shrink-0">
+                  <div className="rounded-xl border-2 border-dashed border-teal-400 p-3 bg-teal-50 w-28">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/brand/masar-logo.png" alt="مسار" className="h-12 w-12 mx-auto object-contain" />
+                    <p className="mt-1.5 text-[10px] font-black text-teal-800">{isAr ? 'الختم الرقمي المعتمد' : 'Digital Certified Seal'}</p>
+                    <p className="text-[9px] font-bold text-teal-600 tracking-wide">مَسَار · MASAR</p>
                   </div>
-                  <p className="text-[10px] font-black text-slate-500">{isAr ? 'ختم منصة نيكسس' : 'Nexus Accreditation Seal'}</p>
+                  <p className="text-[10px] font-black text-slate-500">{isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}</p>
                 </div>
 
               </div>
