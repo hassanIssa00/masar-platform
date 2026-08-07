@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
+import { Award, Printer, X, ShieldCheck, Pencil, Check, Sparkles } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -70,7 +70,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-400/20 text-amber-400">
               <Award size={18} />
             </div>
-            <span className="font-black text-white text-sm">شهادة التميز والإنجاز الرسمية</span>
+            <span className="font-black text-white text-sm">شهادة التميز والإنجاز الرسمية 👑</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Language Toggle */}
@@ -96,28 +96,37 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
           </div>
         </div>
 
-        {/* ══ CERTIFICATE PAPER ══ */}
+        {/* ══ CERTIFICATE PAPER WITH ROYAL MULTI-LAYER GOLD BORDER ══ */}
         <div className="bg-slate-100 p-4 print:p-0">
           <div
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
-            className="relative bg-white rounded-xl overflow-hidden shadow-sm"
-            style={{ border: '8px double #b45309' }}
+            className="relative bg-gradient-to-b from-[#fffefc] via-white to-[#fffef9] rounded-2xl overflow-hidden p-1 shadow-md"
+            style={{
+              border: '4px solid #d97706',
+              boxShadow: 'inset 0 0 0 4px #fef08a, inset 0 0 0 8px #b45309',
+            }}
           >
-            {/* Gold stripe at top */}
-            <div className="h-2.5 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
+            {/* Corner Fleuron Ornaments */}
+            <div className="absolute top-3 right-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
+            <div className="absolute top-3 left-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
+            <div className="absolute bottom-3 right-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
+            <div className="absolute bottom-3 left-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
 
-            {/* Main Certificate Content */}
+            {/* Gold Accent Top Bar */}
+            <div className="h-2 bg-gradient-to-r from-amber-600 via-amber-300 via-yellow-400 via-amber-300 to-amber-600" />
+
+            {/* Main Certificate Inner Content */}
             <div className="px-8 py-6 space-y-6">
 
-              {/* ── LETTERHEAD (Clean, No Duplicate Brand Text) ── */}
+              {/* ── LETTERHEAD ── */}
               <div className="flex items-center justify-between border-b-2 border-amber-200 pb-4">
                 <div className="flex items-center gap-3">
                   <BrandMark size="md" showText={true} />
                 </div>
                 <div className="text-center">
-                  <div className="text-xs font-black text-amber-800 tracking-widest bg-amber-50 border border-amber-200 px-4 py-1 rounded-full">
-                    {isAr ? '✦ شهادة رسمية معتمدة ✦' : '✦ Official Certificate of Excellence ✦'}
+                  <div className="text-xs font-black text-amber-900 tracking-widest bg-amber-100/70 border border-amber-300 px-4 py-1.5 rounded-full shadow-2xs">
+                    {isAr ? '🏆 شهادة تميُّز واستحقاق معتمدة 🏆' : '🏆 Official Certified Certificate of Excellence 🏆'}
                   </div>
                 </div>
                 <div className={`text-[11px] font-bold text-slate-600 ${isAr ? 'text-left' : 'text-right'} bg-amber-50/80 border border-amber-200 px-3.5 py-1.5 rounded-xl`}>
@@ -139,52 +148,63 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 </p>
               </div>
 
-              {/* ── STUDENT NAME (CLEAN, NO DARK NAVY BLUE BOX!) ── */}
+              {/* ── STUDENT NAME CREATIVE HONOR PLAQUE ── */}
               <div className="py-2 text-center">
-                <div className="inline-block relative">
-                  {!isAr && editingEnName ? (
-                    <div className="flex items-center justify-center gap-2 border-b-2 border-amber-500 pb-1">
-                      <input
-                        autoFocus
-                        value={nameEn}
-                        onChange={(e) => setNameEn(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && setEditingEnName(false)}
-                        placeholder="Student English name..."
-                        className="bg-transparent text-amber-900 text-3xl sm:text-4xl font-black text-center outline-none tracking-wide w-80 placeholder:text-amber-900/30"
-                        style={{ fontFamily: 'Georgia, serif' }}
-                      />
-                      <button onClick={() => setEditingEnName(false)} className="text-amber-700 hover:text-amber-900 print:hidden shrink-0">
-                        <Check size={20} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-3">
-                      <h2 className="text-3xl sm:text-5xl font-black text-amber-900 tracking-wide underline decoration-amber-400 decoration-4 underline-offset-8" style={{ fontFamily: 'Georgia, serif' }}>
-                        {displayName}
-                      </h2>
-                      {!isAr && (
-                        <button onClick={() => setEditingEnName(true)} title="Edit English name" className="text-amber-700/60 hover:text-amber-900 print:hidden shrink-0">
-                          <Pencil size={16} />
+                <div className="inline-block relative max-w-xl w-full">
+                  <div className="relative rounded-2xl bg-gradient-to-r from-amber-100/50 via-amber-50 to-amber-100/50 p-4 border-2 border-amber-300/80 shadow-xs">
+
+                    {/* Corner Flourish Brackets */}
+                    <div className="absolute top-1 right-2 text-amber-500 text-xs font-black">✦</div>
+                    <div className="absolute top-1 left-2 text-amber-500 text-xs font-black">✦</div>
+                    <div className="absolute bottom-1 right-2 text-amber-500 text-xs font-black">✦</div>
+                    <div className="absolute bottom-1 left-2 text-amber-500 text-xs font-black">✦</div>
+
+                    {!isAr && editingEnName ? (
+                      <div className="flex items-center justify-center gap-2 border-b-2 border-amber-500 pb-1">
+                        <input
+                          autoFocus
+                          value={nameEn}
+                          onChange={(e) => setNameEn(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && setEditingEnName(false)}
+                          placeholder="Student English name..."
+                          className="bg-transparent text-amber-950 text-3xl sm:text-4xl font-black text-center outline-none tracking-wide w-80 placeholder:text-amber-900/30"
+                          style={{ fontFamily: 'Georgia, serif' }}
+                        />
+                        <button onClick={() => setEditingEnName(false)} className="text-amber-700 hover:text-amber-950 print:hidden shrink-0">
+                          <Check size={20} />
                         </button>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
+                        <h2 className="text-3xl sm:text-5xl font-black text-amber-950 tracking-wide drop-shadow-xs" style={{ fontFamily: 'Georgia, serif' }}>
+                          {displayName}
+                        </h2>
+                        <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
+                        {!isAr && (
+                          <button onClick={() => setEditingEnName(true)} title="Edit English name" className="text-amber-700/60 hover:text-amber-950 print:hidden shrink-0">
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {!isAr && !nameEn && !editingEnName && (
-                  <p className="text-[10px] text-amber-700/70 mt-2 print:hidden">
+                  <p className="text-[10px] text-amber-700/70 mt-1.5 print:hidden">
                     ✏️ Click the pencil to enter the English name
                   </p>
                 )}
               </div>
 
-              {/* ── PROGRAM & MASTERY ── */}
+              {/* ── PROGRAM & MASTERY DETAILS ── */}
               <div className="text-center space-y-3 py-1">
                 <p className="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed">
                   {isAr
                     ? 'قد أتمَّ بنجاح واقتدار كافة متطلبات الجلسات العلاجية والتمارين النمائية المخصصة في:'
                     : 'Has successfully completed all therapeutic sessions and developmental requirements in:'}
                 </p>
-                <div className="inline-block rounded-xl bg-amber-50/90 border-2 border-amber-300 px-7 py-2.5 shadow-xs">
+                <div className="inline-block rounded-xl bg-amber-100/60 border-2 border-amber-300 px-7 py-2.5 shadow-2xs">
                   <p className="text-base sm:text-xl font-black text-indigo-950">
                     {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
                   </p>
@@ -197,12 +217,12 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 </p>
               </div>
 
-              {/* ── FOOTER: SYMMETRICAL 3-COLUMN LAYOUT (SEAL - SIGNATURE - SEAL) ── */}
+              {/* ── FOOTER: SYMMETRICAL 3-COLUMN LAYOUT (MASAR SEAL - DOCTOR SIGNATURE - NEXUS SEAL) ── */}
               <div className="pt-6 mt-4 border-t-2 border-amber-200/90 grid grid-cols-3 items-end gap-4 text-center">
 
                 {/* COL 1: MASAR SEAL */}
                 <div className="flex flex-col items-center gap-1">
-                  <div className="rounded-xl border-2 border-dashed border-teal-500 p-3 bg-teal-50/80 w-32 shadow-xs">
+                  <div className="rounded-xl border-2 border-dashed border-teal-500 p-3 bg-teal-50/80 w-32 shadow-2xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/brand/masar-logo.png" alt="مسار" className="h-10 w-10 mx-auto object-contain" />
                     <p className="mt-1 text-[10px] font-black text-teal-800">{isAr ? 'الختم الرقمي المعتمد' : 'Digital Certified Seal'}</p>
@@ -211,7 +231,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   <p className="text-[10px] font-black text-slate-500 mt-0.5">{isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}</p>
                 </div>
 
-                {/* COL 2: DOCTOR SIGNATURE (CENTERED SYMMETRICALLY) */}
+                {/* COL 2: DOCTOR SIGNATURE (CENTERED) */}
                 <div className="flex flex-col items-center justify-center space-y-1 bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
                   <p className="text-[10px] font-bold text-slate-500">{isAr ? 'يعتمد هذا الإنجاز رسمياً من:' : 'Officially certified by:'}</p>
                   <h3 className="text-lg font-black text-indigo-950" style={{ fontFamily: 'Georgia, serif' }}>
@@ -226,7 +246,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
                 {/* COL 3: NEXUS SEAL */}
                 <div className="flex flex-col items-center gap-1">
-                  <div className="rounded-xl border-2 border-dashed border-indigo-500 p-3 bg-indigo-50/80 w-32 shadow-xs">
+                  <div className="rounded-xl border-2 border-dashed border-indigo-500 p-3 bg-indigo-50/80 w-32 shadow-2xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/brand/nexus-logo-new.webp" alt="نيكسس" className="h-10 w-10 mx-auto object-contain" />
                     <p className="mt-1 text-[10px] font-black text-indigo-800">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
@@ -249,7 +269,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             </div>
 
             {/* Gold stripe at bottom */}
-            <div className="h-2.5 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
+            <div className="h-2 bg-gradient-to-r from-amber-600 via-amber-300 via-yellow-400 via-amber-300 to-amber-600" />
           </div>
         </div>
 
