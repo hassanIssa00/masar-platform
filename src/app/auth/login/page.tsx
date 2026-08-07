@@ -3,11 +3,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, UserRound, ScanFace } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { authenticate, ensureDemoAccount, getDemoPassword } from '@/lib/auth';
 import { getStudents, setSession } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
+import dynamic from 'next/dynamic';
+const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [faceLoginOpen, setFaceLoginOpen] = useState(false);
 
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
@@ -296,6 +299,19 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Face ID Login Button */}
+          <button
+            type="button"
+            onClick={() => setFaceLoginOpen(true)}
+            className="w-full mt-4 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm transition-all shadow-lg hover:scale-[1.01] border border-slate-700 group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center group-hover:bg-emerald-500/30 transition">
+              <ScanFace size={18} className="text-emerald-400" />
+            </div>
+            <span>الدخول بالوجه — Face ID</span>
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">🔒 آمن 100%</span>
+          </button>
+
           <div className="relative my-4 text-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
             <span className="relative bg-white px-3 text-[10px] font-black text-slate-400">أو ادخل بالبريد الإلكتروني</span>
@@ -358,6 +374,14 @@ export default function LoginPage() {
           </p>
         </section>
       </main>
+
+      {/* Face ID Login Modal */}
+      {faceLoginOpen && (
+        <FaceLoginModal
+          onCancel={() => setFaceLoginOpen(false)}
+          onFallback={() => setFaceLoginOpen(false)}
+        />
+      )}
 
       {/* Forgot Password Modal */}
       {forgotOpen && (
