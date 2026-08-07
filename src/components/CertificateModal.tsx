@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, Printer, X, CheckCircle2, ShieldCheck, Pencil, Check } from 'lucide-react';
+import { Award, Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -22,6 +22,34 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const isAr = lang === 'ar';
   const certNo = data.certNumber || `CERT-2026-${data.studentName.replace(/\s/g, '').slice(0, 4).toUpperCase()}-MSR`;
   const displayName = isAr ? data.studentName : (nameEn || data.studentName);
+
+  const handlePrint = () => {
+    const el = document.getElementById('printable-certificate');
+    if (!el) return;
+    const win = window.open('', '_blank', 'width=1200,height=900');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html dir="${isAr ? 'rtl' : 'ltr'}">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${isAr ? 'شهادة إنجاز' : 'Certificate of Completion'}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { font-family: 'Arial', sans-serif; background: #fff; }
+          @page { size: A4 landscape; margin: 0; }
+          @media print { html, body { width: 297mm; height: 210mm; } }
+        </style>
+      </head>
+      <body>
+        ${el.outerHTML}
+      </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 600);
+  };
 
   const englishProgramTitle = (title: string) => {
     if (title.includes('قراءة') || title.includes('فونيك')) return 'Reading & Phonological Awareness Intervention';
@@ -57,7 +85,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               >🇬🇧 English</button>
             </div>
             <button
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="flex items-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 px-4 py-2 text-xs font-black text-slate-950 transition"
             >
               <Printer size={14} /> {isAr ? 'طباعة PDF' : 'Print PDF'}
@@ -160,21 +188,17 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                     ? 'قد أتمَّ بنجاح واقتدار كافة متطلبات الجلسات العلاجية والتمارين النمائية في:'
                     : 'Has successfully completed all therapeutic sessions and developmental requirements in:'}
                 </p>
-                <div className="inline-block rounded-lg bg-amber-50 border-2 border-amber-300 px-6 py-2">
+                <div className="inline-block rounded-lg bg-amber-50 border-2 border-amber-300 px-6 py-2.5">
                   <p className="text-lg font-black text-indigo-950">
                     {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
                   </p>
                 </div>
-                <div className="flex items-center justify-center gap-3 pt-0.5 text-xs font-black">
-                  <span className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800">
-                    <CheckCircle2 size={14} className="text-emerald-600" />
-                    {isAr ? 'نسبة الإتقان:' : 'Mastery Score:'} <strong>{data.score}%</strong>
-                  </span>
-                  <span className="flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200 px-3 py-1.5 text-teal-800">
-                    <ShieldCheck size={14} className="text-teal-600" />
-                    {isAr ? 'معتمد رسمياً ✓' : 'Officially Verified ✓'}
-                  </span>
-                </div>
+                <p className="text-xs font-bold text-slate-500">
+                  {isAr
+                    ? <>وحقق نسبة إتقان تراكمية قدرها <strong className="text-emerald-700 font-black">{data.score}%</strong> مع التزام تام بالجلسات الفردية والمنزلية.</>  
+                    : <>Achieved a cumulative mastery score of <strong className="text-emerald-700 font-black">{data.score}%</strong> with full commitment to individual and home sessions.</> 
+                  }
+                </p>
               </div>
 
               {/* ── FOOTER: SEALS & SIGNATURE ── like the report modal ── */}
@@ -235,26 +259,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
       </div>
 
-      <style jsx global>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #printable-certificate, #printable-certificate * { visibility: visible !important; }
-          #printable-certificate {
-            position: fixed !important;
-            inset: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
-            margin: 0 !important;
-            padding: 10mm 14mm !important;
-            background: #fff !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-          }
-          @page { size: A4 landscape; margin: 0; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      `}</style>
+
     </div>
   );
 }
