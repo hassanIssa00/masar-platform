@@ -177,16 +177,17 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     return 'Comprehensive Rehabilitation Program';
   };
 
-  /* shared inline style for the 3 footer cards */
+  /* shared inline style for the 3 footer cards: clean off-white cream matching original mockup */
   const cardStyle: React.CSSProperties = {
-    background: '#e8e2cc',
-    border: '1.5px solid #b8b090',
-    borderRadius: 14,
-    padding: '12px 8px',
+    background: '#fcfbfa',
+    border: '1.5px solid #e5dcd0',
+    borderRadius: 16,
+    padding: '14px 10px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 7,
+    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
   };
 
   return (
@@ -216,9 +217,9 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
             style={{
-              background: '#ede8d0',
+              background: '#f6f2e8',
               border: '3px solid #06392c',
-              borderRadius: 18,
+              borderRadius: 20,
               overflow: 'hidden',
               position: 'relative',
               display: 'flex',
@@ -226,34 +227,34 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             }}
           >
             {/* Corner decor */}
-            <svg width="180" height="180" viewBox="0 0 180 180" fill="none"
+            <svg width="200" height="200" viewBox="0 0 200 200" fill="none"
               style={{ position:'absolute', top:0, right:0, opacity:0.18, pointerEvents:'none' }}>
-              <circle cx="180" cy="0" r="165" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
-              <circle cx="180" cy="0" r="125" stroke="#06392c" strokeWidth="0.7"/>
-              <circle cx="180" cy="0" r="85"  stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
+              <circle cx="200" cy="0" r="185" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
+              <circle cx="200" cy="0" r="145" stroke="#06392c" strokeWidth="0.7"/>
+              <circle cx="200" cy="0" r="105" stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
             </svg>
-            <svg width="180" height="180" viewBox="0 0 180 180" fill="none"
+            <svg width="200" height="200" viewBox="0 0 200 200" fill="none"
               style={{ position:'absolute', bottom:0, left:0, opacity:0.18, pointerEvents:'none' }}>
-              <circle cx="0" cy="180" r="165" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
-              <circle cx="0" cy="180" r="125" stroke="#06392c" strokeWidth="0.7"/>
-              <circle cx="0" cy="180" r="85"  stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
+              <circle cx="0" cy="200" r="185" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
+              <circle cx="0" cy="200" r="145" stroke="#06392c" strokeWidth="0.7"/>
+              <circle cx="0" cy="200" r="105" stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
             </svg>
 
             {/* ── HEADER ── */}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',
-              padding:'18px 24px 0 24px', position:'relative', zIndex:1 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyBetween:'space-between',
+              padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%', justifyContent: 'space-between' }}>
 
               {/* RIGHT (RTL first): Certified box */}
-              <div style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.50)',
-                border:'1px solid #b0a880', borderRadius:10, padding:'7px 10px', minWidth:130 }}>
-                <div style={{ background:'#06392c', borderRadius:7, width:28, height:28,
+              <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fbf9f5',
+                border:'1.5px solid #e4dacb', borderRadius:14, padding:'8px 12px', minWidth:140 }}>
+                <div style={{ background:'#06392c', borderRadius:10, width:30, height:30,
                   display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <ShieldCheck size={15} color="white"/>
+                  <ShieldCheck size={16} color="white"/>
                 </div>
-                <div style={{ textAlign:'right', lineHeight:1.4 }}>
-                  <div style={{ fontSize:10.5, fontWeight:900, color:'#06392c' }}>{isAr?'شهادة معتمدة':'Certified'}</div>
-                  <div style={{ fontSize:8.5, fontFamily:'monospace', color:'#666' }}>{certNo}</div>
-                  <div style={{ fontSize:8.5, color:'#888' }}>{isAr?'التاريخ:':'Date:'} {data.completionDate}</div>
+                <div style={{ textAlign:'right', lineHeight:1.3 }}>
+                  <div style={{ fontSize:11, fontWeight:900, color:'#06392c' }}>{isAr?'شهادة معتمدة':'Certified'}</div>
+                  <div style={{ fontSize:9, fontFamily:'monospace', color:'#666' }}>{certNo}</div>
+                  <div style={{ fontSize:9, color:'#888' }}>{isAr?'التاريخ:':'Date:'} {data.completionDate}</div>
                 </div>
               </div>
 
@@ -262,34 +263,34 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* LEFT (RTL last): Logo */}
               <div style={{ display:'flex', alignItems:'center' }}>
-                <BrandMark size="sm" showText={true}/>
+                <BrandMark size="md" showText={true}/>
               </div>
             </div>
 
             {/* ── BODY ── */}
-            <div style={{ padding:'10px 24px 6px', textAlign:'center', display:'flex',
-              flexDirection:'column', alignItems:'center', gap:5, position:'relative', zIndex:1 }}>
+            <div style={{ padding:'12px 28px 8px', textAlign:'center', display:'flex',
+              flexDirection:'column', alignItems:'center', gap:6, position:'relative', zIndex:1 }}>
 
-              <h1 style={{ fontSize:30, fontWeight:900, color:'#06392c', margin:0,
+              <h1 style={{ fontSize:32, fontWeight:900, color:'#06392c', margin:0,
                 fontFamily:'Georgia, serif', lineHeight:1.2 }}>
                 {isAr ? 'شهادة إنجاز واجتياز برنامج علاجي' : 'CERTIFICATE OF COMPLETION'}
               </h1>
 
-              <p style={{ fontSize:11.5, fontWeight:700, color:'#555', margin:0 }}>
+              <p style={{ fontSize:12, fontWeight:700, color:'#555', margin:0 }}>
                 {isAr ? 'تشهد منصة مسار للتأهيل والتعليم الذكي وتحت إشراف الاستشاري'
                        : 'This certifies under the supervision of Consultant'}
               </p>
 
-              <p style={{ fontSize:19, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
+              <p style={{ fontSize:20, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
                 {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
               </p>
 
-              <p style={{ fontSize:11, fontWeight:700, color:'#666', margin:0 }}>
+              <p style={{ fontSize:11.5, fontWeight:700, color:'#666', margin:0 }}>
                 {isAr ? 'بأن البطل/ة' : 'that the student'}
               </p>
 
               {/* Student name + laurel */}
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 <GoldenLaurelBranch side="left"/>
                 <div>
                   {!isAr && editingEnName ? (
@@ -297,15 +298,15 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                       <input autoFocus value={nameEn} onChange={e=>setNameEn(e.target.value)}
                         onKeyDown={e=>e.key==='Enter'&&setEditingEnName(false)}
                         placeholder="Student English name..."
-                        style={{ background:'transparent', fontSize:36, fontWeight:900, color:'#06392c',
-                          border:'none', outline:'none', textAlign:'center', fontFamily:'Georgia, serif', width:300 }}/>
+                        style={{ background:'transparent', fontSize:38, fontWeight:900, color:'#06392c',
+                          border:'none', outline:'none', textAlign:'center', fontFamily:'Georgia, serif', width:320 }}/>
                       <button onClick={()=>setEditingEnName(false)} style={{ color:'#06392c', cursor:'pointer', background:'none', border:'none' }}>
                         <Check size={18}/>
                       </button>
                     </div>
                   ) : (
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <h2 style={{ fontSize:38, fontWeight:900, color:'#06392c', margin:0,
+                      <h2 style={{ fontSize:40, fontWeight:900, color:'#06392c', margin:0,
                         fontFamily:'Georgia, serif', lineHeight:1 }}>
                         {displayName}
                       </h2>
@@ -331,20 +332,20 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               )}
 
               {/* Program */}
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, width:'100%', marginTop:2 }}>
-                <p style={{ fontSize:11.5, fontWeight:700, color:'#555', margin:0 }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, width:'100%', marginTop:2 }}>
+                <p style={{ fontSize:12, fontWeight:700, color:'#555', margin:0 }}>
                   {isAr ? 'قد أتم بنجاح واقتدار لكافة متطلبات الجلسات العلاجية والتحليلية النهائية المتخصصة في:'
                          : 'Has successfully completed all specialized therapeutic & analytical session requirements in:'}
                 </p>
-                <div style={{ background:'rgba(255,255,255,0.65)', border:'1.5px solid #aea882', borderRadius:9, padding:'7px 24px' }}>
-                  <span style={{ fontSize:16, fontWeight:900, color:'#06392c' }}>
+                <div style={{ background:'#e3eae4', border:'1.5px solid #c4d4c8', borderRadius:14, padding:'8px 28px' }}>
+                  <span style={{ fontSize:17, fontWeight:900, color:'#06392c' }}>
                     {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
                   </span>
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11.5, fontWeight:700, color:'#444' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:700, color:'#444' }}>
                   <span>{isAr ? 'وحقق نسبة إنجاز تراكمية قدرها' : 'Achieved a cumulative completion rate of'}</span>
                   <span style={{ background:'#06392c', color:'white', fontFamily:'monospace', fontWeight:900,
-                    fontSize:12, padding:'3px 12px', borderRadius:7 }}>
+                    fontSize:13, padding:'3px 14px', borderRadius:8 }}>
                     {isAr ? `%${data.score}` : `${data.score}%`}
                   </span>
                   <span>{isAr ? 'مع الالتزام التام بالجلسات الفردية والمنزلية.' : 'with full commitment to individual & home sessions.'}</span>
@@ -356,46 +357,46 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 dir=rtl → 1st child shows RIGHT, 3rd child shows LEFT
                 Visual:  [Official RIGHT] [Doctor CENTER] [Academic LEFT]
             ── */}
-            <div style={{ padding:'6px 18px 12px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-              gap:10, position:'relative', zIndex:1 }} dir="rtl">
+            <div style={{ padding:'8px 22px 14px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
+              gap:12, position:'relative', zIndex:1 }} dir="rtl">
 
               {/* Card 1 → RIGHT: Official Seal */}
               <div style={cardStyle} dir="rtl">
                 <OfficialSealIcon/>
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:11.5, fontWeight:900, color:'#06392c' }}>
+                  <div style={{ fontSize:12.5, fontWeight:900, color:'#06392c' }}>
                     {isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}
                   </div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'#777', marginTop:2 }}>
+                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2 }}>
                     {isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}
                   </div>
                 </div>
-                <div style={{ background:'#d8cfaa', border:'1px solid #aaa080', borderRadius:20,
-                  padding:'3px 12px', fontSize:10, fontWeight:700, color:'#06392c' }}>
+                <div style={{ background:'#e2eae4', border:'1px solid #c6d6c9', borderRadius:20,
+                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#06392c' }}>
                   {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
                 </div>
               </div>
 
               {/* Card 2 → CENTER: Doctor */}
               <div style={cardStyle} dir="rtl">
-                <div style={{ fontSize:9.5, fontWeight:700, color:'#888' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#718096' }}>
                   {isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}
                 </div>
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:17, fontWeight:900, color:'#06392c', fontFamily:'Georgia, serif' }}>
+                  <div style={{ fontSize:18, fontWeight:900, color:'#06392c', fontFamily:'Georgia, serif' }}>
                     {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
                   </div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'#777', marginTop:2, lineHeight:1.3 }}>
+                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2, lineHeight:1.3 }}>
                     {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم'
                            : 'Special Education & Learning Difficulties Consultant'}
                   </div>
                 </div>
-                <div style={{ borderBottom:'1.5px solid #c49a28', paddingBottom:3, paddingLeft:10, paddingRight:10 }}>
-                  <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:13,
-                    color:'#c49a28', fontWeight:700 }}>أ.د. إسماعيل عيسى</span>
+                <div style={{ borderBottom:'1.5px solid #d9a238', paddingBottom:3, paddingLeft:10, paddingRight:10 }}>
+                  <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:14,
+                    color:'#c48f32', fontWeight:700 }}>أ.د. إسماعيل عيسى</span>
                 </div>
-                <div style={{ background:'#ead898', border:'1px solid #d4a030', borderRadius:20,
-                  padding:'3px 11px', fontSize:9.5, fontWeight:700, color:'#7a5010' }}>
+                <div style={{ background:'#f3e6cf', border:'1px solid #e0cda5', borderRadius:20,
+                  padding:'4px 13px', fontSize:10, fontWeight:900, color:'#6e521c' }}>
                   {isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}
                 </div>
               </div>
@@ -404,15 +405,15 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               <div style={cardStyle} dir="rtl">
                 <AcademicSealIcon/>
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:11.5, fontWeight:900, color:'#06392c' }}>
+                  <div style={{ fontSize:12.5, fontWeight:900, color:'#06392c' }}>
                     {isAr ? 'الختم الأكاديمي' : 'Academic Seal'}
                   </div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'#777', marginTop:2 }}>
+                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2 }}>
                     {isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}
                   </div>
                 </div>
-                <div style={{ background:'#d8cfaa', border:'1px solid #aaa080', borderRadius:20,
-                  padding:'3px 12px', fontSize:10, fontWeight:700, color:'#06392c' }}>
+                <div style={{ background:'#e2eae4', border:'1px solid #c6d6c9', borderRadius:20,
+                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#06392c' }}>
                   {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
                 </div>
               </div>
@@ -422,17 +423,17 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             {/* ── BOTTOM BAR ──
                 dir=rtl → 1st child shows RIGHT (medal+text), last shows LEFT (QR)
             ── */}
-            <div style={{ background:'#06392c', padding:'9px 18px', display:'flex', alignItems:'center',
-              justifyContent:'space-between', borderRadius:'0 0 15px 15px', position:'relative', zIndex:1 }}
+            <div style={{ background:'#06392c', padding:'10px 22px', display:'flex', alignItems:'center',
+              justifyContent:'space-between', borderRadius:'0 0 16px 16px', position:'relative', zIndex:1 }}
               dir="rtl">
 
               {/* RIGHT: text + medal */}
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:10.5, fontWeight:900, color:'white', lineHeight:1.3 }}>
+                  <div style={{ fontSize:11, fontWeight:900, color:'white', lineHeight:1.3 }}>
                     {isAr ? 'شهادة صادرة رسمياً وموثقة' : 'Officially Issued Certificate'}
                   </div>
-                  <div style={{ fontSize:9, color:'#86c8a0', lineHeight:1.3 }}>
+                  <div style={{ fontSize:9.5, color:'#a8d4b8', lineHeight:1.3 }}>
                     {isAr ? 'عبر منصة مسار للتأهيل والتعليم الذكي' : 'via Masar Smart Platform'}
                   </div>
                 </div>
@@ -440,23 +441,23 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
 
               {/* CENTER: serial */}
-              <div style={{ display:'flex', alignItems:'center', gap:5, fontFamily:'monospace',
-                fontSize:11.5, fontWeight:700, color:'white' }}>
-                <ShieldCheck size={14} color="rgba(255,255,255,0.8)"/>
+              <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:'monospace',
+                fontSize:12, fontWeight:700, color:'white' }}>
+                <ShieldCheck size={15} color="rgba(255,255,255,0.8)"/>
                 <span>{certNo}</span>
               </div>
 
               {/* LEFT: QR + text */}
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:10.5, fontWeight:900, color:'white', lineHeight:1.3 }}>
+                  <div style={{ fontSize:11, fontWeight:900, color:'white', lineHeight:1.3 }}>
                     {isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}
                   </div>
-                  <div style={{ fontSize:9, color:'#86c8a0', lineHeight:1.3 }}>
+                  <div style={{ fontSize:9.5, color:'#a8d4b8', lineHeight:1.3 }}>
                     {isAr ? 'امسح الكود للتحقق' : 'Scan Code to Verify'}
                   </div>
                 </div>
-                <div style={{ background:'white', borderRadius:7, padding:4,
+                <div style={{ background:'white', borderRadius:8, padding:4,
                   display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <QrCode size={26} color="#06392c"/>
                 </div>
