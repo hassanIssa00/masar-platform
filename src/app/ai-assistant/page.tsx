@@ -152,7 +152,7 @@ export default function AIAssistantCommandCenterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API}/ai/execute`, {
+      const res = await fetch('/api/ai/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -171,8 +171,9 @@ export default function AIAssistantCommandCenterPage() {
         sender: 'agent',
         text: data.reply || 'تم تنفيذ طلبك بنجاح على المنصة ✨',
         actionTaken: data.actionTaken,
-        gateway: data.gateway,
+        gateway: data.gateway || 'MSEMAX Autonomous Engine',
         result: data.result,
+        videos: data.videos,
         timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
       };
 

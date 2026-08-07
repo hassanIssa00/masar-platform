@@ -313,7 +313,7 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
     setLoading(true);
 
     try {
-      const res = await fetch(`${API}/ai/execute`, {
+      const res = await fetch('/api/ai/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -324,7 +324,7 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
         }),
       });
 
-      if (!res.ok) throw new Error('سيرفر الـ Backend غير متصل');
+      if (!res.ok) throw new Error('API Error');
 
       const data = await res.json();
       const agentMsg: Message = {
@@ -332,8 +332,9 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
         sender: 'agent',
         text: data.reply || 'تم تنفيذ طلبك بنجاح على المنصة ✨',
         actionTaken: data.actionTaken,
-        gateway: data.gateway,
+        gateway: data.gateway || 'MSEMAX Autonomous Engine',
         result: data.result,
+        videos: data.videos,
         timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
       };
 
