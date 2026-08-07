@@ -413,7 +413,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               {/* LEFT (RTL last): Dashed Digital Seal Box with Dual Logos */}
               <div style={{ background: '#f8fafc', border: '1.5px dashed #818cf8', borderRadius: 14, padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
                 {/* Dual Logos (Masar x Nexus) */}
-                <div style={{ display: 'flex', itemsCenter: 'center', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src="/brand/masar-logo.png" alt="منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
