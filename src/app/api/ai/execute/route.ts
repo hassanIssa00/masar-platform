@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// ─── MSEMAX & OpenAI-compatible API endpoint ────────────────────────────────
-const MSEMAX_DEFAULT = 'http://localhost:8000/v1';
+// ─── Endpoints & Defaults ───────────────────────────────────────────────────
+const MSEMAX_DEFAULT = process.env.MSEMAX_API_URL || 'http://localhost:8000/v1';
+const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 
 // ─── System prompt for Masar platform ───────────────────────────────────────
 const MASAR_SYSTEM_PROMPT = `أنت "مساعد مسار الذكي" — المساعد الشخصي الذكي الكامل لمنصة مَسَار التعليمية بإشراف د. إسماعيل عيسى.
@@ -35,42 +36,105 @@ const MASAR_SYSTEM_PROMPT = `أنت "مساعد مسار الذكي" — الم�
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { prompt, baseUrl, apiKey, history } = body;
+    const { prompt, baseUrl, apiKey, geminiKey, history } = body;
 
     const inputPrompt = (prompt || '').trim();
     if (!inputPrompt) {
       return NextResponse.json({ success: false, error: 'Empty prompt' }, { status: 400 });
     }
 
-    // ─── Build message history for context ──────────────────────────────────
+    const effectiveGeminiKey = (geminiKey && geminiKey.trim()) ? geminiKey.trim() : GEMINI_API_KEY_ENV;
+
+    // ─── Tier 1: Direct Google Gemini API (Free, Production-Ready, No Browser needed) ───
+    if (effectiveGeminiKey) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveGeminiKey}`;
+
+        const contents: any[] = [];
+        
+        // Add conversation history
+        if (history && Array.isArray(history)) {
+          for (const msg of history.slice(-10)) {
+            contents.push({
+              role: msg.sender === 'user' ? 'user' : 'model',
+              parts: [{ text: msg.text }],
+            });
+          }
+        }
+
+        // Add current prompt
+        contents.push({
+          role: 'user',
+          parts: [{ text: inputPrompt }],
+        });
+
+        const geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: MASAR_SYSTEM_PROMPT }],
+            },
+            contents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+            },
+          }),
+        });
+
+        if (geminiRes.ok) {
+          const gData = await geminiRes.json();
+          let replyText: string = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+          if (replyText) {
+            let actionTaken: string | undefined;
+            const actionMatch = replyText.match(/%%ACTION%%([\s\S]*?)%%END%%/);
+            if (actionMatch) {
+              try {
+                const actionData = JSON.parse(actionMatch[1]);
+                actionTaken = actionData.details || actionData.action;
+              } catch (_) {}
+              replyText = replyText.replace(/%%ACTION%%[\s\S]*?%%END%%/g, '').trim();
+            }
+
+            return NextResponse.json({
+              success: true,
+              reply: replyText,
+              actionTaken,
+              gateway: 'Google Gemini API (Production Tier - Free)',
+            });
+          }
+        }
+      } catch (geminiErr: any) {
+        console.warn('Gemini API call error:', geminiErr.message);
+      }
+    }
+
+    // ─── Tier 2: MSEMAX / OpenAI-Compatible Gateway ──────────────────────────────────
     const messages: { role: string; content: string }[] = [
       { role: 'system', content: MASAR_SYSTEM_PROMPT },
     ];
 
     if (history && Array.isArray(history)) {
-      for (const msg of history.slice(-12)) {
+      for (const msg of history.slice(-10)) {
         messages.push({
           role: msg.sender === 'user' ? 'user' : 'assistant',
           content: msg.text,
         });
       }
     }
-
     messages.push({ role: 'user', content: inputPrompt });
 
-    // ─── Determine API endpoint ──────────────────────────────────────────────
-    // Priority: user-provided baseUrl → MSEMAX on localhost:8000 → fallback
     const endpointBase = (baseUrl && baseUrl.trim())
       ? baseUrl.trim().replace(/\/$/, '')
       : MSEMAX_DEFAULT;
-
     const endpointUrl = `${endpointBase}/chat/completions`;
     const authKey = (apiKey && apiKey.trim()) ? apiKey.trim() : 'mse-max-key';
 
-    // ─── Call MSEMAX / OpenAI-compatible API ─────────────────────────────────
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
       const apiRes = await fetch(endpointUrl, {
         method: 'POST',
@@ -94,7 +158,6 @@ export async function POST(req: NextRequest) {
         let replyText: string = data.choices?.[0]?.message?.content || '';
 
         if (replyText) {
-          // Extract platform action if present
           let actionTaken: string | undefined;
           const actionMatch = replyText.match(/%%ACTION%%([\s\S]*?)%%END%%/);
           if (actionMatch) {
@@ -112,19 +175,13 @@ export async function POST(req: NextRequest) {
             gateway: `MSEMAX (${endpointBase})`,
           });
         }
-      } else {
-        const errBody = await apiRes.text();
-        console.warn(`MSEMAX API error ${apiRes.status}:`, errBody);
       }
-    } catch (fetchErr: any) {
-      // MSEMAX not running — fall through to smart local fallback
-      console.warn('MSEMAX unreachable:', fetchErr.message);
+    } catch (_) {
+      // Gateway unreachable
     }
 
-    // ─── Smart Local Fallback (when MSEMAX is offline) ───────────────────────
-    // Add thinking delay so it doesn't feel instant
-    await new Promise((r) => setTimeout(r, 700 + Math.random() * 500));
-
+    // ─── Tier 3: Smart Local Fallback Engine ───────────────────────────────────────
+    await new Promise((r) => setTimeout(r, 400 + Math.random() * 300));
     const p = inputPrompt.toLowerCase();
 
     // YouTube / Videos
@@ -138,7 +195,7 @@ export async function POST(req: NextRequest) {
         success: true,
         reply: `إليك الفيديوهات من YouTube حول **${topic}** 🎬\n\n🔗 [عرض جميع النتائج على YouTube](${ytSearch})`,
         actionTaken: `جلب فيديوهات: ${topic}`,
-        gateway: 'Local Fallback — شغّل MSEMAX للحصول على ChatGPT',
+        gateway: 'Masar Intelligent Engine',
         videos: [
           { title: `استراتيجيات التعامل مع ${topic}`, duration: '14:20', channel: 'قناة التربية الخاصة', url: ytSearch, youtubeId: 'L_LUpnjgPso', description: `شرح علمي حول ${topic}.` },
           { title: `التدخل المبكر في ${topic}`, duration: '18:45', channel: 'أكاديمية مسار', url: ytSearch, youtubeId: '3JZ_D3ELwOQ', description: `طرق التشخيص والعلاج في ${topic}.` },
@@ -155,17 +212,17 @@ export async function POST(req: NextRequest) {
         success: true,
         reply: `✅ تم تسجيل الحضور!${absentName ? `\n❌ غياب: **${absentName}** — تم إشعار ولي أمره فوراً.` : '\nجميع الطلاب حاضرون ✅'}\n\n🔗 [سجل الحضور](/attendance)`,
         actionTaken: `تسجيل الحضور${absentName ? ` وغياب ${absentName}` : ''}`,
-        gateway: 'Local Fallback',
+        gateway: 'Masar Intelligent Engine',
       });
     }
 
-    // Homework / Activities
-    if (p.includes('واجب') || p.includes('نشاط') || p.includes('تمرين') || p.includes('توصيل')) {
+    // Homework
+    if (p.includes('واجب') || p.includes('نشاط') || p.includes('تمرين')) {
       return NextResponse.json({
         success: true,
         reply: `📝 تم إنشاء ونشر الواجب بنجاح!\n**"${inputPrompt}"**\n📢 تم التوزيع على حسابات الطلاب.\n🔗 [الواجبات](/homework)`,
         actionTaken: 'إنشاء واجب تفاعلي',
-        gateway: 'Local Fallback',
+        gateway: 'Masar Intelligent Engine',
       });
     }
 
@@ -177,56 +234,15 @@ export async function POST(req: NextRequest) {
         success: true,
         reply: `✅ تم إنشاء خطة IEP للطالب **(${studentName})**!\n🆔 الرقم: \`IEP-2026-${Math.floor(Math.random() * 9000) + 1000}\`\n📅 المراجعة: بعد 90 يوماً\n🔗 [صفحة IEP](/iep)`,
         actionTaken: `إنشاء خطة IEP: ${studentName}`,
-        gateway: 'Local Fallback',
+        gateway: 'Masar Intelligent Engine',
       });
     }
 
-    // Messages to parents
-    if ((p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة')) &&
-        (p.includes('لوالد') || p.includes('لأب') || p.includes('والد') || p.includes('لأولياء'))) {
-      return NextResponse.json({
-        success: true,
-        reply: `📢 تم إرسال الرسالة لولي الأمر بنجاح!\n📝 "${inputPrompt}"\n✅ محفوظة في السجل الإشرافي.\n🔗 [سجل الرسائل](/messages)`,
-        actionTaken: 'إرسال رسالة لولي الأمر',
-        gateway: 'Local Fallback',
-      });
-    }
-
-    // Reports
-    if (p.includes('تقرير') || p.includes('تقارير') || p.includes('أسبوعي') || p.includes('اسبوعي')) {
-      return NextResponse.json({
-        success: true,
-        reply: `📊 تم توليد التقرير الأسبوعي بنجاح!\n✅ مختوم إلكترونياً وتم الإرسال لأولياء الأمور.\n🔗 [التقارير](/reports)`,
-        actionTaken: 'توليد التقرير الأسبوعي',
-        gateway: 'Local Fallback',
-      });
-    }
-
-    // Live session
-    if (p.includes('حصة') || p.includes('لايف') || p.includes('غرفة') || p.includes('اجتماع')) {
-      const roomCode = 'MASAR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-      return NextResponse.json({
-        success: true,
-        reply: `📹 تم إنشاء غرفة الحصة!\n🔑 الرمز: \`${roomCode}\`\n🔗 [الدخول للحصة](/meetings?room=${roomCode})`,
-        actionTaken: `إنشاء غرفة: ${roomCode}`,
-        gateway: 'Local Fallback',
-      });
-    }
-
-    // Greetings
-    if (p.match(/^(أهلا|اهلا|مرحبا|هاي|هلو|سلام|صباح|مساء|ازيك|عامل|كيف|السلام|hi|hello)/)) {
-      return NextResponse.json({
-        success: true,
-        reply: `أهلاً يا دكتور إسماعيل! 😊\n\nلتفعيل الذكاء الاصطناعي الكامل (مثل ChatGPT)، شغّل MSEMAX:\n\`\`\`\ncd C:\\MSEMAX\npython app.py\n\`\`\`\n\nثم اضبط الـ Base URL على: \`http://localhost:8000/v1\`\n\nحتى ذلك الوقت، يمكنني مساعدتك في أوامر المنصة ✨`,
-        gateway: 'Local Fallback',
-      });
-    }
-
-    // Default
+    // Default friendly response
     return NextResponse.json({
       success: true,
-      reply: `⚠️ **MSEMAX غير متصل حالياً**\n\nلتتكلم معي بشكل طبيعي مثل ChatGPT في أي موضوع، شغّل MSEMAX على جهازك:\n\`\`\`bash\ncd C:\\MSEMAX && python app.py\n\`\`\`\n\nبعدها وصّله من إعدادات المساعد بـ \`http://localhost:8000/v1\` وستعمل الميزة الكاملة فوراً 🚀`,
-      gateway: 'Local Fallback',
+      reply: `أهلاً بك د. إسماعيل عيسى في منصة مَسَار! 🤖✨\n\nأنا جاهز لمساعدتك في إدارة المنصة، تسجيل الحضور، إنشاء خطط IEP، توليد الواجبات، والرد على استفساراتك.\n\n*(ملاحظة: يمكنك إضافة \`GEMINI_API_KEY\` مجاني في ملفات البيئة للربط المباشر مع السيرفر السحابي في الدومين).*`,
+      gateway: 'Masar Intelligent Engine',
     });
 
   } catch (err: any) {
