@@ -339,29 +339,32 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
             {/* ── HEADER ── */}
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',
-              padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%' }}>
+              padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%' }}
+              dir={isAr ? 'rtl' : 'ltr'}
+            >
 
-              {/* RIGHT (RTL first): Certified box */}
+              {/* FIRST (RTL→RIGHT / LTR→LEFT): Logo */}
+              <div style={{ display:'flex', alignItems:'center' }}>
+                <BrandMark size="md" showText={true}/>
+              </div>
+
+              {/* CENTER: Badge */}
+              <TopTrophyRibbonBadge isAr={isAr}/>
+
+              {/* LAST (RTL→LEFT / LTR→RIGHT): Certified box */}
               <div style={{ display:'flex', alignItems:'center', gap:8, background:'#ffffff',
                 border:'1.5px solid #e2e8e4', borderRadius:14, padding:'8px 12px', minWidth:140, boxShadow:'0 2px 6px rgba(0,0,0,0.03)' }}>
                 <div style={{ background:'#06392c', borderRadius:10, width:30, height:30,
                   display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <ShieldCheck size={16} color="white"/>
                 </div>
-                <div style={{ textAlign:'right', lineHeight:1.3 }}>
+                <div style={{ textAlign: isAr ? 'right' : 'left', lineHeight:1.3 }}>
                   <div style={{ fontSize:11, fontWeight:900, color:'#06392c' }}>{isAr?'شهادة معتمدة':'Certified'}</div>
                   <div style={{ fontSize:9, fontFamily:'monospace', color:'#666' }}>{certNo}</div>
                   <div style={{ fontSize:9, color:'#888' }}>{isAr?'التاريخ:':'Date:'} {data.completionDate}</div>
                 </div>
               </div>
 
-              {/* CENTER: Badge */}
-              <TopTrophyRibbonBadge isAr={isAr}/>
-
-              {/* LEFT (RTL last): Logo */}
-              <div style={{ display:'flex', alignItems:'center' }}>
-                <BrandMark size="md" showText={true}/>
-              </div>
             </div>
 
             {/* ── BODY ── */}
