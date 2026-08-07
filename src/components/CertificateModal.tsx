@@ -53,72 +53,80 @@ function GoldenLaurelBranch({ side }: { side: 'left' | 'right' }) {
 ──────────────────────────────────────────────────────────── */
 function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
   return (
-    <div className="relative flex flex-col items-center -mt-5 select-none" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}>
+    <div className="relative flex flex-col items-center select-none" style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))', marginTop: '-18px' }}>
       <svg
-        width="300"
-        height="94"
-        viewBox="0 0 300 94"
+        width="420"
+        height="100"
+        viewBox="0 0 420 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
           <linearGradient id="rib-gold" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#f0cb6a"/>
-            <stop offset="40%" stopColor="#d9a030"/>
-            <stop offset="100%" stopColor="#a87020"/>
+            <stop offset="0%" stopColor="#f5d060"/>
+            <stop offset="45%" stopColor="#d9a030"/>
+            <stop offset="100%" stopColor="#9a6a10"/>
+          </linearGradient>
+          <linearGradient id="rib-gold-shadow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#a87020"/>
+            <stop offset="100%" stopColor="#d9a030"/>
           </linearGradient>
           <linearGradient id="shield-green" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#0c5240"/>
+            <stop offset="0%" stopColor="#0d5a44"/>
             <stop offset="100%" stopColor="#052e22"/>
           </linearGradient>
           <linearGradient id="shield-border" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#f0cb6a"/>
-            <stop offset="100%" stopColor="#c09030"/>
+            <stop offset="0%" stopColor="#f5d060"/>
+            <stop offset="100%" stopColor="#b88020"/>
           </linearGradient>
         </defs>
 
-        {/* Left gold ribbon tail with V notch */}
-        <path d="M 0 22 L 54 22 L 44 47 L 54 72 L 0 72 L 14 47 Z" fill="url(#rib-gold)"/>
-        {/* Right gold ribbon tail with V notch */}
-        <path d="M 300 22 L 246 22 L 256 47 L 246 72 L 300 72 L 286 47 Z" fill="url(#rib-gold)"/>
+        {/* ── LEFT GOLD RIBBON WING (wide, with V notch pointing right) ── */}
+        <path d="M 0 18 L 100 18 L 85 50 L 100 82 L 0 82 L 18 50 Z" fill="url(#rib-gold)"/>
+        {/* Wing shadow/depth fold */}
+        <path d="M 0 18 L 18 50 L 0 82 Z" fill="#a87020" opacity="0.5"/>
 
-        {/* Gold border shield path */}
+        {/* ── RIGHT GOLD RIBBON WING (wide, with V notch pointing left) ── */}
+        <path d="M 420 18 L 320 18 L 335 50 L 320 82 L 420 82 L 402 50 Z" fill="url(#rib-gold)"/>
+        {/* Wing shadow/depth fold */}
+        <path d="M 420 18 L 402 50 L 420 82 Z" fill="#a87020" opacity="0.5"/>
+
+        {/* ── GOLD BORDER SHIELD ── */}
         <path
-          d="M 48 6 L 252 6 Q 268 6 272 20 L 286 62 Q 278 90 150 94 Q 22 90 14 62 L 28 20 Q 32 6 48 6 Z"
+          d="M 95 4 L 325 4 Q 344 4 348 20 L 362 60 Q 354 96 210 100 Q 66 96 58 60 L 72 20 Q 76 4 95 4 Z"
           fill="url(#shield-border)"
         />
-        {/* Inner dark green shield */}
+        {/* ── INNER DARK GREEN SHIELD ── */}
         <path
-          d="M 50 10 L 250 10 Q 264 10 268 22 L 281 62 Q 274 86 150 90 Q 26 86 19 62 L 32 22 Q 36 10 50 10 Z"
+          d="M 97 8 L 323 8 Q 340 8 344 22 L 357 60 Q 349 92 210 96 Q 71 92 63 60 L 76 22 Q 80 8 97 8 Z"
           fill="url(#shield-green)"
         />
       </svg>
 
-      {/* Content overlay */}
-      <div className="absolute inset-0 flex flex-col items-center pt-3 pb-2 px-16 pointer-events-none">
-        {/* Trophy + Text row */}
-        <div className="flex items-center gap-3" dir="rtl">
+      {/* ── Content Overlay ── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-between pt-3 pb-2.5 pointer-events-none" style={{ paddingLeft: '100px', paddingRight: '100px' }}>
+        {/* Trophy + Text */}
+        <div className="flex items-center gap-3 w-full justify-center" dir="rtl">
           {/* Filled Gold Trophy */}
-          <svg width="32" height="30" viewBox="0 0 32 30" fill="none">
-            <path d="M8 2 H24 V14 C24 20 20 24 16 25 C12 24 8 20 8 14 Z" fill="#d9a238" stroke="#c08020" strokeWidth="0.8"/>
-            <path d="M5 4 H8 V12 C5 12 3 10 3 7.5 C3 5.5 4 4 5 4Z" fill="#d9a238" stroke="#c08020" strokeWidth="0.8"/>
-            <path d="M27 4 H24 V12 C27 12 29 10 29 7.5 C29 5.5 28 4 27 4Z" fill="#d9a238" stroke="#c08020" strokeWidth="0.8"/>
-            <rect x="13" y="25" width="6" height="3" rx="0.5" fill="#d9a238" stroke="#c08020" strokeWidth="0.8"/>
-            <rect x="10" y="28" width="12" height="2" rx="1" fill="#d9a238" stroke="#c08020" strokeWidth="0.8"/>
-            {/* Shine */}
-            <path d="M11 5 Q13 3 14 6" stroke="#f5d060" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+          <svg width="36" height="34" viewBox="0 0 36 34" fill="none">
+            <path d="M9 2 H27 V16 C27 23 22 27 18 28 C14 27 9 23 9 16 Z" fill="#e8c040" stroke="#c09020" strokeWidth="0.8"/>
+            <path d="M5 4 H9 V14 C5 14 2 12 2 8.5 C2 6 3.5 4 5 4Z" fill="#e8c040" stroke="#c09020" strokeWidth="0.8"/>
+            <path d="M31 4 H27 V14 C31 14 34 12 34 8.5 C34 6 32.5 4 31 4Z" fill="#e8c040" stroke="#c09020" strokeWidth="0.8"/>
+            <rect x="15" y="28" width="6" height="3" rx="0.5" fill="#e8c040" stroke="#c09020" strokeWidth="0.8"/>
+            <rect x="11" y="31" width="14" height="2.5" rx="1.2" fill="#e8c040" stroke="#c09020" strokeWidth="0.8"/>
+            <path d="M12 5 Q15 3 16 7" stroke="#fff9c0" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.8"/>
           </svg>
           <div className="text-center">
-            <p className="text-white font-black leading-tight" style={{ fontSize: '15px', fontFamily: 'Arial, sans-serif' }}>
+            <p className="text-white font-black leading-tight" style={{ fontSize: '16px', fontFamily: 'Arial, sans-serif', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
               {isAr ? 'شهادة إنجاز واجتياز' : 'Certificate of Achievement'}
             </p>
-            <p className="text-amber-200 font-bold leading-tight mt-0.5" style={{ fontSize: '11px' }}>
+            <p className="text-amber-200 font-bold leading-tight mt-0.5" style={{ fontSize: '11.5px', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
               {isAr ? 'تقدير رفيع المستوى' : 'High Honor Distinction'}
             </p>
           </div>
         </div>
-        {/* 5 Stars */}
-        <div className="flex gap-1 mt-1.5" style={{ color: '#f0cb6a', fontSize: '13px' }}>
+        {/* 5 Stars at bottom */}
+        <div className="flex gap-1.5" style={{ color: '#f5d060', fontSize: '14px', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
           ★ ★ ★ ★ ★
         </div>
       </div>
