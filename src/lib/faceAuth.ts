@@ -96,7 +96,7 @@ export async function detectFace(video: HTMLVideoElement): Promise<{
   const detection = await faceapi
     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
     .withFaceLandmarks()
-    .withFaceRecognitionDescriptor()
+    .withFaceDescriptor()
     .withFaceExpressions();
 
   if (!detection) return null;
