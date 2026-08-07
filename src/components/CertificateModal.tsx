@@ -92,32 +92,64 @@ function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
   );
 }
 
-/* ─── ACADEMIC SEAL ICON WITH REAL NEXUS LOGO ─────────────────── */
+/* ─── LUXURY EMBOSSED ACADEMIC SEAL ──────────────────────────── */
 function AcademicSealIcon() {
   return (
-    <div className="relative w-12 h-12 rounded-full border-2 border-[#06392c] p-0.5 bg-white shadow-xs flex items-center justify-center shrink-0">
-      <div className="w-full h-full rounded-full border border-dashed border-[#d9a238] p-1 flex items-center justify-center bg-cyan-50/50">
-        <img
-          src="/brand/nexus-logo-new.webp"
-          alt="ختم منصة تأسيس"
-          className="w-8 h-8 object-contain"
+    <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <defs>
+          <linearGradient id="gold-seal-1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="50%" stopColor="#d9a238" />
+            <stop offset="100%" stopColor="#854d0e" />
+          </linearGradient>
+        </defs>
+        {/* Outer Serrated Ring */}
+        <path
+          d="M28 2L31 6L36 4.5L37.5 9.5L42.5 9.5L42.5 14.5L47.5 16L45.5 21L49.5 24L46.5 28L49.5 32L45.5 35L47.5 40L42.5 41.5L42.5 46.5L37.5 46.5L36 51.5L31 50L28 54L25 50L20 51.5L18.5 46.5L13.5 46.5L13.5 41.5L8.5 40L10.5 35L6.5 32L9.5 28L6.5 24L10.5 21L8.5 16L13.5 14.5L13.5 9.5L18.5 9.5L20 4.5L25 6Z"
+          fill="url(#gold-seal-1)"
+          stroke="#06392c"
+          strokeWidth="1"
         />
-      </div>
+        <circle cx="28" cy="28" r="19" fill="#ffffff" stroke="#06392c" strokeWidth="1.2" />
+        <circle cx="28" cy="28" r="16.5" fill="none" stroke="#d9a238" strokeWidth="0.8" strokeDasharray="2 2" />
+      </svg>
+      <img
+        src="/brand/nexus-logo-new.webp"
+        alt="ختم تأسيس"
+        className="absolute w-8 h-8 object-contain"
+      />
     </div>
   );
 }
 
-/* ─── OFFICIAL SEAL ICON WITH REAL MASAR LOGO ─────────────────── */
+/* ─── LUXURY EMBOSSED OFFICIAL SEAL ──────────────────────────── */
 function OfficialSealIcon() {
   return (
-    <div className="relative w-12 h-12 rounded-full border-2 border-[#06392c] p-0.5 bg-white shadow-xs flex items-center justify-center shrink-0">
-      <div className="w-full h-full rounded-full border border-dashed border-[#d9a238] p-1 flex items-center justify-center bg-[#06392c]/5">
-        <img
-          src="/brand/masar-logo.png"
-          alt="ختم منصة مسار"
-          className="w-8 h-8 object-contain"
+    <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <defs>
+          <linearGradient id="gold-seal-2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="50%" stopColor="#d9a238" />
+            <stop offset="100%" stopColor="#854d0e" />
+          </linearGradient>
+        </defs>
+        {/* Outer Serrated Ring */}
+        <path
+          d="M28 2L31 6L36 4.5L37.5 9.5L42.5 9.5L42.5 14.5L47.5 16L45.5 21L49.5 24L46.5 28L49.5 32L45.5 35L47.5 40L42.5 41.5L42.5 46.5L37.5 46.5L36 51.5L31 50L28 54L25 50L20 51.5L18.5 46.5L13.5 46.5L13.5 41.5L8.5 40L10.5 35L6.5 32L9.5 28L6.5 24L10.5 21L8.5 16L13.5 14.5L13.5 9.5L18.5 9.5L20 4.5L25 6Z"
+          fill="url(#gold-seal-2)"
+          stroke="#06392c"
+          strokeWidth="1"
         />
-      </div>
+        <circle cx="28" cy="28" r="19" fill="#ffffff" stroke="#06392c" strokeWidth="1.2" />
+        <circle cx="28" cy="28" r="16.5" fill="none" stroke="#d9a238" strokeWidth="0.8" strokeDasharray="2 2" />
+      </svg>
+      <img
+        src="/brand/masar-logo.png"
+        alt="ختم مسار"
+        className="absolute w-8 h-8 object-contain"
+      />
     </div>
   );
 }
@@ -177,17 +209,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     return 'Comprehensive Rehabilitation Program';
   };
 
-  /* shared inline style for the 3 footer cards: clean white matching user request */
+  /* shared luxury inline style for the 3 footer cards */
   const cardStyle: React.CSSProperties = {
     background: '#ffffff',
-    border: '1.5px solid #e2e8e4',
-    borderRadius: 16,
-    padding: '14px 10px',
+    border: '1.5px solid #d1d5db',
+    borderRadius: 18,
+    padding: '16px 14px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 7,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+    justifyContent: 'space-between',
+    gap: 10,
+    minHeight: 155,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
   };
 
   return (
@@ -353,36 +387,36 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── FOOTER CARDS ──
+            {/* ── LUXURY FOOTER CARDS ──
                 dir=rtl → 1st child shows RIGHT, 3rd child shows LEFT
                 Visual:  [Official RIGHT] [Doctor CENTER] [Academic LEFT]
             ── */}
-            <div style={{ padding:'8px 22px 14px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-              gap:12, position:'relative', zIndex:1 }} dir="rtl">
+            <div style={{ padding:'10px 22px 16px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
+              gap:14, position:'relative', zIndex:1 }} dir="rtl">
 
               {/* Card 1 → RIGHT: Official Seal */}
               <div style={cardStyle} dir="rtl">
                 <OfficialSealIcon/>
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:12.5, fontWeight:900, color:'#06392c' }}>
+                  <h4 style={{ fontSize:13, fontWeight:900, color:'#06392c', margin:0 }}>
                     {isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}
-                  </div>
-                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2 }}>
-                    {isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}
-                  </div>
+                  </h4>
+                  <p style={{ fontSize:9.5, fontWeight:700, color:'#64748b', marginTop:3, margin:0 }}>
+                    {isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Masar Rehabilitation Platform'}
+                  </p>
                 </div>
-                <div style={{ background:'#e2eae4', border:'1px solid #c6d6c9', borderRadius:20,
-                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#06392c' }}>
+                <div style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:20,
+                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#065f46' }}>
                   {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
                 </div>
               </div>
 
               {/* Card 2 → CENTER: Doctor */}
               <div style={cardStyle} dir="rtl">
-                <div style={{ fontSize:10, fontWeight:700, color:'#718096' }}>
+                <span style={{ fontSize:9.5, fontWeight:700, color:'#64748b', textTransform:'uppercase' }}>
                   {isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}
-                </div>
-                <div style={{ textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                </span>
+                <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                   <div className="w-10 h-10 rounded-full border-2 border-[#d9a238] overflow-hidden shadow-xs shrink-0">
                     <img
                       src="/dr-ismail.jpg"
@@ -390,20 +424,22 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div style={{ fontSize:17, fontWeight:900, color:'#06392c', fontFamily:'Georgia, serif' }}>
-                    {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
-                  </div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'#718096', lineHeight:1.3 }}>
-                    {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم'
-                           : 'Special Education & Learning Difficulties Consultant'}
+                  <div style={{ textAlign:'right' }}>
+                    <h4 style={{ fontSize:15, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
+                      {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
+                    </h4>
+                    <p style={{ fontSize:9, fontWeight:700, color:'#64748b', margin:0, lineHeight:1.2 }}>
+                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                    </p>
                   </div>
                 </div>
-                <div style={{ borderBottom:'1.5px solid #d9a238', paddingBottom:2, paddingLeft:10, paddingRight:10 }}>
-                  <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:14,
-                    color:'#c48f32', fontWeight:700 }}>أ.د. إسماعيل عيسى</span>
+                <div style={{ borderBottom:'2px solid #d9a238', paddingBottom:2, paddingLeft:12, paddingRight:12, display:'flex', alignItems:'center', gap:6 }}>
+                  <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:14, color:'#b47a1e', fontWeight:700 }}>
+                    أ.د. إسماعيل عيسى
+                  </span>
                 </div>
-                <div style={{ background:'#f3e6cf', border:'1px solid #e0cda5', borderRadius:20,
-                  padding:'4px 13px', fontSize:10, fontWeight:900, color:'#6e521c' }}>
+                <div style={{ background:'#fef3c7', border:'1px solid #f59e0b', borderRadius:20,
+                  padding:'4px 14px', fontSize:10, fontWeight:900, color:'#92400e' }}>
                   {isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}
                 </div>
               </div>
@@ -412,15 +448,15 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               <div style={cardStyle} dir="rtl">
                 <AcademicSealIcon/>
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:12.5, fontWeight:900, color:'#06392c' }}>
+                  <h4 style={{ fontSize:13, fontWeight:900, color:'#06392c', margin:0 }}>
                     {isAr ? 'الختم الأكاديمي' : 'Academic Seal'}
-                  </div>
-                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2 }}>
+                  </h4>
+                  <p style={{ fontSize:9.5, fontWeight:700, color:'#64748b', marginTop:3, margin:0 }}>
                     {isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}
-                  </div>
+                  </p>
                 </div>
-                <div style={{ background:'#e2eae4', border:'1px solid #c6d6c9', borderRadius:20,
-                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#06392c' }}>
+                <div style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:20,
+                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#065f46' }}>
                   {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
                 </div>
               </div>
