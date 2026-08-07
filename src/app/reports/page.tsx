@@ -115,11 +115,23 @@ function ReportsContent() {
               العودة إلى التقارير
             </button>}
 
-            <article className="clinical-report overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            {/* ══ LUXURY FRAME WRAPPER ══ */}
+            <div className="p-3 bg-slate-100 rounded-2xl border-2 border-slate-300 shadow-xl">
+            <article className="clinical-report overflow-hidden rounded-xl border-4 border-slate-950 bg-white shadow-lg ring-2 ring-amber-400/40 relative">
+
+              {/* Decorative Corner Accents */}
+              <div className="pointer-events-none absolute top-3 right-3 w-10 h-10 border-t-2 border-r-2 border-amber-500 z-10" />
+              <div className="pointer-events-none absolute top-3 left-3 w-10 h-10 border-t-2 border-l-2 border-amber-500 z-10" />
+              <div className="pointer-events-none absolute bottom-3 right-3 w-10 h-10 border-b-2 border-r-2 border-amber-500 z-10" />
+              <div className="pointer-events-none absolute bottom-3 left-3 w-10 h-10 border-b-2 border-l-2 border-amber-500 z-10" />
+
+              {/* Top Gold Stripe */}
+              <div className="h-2 w-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
+
               <div className="p-5 md:p-8">
 
                 {/* ══ REPORT IDENTITY HEADER ══ */}
-                <header className="border-b-4 border-indigo-950 pb-6">
+                <header className="border-b-4 border-amber-400 pb-6">
 
                   {/* Top identity bar: Logo left / Brand right */}
                   <div className="flex items-center justify-between gap-4">
@@ -374,7 +386,10 @@ function ReportsContent() {
                   </button>}
                 </div>
               </div>
+              {/* Bottom Gold Stripe */}
+              <div className="h-2 w-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
             </article>
+            </div>
           </main>
         </div>
         {printReport && <PrintableReportModal report={printReport} onClose={() => setPrintReport(null)} />}
