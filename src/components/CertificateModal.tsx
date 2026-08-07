@@ -190,15 +190,78 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const handlePrint = () => {
     const el = document.getElementById('printable-certificate');
     if (!el) return;
-    const win = window.open('', '_blank', 'width=1200,height=900');
+
+    // Collect all stylesheets from main page to pass into print window
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((s) => s.outerHTML)
+      .join('\n');
+
+    const win = window.open('', '_blank', 'width=1300,height=900');
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html dir="${isAr?'rtl':'ltr'}"><head><meta charset="UTF-8"/>
-      <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-      body{font-family:Arial,sans-serif;}@page{size:A4 landscape;margin:0;}
-      @media print{html,body{width:297mm;height:210mm;}}</style>
-      </head><body>${el.outerHTML}</body></html>`);
+
+    win.document.write(`<!DOCTYPE html>
+<html dir="${isAr ? 'rtl' : 'ltr'}">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${isAr ? 'شهادة إنجاز واجتياز' : 'Certificate of Completion'}</title>
+  ${styles}
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      font-family: Arial, sans-serif !important;
+    }
+    @page {
+      size: A4 landscape !important;
+      margin: 0 !important;
+    }
+    @media print {
+      html, body {
+        width: 297mm !important;
+        height: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      #printable-certificate {
+        width: 297mm !important;
+        height: 209mm !important;
+        max-width: 297mm !important;
+        max-height: 209mm !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+    }
+    #print-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 100vh;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="print-wrapper">
+    ${el.outerHTML}
+  </div>
+</body>
+</html>`);
     win.document.close();
-    setTimeout(() => { win.print(); win.close(); }, 600);
+
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+        win.close();
+      } catch (e) {}
+    }, 600);
   };
 
   const englishProgramTitle = (t: string) => {
