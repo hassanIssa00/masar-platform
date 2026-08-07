@@ -108,11 +108,16 @@ export default function IEPPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteIEP(id);
-    setIeps(getLocalIEPs());
-    setView('list');
-    setSelectedIep(null);
+  const handleDelete = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (confirm('هل أنت تأكد من رغبتك في حذف خطة الـ IEP هذه؟')) {
+      deleteIEP(id);
+      setIeps(getLocalIEPs());
+      if (selectedIep?.id === id) {
+        setView('list');
+        setSelectedIep(null);
+      }
+    }
   };
 
   return (
@@ -200,11 +205,21 @@ export default function IEPPage() {
                             <p className="text-xs font-bold text-slate-400">{iep.grade}</p>
                           </div>
                         </div>
-                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
-                          iep.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {iep.status === 'active' ? 'نشطة ✓' : 'مسودة'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
+                            iep.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {iep.status === 'active' ? 'نشطة ✓' : 'مسودة'}
+                          </span>
+                          <button
+                            onClick={(e) => handleDelete(iep.id, e)}
+                            className="flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-black text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
+                            title="حذف الخطة"
+                          >
+                            <Trash2 size={13} />
+                            <span>حذف</span>
+                          </button>
+                        </div>
                       </div>
 
                       <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 space-y-1 text-xs font-bold text-slate-600">
@@ -213,8 +228,15 @@ export default function IEPPage() {
                         <p>📅 تاريخ المراجعة: <span className="font-black text-slate-800">{iep.reviewDate}</span></p>
                       </div>
 
-                      <div className="pt-2 flex items-center justify-between text-xs font-black text-teal-700">
-                        <span>عرض تفاصيل الخطة والأهداف ←</span>
+                      <div className="pt-2 flex items-center justify-between text-xs font-black">
+                        <span className="text-teal-700">عرض التفاصيل الأهداف ←</span>
+                        <button
+                          onClick={(e) => handleDelete(iep.id, e)}
+                          className="flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:underline text-[11px]"
+                        >
+                          <Trash2 size={12} />
+                          <span>حذف الخطة</span>
+                        </button>
                       </div>
                     </div>
                   ))}
