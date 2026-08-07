@@ -179,8 +179,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
   /* shared inline style for the 3 footer cards */
   const cardStyle: React.CSSProperties = {
-    background: '#e8dfc0',
-    border: '1.5px solid #c0b48a',
+    background: '#e8e2cc',
+    border: '1.5px solid #b8b090',
     borderRadius: 14,
     padding: '12px 8px',
     display: 'flex',
@@ -216,7 +216,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
             style={{
-              background: '#d4c898',
+              background: '#ede8d0',
               border: '3px solid #06392c',
               borderRadius: 18,
               overflow: 'hidden',
