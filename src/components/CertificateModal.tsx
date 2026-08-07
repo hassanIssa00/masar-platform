@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Printer, X, ShieldCheck, Pencil, Check, GraduationCap, QrCode, Award } from 'lucide-react';
+import { Printer, X, ShieldCheck, Pencil, Check, GraduationCap, QrCode } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -14,7 +14,7 @@ export interface CertificateData {
   doctorName?: string;
 }
 
-/* ── Golden Laurel Branch (Exact match to image) ── */
+/* ── Golden Laurel Branch ── */
 function GoldenLaurelBranch({ side }: { side: 'left' | 'right' }) {
   return (
     <svg
@@ -47,7 +47,6 @@ function GoldenLaurelBranch({ side }: { side: 'left' | 'right' }) {
 function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
   return (
     <div className="relative flex flex-col items-center -mt-6 select-none drop-shadow-md">
-      {/* SVG Shield Banner with Gold Ribbon Wings & Gold Outline */}
       <svg
         width="320"
         height="88"
@@ -120,6 +119,40 @@ function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
   );
 }
 
+/* ── Gold Award Ribbon Seal Icon (Outlined Line-Art for Card 1) ── */
+function OutlinedAwardRibbonIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#06392c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="6" />
+      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+      <circle cx="12" cy="8" r="3" stroke="#06392c" strokeWidth="1" strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
+/* ── Gold Rosette Medal (Bottom Right Verification Bar) ── */
+function GoldRosetteMedal() {
+  return (
+    <svg width="34" height="40" viewBox="0 0 34 40" fill="none" className="shrink-0">
+      {/* Ribbon Tails */}
+      <path d="M11 26L7 38L13 35L16 38L14 26Z" fill="#b47a1e" />
+      <path d="M23 26L27 38L21 35L18 38L20 26Z" fill="#b47a1e" />
+      {/* Rosette Circle */}
+      <circle cx="17" cy="16" r="14" fill="url(#gold-rosette-grad)" stroke="#ffffff" strokeWidth="1.5" />
+      <circle cx="17" cy="16" r="11" stroke="#b47a1e" strokeWidth="1" strokeDasharray="2 2" />
+      {/* Center Icon */}
+      <path d="M12 16L15 19L22 12" stroke="#06392c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="gold-rosette-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f5c86b" />
+          <stop offset="50%" stopColor="#d9a238" />
+          <stop offset="100%" stopColor="#b47a1e" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 export default function CertificateModal({ data, onClose }: { data: CertificateData; onClose: () => void }) {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const [editingEnName, setEditingEnName] = useState(false);
@@ -174,7 +207,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
         <div className="flex items-center justify-between border-b border-emerald-900/60 bg-slate-950 px-6 py-3.5 print:hidden" dir="rtl">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#06392c] text-emerald-400 border border-emerald-600/40">
-              <Award size={20} />
+              <OutlinedAwardRibbonIcon />
             </div>
             <div>
               <span className="font-black text-white text-base block">شهادة التميز والاعتماد الرسمي 🏆</span>
@@ -351,68 +384,66 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
             </div>
 
-            {/* ══ 3. FOOTER SECTION: 3 EQUAL LIGHT CARDS ══ */}
+            {/* ══ 3. FOOTER SECTION: 3 EQUAL LIGHT CARDS (EXACT MATCH TO SCREENSHOT) ══ */}
             <div className="relative z-10 px-8 pb-4 pt-2">
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-3 gap-4 text-center items-stretch">
 
                 {/* CARD 1 (RIGHT IN AR): OFFICIAL CERTIFIED SEAL */}
-                <div className="rounded-2xl bg-[#eef2ef] border border-slate-300/80 p-4 space-y-2 flex flex-col justify-between items-center">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-[#06392c]">
-                    <Award size={22} />
-                  </div>
+                <div className="rounded-2xl bg-[#f4f7f5] border border-slate-300/80 p-4 space-y-2 flex flex-col justify-between items-center shadow-2xs">
+                  <OutlinedAwardRibbonIcon />
                   <div>
                     <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}</p>
                     <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</p>
                   </div>
-                  <span className="rounded-full bg-[#dce3de] px-4 py-1 text-xs font-bold text-slate-700">
+                  <span className="rounded-full bg-[#dce3de] px-4 py-1 text-xs font-black text-[#06392c]">
                     {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
                   </span>
                 </div>
 
                 {/* CARD 2 (CENTER): DOCTOR SIGNATURE & APPROVAL */}
-                <div className="rounded-2xl bg-[#eef2ef] border border-slate-300/80 p-4 space-y-1.5 flex flex-col justify-between items-center">
+                <div className="rounded-2xl bg-[#f4f7f5] border border-slate-300/80 p-4 space-y-1.5 flex flex-col justify-between items-center shadow-2xs">
                   <span className="text-xs font-bold text-slate-500">{isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}</span>
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-[#06392c]" style={{ fontFamily: 'Georgia, serif' }}>
                       {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
                     </h3>
                     <p className="text-[10px] font-bold text-slate-500">
-                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Difficulties Consultant'}
                     </p>
                   </div>
                   {/* Handwritten Signature Script */}
                   <div className="h-6 flex items-center justify-center font-serif italic text-sm font-bold text-[#c88d28] px-4 border-b border-[#c88d28]/40">
                     أ.د. إسماعيل عيسى
                   </div>
-                  <span className="rounded-full bg-[#e6d8be] px-4 py-1 text-xs font-bold text-[#6d511f]">
+                  <span className="rounded-full bg-[#e6d8be] px-4 py-1 text-xs font-black text-[#6d511f]">
                     {isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}
                   </span>
                 </div>
 
                 {/* CARD 3 (LEFT IN AR): ACADEMIC SEAL */}
-                <div className="rounded-2xl bg-[#eef2ef] border border-slate-300/80 p-4 space-y-2 flex flex-col justify-between items-center">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-100 text-indigo-900">
-                    <GraduationCap size={22} />
+                <div className="rounded-2xl bg-[#f4f7f5] border border-slate-300/80 p-4 space-y-2 flex flex-col justify-between items-center shadow-2xs">
+                  <div className="grid h-10 w-10 place-items-center text-[#06392c]">
+                    <GraduationCap size={28} strokeWidth={1.8} />
                   </div>
                   <div>
                     <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
                     <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}</p>
                   </div>
-                  <span className="rounded-full bg-[#dce3de] px-4 py-1 text-xs font-bold text-slate-700">
-                    {isAr ? 'ختم منصة نيكسس' : 'Nexus Platform Seal'}
+                  <span className="rounded-full bg-[#dce3de] px-4 py-1 text-xs font-black text-[#06392c]">
+                    {isAr ? 'ختم منصة تأسيس' : 'Nexus Platform Seal'}
                   </span>
                 </div>
 
               </div>
             </div>
 
-            {/* ══ 4. BOTTOM DARK EMERALD VERIFICATION BAR ══ */}
+            {/* ══ 4. BOTTOM DARK EMERALD VERIFICATION BAR (EXACT MATCH TO SCREENSHOT) ══ */}
             <div className="relative z-10 bg-[#06392c] text-white px-8 py-3.5 flex items-center justify-between text-xs rounded-b-[24px]">
               
               {/* QR Verification Left */}
               <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-white border border-white/20">
-                  <QrCode size={20} />
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white p-1 shadow-xs">
+                  <QrCode size={26} className="text-[#06392c]" />
                 </div>
                 <div className={`text-[11px] font-bold leading-tight ${isAr ? 'text-right' : 'text-left'}`}>
                   <p className="font-black text-white">{isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}</p>
@@ -421,17 +452,15 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
 
               {/* Center Serial Shield Badge */}
-              <div className="flex items-center gap-1.5 bg-white/10 px-4 py-1.5 rounded-full border border-white/20 font-mono text-xs font-bold text-white">
-                <ShieldCheck size={15} className="text-emerald-400" />
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full font-mono text-xs font-bold text-white">
+                <ShieldCheck size={18} className="text-white" />
                 <span>{certNo}</span>
               </div>
 
-              {/* Right Verification text & Badge */}
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+              {/* Right Verification text & Gold Rosette Medal */}
+              <div className="flex items-center gap-3 text-xs font-bold text-slate-100">
                 <span>{isAr ? 'شهادة صادرة رسمياً وموثقة عبر منصة مسار للتأهيل والتعليم الذكي' : 'Official Certificate verified & issued by Masar Platform'}</span>
-                <div className="grid h-7 w-7 place-items-center rounded-full bg-amber-400 text-[#06392c] font-black text-sm">
-                  ✓
-                </div>
+                <GoldRosetteMedal />
               </div>
 
             </div>
