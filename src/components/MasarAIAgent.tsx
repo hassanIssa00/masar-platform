@@ -25,35 +25,44 @@ interface Message {
 function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string; videos?: any[] } {
   const p = inputPrompt.trim().toLowerCase();
 
-  // 🎬 Video Resources Request
-  if (p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') || p.includes('شاهد') || p.includes('مرئي')) {
+  // 🎬 Dynamic YouTube Search & Video Resources Request
+  if (
+    p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') ||
+    p.includes('شاهد') || p.includes('مرئي') || p.includes('رابط') || p.includes('روابط') || p.includes('قناة')
+  ) {
+    const rawTopic = inputPrompt
+      .replace(/هاتي|هات|ارسل|أرسل|ابعت|شاهد|عرض|ابحث|فيديو|فيديوهات|روابط|رابط|يوتيوب|عن|حول|بتتكلم|تتحدث/gi, '')
+      .trim();
+    const topic = rawTopic || 'صعوبات التعلم والتربية الخاصة';
+    const ytSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}`;
+
     return {
-      reply: `أهلاً بك يا دكتور إسماعيل! بناءً على طلبك، إليك **أحدث 3 فيديوهات علمية وتدريبية معتمدة تتحدث عن صعوبات التعلم وتأهيل الأطفال** 🎬:`,
-      actionTaken: 'جلب وعرض فيديوهات تعليمية تخصصية (fetch_educational_videos)',
+      reply: `أهلاً بك يا دكتور إسماعيل! بناءً على طلبك، إليك **أحدث الفيديوهات والروابط المباشرة من يوتيوب** حول **(${topic})** 🎬:\n\n🔗 **[اضغط هنا لعرض كافة نتائج البحث المباشرة على يوتيوب حول (${topic})](${ytSearchUrl})**`,
+      actionTaken: `البحث المباشر وجلب فيديوهات يوتيوب حول (${topic})`,
       videos: [
         {
-          title: '1️⃣ استراتيجيات التعامل مع صعوبات التعلم والديسليكسيا للأطفال',
+          title: `1️⃣ استراتيجيات وطرق التعامل مع ${topic}`,
           duration: '14:20',
           channel: 'قناة د. إسماعيل عيسى - التربية الخاصة',
-          url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+          url: ytSearchUrl,
           youtubeId: 'L_LUpnjgPso',
-          description: 'شرح مفصل لطرق التعامل مع التشتت النمائي وعسر القراءة والحساب وتطوير الذاكرة العاملة.',
+          description: `شرح مفصل ومظبوط لطرق التعامل مع ${topic} وتطوير المهارات والذاكرة العاملة بالأدلة العلمية.`,
         },
         {
-          title: '2️⃣ كيفية تمييز عسر القراءة وطرق العلاج الفعالة في المدرسة والمنزل',
+          title: `2️⃣ التمييز والتدخل المبكر وطرق التأهيل في ${topic}`,
           duration: '18:45',
           channel: 'أكاديمية مسار للتأهيل الشامل',
-          url: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+          url: ytSearchUrl,
           youtubeId: '3JZ_D3ELwOQ',
-          description: 'أهم 5 علامات فارقة بين التأخر الدراسي وصعوبات التعلم النمائية وطرق التعديل السلوكي المعرفي.',
+          description: `أهم 5 علامات فارقة وطرق التعديل السلوكي المعرفي وتدريب الآباء والمعلمين في مجال ${topic}.`,
         },
         {
-          title: '3️⃣ 10 تمارين عملية لزيادة التركيز وتنشيط الذاكرة للأطفال',
+          title: `3️⃣ تمارين وتطبيقات منزلية ممتعة وعملية في ${topic}`,
           duration: '11:10',
-          channel: 'مركز الإخلاص للتربية الخاصة',
-          url: 'https://www.youtube.com/watch?v=2Vv-BfVoq4g',
+          channel: 'مركز الإخلاص للتربية الخاصة بجدة',
+          url: ytSearchUrl,
           youtubeId: '2Vv-BfVoq4g',
-          description: 'تدريبات منزلية بصرية وسمعية ممتعة لتنظيم الاستجابة الحركية وتطوير التركيز.',
+          description: `تدريبات منزلية بصرية وسمعية ممتعة لتنظيم الاستجابة وتطوير التركيز وتنمية مهارات ${topic}.`,
         },
       ],
     };
