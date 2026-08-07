@@ -92,33 +92,33 @@ function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
   );
 }
 
-/* ─── ACADEMIC SEAL ICON ─────────────────────────────────────── */
+/* ─── ACADEMIC SEAL ICON WITH REAL NEXUS LOGO ─────────────────── */
 function AcademicSealIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <circle cx="20" cy="20" r="18.5" stroke="#06392c" strokeWidth="1.4" fill="none"/>
-      <circle cx="20" cy="20" r="14" stroke="#06392c" strokeWidth="0.7" fill="none"/>
-      <polygon points="20,10 33,16.5 20,23 7,16.5" fill="#06392c"/>
-      <path d="M14 19V27Q20 30.5 26 27V19" fill="#06392c"/>
-      <line x1="33" y1="16.5" x2="33" y2="24.5" stroke="#06392c" strokeWidth="1.8" strokeLinecap="round"/>
-      <circle cx="33" cy="26" r="1.7" fill="#06392c"/>
-    </svg>
+    <div className="relative w-12 h-12 rounded-full border-2 border-[#06392c] p-0.5 bg-white shadow-xs flex items-center justify-center shrink-0">
+      <div className="w-full h-full rounded-full border border-dashed border-[#d9a238] p-1 flex items-center justify-center bg-cyan-50/50">
+        <img
+          src="/brand/nexus-logo-new.webp"
+          alt="ختم منصة تأسيس"
+          className="w-8 h-8 object-contain"
+        />
+      </div>
+    </div>
   );
 }
 
-/* ─── OFFICIAL SEAL ICON ─────────────────────────────────────── */
+/* ─── OFFICIAL SEAL ICON WITH REAL MASAR LOGO ─────────────────── */
 function OfficialSealIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <circle cx="20" cy="20" r="18.5" stroke="#06392c" strokeWidth="1.4" fill="none"/>
-      <circle cx="20" cy="20" r="14" stroke="#06392c" strokeWidth="0.7" fill="none"/>
-      {[0,30,60,90,120,150,180,210,240,270,300,330].map((deg, i) => {
-        const r = (deg * Math.PI) / 180;
-        return <line key={i} x1={20+9*Math.cos(r)} y1={20+9*Math.sin(r)} x2={20+13.5*Math.cos(r)} y2={20+13.5*Math.sin(r)} stroke="#06392c" strokeWidth="0.9"/>;
-      })}
-      <circle cx="20" cy="20" r="8" stroke="#06392c" strokeWidth="0.7" fill="none"/>
-      <path d="M15 20L19 24L26 16" stroke="#06392c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    </svg>
+    <div className="relative w-12 h-12 rounded-full border-2 border-[#06392c] p-0.5 bg-white shadow-xs flex items-center justify-center shrink-0">
+      <div className="w-full h-full rounded-full border border-dashed border-[#d9a238] p-1 flex items-center justify-center bg-[#06392c]/5">
+        <img
+          src="/brand/masar-logo.png"
+          alt="ختم منصة مسار"
+          className="w-8 h-8 object-contain"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -382,16 +382,23 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 <div style={{ fontSize:10, fontWeight:700, color:'#718096' }}>
                   {isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}
                 </div>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:18, fontWeight:900, color:'#06392c', fontFamily:'Georgia, serif' }}>
+                <div style={{ textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                  <div className="w-10 h-10 rounded-full border-2 border-[#d9a238] overflow-hidden shadow-xs shrink-0">
+                    <img
+                      src="/dr-ismail.jpg"
+                      alt="أ.د. إسماعيل عيسى"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div style={{ fontSize:17, fontWeight:900, color:'#06392c', fontFamily:'Georgia, serif' }}>
                     {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
                   </div>
-                  <div style={{ fontSize:9.5, fontWeight:700, color:'#718096', marginTop:2, lineHeight:1.3 }}>
+                  <div style={{ fontSize:9, fontWeight:700, color:'#718096', lineHeight:1.3 }}>
                     {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم'
                            : 'Special Education & Learning Difficulties Consultant'}
                   </div>
                 </div>
-                <div style={{ borderBottom:'1.5px solid #d9a238', paddingBottom:3, paddingLeft:10, paddingRight:10 }}>
+                <div style={{ borderBottom:'1.5px solid #d9a238', paddingBottom:2, paddingLeft:10, paddingRight:10 }}>
                   <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:14,
                     color:'#c48f32', fontWeight:700 }}>أ.د. إسماعيل عيسى</span>
                 </div>
