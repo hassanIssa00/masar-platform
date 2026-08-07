@@ -16,6 +16,7 @@ export type AccountRecord = {
 export type StudentRecord = {
   id: string;
   fullName: string;
+  fullNameEn?: string;
   nationalId?: string;
   dateOfBirth?: string;
   grade: string;

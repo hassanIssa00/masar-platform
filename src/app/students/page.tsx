@@ -21,7 +21,7 @@ export default function StudentsControlPage() {
   const [selectedId, setSelectedId] = useState('');
   const [message, setMessage] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [showCertData, setShowCertData] = useState<{ studentName: string; programTitle: string; completionDate: string; score: number } | null>(null);
+  const [showCertData, setShowCertData] = useState<{ studentName: string; studentNameEn?: string; programTitle: string; completionDate: string; score: number } | null>(null);
 
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
@@ -238,6 +238,7 @@ export default function StudentsControlPage() {
                               type="button"
                               onClick={() => setShowCertData({
                                 studentName: selectedStudent.fullName,
+                                studentNameEn: selectedStudent.fullNameEn || selectedStudent.fullName,
                                 programTitle: selectedStudent.assignedProgram ? (curriculumPrograms.find(p => p.slug === selectedStudent.assignedProgram)?.shortTitle || 'برنامج التأهيل الشامل') : 'برنامج التأهيل الشامل وصعوبات التعلم',
                                 completionDate: new Date().toISOString().slice(0, 10),
                                 score: 92,

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, Printer, ShieldCheck, Sparkles, X, CheckCircle2, Globe } from 'lucide-react';
+import { Award, Printer, ShieldCheck, Sparkles, X, CheckCircle2, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
   studentName: string;
+  studentNameEn?: string;
   programTitle: string;
   completionDate: string;
   score: number;
@@ -15,6 +16,8 @@ export interface CertificateData {
 
 export default function CertificateModal({ data, onClose }: { data: CertificateData; onClose: () => void }) {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
+  const [editingEnName, setEditingEnName] = useState(false);
+  const [nameEn, setNameEn] = useState(data.studentNameEn || '');
 
   const handlePrint = () => {
     window.print();
@@ -22,6 +25,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
   const certNo = data.certNumber || `CERT-2026-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const isAr = lang === 'ar';
+  const displayName = isAr ? data.studentName : (nameEn || data.studentName);
 
   // Translation helpers
   const englishProgramTitle = (title: string) => {
@@ -158,11 +162,43 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             <div className="py-3 text-center">
               <div className="inline-block max-w-xl w-full rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-1 shadow-lg border-2 border-amber-400">
                 <div className="rounded-xl bg-gradient-to-r from-slate-950 via-indigo-900 to-slate-950 py-3.5 px-6 border border-amber-300/30">
-                  <h2 className="text-2xl sm:text-4xl font-black text-amber-300 tracking-wide" style={{ fontFamily: isAr ? 'Georgia, serif' : 'Georgia, serif' }}>
-                    {data.studentName}
-                  </h2>
+                  {!isAr && editingEnName ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        autoFocus
+                        value={nameEn}
+                        onChange={(e) => setNameEn(e.target.value)}
+                        placeholder="Type student name in English..."
+                        className="bg-transparent border-b-2 border-amber-400 text-amber-300 text-xl sm:text-3xl font-black text-center outline-none w-full max-w-sm tracking-wide placeholder:text-amber-300/40"
+                        style={{ fontFamily: 'Georgia, serif' }}
+                      />
+                      <button onClick={() => setEditingEnName(false)} className="text-amber-300 hover:text-white print:hidden">
+                        <Check size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-3">
+                      <h2 className="text-2xl sm:text-4xl font-black text-amber-300 tracking-wide" style={{ fontFamily: 'Georgia, serif' }}>
+                        {displayName}
+                      </h2>
+                      {!isAr && (
+                        <button
+                          onClick={() => setEditingEnName(true)}
+                          title="Edit English name"
+                          className="text-amber-400/60 hover:text-amber-300 transition print:hidden"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+              {!isAr && !nameEn && !editingEnName && (
+                <p className="text-[11px] text-amber-700/70 mt-1.5 print:hidden">
+                  ✏️ Click the pencil icon to enter the student&apos;s English name
+                </p>
+              )}
             </div>
 
             {/* ── PROGRAM & MASTERY DETAILS ── */}
