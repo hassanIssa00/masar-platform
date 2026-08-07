@@ -177,17 +177,17 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     return 'Comprehensive Rehabilitation Program';
   };
 
-  /* shared inline style for the 3 footer cards: clean off-white cream matching original mockup */
+  /* shared inline style for the 3 footer cards: clean white matching user request */
   const cardStyle: React.CSSProperties = {
-    background: '#fcfbfa',
-    border: '1.5px solid #e5dcd0',
+    background: '#ffffff',
+    border: '1.5px solid #e2e8e4',
     borderRadius: 16,
     padding: '14px 10px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 7,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
   };
 
   return (
@@ -217,7 +217,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
             style={{
-              background: '#f6f2e8',
+              background: '#ffffff',
               border: '3px solid #06392c',
               borderRadius: 20,
               overflow: 'hidden',
@@ -228,13 +228,13 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
           >
             {/* Corner decor */}
             <svg width="200" height="200" viewBox="0 0 200 200" fill="none"
-              style={{ position:'absolute', top:0, right:0, opacity:0.18, pointerEvents:'none' }}>
+              style={{ position:'absolute', top:0, right:0, opacity:0.12, pointerEvents:'none' }}>
               <circle cx="200" cy="0" r="185" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
               <circle cx="200" cy="0" r="145" stroke="#06392c" strokeWidth="0.7"/>
               <circle cx="200" cy="0" r="105" stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
             </svg>
             <svg width="200" height="200" viewBox="0 0 200 200" fill="none"
-              style={{ position:'absolute', bottom:0, left:0, opacity:0.18, pointerEvents:'none' }}>
+              style={{ position:'absolute', bottom:0, left:0, opacity:0.12, pointerEvents:'none' }}>
               <circle cx="0" cy="200" r="185" stroke="#06392c" strokeWidth="1" strokeDasharray="5 4"/>
               <circle cx="0" cy="200" r="145" stroke="#06392c" strokeWidth="0.7"/>
               <circle cx="0" cy="200" r="105" stroke="#06392c" strokeWidth="0.9" strokeDasharray="3 4"/>
@@ -245,8 +245,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%' }}>
 
               {/* RIGHT (RTL first): Certified box */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fbf9f5',
-                border:'1.5px solid #e4dacb', borderRadius:14, padding:'8px 12px', minWidth:140 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, background:'#ffffff',
+                border:'1.5px solid #e2e8e4', borderRadius:14, padding:'8px 12px', minWidth:140, boxShadow:'0 2px 6px rgba(0,0,0,0.03)' }}>
                 <div style={{ background:'#06392c', borderRadius:10, width:30, height:30,
                   display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <ShieldCheck size={16} color="white"/>
