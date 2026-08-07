@@ -526,21 +526,38 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 <span>{certNo}</span>
               </div>
 
-              {/* LEFT: QR + text */}
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:11, fontWeight:900, color:'white', lineHeight:1.3 }}>
-                    {isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}
-                  </div>
-                  <div style={{ fontSize:9.5, color:'#a8d4b8', lineHeight:1.3 }}>
-                    {isAr ? 'امسح الكود للتحقق' : 'Scan Code to Verify'}
-                  </div>
-                </div>
-                <div style={{ background:'white', borderRadius:8, padding:4,
-                  display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <QrCode size={26} color="#06392c"/>
-                </div>
-              </div>
+              {/* LEFT: Real Scannable QR Code + text */}
+              {(() => {
+                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
+                const verifyUrl = `${origin}/verify/${certNo}?name=${encodeURIComponent(displayName)}&prog=${encodeURIComponent(data.programTitle)}&score=${data.score}&date=${encodeURIComponent(data.completionDate)}`;
+                const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`;
+
+                return (
+                  <a
+                    href={verifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}
+                    title={isAr ? 'اضغط أو امسح للتحقق الرقمي من صحة الشهادة' : 'Click or scan to verify certificate'}
+                  >
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, fontWeight: 900, color: 'white', lineHeight: 1.3 }}>
+                        {isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}
+                      </div>
+                      <div style={{ fontSize: 9.5, color: '#a8d4b8', lineHeight: 1.3 }}>
+                        {isAr ? 'امسح الكود للتحقق' : 'Scan Code to Verify'}
+                      </div>
+                    </div>
+                    <div style={{ background: 'white', borderRadius: 8, padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38 }}>
+                      <img
+                        src={qrImageUrl}
+                        alt="QR Verification Code"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    </div>
+                  </a>
+                );
+              })()}
 
             </div>
           </div>
