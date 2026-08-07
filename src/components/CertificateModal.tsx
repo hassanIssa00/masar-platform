@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Printer, X, ShieldCheck, Pencil, Check, Trophy, GraduationCap, QrCode, Award } from 'lucide-react';
+import { Printer, X, ShieldCheck, Pencil, Check, GraduationCap, QrCode, Award } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -40,6 +40,83 @@ function GoldenLaurelBranch({ side }: { side: 'left' | 'right' }) {
       <path d="M26 25C30 22 36 24 37 29C35 34 28 34 24 29Z" fill="#d9a238" />
       <path d="M24 37C28 34 34 37 34 42C31 46 25 45 23 40Z" fill="#c49235" />
     </svg>
+  );
+}
+
+/* ── Top Trophy Ribbon Badge (Exact match to uploaded image) ── */
+function TopTrophyRibbonBadge({ isAr }: { isAr: boolean }) {
+  return (
+    <div className="relative flex flex-col items-center -mt-6 select-none drop-shadow-md">
+      {/* SVG Shield Banner with Gold Ribbon Wings & Gold Outline */}
+      <svg
+        width="320"
+        height="88"
+        viewBox="0 0 320 88"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="block"
+      >
+        <defs>
+          <linearGradient id="gold-ribbon-wing" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#e5bc5c" />
+            <stop offset="50%" stopColor="#d9a238" />
+            <stop offset="100%" stopColor="#b47a1e" />
+          </linearGradient>
+          <linearGradient id="dark-emerald-shield" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#084234" />
+            <stop offset="100%" stopColor="#04261d" />
+          </linearGradient>
+        </defs>
+
+        {/* Left Gold Ribbon Wing Notch */}
+        <path d="M 12 18 L 52 18 L 36 40 L 52 62 L 12 62 L 26 40 Z" fill="url(#gold-ribbon-wing)" />
+
+        {/* Right Gold Ribbon Wing Notch */}
+        <path d="M 308 18 L 268 18 L 284 40 L 268 62 L 308 62 L 294 40 Z" fill="url(#gold-ribbon-wing)" />
+
+        {/* Gold Border for Main Shield */}
+        <path
+          d="M 42 10 C 42 10, 160 8, 278 10 C 288 10, 293 18, 288 28 L 268 66 C 259 80, 175 88, 160 88 C 145 88, 61 80, 52 66 L 32 28 C 27 18, 32 10, 42 10 Z"
+          fill="#d9a238"
+        />
+
+        {/* Inner Dark Green Shield */}
+        <path
+          d="M 44 12 C 44 12, 160 10, 276 12 C 285 12, 290 19, 286 28 L 266 64 C 257 78, 174 86, 160 86 C 146 86, 63 78, 54 64 L 34 28 C 30 19, 35 12, 44 12 Z"
+          fill="url(#dark-emerald-shield)"
+        />
+      </svg>
+
+      {/* Content overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-between pt-3.5 pb-2.5 px-12 pointer-events-none">
+        <div className="flex items-center gap-3" dir={isAr ? 'rtl' : 'ltr'}>
+          {/* Outlined Gold Trophy Icon */}
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d9a238" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 drop-shadow-xs">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+            <path d="M4 22h16" />
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+          </svg>
+
+          {/* Title & Subtitle */}
+          <div className={`text-center leading-tight ${isAr ? 'text-right' : 'text-left'}`}>
+            <h3 className="text-base sm:text-lg font-black text-white tracking-wide drop-shadow-xs">
+              {isAr ? 'شهادة إنجاز واجتياز' : 'Certificate of Achievement'}
+            </h3>
+            <p className="text-[11px] font-bold text-amber-200/90 mt-0.5">
+              {isAr ? 'تقدير رُفيع المستوى' : 'High Honor Distinction'}
+            </p>
+          </div>
+        </div>
+
+        {/* 5 Gold Stars at bottom center */}
+        <div className="flex items-center justify-center gap-1.5 text-[#d9a238] text-xs font-bold -mt-0.5">
+          ★ ★ ★ ★ ★
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -169,23 +246,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 </div>
               </div>
 
-              {/* Top Center: Trophy Ribbon Shield Banner */}
-              <div className="flex flex-col items-center -mt-6">
-                <div className="bg-[#06392c] text-white px-8 py-3.5 rounded-b-[24px] border-b-[3px] border-[#d9a238] shadow-md flex flex-col items-center text-center">
-                  <div className="flex items-center gap-2">
-                    <Trophy size={19} className="text-[#d9a238]" />
-                    <span className="text-sm sm:text-base font-black text-white tracking-wide">
-                      {isAr ? 'شهادة إنجاز واجتياز' : 'Certificate of Achievement'}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-bold text-amber-200 mt-0.5">
-                    {isAr ? 'تقدير رفيع المستوى' : 'High Honor Distinction'}
-                  </span>
-                  <div className="flex items-center gap-1 text-[#d9a238] text-xs mt-1">
-                    ★★★★★
-                  </div>
-                </div>
-              </div>
+              {/* Top Center: Trophy Ribbon Shield Banner Badge */}
+              <TopTrophyRibbonBadge isAr={isAr} />
 
               {/* Top Right: BrandMark Logo */}
               <div className="flex items-center gap-3">
@@ -315,7 +377,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                       {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
                     </h3>
                     <p className="text-[10px] font-bold text-slate-500">
-                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Difficulties Consultant'}
+                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
                     </p>
                   </div>
                   {/* Handwritten Signature Script */}
