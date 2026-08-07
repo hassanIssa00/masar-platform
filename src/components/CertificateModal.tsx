@@ -348,8 +348,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 <BrandMark size="md" showText={true}/>
               </div>
 
-              {/* CENTER: Badge */}
-              <TopTrophyRibbonBadge isAr={isAr}/>
+              {/* CENTER: Badge — temporarily hidden */}
+              {/* <TopTrophyRibbonBadge isAr={isAr}/> */}
 
               {/* LAST (RTL→LEFT / LTR→RIGHT): Certified box */}
               <div style={{ display:'flex', alignItems:'center', gap:8, background:'#ffffff',
