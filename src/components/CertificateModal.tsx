@@ -266,7 +266,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             dir={isAr ? 'rtl' : 'ltr'}
             className="relative overflow-hidden flex flex-col justify-between"
             style={{
-              background: 'linear-gradient(135deg, #f9f6ee 0%, #f2eedf 50%, #f7f4ea 100%)',
+              background: '#ede8d5',
               borderRadius: '24px',
               border: '3px solid #06392c',
               minHeight: '580px',
@@ -397,19 +397,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               <div className="grid grid-cols-3 gap-4 text-center" dir="rtl">
 
                 {/* CARD 1 – Official Seal → appears on RIGHT in RTL */}
-                <div className="rounded-2xl bg-white/50 border border-[#06392c]/20 p-4 flex flex-col items-center gap-2" dir="rtl">
+                <div className="rounded-2xl p-4 flex flex-col items-center gap-2" dir="rtl" style={{ background: '#f5f1e4', border: '1.5px solid #c8bfa0' }}>
                   <OfficialSealIcon />
                   <div>
                     <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}</p>
                     <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</p>
                   </div>
-                  <span className="rounded-full border border-[#06392c]/30 bg-white/70 px-4 py-1 text-xs font-bold text-[#06392c]">
+                  <span className="rounded-full px-4 py-1 text-xs font-bold text-[#06392c]" style={{ background: '#e8e0cc', border: '1px solid #b8ad8e' }}>
                     {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
                   </span>
                 </div>
 
                 {/* CARD 2 – Doctor Signature (CENTER) */}
-                <div className="rounded-2xl bg-white/50 border border-[#06392c]/20 p-4 flex flex-col items-center gap-1.5" dir="rtl">
+                <div className="rounded-2xl p-4 flex flex-col items-center gap-1.5" dir="rtl" style={{ background: '#f5f1e4', border: '1.5px solid #c8bfa0' }}>
                   <span className="text-[11px] font-bold text-slate-500">{isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}</span>
                   <h3 className="text-lg font-black text-[#06392c]" style={{ fontFamily: 'Georgia, serif' }}>
                     {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
@@ -423,19 +423,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                       أ.د. إسماعيل عيسى
                     </span>
                   </div>
-                  <span className="rounded-full border border-[#d9a238]/50 bg-amber-50 px-4 py-1 text-xs font-bold text-[#8a6010]">
+                  <span className="rounded-full px-4 py-1 text-xs font-bold text-[#8a6010]" style={{ background: '#f0dda8', border: '1px solid #d9a238' }}>
                     {isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}
                   </span>
                 </div>
 
                 {/* CARD 3 – Academic Seal → appears on LEFT in RTL */}
-                <div className="rounded-2xl bg-white/50 border border-[#06392c]/20 p-4 flex flex-col items-center gap-2" dir="rtl">
+                <div className="rounded-2xl p-4 flex flex-col items-center gap-2" dir="rtl" style={{ background: '#f5f1e4', border: '1.5px solid #c8bfa0' }}>
                   <AcademicSealIcon />
                   <div>
                     <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
                     <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}</p>
                   </div>
-                  <span className="rounded-full border border-[#06392c]/30 bg-white/70 px-4 py-1 text-xs font-bold text-[#06392c]">
+                  <span className="rounded-full px-4 py-1 text-xs font-bold text-[#06392c]" style={{ background: '#e8e0cc', border: '1px solid #b8ad8e' }}>
                     {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
                   </span>
                 </div>
