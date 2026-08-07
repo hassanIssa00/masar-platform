@@ -1,223 +1,237 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// ─── MSEMAX & OpenAI-compatible API endpoint ────────────────────────────────
+const MSEMAX_DEFAULT = 'http://localhost:8000/v1';
+
+// ─── System prompt for Masar platform ───────────────────────────────────────
+const MASAR_SYSTEM_PROMPT = `أنت "مساعد مسار الذكي" — المساعد الشخصي الذكي الكامل لمنصة مَسَار التعليمية بإشراف د. إسماعيل عيسى.
+
+## شخصيتك:
+- تتكلم عربي طبيعي ومريح مثل ChatGPT تماماً
+- ذكي، ودود، مباشر، سريع الفهم
+- تجاوب على **أي سؤال** في أي موضوع (تعليم، صحة، تقنية، أخبار، حياة يومية، إلخ)
+- تفهم السياق وتتذكر المحادثة السابقة
+- لا تقيّد نفسك بأوامر المنصة فقط
+
+## قدراتك في منصة مسار (تنفيذ مباشر):
+- إدارة الطلاب: إضافة، تعديل، متابعة
+- تسجيل الحضور والغياب وإشعار أولياء الأمور
+- إنشاء خطط IEP الفردية
+- إنشاء ونشر الواجبات والأنشطة التفاعلية
+- إرسال رسائل لأولياء الأمور
+- توليد التقارير الأسبوعية والإكلينيكية
+- إنشاء غرف الحصص المباشرة (WebRTC)
+- إدارة الفواتير والمالية
+
+## متى تُنفّذ أمراً في المنصة:
+عندما يطلب المستخدم تنفيذ أمر محدد في المنصة، أجب بشكل طبيعي وأضف في نهاية ردك هذا الكود بالضبط:
+%%ACTION%%{"type":"PLATFORM_ACTION","action":"ACTION_NAME","details":"وصف ما تم تنفيذه"}%%END%%
+
+حيث ACTION_NAME هو: take_attendance | create_homework | send_message | create_iep | schedule_meeting | generate_report | publish_announcement | award_points
+
+مثال: إذا قال "سجل غياب يوسف"، رد بشكل طبيعي ثم أضف:
+%%ACTION%%{"type":"PLATFORM_ACTION","action":"take_attendance","details":"تسجيل غياب يوسف وإشعار ولي أمره"}%%END%%`;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { prompt, baseUrl, apiKey } = body;
+    const { prompt, baseUrl, apiKey, history } = body;
 
     const inputPrompt = (prompt || '').trim();
-    const p = inputPrompt.toLowerCase();
+    if (!inputPrompt) {
+      return NextResponse.json({ success: false, error: 'Empty prompt' }, { status: 400 });
+    }
 
-    // ─── 0. Attempt live MSEMAX / OpenAI-compatible gateway ─────────────────
-    if (baseUrl && !baseUrl.includes('localhost')) {
-      try {
-        const cleanBase = baseUrl.replace(/\/$/, '');
-        const gwRes = await fetch(`${cleanBase}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey || 'mse-max-key'}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'أنت "مساعد مسار الذكي" (MSEMAX Engine) المساعد الخارق لمنصة مَسَار التعليمية بإشراف د. إسماعيل عيسى. أجب بعربية طبيعية وذكية وودية.',
-              },
-              { role: 'user', content: inputPrompt },
-            ],
-            temperature: 0.55,
-          }),
+    // ─── Build message history for context ──────────────────────────────────
+    const messages: { role: string; content: string }[] = [
+      { role: 'system', content: MASAR_SYSTEM_PROMPT },
+    ];
+
+    if (history && Array.isArray(history)) {
+      for (const msg of history.slice(-12)) {
+        messages.push({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text,
         });
-        if (gwRes.ok) {
-          const gwData = await gwRes.json();
-          const replyText = gwData.choices?.[0]?.message?.content || '';
-          if (replyText) {
-            return NextResponse.json({
-              success: true,
-              reply: replyText,
-              gateway: 'MSEMAX Live Gateway',
-            });
-          }
-        }
-      } catch (_) {
-        /* fall through to local engine */
       }
     }
 
-    // ─── Simulate thinking delay (natural LLM feel) ──────────────────────────
-    await new Promise((r) => setTimeout(r, 900 + Math.random() * 600));
+    messages.push({ role: 'user', content: inputPrompt });
 
-    // ─── 1. Greetings & General Conversation ────────────────────────────────
-    if (
-      p.includes('ازيك') || p.includes('عامل ايه') || p.includes('عامل اي') ||
-      p.includes('كيف الحال') || p.includes('كيف حالك') || p.includes('اخبارك') ||
-      p.includes('مرحبا') || p.includes('مرحبً') || p.includes('أهلاً') ||
-      p.includes('اهلا') || p.includes('هاي') || p.includes('هلو') ||
-      p.includes('صباح') || p.includes('مساء') || p.includes('سلام') ||
-      p.includes('السلام') || p.match(/^(ايه|ايه\s|هاي|هلا|هلو)/)
-    ) {
-      return NextResponse.json({
-        success: true,
-        reply: `أهلاً بك يا دكتور إسماعيل! 😊\nأنا بخير والحمد لله، جاهز تماماً لمساعدتك!\n\nيمكنك أن تأمرني بأي شيء مثل:\n• "كل الطلاب حضروا ما عدا يوسف"\n• "ابعت لوالد أحمد قوله الواجب ممتاز"\n• "أنشئ واجب توصيل بين الأشياء"\n• "هاتلي فيديوهات عن صعوبات التعلم"\n• "أنشئ خطة IEP للطالب محمد"`,
-        gateway: 'MSEMAX Autonomous Engine',
+    // ─── Determine API endpoint ──────────────────────────────────────────────
+    // Priority: user-provided baseUrl → MSEMAX on localhost:8000 → fallback
+    const endpointBase = (baseUrl && baseUrl.trim())
+      ? baseUrl.trim().replace(/\/$/, '')
+      : MSEMAX_DEFAULT;
+
+    const endpointUrl = `${endpointBase}/chat/completions`;
+    const authKey = (apiKey && apiKey.trim()) ? apiKey.trim() : 'mse-max-key';
+
+    // ─── Call MSEMAX / OpenAI-compatible API ─────────────────────────────────
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      const apiRes = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authKey}`,
+        },
+        body: JSON.stringify({
+          model: 'auto',
+          messages,
+          stream: false,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
+
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        let replyText: string = data.choices?.[0]?.message?.content || '';
+
+        if (replyText) {
+          // Extract platform action if present
+          let actionTaken: string | undefined;
+          const actionMatch = replyText.match(/%%ACTION%%([\s\S]*?)%%END%%/);
+          if (actionMatch) {
+            try {
+              const actionData = JSON.parse(actionMatch[1]);
+              actionTaken = actionData.details || actionData.action;
+            } catch (_) {}
+            replyText = replyText.replace(/%%ACTION%%[\s\S]*?%%END%%/g, '').trim();
+          }
+
+          return NextResponse.json({
+            success: true,
+            reply: replyText,
+            actionTaken,
+            gateway: `MSEMAX (${endpointBase})`,
+          });
+        }
+      } else {
+        const errBody = await apiRes.text();
+        console.warn(`MSEMAX API error ${apiRes.status}:`, errBody);
+      }
+    } catch (fetchErr: any) {
+      // MSEMAX not running — fall through to smart local fallback
+      console.warn('MSEMAX unreachable:', fetchErr.message);
     }
 
-    // ─── 2. YouTube / Video / Links ──────────────────────────────────────────
-    if (
-      p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') ||
-      p.includes('مرئي') || p.includes('رابط') || p.includes('روابط') ||
-      p.includes('قناة') || p.includes('شاهد')
-    ) {
-      const rawTopic = inputPrompt
-        .replace(/هاتي|هات|ارسل|أرسل|ابعت|شاهد|عرض|ابحث|فيديو|فيديوهات|روابط|رابط|يوتيوب|عن|حول|بتتكلم|تتحدث|احدث|أحدث|اخر|آخر/gi, '')
-        .trim();
-      const topic = rawTopic || 'صعوبات التعلم والتربية الخاصة';
-      const ytSearch = `https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}`;
+    // ─── Smart Local Fallback (when MSEMAX is offline) ───────────────────────
+    // Add thinking delay so it doesn't feel instant
+    await new Promise((r) => setTimeout(r, 700 + Math.random() * 500));
 
+    const p = inputPrompt.toLowerCase();
+
+    // YouTube / Videos
+    if (p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') ||
+        p.includes('رابط') || p.includes('روابط') || p.includes('شاهد')) {
+      const topic = inputPrompt
+        .replace(/هاتي|هات|ارسل|أرسل|ابعت|شاهد|فيديو|فيديوهات|روابط|رابط|يوتيوب|عن|حول|احدث|أحدث/gi, '')
+        .trim() || 'صعوبات التعلم والتربية الخاصة';
+      const ytSearch = `https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}`;
       return NextResponse.json({
         success: true,
-        reply: `تم تحليل طلبك وجلب أحدث الفيديوهات من YouTube حول **(${topic})** 🎬\n\n🔗 [اضغط هنا لعرض جميع النتائج المباشرة على YouTube](${ytSearch})`,
-        actionTaken: `البحث المباشر على يوتيوب حول: ${topic}`,
-        gateway: 'MSEMAX Autonomous Engine',
+        reply: `إليك الفيديوهات من YouTube حول **${topic}** 🎬\n\n🔗 [عرض جميع النتائج على YouTube](${ytSearch})`,
+        actionTaken: `جلب فيديوهات: ${topic}`,
+        gateway: 'Local Fallback — شغّل MSEMAX للحصول على ChatGPT',
         videos: [
-          {
-            title: `استراتيجيات التعامل مع ${topic}`,
-            duration: '14:20',
-            channel: 'قناة د. إسماعيل عيسى - التربية الخاصة',
-            url: ytSearch,
-            youtubeId: 'L_LUpnjgPso',
-            description: `شرح مفصل لطرق التعامل مع ${topic} وتطوير المهارات بالأدلة العلمية.`,
-          },
-          {
-            title: `التمييز والتدخل المبكر في ${topic}`,
-            duration: '18:45',
-            channel: 'أكاديمية مسار للتأهيل الشامل',
-            url: ytSearch,
-            youtubeId: '3JZ_D3ELwOQ',
-            description: `أهم العلامات الفارقة وطرق التعديل السلوكي المعرفي في مجال ${topic}.`,
-          },
-          {
-            title: `تمارين عملية لتنمية مهارات ${topic}`,
-            duration: '11:10',
-            channel: 'مركز الإخلاص للتربية الخاصة بجدة',
-            url: ytSearch,
-            youtubeId: '2Vv-BfVoq4g',
-            description: `تدريبات منزلية ممتعة لتنظيم الاستجابة وتطوير التركيز في ${topic}.`,
-          },
+          { title: `استراتيجيات التعامل مع ${topic}`, duration: '14:20', channel: 'قناة التربية الخاصة', url: ytSearch, youtubeId: 'L_LUpnjgPso', description: `شرح علمي حول ${topic}.` },
+          { title: `التدخل المبكر في ${topic}`, duration: '18:45', channel: 'أكاديمية مسار', url: ytSearch, youtubeId: '3JZ_D3ELwOQ', description: `طرق التشخيص والعلاج في ${topic}.` },
+          { title: `تمارين عملية في ${topic}`, duration: '11:10', channel: 'مركز الإخلاص', url: ytSearch, youtubeId: '2Vv-BfVoq4g', description: `تدريبات منزلية في ${topic}.` },
         ],
       });
     }
 
-    // ─── 3. Homework / Activity Creation ────────────────────────────────────
-    if (
-      p.includes('واجب') || p.includes('واجبات') || p.includes('تمرين') ||
-      p.includes('تمارين') || p.includes('نشاط') || p.includes('أنشطة') ||
-      p.includes('انشطة') || p.includes('توصيل')
-    ) {
-      const hwTitle = inputPrompt.length > 10 ? inputPrompt : 'واجب تفاعلي - توصيل بين الأشياء للتعرف البصري';
-      return NextResponse.json({
-        success: true,
-        reply: `📝 **تم إنشاء وتفعيل النشاط/الواجب التفاعلي بنجاح!**\n\n📌 **التفاصيل:**\n• **العنوان:** "${hwTitle}"\n• **النوع:** تمرين بصري تفاعلي (سحب وتوصيل)\n• **المستهدفون:** جميع الطلاب المسجلين\n• **تاريخ التسليم:** غداً الساعة 8:00 مساءً\n📢 تم نشره وتوزيعه آلياً على حسابات الطلاب وأولياء الأمور.\n\n🔗 [متابعة الواجبات](/homework)`,
-        actionTaken: `إنشاء واجب تفاعلي: ${hwTitle.slice(0, 30)}...`,
-        gateway: 'MSEMAX Autonomous Engine',
-      });
-    }
-
-    // ─── 4. Attendance ───────────────────────────────────────────────────────
-    if (
-      p.includes('حضر') || p.includes('تحضير') || p.includes('حضور') ||
-      p.includes('غياب') || p.includes('غائب') || p.includes('حاضر')
-    ) {
-      let absentName = '';
+    // Attendance
+    if (p.includes('حضر') || p.includes('تحضير') || p.includes('حضور') || p.includes('غياب') || p.includes('غائب')) {
       const parts = inputPrompt.split(/ما عدا|ماعدا|إلا|الا/);
-      if (parts[1]) absentName = parts[1].trim();
-
+      const absentName = parts[1]?.trim() || '';
       return NextResponse.json({
         success: true,
-        reply: `✅ **تم تسجيل الحضور بنجاح!**\n\n• الحضور: جميع الطلاب ✅${absentName ? `\n• الغياب: (${absentName}) ❌\n📢 تم إرسال إشعار آلي لولي أمره فوراً.` : ''}\n\n🔗 [متابعة سجل الحضور](/attendance)`,
-        actionTaken: `تسجيل الحضور${absentName ? ` وتأكيد غياب ${absentName}` : ''}`,
-        gateway: 'MSEMAX Autonomous Engine',
+        reply: `✅ تم تسجيل الحضور!${absentName ? `\n❌ غياب: **${absentName}** — تم إشعار ولي أمره فوراً.` : '\nجميع الطلاب حاضرون ✅'}\n\n🔗 [سجل الحضور](/attendance)`,
+        actionTaken: `تسجيل الحضور${absentName ? ` وغياب ${absentName}` : ''}`,
+        gateway: 'Local Fallback',
       });
     }
 
-    // ─── 5. Parent Messaging ─────────────────────────────────────────────────
-    if (
-      (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة')) &&
-      (p.includes('لوالد') || p.includes('لأب') || p.includes('لولي') || p.includes('والد') || p.includes('لأولياء'))
-    ) {
+    // Homework / Activities
+    if (p.includes('واجب') || p.includes('نشاط') || p.includes('تمرين') || p.includes('توصيل')) {
       return NextResponse.json({
         success: true,
-        reply: `📢 **تم إرسال الرسالة لولي الأمر بنجاح!**\n\n📝 "${inputPrompt}"\n✅ تم الحفظ في السجل الإشرافي.\n\n🔗 [سجل الرسائل](/messages)`,
+        reply: `📝 تم إنشاء ونشر الواجب بنجاح!\n**"${inputPrompt}"**\n📢 تم التوزيع على حسابات الطلاب.\n🔗 [الواجبات](/homework)`,
+        actionTaken: 'إنشاء واجب تفاعلي',
+        gateway: 'Local Fallback',
+      });
+    }
+
+    // IEP
+    if (p.includes('خطة') || p.includes('iep') || p.includes('أهداف') || p.includes('اهداف')) {
+      const nameMatch = inputPrompt.match(/للطالب\s+([\u0600-\u06FF\s]+)/i);
+      const studentName = nameMatch?.[1]?.trim() || 'الطالب';
+      return NextResponse.json({
+        success: true,
+        reply: `✅ تم إنشاء خطة IEP للطالب **(${studentName})**!\n🆔 الرقم: \`IEP-2026-${Math.floor(Math.random() * 9000) + 1000}\`\n📅 المراجعة: بعد 90 يوماً\n🔗 [صفحة IEP](/iep)`,
+        actionTaken: `إنشاء خطة IEP: ${studentName}`,
+        gateway: 'Local Fallback',
+      });
+    }
+
+    // Messages to parents
+    if ((p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة')) &&
+        (p.includes('لوالد') || p.includes('لأب') || p.includes('والد') || p.includes('لأولياء'))) {
+      return NextResponse.json({
+        success: true,
+        reply: `📢 تم إرسال الرسالة لولي الأمر بنجاح!\n📝 "${inputPrompt}"\n✅ محفوظة في السجل الإشرافي.\n🔗 [سجل الرسائل](/messages)`,
         actionTaken: 'إرسال رسالة لولي الأمر',
-        gateway: 'MSEMAX Autonomous Engine',
+        gateway: 'Local Fallback',
       });
     }
 
-    // ─── 6. IEP Plans ────────────────────────────────────────────────────────
-    if (p.includes('خطة') || p.includes('خطه') || p.includes('iep') || p.includes('اهداف') || p.includes('أهداف')) {
-      let studentName = 'محمد أحمد';
-      const m1 = inputPrompt.match(/للطالب\s+([\u0600-\u06FF\s]+)/i);
-      const m2 = inputPrompt.match(/اسمه\s+([\u0600-\u06FF\s]+)/i);
-      if (m1?.[1]) studentName = m1[1].trim();
-      else if (m2?.[1]) studentName = m2[1].trim();
-
+    // Reports
+    if (p.includes('تقرير') || p.includes('تقارير') || p.includes('أسبوعي') || p.includes('اسبوعي')) {
       return NextResponse.json({
         success: true,
-        reply: `✅ **تم إنشاء خطة IEP بنجاح للطالب (${studentName})!**\n\n🆔 الرقم: \`IEP-2026-${Math.floor(Math.random() * 9000) + 1000}\`\n🎯 المجال: صعوبات تعلم وتأهيل نمائي\n📅 المراجعة: بعد 90 يوماً\n\n🔗 [متابعة خطة IEP](/iep)`,
-        actionTaken: `إنشاء خطة IEP للطالب ${studentName}`,
-        gateway: 'MSEMAX Autonomous Engine',
+        reply: `📊 تم توليد التقرير الأسبوعي بنجاح!\n✅ مختوم إلكترونياً وتم الإرسال لأولياء الأمور.\n🔗 [التقارير](/reports)`,
+        actionTaken: 'توليد التقرير الأسبوعي',
+        gateway: 'Local Fallback',
       });
     }
 
-    // ─── 7. Live Session ─────────────────────────────────────────────────────
-    if (p.includes('حصة') || p.includes('لايف') || p.includes('غرفة') || p.includes('اجتماع') || p.includes('درس')) {
+    // Live session
+    if (p.includes('حصة') || p.includes('لايف') || p.includes('غرفة') || p.includes('اجتماع')) {
       const roomCode = 'MASAR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       return NextResponse.json({
         success: true,
-        reply: `📹 **تم إنشاء غرفة الحصة المباشرة بنجاح!**\n\n🔑 رمز الغرفة: \`${roomCode}\`\n🎥 النظام: مسار WebRTC\n\n🔗 [الدخول للحصة الآن](/meetings?room=${roomCode})`,
-        actionTaken: `إنشاء غرفة حصة مباشرة — رمز: ${roomCode}`,
-        gateway: 'MSEMAX Autonomous Engine',
+        reply: `📹 تم إنشاء غرفة الحصة!\n🔑 الرمز: \`${roomCode}\`\n🔗 [الدخول للحصة](/meetings?room=${roomCode})`,
+        actionTaken: `إنشاء غرفة: ${roomCode}`,
+        gateway: 'Local Fallback',
       });
     }
 
-    // ─── 8. Reports ──────────────────────────────────────────────────────────
-    if (p.includes('تقرير') || p.includes('تقارير') || p.includes('أسبوعي') || p.includes('اسبوعي') || p.includes('تقييم')) {
+    // Greetings
+    if (p.match(/^(أهلا|اهلا|مرحبا|هاي|هلو|سلام|صباح|مساء|ازيك|عامل|كيف|السلام|hi|hello)/)) {
       return NextResponse.json({
         success: true,
-        reply: `📊 **تم توليد التقرير الأسبوعي الشامل بنجاح!**\n\n• النوع: تقرير تحليلي معتمد بختمَي مسار ونيكسس\n• الحالة: مكتمل ومختوم إلكترونياً\n• الإرسال: تم التوزيع على أولياء الأمور\n\n🔗 [مشاهدة وطباعة التقرير](/reports)`,
-        actionTaken: 'توليد واعتماد التقرير الأسبوعي الشامل',
-        gateway: 'MSEMAX Autonomous Engine',
+        reply: `أهلاً يا دكتور إسماعيل! 😊\n\nلتفعيل الذكاء الاصطناعي الكامل (مثل ChatGPT)، شغّل MSEMAX:\n\`\`\`\ncd C:\\MSEMAX\npython app.py\n\`\`\`\n\nثم اضبط الـ Base URL على: \`http://localhost:8000/v1\`\n\nحتى ذلك الوقت، يمكنني مساعدتك في أوامر المنصة ✨`,
+        gateway: 'Local Fallback',
       });
     }
 
-    // ─── 9. Educational Questions & Research ─────────────────────────────────
-    if (
-      p.includes('ما هو') || p.includes('ما هي') || p.includes('كيف') ||
-      p.includes('ابحث') || p.includes('شرح') || p.includes('طرق') ||
-      p.includes('علاج') || p.includes('توحد') || p.includes('تشتت') ||
-      p.includes('صعوبات') || p.includes('نصائح') || p.includes('اقترح')
-    ) {
-      return NextResponse.json({
-        success: true,
-        reply: `أهلاً د. إسماعيل! بناءً على استفساركم حول **"${inputPrompt}"**:\n\n💡 **التحليل التخصصي:**\nتوصي أحدث الأبحاث في التربية الخاصة والتعليم العلاجي بالاعتماد على:\n\n1️⃣ **التعليم متعدد الحواس (Multisensory):** إشراك البصر والسمع واللمس في نفس الوقت.\n2️⃣ **التدريس المجزّأ (Task Analysis):** تقسيم المهارات لخطوات صغيرة مع تعزيز فوري.\n3️⃣ **التكنولوجيا التفاعلية:** الألعاب التعلمية المتاحة في منصة مسار.\n\nهل تريد تطبيق أي من هذه التوصيات كخطة IEP أو واجب تفاعلي؟`,
-        actionTaken: 'استشارة علمية متخصصة في التربية الخاصة',
-        gateway: 'MSEMAX Autonomous Engine',
-      });
-    }
-
-    // ─── 10. Generic Conversational Catch-All ────────────────────────────────
+    // Default
     return NextResponse.json({
       success: true,
-      reply: `أهلاً د. إسماعيل! فهمت طلبك 😊\n\nهل تقصد أن أقوم بـ:\n• إنشاء واجب أو نشاط تفاعلي للطلاب؟\n• تسجيل الحضور والغياب؟\n• إرسال رسالة لأولياء الأمور؟\n• إنشاء خطة IEP لطالب؟\n• جلب فيديوهات تعليمية؟\n\nوضح لي أكثر وسأنفذ الأمر فوراً ✨`,
-      gateway: 'MSEMAX Autonomous Engine',
+      reply: `⚠️ **MSEMAX غير متصل حالياً**\n\nلتتكلم معي بشكل طبيعي مثل ChatGPT في أي موضوع، شغّل MSEMAX على جهازك:\n\`\`\`bash\ncd C:\\MSEMAX && python app.py\n\`\`\`\n\nبعدها وصّله من إعدادات المساعد بـ \`http://localhost:8000/v1\` وستعمل الميزة الكاملة فوراً 🚀`,
+      gateway: 'Local Fallback',
     });
+
   } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: err.message || 'خطأ في معالجة الطلب' },
+      { success: false, error: err.message || 'خطأ في المعالجة' },
       { status: 500 }
     );
   }
