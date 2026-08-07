@@ -636,8 +636,28 @@ function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?
     };
   }
 
-  // 5. Parent Messaging & Notifications
-  if (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة') || p.includes('لوالد') || p.includes('تنبيه') || p.includes('واتساب')) {
+  // 5. Homework & Interactive Activities Creation (High Priority)
+  if (
+    p.includes('واجب') || p.includes('واجبات') || p.includes('تمرين') ||
+    p.includes('تمارين') || p.includes('نشاط') || p.includes('أنشطة') ||
+    p.includes('انشطة') || p.includes('توصيل') || p.includes('سؤال')
+  ) {
+    let hwTitle = 'واجب تفاعلي جديد - توصيل والتعرف على الأشياء';
+    if (inputPrompt.length > 10) {
+      hwTitle = inputPrompt;
+    }
+
+    return {
+      reply: `📝 **تم إنشاء وتفعيل الواجب التفاعلي بنجاح وإضافته إلى صفحة الأنشطة والواجبات!**\n\n📌 **تفاصيل النشاط:**\n• **العنوان والمحتوى:** "${hwTitle}"\n• **النوع:** تمرين بصري تفاعلي (توصيل وسحب الأشياء للتعرف)\n• **الجمهور المستهدف:** جميع الطلاب المكتتبين بالفصل\n• **تاريخ الاستلام:** غداً الساعة 8:00 مساءً\n📢 **الإشعار:** تم النشر والتوصيل الآلي لجميع حسابات الطلاب وشاشات أولياء الأمور بنجاح.\n\n🔗 [انقر هنا لمتابعة وتعديل الواجبات في صفحة الأنشطة والواجبات](/homework)`,
+      actionTaken: `إنشاء ونشر واجب/نشاط تفاعلي جديد (${hwTitle.slice(0, 30)}...) (create_interactive_homework)`,
+    };
+  }
+
+  // 6. Targeted Parent Messaging & Direct Notifications (Only when specifically messaging parents)
+  if (
+    (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة') || p.includes('تنبيه') || p.includes('واتساب')) &&
+    (p.includes('لوالد') || p.includes('لأب') || p.includes('لولي') || p.includes('أب') || p.includes('والد') || p.includes('والدة') || p.includes('لأولياء'))
+  ) {
     try {
       if (typeof window !== 'undefined') {
         saveMessage({
@@ -651,14 +671,6 @@ function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?
     return {
       reply: `📢 **تم إرسال الرسالة المخصصة بنجاح لولي الأمر!**\n\n📝 **نص الرسالة:** "${inputPrompt}"\n✅ **الحالة:** تم التوصيل وحفظها في السجل الإشرافي للرسائل.\n\n🔗 [انقر هنا لمراجعة سجل الرسائل](/messages)`,
       actionTaken: 'إرسال رسالة مباشرة لولي الأمر (send_parent_message)',
-    };
-  }
-
-  // 6. Homework Creation Command
-  if (p.includes('واجب') || p.includes('تمرين') || p.includes('سؤال') || p.includes('نشاط')) {
-    return {
-      reply: `📝 **تم إنشاء ونشر الواجب التفاعلي بنجاح لجميع طلاب الفصل!**\n\n• **العنوان:** ${inputPrompt.slice(0, 40)}\n• **تاريخ التسليم:** غداً الساعة 8:00 مساءً\n• **الإشعار:** تم إشعار الطلاب وأولياء الأمور بنجاح.\n\n🔗 [انقر هنا لمعاينة الواجبات](/homework)`,
-      actionTaken: 'إنشاء واجب تفاعلي جديد (create_homework)',
     };
   }
 

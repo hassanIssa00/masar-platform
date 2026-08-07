@@ -136,19 +136,31 @@ function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?
     };
   }
 
-  // 4. Targeted Parent Message
-  if (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('تنبيه') || p.includes('رسالة') || p.includes('لوالد') || p.includes('لأب')) {
+  // 4. Homework & Interactive Activities Creation (High Priority)
+  if (
+    p.includes('واجب') || p.includes('واجبات') || p.includes('تمرين') ||
+    p.includes('تمارين') || p.includes('نشاط') || p.includes('أنشطة') ||
+    p.includes('انشطة') || p.includes('توصيل') || p.includes('سؤال')
+  ) {
+    let hwTitle = 'واجب تفاعلي جديد - توصيل والتعرف على الأشياء';
+    if (inputPrompt.length > 10) {
+      hwTitle = inputPrompt;
+    }
+
     return {
-      reply: `📢 **تم إرسال الرسالة المخصصة بنجاح إلى ولي الأمر!**\n\nتم حفظ الرسالة في السجل الإشرافي وإشعار ولي الأمر عبر المنصة.`,
-      actionTaken: 'إرسال إشعار موجه مباشر لولي الأمر (send_parent_direct_message)',
+      reply: `📝 **تم إنشاء وتفعيل الواجب التفاعلي بنجاح وإضافته إلى صفحة الأنشطة والواجبات!**\n\n📌 **تفاصيل النشاط:**\n• **العنوان والمحتوى:** "${hwTitle}"\n• **النوع:** تمرين بصري تفاعلي (توصيل وسحب الأشياء للتعرف)\n• **الجمهور المستهدف:** جميع الطلاب المكتتبين بالفصل\n• **تاريخ الاستلام:** غداً الساعة 8:00 مساءً\n📢 **الإشعار:** تم النشر والتوصيل الآلي لجميع حسابات الطلاب وشاشات أولياء الأمور بنجاح.\n\n🔗 [انقر هنا لمتابعة وتعديل الواجبات في صفحة الأنشطة والواجبات](/homework)`,
+      actionTaken: `إنشاء ونشر واجب/نشاط تفاعلي جديد (${hwTitle.slice(0, 30)}...) (create_interactive_homework)`,
     };
   }
 
-  // 5. Homework Command
-  if (p.includes('واجب') || p.includes('تمرين') || p.includes('سؤال')) {
+  // 5. Targeted Parent Message (Only when specifically messaging parents)
+  if (
+    (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة') || p.includes('تنبيه') || p.includes('واتساب')) &&
+    (p.includes('لوالد') || p.includes('لأب') || p.includes('لولي') || p.includes('أب') || p.includes('والد') || p.includes('والدة') || p.includes('لأولياء'))
+  ) {
     return {
-      reply: '✅ **تم إنشاء ونشر الواجب التفاعلي بنجاح لجميع الطلاب في الفصل وتحديث الجدول!**',
-      actionTaken: 'إنشاء واجب تفاعلي جديد (create_homework)',
+      reply: `📢 **تم إرسال الرسالة المخصصة بنجاح إلى ولي الأمر!**\n\nتم حفظ الرسالة في السجل الإشرافي وإشعار ولي الأمر عبر المنصة.`,
+      actionTaken: 'إرسال إشعار موجه مباشر لولي الأمر (send_parent_direct_message)',
     };
   }
 
