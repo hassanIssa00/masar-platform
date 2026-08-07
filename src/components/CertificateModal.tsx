@@ -390,21 +390,21 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT (PERFECT SYMMETRY) ── */}
             <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
-              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule Box */}
-              <div style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '10px 18px', display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'right', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 240 }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b' }}>
+              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule (Clean, No Box) */}
+              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
                   {isAr ? 'يعتمد هذه الشهادة رسمياً من:' : 'Officially certified by:'}
                 </span>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+                <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#64748b', margin: 0 }}>
-                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education Consultant'}
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: 0 }}>
+                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
                 </p>
 
                 {/* Signature Underline Rule */}
-                <div style={{ borderBottom: '1px solid #cbd5e1', width: '100%', marginTop: 8, paddingTop: 2, display: 'flex', justifyContent: 'flex-start' }}>
-                  <span style={{ fontSize: 9, fontWeight: 900, color: '#94a3b8' }}>
+                <div style={{ borderBottom: '1px solid #cbd5e1', width: 220, marginTop: 12, paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 900, color: '#94a3b8' }}>
                     {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
                   </span>
                 </div>
