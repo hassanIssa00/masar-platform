@@ -387,77 +387,50 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── LUXURY FOOTER CARDS ──
-                dir=rtl → 1st child shows RIGHT, 3rd child shows LEFT
-                Visual:  [Official RIGHT] [Doctor CENTER] [Academic LEFT]
-            ── */}
-            <div style={{ padding:'10px 22px 16px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-              gap:14, position:'relative', zIndex:1 }} dir="rtl">
+            {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT 2026-08-08 010014 ── */}
+            <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
-              {/* Card 1 → RIGHT: Official Seal */}
-              <div style={cardStyle} dir="rtl">
-                <OfficialSealIcon/>
-                <div style={{ textAlign:'center' }}>
-                  <h4 style={{ fontSize:13, fontWeight:900, color:'#06392c', margin:0 }}>
-                    {isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}
-                  </h4>
-                  <p style={{ fontSize:9.5, fontWeight:700, color:'#64748b', marginTop:3, margin:0 }}>
-                    {isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Masar Rehabilitation Platform'}
-                  </p>
-                </div>
-                <div style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:20,
-                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#065f46' }}>
-                  {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
-                </div>
-              </div>
-
-              {/* Card 2 → CENTER: Doctor */}
-              <div style={cardStyle} dir="rtl">
-                <span style={{ fontSize:9.5, fontWeight:700, color:'#64748b', textTransform:'uppercase' }}>
-                  {isAr ? 'يعتمد هذه الشهادة' : 'Certified by'}
+              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule */}
+              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+                  {isAr ? 'يعتمد هذه الشهادة رسمياً من:' : 'Officially certified by:'}
                 </span>
-                <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                  <div className="w-10 h-10 rounded-full border-2 border-[#d9a238] overflow-hidden shadow-xs shrink-0">
-                    <img
-                      src="/dr-ismail.jpg"
-                      alt="أ.د. إسماعيل عيسى"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div style={{ textAlign:'right' }}>
-                    <h4 style={{ fontSize:15, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
-                      {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
-                    </h4>
-                    <p style={{ fontSize:9, fontWeight:700, color:'#64748b', margin:0, lineHeight:1.2 }}>
-                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ borderBottom:'2px solid #d9a238', paddingBottom:2, paddingLeft:12, paddingRight:12, display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ fontFamily:'Georgia, cursive', fontStyle:'italic', fontSize:14, color:'#b47a1e', fontWeight:700 }}>
-                    أ.د. إسماعيل عيسى
+                <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+                  {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
+                </h3>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: 0 }}>
+                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                </p>
+
+                {/* Signature Underline Rule */}
+                <div style={{ borderBottom: '1px solid #cbd5e1', width: 200, marginTop: 12, paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 900, color: '#94a3b8' }}>
+                    {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
                   </span>
                 </div>
-                <div style={{ background:'#fef3c7', border:'1px solid #f59e0b', borderRadius:20,
-                  padding:'4px 14px', fontSize:10, fontWeight:900, color:'#92400e' }}>
-                  {isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}
-                </div>
               </div>
 
-              {/* Card 3 → LEFT: Academic Seal */}
-              <div style={cardStyle} dir="rtl">
-                <AcademicSealIcon/>
-                <div style={{ textAlign:'center' }}>
-                  <h4 style={{ fontSize:13, fontWeight:900, color:'#06392c', margin:0 }}>
-                    {isAr ? 'الختم الأكاديمي' : 'Academic Seal'}
-                  </h4>
-                  <p style={{ fontSize:9.5, fontWeight:700, color:'#64748b', marginTop:3, margin:0 }}>
-                    {isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}
-                  </p>
+              {/* LEFT (RTL last): Dashed Digital Seal Box with Dual Logos */}
+              <div style={{ background: '#f8fafc', border: '1.5px dashed #818cf8', borderRadius: 14, padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
+                {/* Dual Logos (Masar x Nexus) */}
+                <div style={{ display: 'flex', itemsCenter: 'center', gap: 8, alignItems: 'center' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="/brand/masar-logo.png" alt="منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                  <span style={{ color: '#4f46e5', fontWeight: 900, fontSize: 12 }}>×</span>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: '#ffffff', border: '1px solid #e2e8f0', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="/brand/nexus-logo-new.webp" alt="نظام نكسس" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
                 </div>
-                <div style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:20,
-                  padding:'4px 14px', fontSize:10.5, fontWeight:900, color:'#065f46' }}>
-                  {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
+
+                {/* Seal Title & Serial Code */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: '#1e293b' }}>
+                    {isAr ? 'الختم الرقمي المعتمد' : 'Official Digital Seal'}
+                  </div>
+                  <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 900, color: '#4f46e5', letterSpacing: '0.5px', marginTop: 2 }}>
+                    {certNo}
+                  </div>
                 </div>
               </div>
 
