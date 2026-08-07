@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Award, Printer, X, ShieldCheck, Pencil, Check, Sparkles } from 'lucide-react';
+import { Award, Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -96,180 +96,175 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
           </div>
         </div>
 
-        {/* ══ CERTIFICATE PAPER WITH ROYAL MULTI-LAYER GOLD BORDER ══ */}
+        {/* ══ CERTIFICATE PAPER WITH SLEEK EXECUTIVE BORDER ══ */}
         <div className="bg-slate-100 p-4 print:p-0">
           <div
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
-            className="relative bg-gradient-to-b from-[#fffefc] via-white to-[#fffef9] rounded-2xl overflow-hidden p-1 shadow-md"
-            style={{
-              border: '4px solid #d97706',
-              boxShadow: 'inset 0 0 0 4px #fef08a, inset 0 0 0 8px #b45309',
-            }}
+            className="relative bg-white rounded-2xl p-2 shadow-sm border-2 border-amber-500"
           >
-            {/* Corner Fleuron Ornaments */}
-            <div className="absolute top-3 right-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
-            <div className="absolute top-3 left-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
-            <div className="absolute bottom-3 right-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
-            <div className="absolute bottom-3 left-3 text-amber-600 text-xs font-black select-none">◆ ❖ ◆</div>
+            {/* Inner Gold Frame */}
+            <div className="rounded-xl border border-amber-300/80 p-6 relative bg-gradient-to-b from-[#fffefc] via-white to-[#fffef8]">
 
-            {/* Gold Accent Top Bar */}
-            <div className="h-2 bg-gradient-to-r from-amber-600 via-amber-300 via-yellow-400 via-amber-300 to-amber-600" />
+              {/* L-Shaped Gold Corner Brackets */}
+              <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-amber-600 pointer-events-none" />
+              <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-amber-600 pointer-events-none" />
+              <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-amber-600 pointer-events-none" />
+              <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-amber-600 pointer-events-none" />
 
-            {/* Main Certificate Inner Content */}
-            <div className="px-8 py-6 space-y-6">
+              {/* Main Content Container */}
+              <div className="space-y-6">
 
-              {/* ── LETTERHEAD ── */}
-              <div className="flex items-center justify-between border-b-2 border-amber-200 pb-4">
-                <div className="flex items-center gap-3">
-                  <BrandMark size="md" showText={true} />
-                </div>
-                <div className="text-center">
-                  <div className="text-xs font-black text-amber-900 tracking-widest bg-amber-100/70 border border-amber-300 px-4 py-1.5 rounded-full shadow-2xs">
-                    {isAr ? '🏆 شهادة تميُّز واستحقاق معتمدة 🏆' : '🏆 Official Certified Certificate of Excellence 🏆'}
+                {/* ── LETTERHEAD ── */}
+                <div className="flex items-center justify-between border-b-2 border-amber-200/90 pb-4">
+                  <div className="flex items-center gap-3">
+                    <BrandMark size="md" showText={true} />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs font-black text-amber-900 tracking-widest bg-amber-50 border border-amber-200 px-4 py-1 rounded-full shadow-2xs">
+                      {isAr ? '🏆 شهادة تميُّز واستحقاق معتمدة 🏆' : '🏆 Official Certified Certificate of Excellence 🏆'}
+                    </div>
+                  </div>
+                  <div className={`text-[11px] font-bold text-slate-600 ${isAr ? 'text-left' : 'text-right'} bg-amber-50/80 border border-amber-200 px-3.5 py-1.5 rounded-xl`}>
+                    <div className="font-black text-indigo-950 font-mono">{certNo}</div>
+                    <div className="text-[10px] text-slate-500">{isAr ? 'التاريخ:' : 'Date:'} {data.completionDate}</div>
                   </div>
                 </div>
-                <div className={`text-[11px] font-bold text-slate-600 ${isAr ? 'text-left' : 'text-right'} bg-amber-50/80 border border-amber-200 px-3.5 py-1.5 rounded-xl`}>
-                  <div className="font-black text-indigo-950 font-mono">{certNo}</div>
-                  <div className="text-[10px] text-slate-500">{isAr ? 'التاريخ:' : 'Date:'} {data.completionDate}</div>
+
+                {/* ── MAIN TITLE & SUBTITLE ── */}
+                <div className="text-center space-y-2 py-1">
+                  <h1 className="text-2xl sm:text-4xl font-black text-indigo-950 tracking-tight" style={{ fontFamily: 'Georgia, serif' }}>
+                    {isAr ? 'شهادة إنجاز واجتياز برنامج علاجي' : 'CERTIFICATE OF COMPLETION'}
+                  </h1>
+                  <p className="text-xs sm:text-sm font-bold text-slate-600 max-w-xl mx-auto leading-relaxed">
+                    {isAr
+                      ? <>تُشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف <strong className="text-indigo-950 font-black">{data.doctorName || 'أ.د. إسماعيل عيسى'}</strong> بأن الطالب/ة المتميز/ة:</>
+                      : <>This certifies that under the expert supervision of <strong className="text-indigo-950 font-black">Prof. Dr. Ismail Issa</strong>, the student:</>
+                    }
+                  </p>
                 </div>
-              </div>
 
-              {/* ── MAIN TITLE & SUBTITLE ── */}
-              <div className="text-center space-y-2 py-1">
-                <h1 className="text-2xl sm:text-4xl font-black text-indigo-950 tracking-tight" style={{ fontFamily: 'Georgia, serif' }}>
-                  {isAr ? 'شهادة إنجاز واجتياز برنامج علاجي' : 'CERTIFICATE OF COMPLETION'}
-                </h1>
-                <p className="text-xs sm:text-sm font-bold text-slate-600 max-w-xl mx-auto leading-relaxed">
-                  {isAr
-                    ? <>تُشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف <strong className="text-indigo-950 font-black">{data.doctorName || 'أ.د. إسماعيل عيسى'}</strong> بأن الطالب/ة المتميز/ة:</>
-                    : <>This certifies that under the expert supervision of <strong className="text-indigo-950 font-black">Prof. Dr. Ismail Issa</strong>, the student:</>
-                  }
-                </p>
-              </div>
+                {/* ── STUDENT NAME CREATIVE HONOR PLAQUE ── */}
+                <div className="py-2 text-center">
+                  <div className="inline-block relative max-w-xl w-full">
+                    <div className="relative rounded-2xl bg-gradient-to-r from-amber-100/50 via-amber-50 to-amber-100/50 p-4 border-2 border-amber-300/80 shadow-xs">
 
-              {/* ── STUDENT NAME CREATIVE HONOR PLAQUE ── */}
-              <div className="py-2 text-center">
-                <div className="inline-block relative max-w-xl w-full">
-                  <div className="relative rounded-2xl bg-gradient-to-r from-amber-100/50 via-amber-50 to-amber-100/50 p-4 border-2 border-amber-300/80 shadow-xs">
+                      {/* Corner Flourish Brackets */}
+                      <div className="absolute top-1.5 right-2.5 text-amber-500 text-xs font-black">✦</div>
+                      <div className="absolute top-1.5 left-2.5 text-amber-500 text-xs font-black">✦</div>
+                      <div className="absolute bottom-1.5 right-2.5 text-amber-500 text-xs font-black">✦</div>
+                      <div className="absolute bottom-1.5 left-2.5 text-amber-500 text-xs font-black">✦</div>
 
-                    {/* Corner Flourish Brackets */}
-                    <div className="absolute top-1 right-2 text-amber-500 text-xs font-black">✦</div>
-                    <div className="absolute top-1 left-2 text-amber-500 text-xs font-black">✦</div>
-                    <div className="absolute bottom-1 right-2 text-amber-500 text-xs font-black">✦</div>
-                    <div className="absolute bottom-1 left-2 text-amber-500 text-xs font-black">✦</div>
-
-                    {!isAr && editingEnName ? (
-                      <div className="flex items-center justify-center gap-2 border-b-2 border-amber-500 pb-1">
-                        <input
-                          autoFocus
-                          value={nameEn}
-                          onChange={(e) => setNameEn(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && setEditingEnName(false)}
-                          placeholder="Student English name..."
-                          className="bg-transparent text-amber-950 text-3xl sm:text-4xl font-black text-center outline-none tracking-wide w-80 placeholder:text-amber-900/30"
-                          style={{ fontFamily: 'Georgia, serif' }}
-                        />
-                        <button onClick={() => setEditingEnName(false)} className="text-amber-700 hover:text-amber-950 print:hidden shrink-0">
-                          <Check size={20} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-3">
-                        <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
-                        <h2 className="text-3xl sm:text-5xl font-black text-amber-950 tracking-wide drop-shadow-xs" style={{ fontFamily: 'Georgia, serif' }}>
-                          {displayName}
-                        </h2>
-                        <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
-                        {!isAr && (
-                          <button onClick={() => setEditingEnName(true)} title="Edit English name" className="text-amber-700/60 hover:text-amber-950 print:hidden shrink-0">
-                            <Pencil size={16} />
+                      {!isAr && editingEnName ? (
+                        <div className="flex items-center justify-center gap-2 border-b-2 border-amber-500 pb-1">
+                          <input
+                            autoFocus
+                            value={nameEn}
+                            onChange={(e) => setNameEn(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && setEditingEnName(false)}
+                            placeholder="Student English name..."
+                            className="bg-transparent text-amber-950 text-3xl sm:text-4xl font-black text-center outline-none tracking-wide w-80 placeholder:text-amber-900/30"
+                            style={{ fontFamily: 'Georgia, serif' }}
+                          />
+                          <button onClick={() => setEditingEnName(false)} className="text-amber-700 hover:text-amber-950 print:hidden shrink-0">
+                            <Check size={20} />
                           </button>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-3">
+                          <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
+                          <h2 className="text-3xl sm:text-5xl font-black text-amber-950 tracking-wide drop-shadow-xs" style={{ fontFamily: 'Georgia, serif' }}>
+                            {displayName}
+                          </h2>
+                          <span className="text-amber-500 text-lg hidden sm:inline">🌿</span>
+                          {!isAr && (
+                            <button onClick={() => setEditingEnName(true)} title="Edit English name" className="text-amber-700/60 hover:text-amber-950 print:hidden shrink-0">
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {!isAr && !nameEn && !editingEnName && (
+                    <p className="text-[10px] text-amber-700/70 mt-1.5 print:hidden">
+                      ✏️ Click the pencil to enter the English name
+                    </p>
+                  )}
                 </div>
-                {!isAr && !nameEn && !editingEnName && (
-                  <p className="text-[10px] text-amber-700/70 mt-1.5 print:hidden">
-                    ✏️ Click the pencil to enter the English name
+
+                {/* ── PROGRAM & MASTERY DETAILS ── */}
+                <div className="text-center space-y-3 py-1">
+                  <p className="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed">
+                    {isAr
+                      ? 'قد أتمَّ بنجاح واقتدار كافة متطلبات الجلسات العلاجية والتمارين النمائية المخصصة في:'
+                      : 'Has successfully completed all therapeutic sessions and developmental requirements in:'}
                   </p>
-                )}
-              </div>
-
-              {/* ── PROGRAM & MASTERY DETAILS ── */}
-              <div className="text-center space-y-3 py-1">
-                <p className="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed">
-                  {isAr
-                    ? 'قد أتمَّ بنجاح واقتدار كافة متطلبات الجلسات العلاجية والتمارين النمائية المخصصة في:'
-                    : 'Has successfully completed all therapeutic sessions and developmental requirements in:'}
-                </p>
-                <div className="inline-block rounded-xl bg-amber-100/60 border-2 border-amber-300 px-7 py-2.5 shadow-2xs">
-                  <p className="text-base sm:text-xl font-black text-indigo-950">
-                    {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
-                  </p>
-                </div>
-                <p className="text-xs sm:text-sm font-bold text-slate-600">
-                  {isAr
-                    ? <>وحقق نسبة إتقان تراكمية قدرها <strong className="text-emerald-700 font-black text-base">{data.score}%</strong> مع التزام تام بالجلسات الفردية والمنزلية.</>
-                    : <>Achieved a cumulative mastery score of <strong className="text-emerald-700 font-black text-base">{data.score}%</strong> with full commitment to individual and home sessions.</>
-                  }
-                </p>
-              </div>
-
-              {/* ── FOOTER: SYMMETRICAL 3-COLUMN LAYOUT (MASAR SEAL - DOCTOR SIGNATURE - NEXUS SEAL) ── */}
-              <div className="pt-6 mt-4 border-t-2 border-amber-200/90 grid grid-cols-3 items-end gap-4 text-center">
-
-                {/* COL 1: MASAR SEAL */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="rounded-xl border-2 border-dashed border-teal-500 p-3 bg-teal-50/80 w-32 shadow-2xs">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/brand/masar-logo.png" alt="مسار" className="h-10 w-10 mx-auto object-contain" />
-                    <p className="mt-1 text-[10px] font-black text-teal-800">{isAr ? 'الختم الرقمي المعتمد' : 'Digital Certified Seal'}</p>
-                    <p className="text-[9px] font-bold text-teal-600">مَسَار · MASAR</p>
+                  <div className="inline-block rounded-xl bg-amber-100/60 border-2 border-amber-300 px-7 py-2.5 shadow-2xs">
+                    <p className="text-base sm:text-xl font-black text-indigo-950">
+                      {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
+                    </p>
                   </div>
-                  <p className="text-[10px] font-black text-slate-500 mt-0.5">{isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}</p>
-                </div>
-
-                {/* COL 2: DOCTOR SIGNATURE (CENTERED) */}
-                <div className="flex flex-col items-center justify-center space-y-1 bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
-                  <p className="text-[10px] font-bold text-slate-500">{isAr ? 'يعتمد هذا الإنجاز رسمياً من:' : 'Officially certified by:'}</p>
-                  <h3 className="text-lg font-black text-indigo-950" style={{ fontFamily: 'Georgia, serif' }}>
-                    {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-600">
-                    {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                  <p className="text-xs sm:text-sm font-bold text-slate-600">
+                    {isAr
+                      ? <>وحقق نسبة إتقان تراكمية قدرها <strong className="text-emerald-700 font-black text-base">{data.score}%</strong> مع التزام تام بالجلسات الفردية والمنزلية.</>
+                      : <>Achieved a cumulative mastery score of <strong className="text-emerald-700 font-black text-base">{data.score}%</strong> with full commitment to individual and home sessions.</>
+                    }
                   </p>
-                  <div className="mt-2 h-px w-40 bg-amber-300" />
-                  <p className="text-[9px] font-bold text-slate-400">{isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}</p>
                 </div>
 
-                {/* COL 3: NEXUS SEAL */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="rounded-xl border-2 border-dashed border-indigo-500 p-3 bg-indigo-50/80 w-32 shadow-2xs">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/brand/nexus-logo-new.webp" alt="نيكسس" className="h-10 w-10 mx-auto object-contain" />
-                    <p className="mt-1 text-[10px] font-black text-indigo-800">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
-                    <p className="text-[9px] font-bold text-indigo-600">NEXUS · نيكسس</p>
+                {/* ── FOOTER: SYMMETRICAL 3-COLUMN LAYOUT (MASAR SEAL - DOCTOR SIGNATURE - NEXUS SEAL) ── */}
+                <div className="pt-6 mt-4 border-t-2 border-amber-200/90 grid grid-cols-3 items-end gap-4 text-center">
+
+                  {/* COL 1: MASAR SEAL */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="rounded-xl border-2 border-dashed border-teal-500 p-3 bg-teal-50/80 w-32 shadow-2xs">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/masar-logo.png" alt="مسار" className="h-10 w-10 mx-auto object-contain" />
+                      <p className="mt-1 text-[10px] font-black text-teal-800">{isAr ? 'الختم الرقمي المعتمد' : 'Digital Certified Seal'}</p>
+                      <p className="text-[9px] font-bold text-teal-600">مَسَار · MASAR</p>
+                    </div>
+                    <p className="text-[10px] font-black text-slate-500 mt-0.5">{isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}</p>
                   </div>
-                  <p className="text-[10px] font-black text-slate-500 mt-0.5">{isAr ? 'ختم منصة نيكسس' : 'Nexus Platform Seal'}</p>
+
+                  {/* COL 2: DOCTOR SIGNATURE (CENTERED) */}
+                  <div className="flex flex-col items-center justify-center space-y-1 bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
+                    <p className="text-[10px] font-bold text-slate-500">{isAr ? 'يعتمد هذا الإنجاز رسمياً من:' : 'Officially certified by:'}</p>
+                    <h3 className="text-lg font-black text-indigo-950" style={{ fontFamily: 'Georgia, serif' }}>
+                      {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-600">
+                      {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                    </p>
+                    <div className="mt-2 h-px w-40 bg-amber-300" />
+                    <p className="text-[9px] font-bold text-slate-400">{isAr ? 'التوقيع والاعتماد المعتمد' : 'Authorized Signature'}</p>
+                  </div>
+
+                  {/* COL 3: NEXUS SEAL */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="rounded-xl border-2 border-dashed border-indigo-500 p-3 bg-indigo-50/80 w-32 shadow-2xs">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/nexus-logo-new.webp" alt="نيكسس" className="h-10 w-10 mx-auto object-contain" />
+                      <p className="mt-1 text-[10px] font-black text-indigo-800">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
+                      <p className="text-[9px] font-bold text-indigo-600">NEXUS · نيكسس</p>
+                    </div>
+                    <p className="text-[10px] font-black text-slate-500 mt-0.5">{isAr ? 'ختم منصة نيكسس' : 'Nexus Platform Seal'}</p>
+                  </div>
+
                 </div>
 
-              </div>
+                {/* ── BOTTOM VERIFICATION LINE ── */}
+                <div className="flex items-center justify-between border-t border-amber-200/60 pt-2 text-[9px] font-bold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck size={11} className="text-teal-600" />
+                    {isAr ? 'وثيقة صادرة رسمياً عبر منصة مسار ونيكسس للتعليم الذكي © 2026' : 'Official document issued by Masar & Nexus Smart Education Platforms © 2026'}
+                  </span>
+                  <span className="font-mono text-slate-500">{certNo}</span>
+                </div>
 
-              {/* ── BOTTOM VERIFICATION LINE ── */}
-              <div className="flex items-center justify-between border-t border-amber-200/60 pt-2 text-[9px] font-bold text-slate-400">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck size={11} className="text-teal-600" />
-                  {isAr ? 'وثيقة صادرة رسمياً عبر منصة مسار ونيكسس للتعليم الذكي © 2026' : 'Official document issued by Masar & Nexus Smart Education Platforms © 2026'}
-                </span>
-                <span className="font-mono text-slate-500">{certNo}</span>
               </div>
 
             </div>
-
-            {/* Gold stripe at bottom */}
-            <div className="h-2 bg-gradient-to-r from-amber-600 via-amber-300 via-yellow-400 via-amber-300 to-amber-600" />
           </div>
         </div>
 
