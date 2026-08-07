@@ -241,8 +241,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             </svg>
 
             {/* ── HEADER ── */}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyBetween:'space-between',
-              padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%', justifyContent: 'space-between' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',
+              padding:'20px 28px 0 28px', position:'relative', zIndex:1, width: '100%' }}>
 
               {/* RIGHT (RTL first): Certified box */}
               <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fbf9f5',
