@@ -392,19 +392,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── FOOTER CARDS  (ORDER: Academic right | Doctor center | Official left  in RTL) ── */}
+            {/* ── FOOTER CARDS (RTL ORDER: Official=first→RIGHT | Doctor=center | Academic=last→LEFT) ── */}
             <div className="relative z-10 px-8 pb-4 pt-2">
               <div className="grid grid-cols-3 gap-4 text-center" dir="rtl">
 
-                {/* CARD 1 – Academic Seal (RIGHT in RTL view = left in LTR) */}
+                {/* CARD 1 – Official Seal → appears on RIGHT in RTL */}
                 <div className="rounded-2xl bg-white/50 border border-[#06392c]/20 p-4 flex flex-col items-center gap-2" dir="rtl">
-                  <AcademicSealIcon />
+                  <OfficialSealIcon />
                   <div>
-                    <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
-                    <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}</p>
+                    <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}</p>
+                    <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</p>
                   </div>
                   <span className="rounded-full border border-[#06392c]/30 bg-white/70 px-4 py-1 text-xs font-bold text-[#06392c]">
-                    {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
+                    {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
                   </span>
                 </div>
 
@@ -428,15 +428,15 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   </span>
                 </div>
 
-                {/* CARD 3 – Official Seal (LEFT in RTL view = right in LTR) */}
+                {/* CARD 3 – Academic Seal → appears on LEFT in RTL */}
                 <div className="rounded-2xl bg-white/50 border border-[#06392c]/20 p-4 flex flex-col items-center gap-2" dir="rtl">
-                  <OfficialSealIcon />
+                  <AcademicSealIcon />
                   <div>
-                    <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الرسمي المعتمد' : 'Official Certified Seal'}</p>
-                    <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</p>
+                    <p className="text-sm font-black text-[#06392c]">{isAr ? 'الختم الأكاديمي' : 'Academic Seal'}</p>
+                    <p className="text-[10px] font-bold text-slate-500">{isAr ? 'منصة مسار للتأهيل والتعليم الذكي' : 'Smart Rehabilitation Platform'}</p>
                   </div>
                   <span className="rounded-full border border-[#06392c]/30 bg-white/70 px-4 py-1 text-xs font-bold text-[#06392c]">
-                    {isAr ? 'ختم منصة مسار' : 'Masar Platform Seal'}
+                    {isAr ? 'ختم منصة تأسيس' : 'Tasis Platform Seal'}
                   </span>
                 </div>
 
@@ -449,30 +449,30 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               style={{ background: '#06392c', borderRadius: '0 0 20px 20px' }}
               dir="rtl"
             >
-              {/* Right (RTL): QR code + text */}
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-white p-1.5">
-                  <QrCode size={26} className="text-[#06392c]" />
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] font-black text-white leading-tight">{isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}</p>
-                  <p className="text-[10px] text-slate-300 leading-tight">{isAr ? 'امسح الكود للتحقق' : 'Scan Code to Verify'}</p>
-                </div>
-              </div>
-
-              {/* Center: Serial */}
-              <div className="flex items-center gap-2 font-mono text-xs font-bold text-white">
-                <ShieldCheck size={16} className="text-white/80" />
-                <span>{certNo}</span>
-              </div>
-
-              {/* Left (RTL): text + gold medal */}
+              {/* FIRST in RTL → appears on RIGHT: text + gold medal */}
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-[11px] font-black text-white leading-tight">{isAr ? 'شهادة صادرة رسمياً وموثقة' : 'Officially Issued Certificate'}</p>
                   <p className="text-[10px] text-slate-300 leading-tight">{isAr ? 'عبر منصة مسار للتأهيل والتعليم الذكي' : 'via Masar Smart Platform'}</p>
                 </div>
                 <BottomGoldMedal />
+              </div>
+
+              {/* CENTER: Serial number */}
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-white">
+                <ShieldCheck size={16} className="text-white/80" />
+                <span>{certNo}</span>
+              </div>
+
+              {/* LAST in RTL → appears on LEFT: QR code + text */}
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-[11px] font-black text-white leading-tight">{isAr ? 'تحقق من صحة الشهادة' : 'Verify Certificate'}</p>
+                  <p className="text-[10px] text-slate-300 leading-tight">{isAr ? 'امسح الكود للتحقق' : 'Scan Code to Verify'}</p>
+                </div>
+                <div className="rounded-lg bg-white p-1.5">
+                  <QrCode size={26} className="text-[#06392c]" />
+                </div>
               </div>
             </div>
 
