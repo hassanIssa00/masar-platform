@@ -403,16 +403,25 @@ export default function IkhlasJeddahPage() {
     const now = new Date();
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 4);
-            branch: BRANCH, studentName: s.name, studentId: s.id,
-            weekStart: weekStart.toISOString().slice(0, 10),
-            weekEnd: weekEnd.toISOString().slice(0, 10),
-            attendanceDays: 5, avgPerformance: 92,
-            homeworkDone: homeworkList.length, homeworkTotal: homeworkList.length,
-            teacherNotes: 'أسبوع ممتاز — الطلاب في تقدم رائع بإذن الله 🌟',
-          }),
-        })
-      )
-    );
+    try {
+      await Promise.all(
+        CLASS_STUDENTS.map(s =>
+          fetch(`${API}/school/weekly-reports`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({
+              branch: BRANCH, studentName: s.name, studentId: s.id,
+              weekStart: weekStart.toISOString().slice(0, 10),
+              weekEnd: weekEnd.toISOString().slice(0, 10),
+              attendanceDays: 5, avgPerformance: 92,
+              homeworkDone: homeworkList.length, homeworkTotal: homeworkList.length,
+              teacherNotes: 'أسبوع ممتاز — الطلاب في تقدم رائع بإذن الله 🌟',
+            }),
+          }).catch(e => console.warn(e))
+        )
+      );
+    } catch (e) {
+      console.warn('Backend API offline (send weekly report):', e);
+    }
     setReportLoading(false);
     setReportSent(true);
     setTimeout(() => setReportSent(false), 4000);
