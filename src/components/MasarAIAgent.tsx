@@ -339,6 +339,17 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
       };
 
       setMessages((prev) => [...prev, agentMsg]);
+
+      // 🔄 Dispatch real-time UI state sync event across all platform pages
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('masar_action_executed', {
+          detail: {
+            action: data.actionTaken || '',
+            prompt: inputPrompt,
+            reply: data.reply,
+          },
+        }));
+      }
     } catch (err: any) {
       // 🧠 Client-Side Autonomous AI Processing Fallback Engine
       const fallbackReply = processClientSideAI(inputPrompt);
@@ -355,6 +366,17 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
           timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
+
+      // 🔄 Dispatch real-time UI state sync event across all platform pages
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('masar_action_executed', {
+          detail: {
+            action: fallbackReply.actionTaken || '',
+            prompt: inputPrompt,
+            reply: fallbackReply.reply,
+          },
+        }));
+      }
     } finally {
       setLoading(false);
     }

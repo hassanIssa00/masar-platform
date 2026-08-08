@@ -26,6 +26,32 @@ export default function AttendancePage() {
     setAttendanceRecords(getLocalAttendance());
   }, []);
 
+  /* ── Sync with AI Real-Time Execution ── */
+  useEffect(() => {
+    const handleAIAction = (e: any) => {
+      const { action, prompt } = e.detail || {};
+      const p = (prompt || action || '').toLowerCase();
+      if (p.includes('حضر') || p.includes('تحضير') || p.includes('حاضر') || p.includes('حضور') || p.includes('غياب') || p.includes('attendance')) {
+        const timeNow = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        const allStudents = getStudents();
+        allStudents.forEach((st) => {
+          recordAttendance({
+            studentId: st.id,
+            studentName: st.fullName,
+            sessionDate: selectedDate,
+            sessionTime: timeNow,
+            status: 'present',
+            parentNotified: false,
+          });
+        });
+        setAttendanceRecords(getLocalAttendance());
+        showToast('✅ تم تسجيل حضور جميع الطلاب بالذكاء الاصطناعي!');
+      }
+    };
+    window.addEventListener('masar_action_executed', handleAIAction);
+    return () => window.removeEventListener('masar_action_executed', handleAIAction);
+  }, [selectedDate]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);

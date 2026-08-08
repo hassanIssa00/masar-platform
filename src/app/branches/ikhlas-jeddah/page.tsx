@@ -143,6 +143,55 @@ export default function IkhlasJeddahPage() {
     fetchHomework(); fetchMeetings(); fetchPhotos(); fetchPosts();
   }, [fetchHomework, fetchMeetings, fetchPhotos, fetchPosts]);
 
+  /* ── Listen to Real-Time AI Actions ── */
+  useEffect(() => {
+    const handleAIAction = (e: any) => {
+      const { action, prompt } = e.detail || {};
+      const p = (prompt || action || '').toLowerCase();
+
+      // Attendance AI Execution: Update state live on screen!
+      if (p.includes('حضر') || p.includes('تحضير') || p.includes('حاضر') || p.includes('حضور') || p.includes('غياب') || p.includes('attendance')) {
+        let absentName = '';
+        if (p.includes('ما عدا') || p.includes('ماعدا') || p.includes('إلا') || p.includes('الا')) {
+          const parts = (prompt || '').split(/ما عدا|ماعدا|إلا|الا/);
+          absentName = parts[1] ? parts[1].trim() : '';
+        }
+
+        const newAtt: Record<string, { status: string; score: number }> = {};
+        CLASS_STUDENTS.forEach((s) => {
+          const isAbsent = absentName && s.name.includes(absentName);
+          newAtt[s.id] = {
+            status: isAbsent ? 'absent' : 'present',
+            score: isAbsent ? 0 : 95,
+          };
+        });
+        setAttendance(newAtt);
+        setActiveTab('attendance');
+      }
+
+      // Homework AI Execution
+      if (p.includes('واجب') || p.includes('تمرين') || p.includes('homework')) {
+        fetchHomework();
+        setActiveTab('homework');
+      }
+
+      // Meetings AI Execution
+      if (p.includes('حصة') || p.includes('لايف') || p.includes('اجتماع') || p.includes('meeting')) {
+        fetchMeetings();
+        setActiveTab('meetings');
+      }
+
+      // Posts AI Execution
+      if (p.includes('إعلان') || p.includes('اعلان') || p.includes('منشور') || p.includes('announcement')) {
+        fetchPosts();
+        setActiveTab('overview');
+      }
+    };
+
+    window.addEventListener('masar_action_executed', handleAIAction);
+    return () => window.removeEventListener('masar_action_executed', handleAIAction);
+  }, [fetchHomework, fetchMeetings, fetchPosts]);
+
   /* ── Logout ── */
   const handleLogout = () => {
     clearSession();
