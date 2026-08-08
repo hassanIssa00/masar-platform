@@ -22,6 +22,7 @@ import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
 import HomeworkTabManager from '@/components/HomeworkTabManager';
 import ClassEventsArchiveTab from '@/components/ClassEventsArchiveTab';
+import StudentReportsManagerTab from '@/components/StudentReportsManagerTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -1066,75 +1067,13 @@ export default function IkhlasJeddahPage() {
           />
         )}
 
-        {/* ════════════ التقارير ════════════ */}
+        {/* ════════════ التقارير والملف الأكاديمي للطلاب ════════════ */}
         {activeTab === 'reports' && (
-          <div className="space-y-5">
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-orange-600" /> التقارير والإشعارات
-            </h2>
-
-            {/* Community Posts */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm">
-                <MessageSquare className="w-4 h-4 text-blue-600" /> نشر في مجتمع الآباء
-              </h3>
-              <div className="flex gap-2">
-                {(['ANNOUNCEMENT', 'GENERAL'] as const).map(t => (
-                  <button key={t} onClick={() => setPostType(t)}
-                    className={`text-xs px-3.5 py-1.5 rounded-xl font-bold border transition-all ${
-                      postType === t ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600'
-                    }`}>
-                    {t === 'ANNOUNCEMENT' ? '📢 إعلان رسمي' : '💬 منشور عام'}
-                  </button>
-                ))}
-              </div>
-              <textarea placeholder="اكتب رسالتك لأولياء الأمور..." value={postBody} onChange={e => setPostBody(e.target.value)} rows={3}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-400 transition resize-none" />
-              <button onClick={createPost} disabled={postLoading || !postBody}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50 shadow-sm">
-                {postLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                نشر للآباء
-              </button>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {posts.map((p) => (
-                  <div key={p.id} className={`border rounded-xl p-3 ${p.type === 'ANNOUNCEMENT' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
-                    {p.type === 'ANNOUNCEMENT' && <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full inline-block mb-1.5">📢 إعلان</span>}
-                    <p className="text-sm text-slate-900 font-medium">{p.body}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{new Date(p.createdAt).toLocaleString('ar-SA')}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Weekly Report */}
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-sm space-y-3">
-              <h3 className="font-black text-amber-900 flex items-center gap-2 text-sm">
-                <Award className="w-5 h-5 text-amber-600" /> إرسال التقرير الأسبوعي الشامل
-              </h3>
-              <p className="text-xs text-amber-800">
-                سيُرسَل تقرير مخصّص لكل ولي أمر يتضمّن: الحضور والغياب، متوسط الأداء، الواجبات المنجزة، وملاحظات المعلم.
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'عدد الطلاب', value: CLASS_STUDENTS.length, color: 'text-amber-800' },
-                  { label: 'واجبات منشورة', value: homeworkList.length, color: 'text-amber-800' },
-                  { label: 'صور الفصل', value: photos.length, color: 'text-amber-800' },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-white/60 border border-amber-200 rounded-xl p-3 text-center">
-                    <p className={`text-xl font-black ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[10px] text-amber-700 font-bold">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-              <button onClick={sendWeeklyReport} disabled={reportLoading || reportSent}
-                className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all shadow-sm ${
-                  reportSent ? 'bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50'
-                }`}>
-                {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : reportSent ? <CheckCircle className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                {reportSent ? '✅ تم الإرسال لجميع أولياء الأمور!' : 'إرسال التقرير الأسبوعي لجميع الآباء'}
-              </button>
-            </div>
-          </div>
+          <StudentReportsManagerTab
+            students={CLASS_STUDENTS}
+            homeworkCount={homeworkList.length}
+            photosCount={photos.length}
+          />
         )}
 
           </div>
