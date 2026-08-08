@@ -1,8 +1,8 @@
 // Updated: 2026-08-08 - Certified & Evaluated Certificate Modal
 'use client';
 
-import { useState } from 'react';
-import { Printer, X, ShieldCheck, Pencil, Check, QrCode } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 export interface CertificateData {
@@ -188,8 +188,31 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const certNo = data.certNumber || `NSR-CERT-2026-${Math.random().toString().slice(2, 7)}`;
   const displayName = isAr ? data.studentName : (nameEn || data.studentName);
 
+  const certRef = useRef<HTMLDivElement>(null);
+
   const handlePrint = () => {
-    window.print();
+    const el = certRef.current;
+    if (!el) return;
+    const html = el.outerHTML;
+    const win = window.open('', '_blank', 'width=1200,height=900');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html dir="${isAr ? 'rtl' : 'ltr'}" lang="${isAr ? 'ar' : 'en'}">
+<head>
+<meta charset="UTF-8"/>
+<title>شهادة التميز — ${displayName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:297mm;height:210mm;background:#fff;font-family:'Cairo',Arial,sans-serif;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+#printable-certificate{width:297mm;height:210mm;display:flex;flex-direction:column;overflow:hidden;}
+@page{size:A4 landscape;margin:0;}
+@media print{body{width:297mm;height:210mm;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+</style>
+</head>
+<body>${html}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},800);};<\/script></body>
+</html>`);
+    win.document.close();
   };
 
 
@@ -240,6 +263,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
         {/* CERTIFICATE */}
         <div style={{ padding: 8, background: '#0f172a' }}>
           <div
+            ref={certRef}
             id="printable-certificate"
             dir={isAr ? 'rtl' : 'ltr'}
             style={{

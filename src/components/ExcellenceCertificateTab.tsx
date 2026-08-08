@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Award, Printer, Star, Sparkles, Trophy, ShieldCheck, RefreshCw, Type, User, Calendar, FileText } from 'lucide-react';
+import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 /* ── Suggested Achievement Presets (User can pick or type custom) ── */
@@ -66,7 +66,28 @@ export default function ExcellenceCertificateTab() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const el = certRef.current;
+    if (!el) return;
+    const html = el.outerHTML;
+    const win = window.open('', '_blank', 'width=1200,height=900');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<title>شهادة تفوق — ${form.studentName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:297mm;height:210mm;background:#fff;font-family:'Cairo',Arial,sans-serif;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+#printable-certificate{width:297mm;height:210mm;display:flex;flex-direction:column;overflow:hidden;}
+@page{size:A4 landscape;margin:0;}
+@media print{body{width:297mm;height:210mm;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+</style>
+</head>
+<body>${html}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},800);};<\/script></body>
+</html>`);
+    win.document.close();
   };
 
   return (
@@ -300,8 +321,8 @@ export default function ExcellenceCertificateTab() {
             </button>
           </div>
 
-          <div className="no-print rounded-2xl border-2 border-slate-900 bg-slate-950 p-2 shadow-2xl overflow-hidden">
-            <div ref={certRef} className="w-full">
+          <div className="rounded-2xl border-2 border-slate-900 bg-slate-950 p-2 shadow-2xl overflow-hidden">
+            <div className="w-full">
               <OfficialMasarCertificateDesign form={form} isPrintTarget={false} />
             </div>
           </div>
@@ -337,7 +358,7 @@ export default function ExcellenceCertificateTab() {
 
             {/* Certificate Canvas */}
             <div className="p-4 sm:p-6 bg-slate-900 flex justify-center overflow-x-auto">
-              <div className="w-full max-w-4xl">
+              <div ref={certRef} className="w-full max-w-4xl">
                 <OfficialMasarCertificateDesign form={form} isPrintTarget={true} />
               </div>
             </div>
