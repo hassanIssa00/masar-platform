@@ -60,7 +60,7 @@ interface CertData {
 
 export default function ExcellenceCertificateTab({ students }: Props) {
   const studentList = students && students.length > 0 ? students : DEFAULT_STUDENTS;
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(studentList[0]?.id || '1');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [directSentMessage, setDirectSentMessage] = useState<string | null>(null);
   const [sendingDirect, setSendingDirect] = useState(false);
 
@@ -70,7 +70,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     doctorName: 'د. إسماعيل عيسى',
     doctorTitle: 'استشاري التربية الخاصة وتأهيل صعوبات التعلم',
     studentPrefix: 'بأن الطالب المتفوق',
-    studentName: studentList[0]?.name || 'ربيع إسماعيل محمد كامل عيسى',
+    studentName: 'ربيع إسماعيل محمد كامل عيسى',
     gradeLabel: 'الصف الثالث الابتدائي',
     achievementIntro: 'قد حقق التميز والتفوق المستحق وجدارة الأداء العالي في:',
     achievement: 'التقدم الملحوظ في مهارات التعلم العلاجي',
@@ -90,6 +90,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 
   const handleSelectStudent = (sId: string) => {
     setSelectedStudentId(sId);
+    if (!sId) return;
     const found = studentList.find(s => s.id === sId);
     if (found) {
       setForm(p => ({
@@ -100,13 +101,19 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     }
   };
 
+  const getTargetStudentName = () => {
+    const found = studentList.find(s => s.id === selectedStudentId);
+    return found ? found.name : form.studentName;
+  };
+
   const handleSendWhatsAppToParent = () => {
+    const targetName = getTargetStudentName();
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
-    const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
+    const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(targetName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
     
     const text =
       `🎖️ *شهادة تفوق وتكريم رسمية — منصة مَسَار*%0A%0A` +
-      `👤 *إلى ولي أمر الطالب البطل:* ${encodeURIComponent(form.studentName)}%0A` +
+      `👤 *إلى ولي أمر الطالب البطل:* ${encodeURIComponent(targetName)}%0A` +
       `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
       `🏆 *عنوان التكريم:* ${encodeURIComponent(form.certTitle)}%0A` +
       `🎯 *مجال التميز:* ${encodeURIComponent(form.achievement)}%0A` +
@@ -119,10 +126,11 @@ export default function ExcellenceCertificateTab({ students }: Props) {
   };
 
   const handleSendToParentDirect = () => {
+    const targetName = getTargetStudentName();
     setSendingDirect(true);
     setTimeout(() => {
       setSendingDirect(false);
-      setDirectSentMessage(`تم إرسال الشهادة وإشعار التكريم لولي أمر الطالب (${form.studentName}) بنجاح! 🚀`);
+      setDirectSentMessage(`تم إرسال الشهادة وإشعار التكريم لولي أمر الطالب (${targetName}) بنجاح! 🚀`);
       setTimeout(() => setDirectSentMessage(null), 6000);
     }, 1200);
   };
@@ -354,8 +362,9 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             <select
               value={selectedStudentId}
               onChange={e => handleSelectStudent(e.target.value)}
-              className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none shadow-sm"
+              className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none shadow-sm"
             >
+              <option value="">-- اضغط هنا لاختيار الطالب / ولي الأمر --</option>
               {studentList.map(s => (
                 <option key={s.id} value={s.id}>
                   👤 {s.name} {s.phone ? `(${s.phone})` : ''}
@@ -366,20 +375,20 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 onClick={handleSendWhatsAppToParent}
-                disabled={!form.studentName.trim()}
+                disabled={!selectedStudentId}
                 className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5" />
-                إرسال عبر WhatsApp 📱
+                {selectedStudentId ? 'إرسال عبر WhatsApp 📱' : 'اختر الطالب أولاً للإرسال'}
               </button>
 
               <button
                 onClick={handleSendToParentDirect}
-                disabled={sendingDirect || !form.studentName.trim()}
+                disabled={sendingDirect || !selectedStudentId}
                 className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
               >
                 {sendingDirect ? <Sparkles className="w-3.5 h-3.5 animate-spin text-amber-400" /> : <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
-                إرسال بالمنصة 🚀
+                {selectedStudentId ? 'إرسال بالمنصة 🚀' : 'اختر الطالب أولاً للإرسال'}
               </button>
             </div>
 
