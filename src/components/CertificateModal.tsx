@@ -448,12 +448,23 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                     {isAr ? data.programTitle : englishProgramTitle(data.programTitle)}
                   </span>
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:700, color:'#444' }}>
-                  <span>
+                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:700, color:'#444', flexWrap:'wrap', justifyContent:'center' }}>
+                  <span>{isAr ? 'وحقق نسبة إنجاز تراكمية' : 'Achieved a cumulative completion rate'}</span>
+                  <span style={{
+                    background: data.score >= 90 ? '#d4a820' : data.score >= 80 ? '#06392c' : '#3b82f6',
+                    color: 'white',
+                    fontWeight: 900,
+                    fontSize: 12,
+                    padding: '2px 12px',
+                    borderRadius: 20,
+                    border: `1.5px solid ${data.score >= 90 ? '#9a6210' : data.score >= 80 ? '#042e20' : '#1d4ed8'}`,
+                    letterSpacing: '0.5px',
+                  }}>
                     {isAr
-                      ? `وحقق نسبة إنجاز تراكمية (${data.score >= 90 ? 'بدرجة ممتاز 🌟' : data.score >= 80 ? 'بدرجة جيد جداً ✨' : data.score >= 70 ? 'بدرجة جيد 👍' : 'بدرجة مقبول'}) قدرها`
-                      : `Achieved a cumulative completion rate (${data.score >= 90 ? 'with Distinction 🌟' : data.score >= 80 ? 'with Very Good standing ✨' : 'with Good standing'}) of`}
+                      ? (data.score >= 90 ? 'بدرجة ممتاز' : data.score >= 80 ? 'بدرجة جيد جداً' : data.score >= 70 ? 'بدرجة جيد' : 'بدرجة مقبول')
+                      : (data.score >= 90 ? 'Distinction' : data.score >= 80 ? 'Very Good' : 'Good')}
                   </span>
+                  <span>{isAr ? 'قدرها' : 'of'}</span>
                   <span style={{ background:'#06392c', color:'white', fontFamily:'monospace', fontWeight:900,
                     fontSize:13, padding:'3px 14px', borderRadius:8 }}>
                     {isAr ? `%${data.score}` : `${data.score}%`}
