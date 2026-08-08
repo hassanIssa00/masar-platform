@@ -197,7 +197,10 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
       .join('\n');
 
     const win = window.open('', '_blank', 'width=1300,height=900');
-    if (!win) return;
+    if (!win) {
+      window.print();
+      return;
+    }
 
     win.document.write(`<!DOCTYPE html>
 <html dir="${isAr ? 'rtl' : 'ltr'}">
@@ -206,50 +209,70 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   <title>${isAr ? 'شهادة إنجاز واجتياز' : 'Certificate of Completion'}</title>
   ${styles}
   <style>
+    @page {
+      size: A4 landscape !important;
+      margin: 0mm !important;
+    }
+    @media print {
+      @page {
+        size: A4 landscape !important;
+        margin: 0mm !important;
+      }
+      html, body {
+        width: 297mm !important;
+        height: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      #print-wrapper {
+        width: 297mm !important;
+        height: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      #printable-certificate {
+        width: 297mm !important;
+        height: 210mm !important;
+        max-width: 297mm !important;
+        max-height: 210mm !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+      }
+    }
     *, *::before, *::after {
       box-sizing: border-box !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    @page {
-      size: A4 landscape !important;
-      margin: 0 !important;
-    }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
+      background: #ffffff !important;
       width: 297mm !important;
       height: 210mm !important;
-      overflow: hidden !important;
-      background: #ffffff !important;
     }
     #print-wrapper {
       width: 297mm !important;
       height: 210mm !important;
+      margin: 0 auto !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      overflow: hidden !important;
-      padding: 0 !important;
-      margin: 0 !important;
     }
     #printable-certificate {
       width: 297mm !important;
       height: 210mm !important;
-      min-height: unset !important;
-      max-height: 210mm !important;
-      border-radius: 0 !important;
+      margin: 0 !important;
       box-shadow: none !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-      overflow: hidden !important;
-      display: flex !important;
-      flex-direction: column !important;
-      transform-origin: top center !important;
-    }
-    #printable-certificate * {
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
+      border-radius: 0 !important;
     }
     /* Force all fonts to render with exact colors */
     #printable-certificate span,
@@ -272,7 +295,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
       setTimeout(function() {
         window.print();
         setTimeout(function() { window.close(); }, 500);
-      }, 800);
+      }, 500);
     };
   </script>
 </body>
