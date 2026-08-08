@@ -191,28 +191,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const certRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    const el = certRef.current;
-    if (!el) return;
-    const html = el.outerHTML;
-    const win = window.open('', '_blank', 'width=1200,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html>
-<html dir="${isAr ? 'rtl' : 'ltr'}" lang="${isAr ? 'ar' : 'en'}">
-<head>
-<meta charset="UTF-8"/>
-<title>شهادة التميز — ${displayName}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{width:297mm;height:210mm;background:#fff;font-family:'Cairo',Arial,sans-serif;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-#printable-certificate{width:297mm;height:210mm;display:flex;flex-direction:column;overflow:hidden;}
-@page{size:A4 landscape;margin:0;}
-@media print{body{width:297mm;height:210mm;overflow:hidden;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
-</style>
-</head>
-<body>${html}<script>window.onload=function(){setTimeout(function(){window.print();window.close();},800);};<\/script></body>
-</html>`);
-    win.document.close();
+    window.print();
   };
 
 
