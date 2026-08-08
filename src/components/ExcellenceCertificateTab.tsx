@@ -23,22 +23,24 @@ const GRADE_PRESETS = [
   'الصف السادس الابتدائي',
 ];
 
-interface Student {
+interface Parent {
   id: string;
-  name: string;
-  phone?: string;
+  parentName: string;
+  phone: string;
 }
 
 interface Props {
-  students?: Student[];
+  students?: { id: string; name: string; phone?: string }[];
 }
 
-const DEFAULT_STUDENTS: Student[] = [
-  { id: '1', name: 'ربيع إسماعيل محمد كامل عيسى', phone: '0501234567' },
-  { id: '2', name: 'عمر أحمد محمود علي', phone: '0502345678' },
-  { id: '3', name: 'يوسف خالد عبد الرحمن', phone: '0503456789' },
-  { id: '4', name: 'حمزة محمد مصطفى', phone: '0504567890' },
-  { id: '5', name: 'إبراهيم يوسف الحصري', phone: '0505678901' },
+const DEFAULT_PARENTS: Parent[] = [
+  { id: 'p1', parentName: 'أحمد محمد علي إبراهيم', phone: '966501234567' },
+  { id: 'p2', parentName: 'يوسف خالد عبد العزيز السهلي', phone: '966502234567' },
+  { id: 'p3', parentName: 'عمر سعد محمد الغامدي', phone: '966503234567' },
+  { id: 'p4', parentName: 'عبد الرحمن فهد علي القحطاني', phone: '966504234567' },
+  { id: 'p5', parentName: 'محمد عبد الله أحمد الزهراني', phone: '966505234567' },
+  { id: 'p6', parentName: 'سلطان ناصر محمد العتيبي', phone: '966506234567' },
+  { id: 'p7', parentName: 'فيصل بندر عبد الرحمن الشمري', phone: '966507234567' },
 ];
 
 interface CertData {
@@ -59,8 +61,11 @@ interface CertData {
 }
 
 export default function ExcellenceCertificateTab({ students }: Props) {
-  const studentList = students && students.length > 0 ? students : DEFAULT_STUDENTS;
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const parentsList: Parent[] = students && students.length > 0
+    ? students.map((s, idx) => ({ id: s.id, parentName: s.name, phone: s.phone || `96650${1234567 + idx}` }))
+    : DEFAULT_PARENTS;
+
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [directSentMessage, setDirectSentMessage] = useState<string | null>(null);
   const [sendingDirect, setSendingDirect] = useState(false);
 
@@ -88,32 +93,18 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     setForm(p => ({ ...p, certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}` }));
   };
 
-  const handleSelectStudent = (sId: string) => {
-    setSelectedStudentId(sId);
-    if (!sId) return;
-    const found = studentList.find(s => s.id === sId);
-    if (found) {
-      setForm(p => ({
-        ...p,
-        studentName: found.name,
-        certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`
-      }));
-    }
-  };
-
-  const getTargetStudentName = () => {
-    const found = studentList.find(s => s.id === selectedStudentId);
-    return found ? found.name : form.studentName;
-  };
-
   const handleSendWhatsAppToParent = () => {
-    const targetName = getTargetStudentName();
+    const parent = parentsList.find(p => p.id === selectedParentId);
+    const parentName = parent ? parent.parentName : 'ولي الأمر';
+    const parentPhone = parent?.phone ? parent.phone.replace(/\+/g, '') : '';
+
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
-    const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(targetName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
+    const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
     
     const text =
-      `🎖️ *شهادة تفوق وتكريم رسمية — منصة مَسَار*%0A%0A` +
-      `👤 *إلى ولي أمر الطالب البطل:* ${encodeURIComponent(targetName)}%0A` +
+      `🎖️ *إشعار شهادة تفوق وتكريم رسمية — منصة مَسَار*%0A%0A` +
+      `👨‍👦 *المكرم المحترم (ولي الأمر):* ${encodeURIComponent(parentName)}%0A` +
+      `👤 *شهادة تفوق وتكريم لابنكم البطل:* ${encodeURIComponent(form.studentName)}%0A` +
       `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
       `🏆 *عنوان التكريم:* ${encodeURIComponent(form.certTitle)}%0A` +
       `🎯 *مجال التميز:* ${encodeURIComponent(form.achievement)}%0A` +
@@ -122,15 +113,17 @@ export default function ExcellenceCertificateTab({ students }: Props) {
       `💬 *ملاحظة تشجيعية:*%0A"${encodeURIComponent(form.note)}"%0A%0A` +
       `🔗 *استعراض الشهادة التفاعلية ومسح الـ QR:*%0A${encodeURIComponent(verifyUrl)}`;
 
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    window.open(`https://wa.me/${parentPhone}?text=${text}`, '_blank');
   };
 
   const handleSendToParentDirect = () => {
-    const targetName = getTargetStudentName();
+    const parent = parentsList.find(p => p.id === selectedParentId);
+    const parentName = parent ? parent.parentName : 'ولي الأمر';
+
     setSendingDirect(true);
     setTimeout(() => {
       setSendingDirect(false);
-      setDirectSentMessage(`تم إرسال الشهادة وإشعار التكريم لولي أمر الطالب (${targetName}) بنجاح! 🚀`);
+      setDirectSentMessage(`تم إرسال شهادة الطالب (${form.studentName}) لولي الأمر (${parentName}) بنجاح! 🚀`);
       setTimeout(() => setDirectSentMessage(null), 6000);
     }, 1200);
   };
@@ -352,7 +345,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
                 <UserCheck className="w-4 h-4 text-emerald-700" />
-                حدد الطالب / ولي الأمر للإرسال:
+                حدد ولي الأمر المستلم للشهادة:
               </label>
               <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
                 إرسال فوري 📱
@@ -360,14 +353,14 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             </div>
 
             <select
-              value={selectedStudentId}
-              onChange={e => handleSelectStudent(e.target.value)}
+              value={selectedParentId}
+              onChange={e => setSelectedParentId(e.target.value)}
               className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none shadow-sm"
             >
-              <option value="">-- اضغط هنا لاختيار الطالب / ولي الأمر --</option>
-              {studentList.map(s => (
-                <option key={s.id} value={s.id}>
-                  👤 {s.name} {s.phone ? `(${s.phone})` : ''}
+              <option value="">-- اضغط هنا لاختيار ولي الأمر المستلم --</option>
+              {parentsList.map(p => (
+                <option key={p.id} value={p.id}>
+                  👨‍👦 {p.parentName} ({p.phone})
                 </option>
               ))}
             </select>
@@ -375,20 +368,20 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 onClick={handleSendWhatsAppToParent}
-                disabled={!selectedStudentId}
+                disabled={!selectedParentId}
                 className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5" />
-                {selectedStudentId ? 'إرسال عبر WhatsApp 📱' : 'اختر الطالب أولاً للإرسال'}
+                {selectedParentId ? 'إرسال لولي الأمر عبر WhatsApp 📱' : 'اختر ولي الأمر أولاً للإرسال'}
               </button>
 
               <button
                 onClick={handleSendToParentDirect}
-                disabled={sendingDirect || !selectedStudentId}
+                disabled={sendingDirect || !selectedParentId}
                 className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
               >
                 {sendingDirect ? <Sparkles className="w-3.5 h-3.5 animate-spin text-amber-400" /> : <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
-                {selectedStudentId ? 'إرسال بالمنصة 🚀' : 'اختر الطالب أولاً للإرسال'}
+                {selectedParentId ? 'إرسال إشعار بالمنصة 🚀' : 'اختر ولي الأمر أولاً للإرسال'}
               </button>
             </div>
 
