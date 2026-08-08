@@ -108,7 +108,119 @@ export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsU
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'all'>('all');
 
   const handlePrintSchedule = () => {
-    window.print();
+    const win = window.open('', '_blank', 'width=1200,height=900');
+    if (!win) return;
+
+    const tableRowsHtml = PERIOD_TIMES.map(slot => {
+      if (slot.isBreak) {
+        return `
+          <tr style="background:#fef3c7;border-top:2px solid #f59e0b;border-bottom:2px solid #f59e0b;">
+            <td style="padding:8px;text-align:center;font-weight:900;color:#78350f;background:#fde68a;font-size:11px;">
+              🌤️ الفسحة المدرسية<br/><span style="font-size:9.5px;font-family:monospace;">${slot.start} - ${slot.end}</span>
+            </td>
+            <td colspan="5" style="padding:8px;text-align:center;font-weight:900;color:#92400e;font-size:11px;">
+              ☕ استراحة الفسحة المدرسية وتناول الوجبة والمرح الصفي (20 دقيقة)
+            </td>
+          </tr>
+        `;
+      }
+
+      const dayCells = DAY_NAMES.map((dayName, dayIdx) => {
+        const item = schedule.find(p => p.dayOfWeek === dayIdx && p.periodNumber === slot.num);
+        const subjName = item?.subjectName || '—';
+        return `
+          <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;background:#ffffff;">
+            <div style="font-weight:900;font-size:12px;color:#0f172a;margin-bottom:2px;">${subjName}</div>
+            <div style="font-size:9.5px;color:#64748b;font-family:monospace;background:#f8fafc;padding:2px 6px;border-radius:4px;display:inline-block;">
+              ${slot.start} - ${slot.end}
+            </div>
+          </td>
+        `;
+      }).join('');
+
+      return `
+        <tr>
+          <td style="padding:8px;text-align:center;font-weight:900;color:#1e293b;background:#f8fafc;border:1px solid #cbd5e1;">
+            ${slot.label}<br/><span style="font-size:9.5px;color:#64748b;font-family:monospace;">${slot.start} - ${slot.end}</span>
+          </td>
+          ${dayCells}
+        </tr>
+      `;
+    }).join('');
+
+    win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<title>جدول الحصص المعتمد — مدارس الإخلاص الأهلية بجدة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{width:297mm;height:210mm;padding:12mm 15mm;background:#fff;font-family:'Cairo',Arial,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:flex;flex-direction:column;justify-between:space-between;}
+  @page{size:A4 landscape;margin:0;}
+  @media print{body{width:297mm;height:210mm;padding:10mm 12mm;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #06392c;padding-bottom:10px;margin-bottom:12px;}
+  .logo-title{display:flex;align-items:center;gap:12px;}
+  .table-grid{width:100%;border-collapse:collapse;margin-bottom:12px;}
+  .table-grid th{background:#06392c;color:#fff;padding:8px;font-size:12px;font-weight:900;border:1px solid #06392c;}
+  .footer-sig{display:flex;justify-content:space-between;align-items:flex-end;padding-top:10px;border-top:2px dashed #cbd5e1;}
+  .stamp-box{border:2px solid #06392c;padding:6px 16px;border-radius:12px;background:#f0fdf4;text-align:center;}
+</style>
+</head>
+<body>
+  <div>
+    <div class="header">
+      <div class="logo-title">
+        <div style="width:42px;height:42px;background:#06392c;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;">مـ</div>
+        <div>
+          <h1 style="font-size:18px;font-weight:900;color:#06392c;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
+          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي المعتمد — مدارس الإخلاص الأهلية بجدة</p>
+        </div>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:11px;font-weight:900;color:#06392c;background:#e6f4ea;padding:4px 12px;border-radius:20px;display:inline-block;">معتمد رسميًا ✓</div>
+        <div style="font-size:10px;color:#64748b;margin-top:3px;">الفصل الدراسي الأول 2026 / 1447 هـ</div>
+      </div>
+    </div>
+
+    <table class="table-grid">
+      <thead>
+        <tr>
+          <th style="width:140px;">الحصة / الوقت</th>
+          <th>الأحد</th>
+          <th>الاثنين</th>
+          <th>الثلاثاء</th>
+          <th>الأربعاء</th>
+          <th>الخميس</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer-sig">
+    <div>
+      <div style="font-size:11px;color:#64748b;font-weight:700;">المملكة العربية السعودية · جدة</div>
+      <div style="font-size:11px;color:#06392c;font-weight:900;">مدارس الإخلاص الأهلية · القسم الابتدائي</div>
+    </div>
+
+    <div class="stamp-box">
+      <div style="font-size:10px;color:#047857;font-weight:900;">التوقيع والختم المعتمد ✍️</div>
+      <div style="font-size:13px;font-weight:900;color:#06392c;margin-top:2px;">د. إسماعيل عيسى</div>
+      <div style="font-size:9.5px;color:#047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); window.close(); }, 800);
+    };
+  <\/script>
+</body>
+</html>`);
+    win.document.close();
   };
 
   return (
