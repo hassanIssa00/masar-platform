@@ -116,31 +116,51 @@ export default function IkhlasJeddahPage() {
 
   /* ── Fetch ── */
   const fetchHomework = useCallback(async () => {
-    const r = await fetch(`${API}/school/homework?branch=${BRANCH}`, { headers: authHeaders() });
-    if (r.ok) setHomeworkList(await r.json());
+    try {
+      const r = await fetch(`${API}/school/homework?branch=${BRANCH}`, { headers: authHeaders() });
+      if (r.ok) setHomeworkList(await r.json());
+    } catch (e) {
+      console.warn('Backend API offline (homework):', e);
+    }
   }, []);
 
   const fetchSubmissions = useCallback(async (hwId: string) => {
-    const r = await fetch(`${API}/school/homework/${hwId}/submissions`, { headers: authHeaders() });
-    if (r.ok) {
-      const data = await r.json();
-      setSubmissions(prev => ({ ...prev, [hwId]: data }));
+    try {
+      const r = await fetch(`${API}/school/homework/${hwId}/submissions`, { headers: authHeaders() });
+      if (r.ok) {
+        const data = await r.json();
+        setSubmissions(prev => ({ ...prev, [hwId]: data }));
+      }
+    } catch (e) {
+      console.warn('Backend API offline (submissions):', e);
     }
   }, []);
 
   const fetchMeetings = useCallback(async () => {
-    const r = await fetch(`${API}/school/meetings?branch=${BRANCH}`, { headers: authHeaders() });
-    if (r.ok) setMeetings(await r.json());
+    try {
+      const r = await fetch(`${API}/school/meetings?branch=${BRANCH}`, { headers: authHeaders() });
+      if (r.ok) setMeetings(await r.json());
+    } catch (e) {
+      console.warn('Backend API offline (meetings):', e);
+    }
   }, []);
 
   const fetchPhotos = useCallback(async () => {
-    const r = await fetch(`${API}/school/photos?branch=${BRANCH}`, { headers: authHeaders() });
-    if (r.ok) setPhotos(await r.json());
+    try {
+      const r = await fetch(`${API}/school/photos?branch=${BRANCH}`, { headers: authHeaders() });
+      if (r.ok) setPhotos(await r.json());
+    } catch (e) {
+      console.warn('Backend API offline (photos):', e);
+    }
   }, []);
 
   const fetchPosts = useCallback(async () => {
-    const r = await fetch(`${API}/school/posts?branch=${BRANCH}`, { headers: authHeaders() });
-    if (r.ok) setPosts(await r.json());
+    try {
+      const r = await fetch(`${API}/school/posts?branch=${BRANCH}`, { headers: authHeaders() });
+      if (r.ok) setPosts(await r.json());
+    } catch (e) {
+      console.warn('Backend API offline (posts):', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -212,27 +232,35 @@ export default function IkhlasJeddahPage() {
     const today = now.toISOString().slice(0, 10);
     setExitLogged(prev => ({ ...prev, [studentId]: timeStr }));
     const att = attendance[studentId] ?? { status: 'present', score: 90 };
-    await fetch(`${API}/school/attendance`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({
-        branch: BRANCH, studentName, studentId, date: today,
-        attendance: att.status, performanceScore: att.score,
-        exitTime: timeStr, parentNotified: true,
-      }),
-    });
+    try {
+      await fetch(`${API}/school/attendance`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH, studentName, studentId, date: today,
+          attendance: att.status, performanceScore: att.score,
+          exitTime: timeStr, parentNotified: true,
+        }),
+      });
+    } catch (e) {
+      console.warn('Backend API offline (exit log):', e);
+    }
   };
 
   const sendLateAlert = async (studentId: string, studentName: string) => {
     const exitTime = exitLogged[studentId] ?? '--:--';
-    await fetch(`${API}/school/attendance`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({
-        branch: BRANCH, studentName, studentId,
-        date: new Date().toISOString().slice(0, 10),
-        attendance: 'present', lateAlertSent: true,
-        exitTime, parentNotified: true,
-      }),
-    });
+    try {
+      await fetch(`${API}/school/attendance`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH, studentName, studentId,
+          date: new Date().toISOString().slice(0, 10),
+          attendance: 'present', lateAlertSent: true,
+          exitTime, parentNotified: true,
+        }),
+      });
+    } catch (e) {
+      console.warn('Backend API offline (late alert):', e);
+    }
     const msg = encodeURIComponent(
       `🚨 تنبيه عاجل من مدارس الإخلاص الأهلية بجدة 🇸🇦\nالسيد ولي أمر الطالب (${studentName}) المحترم، نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة المدرسة.`
     );
@@ -242,18 +270,22 @@ export default function IkhlasJeddahPage() {
   const saveAttendance = async () => {
     setAttLoading(true);
     const today = new Date().toISOString().slice(0, 10);
-    await Promise.all(
-      CLASS_STUDENTS.map((s) => {
-        const att = attendance[s.id] ?? { status: 'present', score: 90 };
-        return fetch(`${API}/school/attendance`, {
-          method: 'POST', headers: authHeaders(),
-          body: JSON.stringify({
-            branch: BRANCH, studentName: s.name, studentId: s.id,
-            date: today, attendance: att.status, performanceScore: att.score,
-          }),
-        });
-      })
-    );
+    try {
+      await Promise.all(
+        CLASS_STUDENTS.map((s) => {
+          const att = attendance[s.id] ?? { status: 'present', score: 90 };
+          return fetch(`${API}/school/attendance`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({
+              branch: BRANCH, studentName: s.name, studentId: s.id,
+              date: today, attendance: att.status, performanceScore: att.score,
+            }),
+          }).catch(e => console.warn(e));
+        })
+      );
+    } catch (e) {
+      console.warn('Backend API offline (save attendance):', e);
+    }
     setAttLoading(false);
     alert('✅ تم حفظ كشف الحضور بنجاح وإرسال الإشعارات لأولياء الأمور');
   };
@@ -286,15 +318,19 @@ export default function IkhlasJeddahPage() {
   const createHomework = async () => {
     if (!hwTitle || !hwDesc || !hwDue) return;
     setHwLoading(true);
-    const r = await fetch(`${API}/school/homework`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({
-        branch: BRANCH, title: hwTitle, description: hwDesc,
-        type: hwType, dueDate: hwDue,
-        options: hwType === 'MULTIPLE_CHOICE' ? hwOptions.filter(Boolean) : undefined,
-      }),
-    });
-    if (r.ok) { setHwTitle(''); setHwDesc(''); setHwDue(''); setHwOptions(['','','','']); await fetchHomework(); }
+    try {
+      const r = await fetch(`${API}/school/homework`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH, title: hwTitle, description: hwDesc,
+          type: hwType, dueDate: hwDue,
+          options: hwType === 'MULTIPLE_CHOICE' ? hwOptions.filter(Boolean) : undefined,
+        }),
+      });
+      if (r.ok) { setHwTitle(''); setHwDesc(''); setHwDue(''); setHwOptions(['','','','']); await fetchHomework(); }
+    } catch (e) {
+      console.warn('Backend API offline (create homework):', e);
+    }
     setHwLoading(false);
   };
 
@@ -306,15 +342,19 @@ export default function IkhlasJeddahPage() {
     const roomCode = 'MASAR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
     const hostToken = Math.random().toString(36).slice(2, 18);
     const meetingUrl = `/meetings?room=${roomCode}&t=${hostToken}`;
-    const r = await fetch(`${API}/school/meetings`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({
-        branch: BRANCH, title: mtgTitle, meetingUrl,
-        scheduledAt: mtgDate, duration: mtgDuration,
-        roomCode, hostToken,
-      }),
-    });
-    if (r.ok) { setMtgTitle(''); setMtgDate(''); await fetchMeetings(); }
+    try {
+      const r = await fetch(`${API}/school/meetings`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH, title: mtgTitle, meetingUrl,
+          scheduledAt: mtgDate, duration: mtgDuration,
+          roomCode, hostToken,
+        }),
+      });
+      if (r.ok) { setMtgTitle(''); setMtgDate(''); await fetchMeetings(); }
+    } catch (e) {
+      console.warn('Backend API offline (create meeting):', e);
+    }
     setMtgLoading(false);
   };
 
@@ -329,11 +369,15 @@ export default function IkhlasJeddahPage() {
   const uploadPhoto = async () => {
     if (!photoUrl) return;
     setPhotoLoading(true);
-    const r = await fetch(`${API}/school/photos`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ branch: BRANCH, photoUrl, caption: photoCaption }),
-    });
-    if (r.ok) { setPhotoUrl(''); setPhotoCaption(''); await fetchPhotos(); }
+    try {
+      const r = await fetch(`${API}/school/photos`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ branch: BRANCH, photoUrl, caption: photoCaption }),
+      });
+      if (r.ok) { setPhotoUrl(''); setPhotoCaption(''); await fetchPhotos(); }
+    } catch (e) {
+      console.warn('Backend API offline (upload photo):', e);
+    }
     setPhotoLoading(false);
   };
 
@@ -341,11 +385,15 @@ export default function IkhlasJeddahPage() {
   const createPost = async () => {
     if (!postBody) return;
     setPostLoading(true);
-    const r = await fetch(`${API}/school/posts`, {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ branch: BRANCH, type: postType, body: postBody }),
-    });
-    if (r.ok) { setPostBody(''); await fetchPosts(); }
+    try {
+      const r = await fetch(`${API}/school/posts`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ branch: BRANCH, type: postType, body: postBody }),
+      });
+      if (r.ok) { setPostBody(''); await fetchPosts(); }
+    } catch (e) {
+      console.warn('Backend API offline (create post):', e);
+    }
     setPostLoading(false);
   };
 
@@ -355,11 +403,6 @@ export default function IkhlasJeddahPage() {
     const now = new Date();
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 4);
-    await Promise.all(
-      CLASS_STUDENTS.map(s =>
-        fetch(`${API}/school/weekly-reports`, {
-          method: 'POST', headers: authHeaders(),
-          body: JSON.stringify({
             branch: BRANCH, studentName: s.name, studentId: s.id,
             weekStart: weekStart.toISOString().slice(0, 10),
             weekEnd: weekEnd.toISOString().slice(0, 10),
