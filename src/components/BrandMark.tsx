@@ -4,6 +4,7 @@ type BrandMarkProps = {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
   dark?: boolean;
+  isEn?: boolean;
 };
 
 const sizes = {
@@ -12,7 +13,7 @@ const sizes = {
   lg: 64,
 };
 
-export default function BrandMark({ size = 'md', showText = true, dark = false }: BrandMarkProps) {
+export default function BrandMark({ size = 'md', showText = true, dark = false, isEn = false }: BrandMarkProps) {
   const markSize = sizes[size];
 
   return (
@@ -39,10 +40,14 @@ export default function BrandMark({ size = 'md', showText = true, dark = false }
       {showText && (
         <span className="min-w-0">
           <span className="flex items-center gap-1.5">
-            <span className={`block text-base font-black leading-5 md:text-xl ${dark ? 'text-white' : 'text-slate-950'}`}>منصة مسار</span>
+            <span className={`block text-base font-black leading-5 md:text-xl ${dark ? 'text-white' : 'text-slate-950'}`}>
+              {isEn ? 'MASAR PLATFORM' : 'منصة مسار'}
+            </span>
             <span className="rounded-md bg-cyan-600/10 px-1.5 py-0.5 text-[10px] font-black text-cyan-700 border border-cyan-500/20">NEXUS</span>
           </span>
-          <span className={`hidden text-xs font-bold sm:block ${dark ? 'text-white/68' : 'text-slate-500'}`}>التأهيل الذكي والتعلم التفاعلي</span>
+          <span className={`hidden text-xs font-bold sm:block ${dark ? 'text-white/68' : 'text-slate-500'}`}>
+            {isEn ? 'Smart Rehabilitation & Interactive Learning' : 'التأهيل الذكي والتعلم التفاعلي'}
+          </span>
         </span>
       )}
     </span>
