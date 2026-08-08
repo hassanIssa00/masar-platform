@@ -533,14 +533,10 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* LEFT (RTL last): Dashed Digital Seal Box with Dual Logos (Solid Black Lines & Text) */}
               <div style={{ background: '#ffffff', border: '1.5px dashed #334155', borderRadius: 14, padding: '10px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 240 }}>
-                {/* Dual Logos (Masar x Nexus) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ffffff', border: '1px solid #cbd5e1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Single Logo (Masar Only) */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: '#ffffff', border: '1.5px solid #06392c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src="/brand/masar-logo.png" alt="منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  </div>
-                  <span style={{ color: '#0f172a', fontWeight: 900, fontSize: 12 }}>×</span>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ffffff', border: '1px solid #cbd5e1', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src="/brand/nexus-logo-new.webp" alt="نظام نكسس" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
                 </div>
 
