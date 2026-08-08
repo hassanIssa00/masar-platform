@@ -66,35 +66,7 @@ export default function ExcellenceCertificateTab() {
   };
 
   const handlePrint = () => {
-    if (!certRef.current) return;
-    const printContent = certRef.current.outerHTML;
-    const win = window.open('', '_blank', 'width=1200,height=850');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8"/>
-        <title>شهادة تفوق — ${form.studentName}</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: #fff; font-family: 'Cairo', Arial, sans-serif; }
-          @page { size: A4 landscape; margin: 0; }
-          @media print {
-            body { width: 297mm; height: 210mm; overflow: hidden; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          }
-          .cert-wrapper { width: 297mm; height: 210mm; display: flex; align-items: stretch; }
-        </style>
-      </head>
-      <body>
-        <div class="cert-wrapper">${printContent}</div>
-        <script>setTimeout(() => { window.print(); window.close(); }, 600);<\/script>
-      </body>
-      </html>
-    `);
-    win.document.close();
+    window.print();
   };
 
   return (
@@ -369,6 +341,7 @@ export default function ExcellenceCertificateTab() {
 function OfficialMasarCertificateDesign({ form }: { form: CertData }) {
   return (
     <div
+      id="printable-certificate"
       dir="rtl"
       style={{
         background: '#ffffff',
