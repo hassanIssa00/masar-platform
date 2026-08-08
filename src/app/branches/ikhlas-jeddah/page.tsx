@@ -398,13 +398,13 @@ export default function IkhlasJeddahPage() {
 
       {/* ─── HEADER ─── */}
       <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="w-full px-4 md:px-6 py-3 flex items-center justify-between gap-3">
           {/* Brand + Toggle Menu Button */}
           <div className="flex items-center gap-3">
             {/* Sidebar Toggle Button */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="flex items-center gap-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-800 transition active:scale-95 shadow-xs"
+              className="flex items-center gap-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-2 text-xs font-black text-emerald-800 transition active:scale-95 shadow-xs"
               title={isSidebarOpen ? 'إخفاء القائمة' : 'إظهار القائمة'}
             >
               {isSidebarOpen ? <X className="w-4 h-4 text-emerald-700" /> : <Menu className="w-4 h-4 text-emerald-700" />}
@@ -437,17 +437,17 @@ export default function IkhlasJeddahPage() {
         </div>
       </div>
 
-      {/* ─── MAIN CONTAINER WITH COLLAPSIBLE RIGHT SIDEBAR ─── */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto relative">
+      {/* ─── MAIN CONTAINER WITH FLUSH RIGHT SIDEBAR ─── */}
+      <div className="flex-1 flex w-full relative min-h-[calc(100vh-61px)]">
 
-        {/* ── RIGHT SIDEBAR MENU BAR (COLLAPSIBLE) ── */}
-        <aside className={`bg-white border-l border-slate-200 transition-all duration-300 ease-in-out shrink-0 z-30 ${
-          isSidebarOpen ? 'w-56 md:w-60' : 'w-16'
+        {/* ── RIGHT SIDEBAR MENU BAR (FLUSH TO VERY RIGHT EDGE) ── */}
+        <aside className={`bg-white border-l border-slate-200 shadow-sm transition-all duration-300 ease-in-out shrink-0 z-30 ${
+          isSidebarOpen ? 'w-56 md:w-64' : 'w-16'
         }`}>
-          <div className="sticky top-16 p-2 space-y-2">
+          <div className="sticky top-16 p-3 space-y-2">
 
             {/* Sidebar Title / Toggle Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 px-2 pt-1">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 px-2 pt-1">
               {isSidebarOpen && (
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
                   أقسام اللوحة
@@ -455,7 +455,7 @@ export default function IkhlasJeddahPage() {
               )}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 transition mr-auto"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition mr-auto"
                 title={isSidebarOpen ? 'طَي المنيو' : 'توسيع المنيو'}
               >
                 {isSidebarOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -463,7 +463,7 @@ export default function IkhlasJeddahPage() {
             </div>
 
             {/* Menu Items */}
-            <nav className="space-y-1">
+            <nav className="space-y-1.5">
               {tabs.map((t) => {
                 const Icon = t.icon;
                 const active = activeTab === t.key;
@@ -471,17 +471,17 @@ export default function IkhlasJeddahPage() {
                   <button
                     key={t.key}
                     onClick={() => setActiveTab(t.key)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all relative ${
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-extrabold transition-all relative ${
                       active
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                     title={!isSidebarOpen ? t.label : undefined}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
+                    <Icon className={`w-4.5 h-4.5 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
                     {isSidebarOpen && <span className="truncate">{t.label}</span>}
                     {!!t.badge && (
-                      <span className={`w-4 h-4 text-[9px] font-black rounded-full flex items-center justify-center shrink-0 ${
+                      <span className={`w-4.5 h-4.5 text-[9px] font-black rounded-full flex items-center justify-center shrink-0 ${
                         active ? 'bg-white text-emerald-700' : 'bg-rose-500 text-white'
                       } ${!isSidebarOpen ? 'absolute -top-1 -left-1' : 'mr-auto'}`}>
                         {t.badge}
@@ -494,9 +494,9 @@ export default function IkhlasJeddahPage() {
           </div>
         </aside>
 
-        {/* ── MAIN CONTENT AREA ── */}
+        {/* ── MAIN CONTENT AREA (CENTERED OR FULL WIDTH) ── */}
         <main className="flex-1 p-4 md:p-6 min-w-0">
-          <div className="space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6">
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
