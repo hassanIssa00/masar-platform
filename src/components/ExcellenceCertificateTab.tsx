@@ -300,9 +300,9 @@ export default function ExcellenceCertificateTab() {
             </button>
           </div>
 
-          <div className="rounded-2xl border-2 border-slate-900 bg-slate-950 p-2 shadow-2xl overflow-hidden">
+          <div className="no-print rounded-2xl border-2 border-slate-900 bg-slate-950 p-2 shadow-2xl overflow-hidden">
             <div ref={certRef} className="w-full">
-              <OfficialMasarCertificateDesign form={form} />
+              <OfficialMasarCertificateDesign form={form} isPrintTarget={false} />
             </div>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function ExcellenceCertificateTab() {
             {/* Certificate Canvas */}
             <div className="p-4 sm:p-6 bg-slate-900 flex justify-center overflow-x-auto">
               <div className="w-full max-w-4xl">
-                <OfficialMasarCertificateDesign form={form} />
+                <OfficialMasarCertificateDesign form={form} isPrintTarget={true} />
               </div>
             </div>
           </div>
@@ -351,10 +351,10 @@ export default function ExcellenceCertificateTab() {
 /* ════════════════════════════════════════════════════════════════
    OFFICIAL MASAR PLATFORM CERTIFICATE DESIGN
 ════════════════════════════════════════════════════════════════ */
-function OfficialMasarCertificateDesign({ form }: { form: CertData }) {
+function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form: CertData; isPrintTarget?: boolean }) {
   return (
     <div
-      id="printable-certificate"
+      id={isPrintTarget ? 'printable-certificate' : 'certificate-preview-only'}
       dir="rtl"
       style={{
         background: '#ffffff',
