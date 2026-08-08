@@ -466,6 +466,33 @@ button {
     backdrop-filter: none !important;
   }
 
+  /* ── Step 5b: Collapse CertificateModal outer wrappers to prevent extra pages ── */
+  .print-modal-overlay {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 297mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .print-modal-wrapper {
+    width: 297mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
   /* ── Step 6: Hide toolbar / modal controls ── */
   .print\:hidden {
     display: none !important;
