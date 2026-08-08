@@ -985,19 +985,46 @@ export default function IkhlasJeddahPage() {
                       )}
                     </div>
 
-                    {/* Room Code */}
-                    {m.roomCode && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] text-slate-500 font-bold">رمز الغرفة للطلاب وأولياء الأمور:</p>
-                          <p className="text-sm font-black text-slate-900 tracking-wider">{m.roomCode}</p>
+                    {/* Shareable Link & Invite for Parents */}
+                    {(() => {
+                      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+                      const parentMeetingUrl = `${origin}/meetings?room=${m.roomCode || 'MASAR-MAIN'}&title=${encodeURIComponent(m.title)}`;
+                      const waText = `دعوة لحضور اجتماع أولياء الأمور عبر منصة مسار 🚀%0A📌 الموضوع: ${encodeURIComponent(m.title)}%0A🔗 رابط الانضمام المباشر دون الحاجة لتسجيل دخول:%0A${encodeURIComponent(parentMeetingUrl)}`;
+
+                      return (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-black text-slate-800">
+                              🔗 رابط دعوة الانضمام المباشر لأولياء الأمور (مسجل وغير مسجل)
+                            </p>
+                            <span className="text-[10px] font-mono font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
+                              رمز الغرفة: {m.roomCode}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(parentMeetingUrl);
+                                alert('✅ تم نسخ رابط اجتماع أولياء الأمور المباشر إلى الحافظة!');
+                              }}
+                              className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold transition shadow-xs"
+                            >
+                              <FileText size={12} /> نسخ رابط الدعوة لأولياء الأمور 📋
+                            </button>
+
+                            <a
+                              href={`https://wa.me/?text=${waText}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold transition shadow-xs"
+                            >
+                              <Send size={12} /> إرسال الدعوة عبر WhatsApp 📱
+                            </a>
+                          </div>
                         </div>
-                        <button onClick={() => navigator.clipboard.writeText(m.roomCode)}
-                          className="text-xs bg-white border border-slate-200 text-slate-600 px-2.5 py-1 rounded-lg font-bold hover:border-slate-300 transition">
-                          نسخ
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}

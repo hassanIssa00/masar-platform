@@ -6,10 +6,12 @@ import {
   Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Phone, 
   MessageSquare, Users, Settings, MoreVertical, Play,
   Pen, Eraser, Square, Circle, X, Maximize, Clock, User, Send,
-  Palette, Download, RefreshCw, AlertCircle, Copy, Check, Dot
+  Palette, Download, RefreshCw, AlertCircle, Copy, Check, Dot,
+  ShieldCheck, Sparkles, LogIn, ExternalLink
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import BrandMark from '@/components/BrandMark';
 
 export default function MeetingsPage() {
   const searchParams = useSearchParams();
@@ -228,29 +230,45 @@ export default function MeetingsPage() {
     );
   }
 
-  // Lobby View (Full Screen)
+  // Lobby View (Masar Platform Custom Parent Landing Page)
   if (currentView === 'lobby') {
+    const meetingTitleParam = searchParams.get('title') || 'اجتماع أولياء الأمور عبر منصة مسار';
+    const roomCodeDisplay = roomCodeInput || roomCodeParam || 'MASAR-MAIN';
+
     return (
-      <div className="fixed inset-0 bg-[#0a0a0f] text-white flex flex-col" dir="rtl">
-        <header className="p-6 flex justify-between items-center z-10">
-          <div className="flex items-center gap-2 text-xl font-bold">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <Video className="w-5 h-5 text-white" />
-            </div>
-            <span>مسار لايف</span>
+      <div className="fixed inset-0 bg-slate-950 text-white flex flex-col overflow-y-auto" dir="rtl">
+        
+        {/* Masar Brand Header */}
+        <header className="p-5 sm:p-6 flex justify-between items-center z-10 border-b border-emerald-900/40 bg-slate-900/80 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <BrandMark size="sm" showText={true} />
+            <span className="hidden sm:inline-block text-xs font-black bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 px-3 py-1 rounded-full">
+              القاعة الافتراضية لأولياء الأمور 🔐
+            </span>
           </div>
-          <button 
-            onClick={() => setCurrentView('list')}
-            className="text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <span>عودة</span>
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="/login"
+              className="text-xs font-black text-emerald-300 hover:text-white flex items-center gap-1 bg-emerald-950/70 border border-emerald-800/60 px-3 py-2 rounded-xl transition"
+            >
+              <LogIn size={14} /> تسجيل الدخول بحساب مسار
+            </a>
+            <button 
+              onClick={() => setCurrentView('list')}
+              className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition"
+            >
+              <span>خروج</span>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </header>
         
-        <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 gap-12 max-w-7xl mx-auto w-full">
-          {/* Camera Preview */}
-          <div className="w-full lg:w-2/3 max-w-3xl aspect-video bg-gray-900 rounded-3xl overflow-hidden relative shadow-2xl border border-gray-800">
+        {/* Main Body Container */}
+        <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 gap-8 max-w-7xl mx-auto w-full">
+          
+          {/* Camera Preview Box */}
+          <div className="w-full lg:w-3/5 max-w-3xl aspect-video bg-slate-900 rounded-3xl overflow-hidden relative shadow-2xl border-2 border-emerald-900/60 flex flex-col justify-between">
             {lobbyMediaState.video ? (
               <video 
                 ref={lobbyVideoRef} 
@@ -260,62 +278,98 @@ export default function MeetingsPage() {
                 className="w-full h-full object-cover transform -scale-x-100"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                <div className="w-32 h-32 bg-gray-700 rounded-full flex items-center justify-center text-4xl text-gray-400 font-bold">
-                  {userName ? userName.charAt(0) : <User className="w-16 h-16" />}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 space-y-3">
+                <div className="w-24 h-24 bg-emerald-900/40 border-2 border-emerald-500/40 rounded-full flex items-center justify-center text-3xl text-emerald-300 font-black shadow-lg">
+                  {userName ? userName.charAt(0) : <User className="w-12 h-12 text-emerald-400" />}
                 </div>
+                <p className="text-xs font-bold text-slate-400">الكاميرا مغلقة حالياً</p>
               </div>
             )}
             
-            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4">
+            {/* Live Camera / Audio Toggles Overlay */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4 z-20">
               <button 
                 onClick={() => setLobbyMediaState(p => ({ ...p, audio: !p.audio }))}
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                  lobbyMediaState.audio ? 'bg-gray-900/60 hover:bg-gray-800 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-                } backdrop-blur-sm border border-gray-700`}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                  lobbyMediaState.audio ? 'bg-slate-900/80 hover:bg-slate-800 text-emerald-400' : 'bg-rose-600 hover:bg-rose-700 text-white'
+                } backdrop-blur-md border border-white/20 shadow-lg`}
+                title={lobbyMediaState.audio ? 'إيقاف الميكروفون' : 'تشغيل الميكروفون'}
               >
-                {lobbyMediaState.audio ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+                {lobbyMediaState.audio ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
               </button>
               <button 
                 onClick={() => setLobbyMediaState(p => ({ ...p, video: !p.video }))}
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                  lobbyMediaState.video ? 'bg-gray-900/60 hover:bg-gray-800 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-                } backdrop-blur-sm border border-gray-700`}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                  lobbyMediaState.video ? 'bg-slate-900/80 hover:bg-slate-800 text-emerald-400' : 'bg-rose-600 hover:bg-rose-700 text-white'
+                } backdrop-blur-md border border-white/20 shadow-lg`}
+                title={lobbyMediaState.video ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}
               >
-                {lobbyMediaState.video ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                {lobbyMediaState.video ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
               </button>
             </div>
           </div>
           
-          {/* Join Controls */}
-          <div className="w-full lg:w-1/3 max-w-md flex flex-col items-center lg:items-start text-center lg:text-right">
-            <h2 className="text-3xl font-bold mb-2">هل أنت مستعد للانضمام؟</h2>
-            <p className="text-gray-400 mb-8">الغرفة: <span className="font-mono text-white bg-gray-800 px-2 py-1 rounded">{roomCodeInput || 'لا يوجد'}</span></p>
+          {/* Join Controls & Custom Parent Form */}
+          <div className="w-full lg:w-2/5 max-w-md bg-slate-900/90 border border-emerald-900/50 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md space-y-5 text-right">
             
-            <div className="w-full space-y-4">
-              <div className="space-y-2 text-right">
-                <label className="text-sm font-medium text-gray-400">اسمك للعرض</label>
+            {/* Meeting Info Card */}
+            <div className="space-y-2 border-b border-slate-800 pb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles size={10} className="text-amber-400" /> مباشر الآن 🟢
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-400">رمز الغرفة: {roomCodeDisplay}</span>
+              </div>
+              <h2 className="text-xl font-black text-white">{meetingTitleParam}</h2>
+              <p className="text-xs font-bold text-emerald-200/80 flex items-center gap-1">
+                <ShieldCheck size={14} className="text-amber-400" /> تحت إشراف الاستشاري د. إسماعيل عيسى
+              </p>
+            </div>
+            
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-300 mb-1.5">
+                  اسمك كولي أمر للانضمام (سيظهر للمعلم والآباء)
+                </label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  placeholder="أدخل اسمك"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-4 text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  placeholder="مثال: أسامة - والد الطالب ربيع"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3.5 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                 />
+              </div>
+
+              {/* Quick Presets for Parent Name */}
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] text-slate-500 font-bold w-full">اختيار سريع:</span>
+                {['ولي أمر ربيع', 'ولي أمر أحمد', 'ولي أمر محمد'].map((pName) => (
+                  <button
+                    key={pName}
+                    type="button"
+                    onClick={() => setUserName(pName)}
+                    className="text-[10px] font-bold bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                  >
+                    {pName}
+                  </button>
+                ))}
               </div>
               
               <button 
                 onClick={handleJoinRoom}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 active:scale-95 border border-emerald-400/30"
               >
-                دخول الغرفة الان
+                <span>الانضمام الفوري كولي أمر 🚀</span>
               </button>
               
-              <div className="pt-4 text-sm text-gray-500 text-center">
-                تأكد من السماح بالوصول للميكروفون والكاميرا قبل الدخول.
+              <div className="pt-2 text-[11px] font-semibold text-slate-400 text-center leading-relaxed">
+                🔒 لا تطلب المنصة أي بيانات سرية أو تسجيل معقد للآباء · يمكن لجميع أولياء الأمور الانضمام بنقرة واحدة!
               </div>
             </div>
+
           </div>
+
         </div>
       </div>
     );
