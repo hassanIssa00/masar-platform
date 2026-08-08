@@ -244,10 +244,20 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
       overflow: hidden !important;
       display: flex !important;
       flex-direction: column !important;
+      transform-origin: top center !important;
     }
     #printable-certificate * {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
+    }
+    /* Force all fonts to render with exact colors */
+    #printable-certificate span,
+    #printable-certificate p,
+    #printable-certificate h1,
+    #printable-certificate h2,
+    #printable-certificate h3 {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     .print\\:hidden { display: none !important; }
   </style>
