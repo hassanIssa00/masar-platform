@@ -19,6 +19,7 @@ import { clearSession } from '@/lib/localDb';
 import MasarAIAgent from '@/components/MasarAIAgent';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
+import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -654,39 +655,14 @@ export default function IkhlasJeddahPage() {
           </div>
         )}
 
-        {/* ════════════ جدول الحصص ════════════ */}
+        {/* ════════════ جدول الحصص البروفيشنال ════════════ */}
         {activeTab === 'schedule' && (
-          <div className="space-y-4">
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" /> الجدول الأسبوعي الكامل
-            </h2>
-            {DAY_NAMES.map((day, dayIdx) => {
-              const dayPeriods = schedule.filter(p => p.dayOfWeek === dayIdx).sort((a,b) => a.periodNumber - b.periodNumber);
-              const isToday = jsDay === dayIdx;
-              return (
-                <div key={day} className={`bg-white border rounded-2xl overflow-hidden shadow-sm ${isToday ? 'border-emerald-400 shadow-emerald-100 shadow-md' : 'border-slate-200'}`}>
-                  <div className={`px-4 py-2.5 flex items-center gap-2 border-b ${isToday ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                    <span className={`font-black text-sm ${isToday ? 'text-emerald-800' : 'text-slate-700'}`}>{day}</span>
-                    {isToday && <span className="text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">اليوم ✓</span>}
-                  </div>
-                  <div className="divide-y divide-slate-100">
-                    {dayPeriods.map((p) => {
-                      const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-white text-slate-800';
-                      const isNow = isToday && currentPeriod?.periodNumber === p.periodNumber;
-                      return (
-                        <div key={p.periodNumber} className={`flex items-center gap-3 px-4 py-2.5 ${colorClass} ${isNow ? 'ring-inset ring-2 ring-emerald-500' : ''}`}>
-                          <span className="text-xs opacity-60 w-4 font-black">{p.periodNumber}</span>
-                          <span className="flex-1 text-sm font-bold">{p.subjectName}</span>
-                          <span className="text-xs opacity-70 font-medium">{p.startTime} – {p.endTime}</span>
-                          {isNow && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ProfessionalScheduleTab
+            schedule={schedule}
+            currentPeriod={currentPeriod}
+            minsUntilDismissal={minsUntilDismissal}
+            jsDay={jsDay}
+          />
         )}
 
         {/* ════════════ الحضور والانصراف ════════════ */}
