@@ -20,6 +20,7 @@ import MasarAIAgent from '@/components/MasarAIAgent';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
+import HomeworkTabManager from '@/components/HomeworkTabManager';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -333,6 +334,62 @@ export default function IkhlasJeddahPage() {
       console.warn('Backend API offline (create homework):', e);
     }
     setHwLoading(false);
+  };
+
+  const handleCreateHomeworkFromManager = async (hwData: {
+    title: string;
+    description: string;
+    notes?: string;
+    images?: string[];
+    dueDate: string;
+    subject?: string;
+  }) => {
+    try {
+      const r = await fetch(`${API}/school/homework`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH,
+          title: hwData.title,
+          description: hwData.description,
+          notes: hwData.notes,
+          images: hwData.images,
+          subject: hwData.subject,
+          type: 'TEXT',
+          dueDate: hwData.dueDate,
+        }),
+      });
+      if (r.ok) {
+        await fetchHomework();
+      } else {
+        const localHw: any = {
+          id: `HW-${Date.now()}`,
+          title: hwData.title,
+          description: hwData.description,
+          notes: hwData.notes,
+          images: hwData.images,
+          subject: hwData.subject,
+          dueDate: hwData.dueDate,
+          status: 'OPEN',
+          submissions: [],
+          createdAt: new Date().toISOString(),
+        };
+        setHomeworkList(prev => [localHw, ...prev]);
+      }
+    } catch {
+      const localHw: any = {
+        id: `HW-${Date.now()}`,
+        title: hwData.title,
+        description: hwData.description,
+        notes: hwData.notes,
+        images: hwData.images,
+        subject: hwData.subject,
+        dueDate: hwData.dueDate,
+        status: 'OPEN',
+        submissions: [],
+        createdAt: new Date().toISOString(),
+      };
+      setHomeworkList(prev => [localHw, ...prev]);
+    }
   };
 
   /* ── Meetings (Masar internal) ── */
@@ -838,171 +895,14 @@ export default function IkhlasJeddahPage() {
           </div>
         )}
 
-        {/* ════════════ الواجبات ════════════ */}
+        {/* ════════════ الواجبات الإلكترونية ════════════ */}
         {activeTab === 'homework' && (
-          <div className="space-y-6">
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-amber-600" /> الواجبات الإلكترونية
-            </h2>
-
-            {/* New Homework Form */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm">
-                <Plus className="w-4 h-4 text-amber-600" /> إضافة واجب جديد
-              </h3>
-              <input placeholder="عنوان الواجب" value={hwTitle} onChange={e => setHwTitle(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-400 transition" />
-              <textarea placeholder="تفاصيل الواجب والمطلوب من الطالب..." value={hwDesc} onChange={e => setHwDesc(e.target.value)} rows={3}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-400 transition resize-none" />
-              <div className="flex flex-wrap gap-3">
-                <div className="flex gap-2">
-                  {(['TEXT', 'MULTIPLE_CHOICE'] as const).map((t) => (
-                    <button key={t} onClick={() => setHwType(t)}
-                      className={`text-xs px-3.5 py-1.5 rounded-xl font-bold border transition-all ${
-                        hwType === t ? 'bg-amber-500 border-amber-500 text-white shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}>
-                      {t === 'TEXT' ? '✍️ نصية' : '🔤 اختيار متعدد'}
-                    </button>
-                  ))}
-                </div>
-                <input type="date" value={hwDue} onChange={e => setHwDue(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400 transition" />
-              </div>
-              {hwType === 'MULTIPLE_CHOICE' && (
-                <div className="grid grid-cols-2 gap-2">
-                  {hwOptions.map((opt, i) => (
-                    <input key={i} placeholder={`الخيار ${i + 1}`} value={opt}
-                      onChange={e => { const o = [...hwOptions]; o[i] = e.target.value; setHwOptions(o); }}
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-400 transition" />
-                  ))}
-                </div>
-              )}
-              <button onClick={createHomework} disabled={hwLoading || !hwTitle || !hwDesc || !hwDue}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50 shadow-sm">
-                {hwLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                نشر الواجب لجميع الطلاب
-              </button>
-            </div>
-
-            {/* Homework List with Submissions */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-black text-slate-900">📋 الواجبات المنشورة — إجابات الطلاب</h3>
-              {homeworkList.map((hw) => {
-                const isOpen = openSubmissionsHw === hw.id;
-                const hwSubs = submissions[hw.id] ?? hw.submissions ?? [];
-                return (
-                  <div key={hw.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                    {/* Homework Header */}
-                    <div className="p-4 flex items-start gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-black text-slate-900">{hw.title}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{hw.description}</p>
-                          </div>
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-bold shrink-0 border ${
-                            hw.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
-                          }`}>
-                            {hw.status === 'OPEN' ? '✅ مفتوح' : '🔒 مغلق'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                          <span>⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</span>
-                          <span className="font-bold text-slate-700">
-                            📥 {hwSubs.length}/{CLASS_STUDENTS.length} إجابة
-                          </span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                          <div className="h-full bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full transition-all"
-                            style={{ width: `${(hwSubs.length / CLASS_STUDENTS.length) * 100}%` }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* View Submissions Toggle */}
-                    <div className="border-t border-slate-100">
-                      <button onClick={async () => {
-                        if (!isOpen) await fetchSubmissions(hw.id);
-                        setOpenSubmissionsHw(isOpen ? null : hw.id);
-                      }}
-                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors text-xs font-bold text-slate-600">
-                        <span className="flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5" /> عرض إجابات الطلاب
-                        </span>
-                        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-
-                      {isOpen && (
-                        <div className="px-4 pb-4 space-y-2">
-                          {hwSubs.length === 0 ? (
-                            <p className="text-center text-xs text-slate-400 py-4">لا توجد إجابات بعد</p>
-                          ) : (
-                            hwSubs.map((sub: any) => (
-                              <div key={sub.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-black text-slate-900">
-                                    {sub.studentName ?? CLASS_STUDENTS.find(s => s.id === sub.studentId)?.name ?? 'طالب'}
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-slate-400">{new Date(sub.submittedAt).toLocaleString('ar-SA')}</span>
-                                    {sub.grade !== null && sub.grade !== undefined && (
-                                      <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-black">
-                                        {sub.grade}%
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-lg px-3 py-2">
-                                  <p className="text-xs text-slate-800">{sub.answer}</p>
-                                </div>
-                                {/* Grade input */}
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-500 font-bold">تقييم:</span>
-                                  <input type="number" min={0} max={100} placeholder="درجة / 100"
-                                    className="w-24 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 outline-none focus:border-amber-400 transition"
-                                    onBlur={async (e) => {
-                                      const grade = Number(e.target.value);
-                                      if (!isNaN(grade) && grade >= 0 && grade <= 100) {
-                                        await fetch(`${API}/school/homework/${hw.id}/submissions/${sub.id}/grade`, {
-                                          method: 'PATCH', headers: authHeaders(),
-                                          body: JSON.stringify({ grade }),
-                                        });
-                                      }
-                                    }} />
-                                  <Star className="w-3.5 h-3.5 text-amber-400" />
-                                </div>
-                              </div>
-                            ))
-                          )}
-
-                          {/* Students who haven't submitted */}
-                          {hwSubs.length < CLASS_STUDENTS.length && (
-                            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                              <p className="text-xs font-black text-rose-800 mb-2">❌ لم يسلّموا بعد:</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {CLASS_STUDENTS.filter(s => !hwSubs.some((sub: any) => sub.studentId === s.id)).map(s => (
-                                  <span key={s.id} className="text-[11px] bg-white border border-rose-200 text-rose-700 px-2 py-0.5 rounded-full font-bold">
-                                    {s.name.split(' ')[0]} {s.name.split(' ')[1]}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {!homeworkList.length && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
-                  <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-bold">لا توجد واجبات بعد — أضف أول واجب! 📚</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <HomeworkTabManager
+            students={CLASS_STUDENTS}
+            homeworkList={homeworkList}
+            onCreateHomework={handleCreateHomeworkFromManager}
+            onFetchSubmissions={fetchSubmissions}
+          />
         )}
 
         {/* ════════════ الاجتماعات (نظام مسار الداخلي) ════════════ */}
