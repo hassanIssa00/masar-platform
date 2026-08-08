@@ -74,7 +74,7 @@ export default function IEPPage() {
       studentName: st ? st.fullName : 'طالب',
       grade: st ? st.grade : 'الصف الأول الابتدائي',
       schoolName,
-      doctorName: 'أ.د. إسماعيل عيسى',
+      doctorName: 'د. إسماعيل عيسى',
       startDate,
       reviewDate,
       goals: fullGoals,

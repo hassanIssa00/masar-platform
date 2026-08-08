@@ -44,7 +44,7 @@ export default function ResourcesPage() {
     difficulty: 'beginner' as DifficultyLevel,
     ageRange: '6-9 سنوات',
     tags: '',
-    uploadedBy: 'أ.د. إسماعيل عيسى',
+    uploadedBy: 'د. إسماعيل عيسى',
   });
 
   useEffect(() => {

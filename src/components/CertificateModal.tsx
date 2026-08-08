@@ -465,7 +465,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule (Clean, No Box) */}
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
-                  {isAr ? 'يعتمد هذه الشهادة رسمياً من:' : 'Officially certified by:'}
+                  {isAr ? 'يعتمد رسمياً من:' : 'Officially certified by:'}
                 </span>
                 <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}

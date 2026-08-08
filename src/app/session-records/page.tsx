@@ -26,7 +26,7 @@ export default function SessionRecordsPage() {
     sessionDate: new Date().toISOString().slice(0, 10),
     sessionTime: '10:00 AM',
     durationMinutes: 45,
-    conductedBy: 'أ.د. إسماعيل عيسى',
+    conductedBy: 'د. إسماعيل عيسى',
     goalsInput: 'تمييز الأصوات القصيرة والطويلة، تتبع الأرقام حتى 20',
     activitiesInput: 'تمارين العدادات الخشبية، البطاقات البصرية الملونة',
     cooperation: 'excellent' as CooperationLevel,
