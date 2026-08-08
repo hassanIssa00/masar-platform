@@ -389,8 +389,8 @@ button {
 
 /* ══════════════════════════════════════════════════
    CERTIFICATE A4 LANDSCAPE PRINT OVERRIDE
-   Hides EVERYTHING and shows ONLY the certificate
-   perfectly fitted to A4 landscape (297mm × 210mm)
+   Hides EVERYTHING and shows ONLY #printable-certificate
+   fitted perfectly to 1 page A4 landscape (297mm × 210mm)
 ══════════════════════════════════════════════════ */
 @media print {
   @page {
@@ -398,63 +398,68 @@ button {
     margin: 0mm !important;
   }
 
-  /* Hide all page UI */
-  body > *:not(#cert-print-root),
-  .fixed,
-  header,
-  footer,
-  nav,
-  aside {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  /* The modal overlay — hide it */
-  .fixed.inset-0 > *:not(#cert-print-root) {
-    display: none !important;
-  }
-
-  /* Hide everything EXCEPT the certificate element */
-  body {
+  html, body {
     margin: 0 !important;
     padding: 0 !important;
-    background: #ffffff !important;
     width: 297mm !important;
     height: 210mm !important;
     overflow: hidden !important;
+    background: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* The certificate wrapper that the JS creates */
+  /* Hide all elements by default during print */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show ONLY the certificate element and all its children */
+  #printable-certificate,
+  #printable-certificate * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Position certificate to fill exactly ONE A4 Landscape page */
   #printable-certificate {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 297mm !important;
     height: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
+    box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-between !important;
     overflow: hidden !important;
-    z-index: 99999 !important;
+    z-index: 999999 !important;
     background: #ffffff !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  /* Force color printing for ALL elements inside the certificate */
-  #printable-certificate * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  /* Ensure modal backdrops, overlays and wrappers become transparent */
+  .fixed,
+  .backdrop-blur-md,
+  .bg-slate-950,
+  .bg-slate-900 {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
   }
 
-  /* Hide toolbar / modal controls */
   .print\:hidden {
     display: none !important;
+    visibility: hidden !important;
   }
 }
