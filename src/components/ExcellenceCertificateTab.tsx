@@ -509,30 +509,23 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
           <BrandMark size="md" showText={true} />
         </div>
 
-        {/* Certified Badge Box - CLICKABLE VERIFICATION */}
-        <a
-          href={verifyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff',
-            border: '1.5px solid #06392c', borderRadius: 14, padding: '8px 12px', minWidth: 150,
-            boxShadow: '0 2px 8px rgba(6, 57, 44, 0.08)', textDecoration: 'none', cursor: 'pointer'
-          }}
-          title="اضغط للتحقق الرقمي من صحة هذه الشهادة"
-        >
+        {/* Certified Badge Box */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff',
+          border: '1.5px solid #e2e8e4', borderRadius: 14, padding: '8px 12px', minWidth: 140, boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+        }}>
           <div style={{
-            background: '#06392c', borderRadius: 10, width: 32, height: 32,
+            background: '#06392c', borderRadius: 10, width: 30, height: 30,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
           }}>
-            <ShieldCheck size={18} color="white"/>
+            <ShieldCheck size={16} color="white"/>
           </div>
           <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
             <div style={{ fontSize: 11, fontWeight: 900, color: '#06392c' }}>شهادة تفوق معتمدة</div>
-            <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 800, color: '#06392c' }}>{form.certNumber}</div>
-            <div style={{ fontSize: 8.5, color: '#047857', fontWeight: 800 }}>تحقق من الصحة 🔍</div>
+            <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#666' }}>{form.certNumber}</div>
+            <div style={{ fontSize: 9, color: '#888' }}>التاريخ: {form.date}</div>
           </div>
-        </a>
+        </div>
 
       </div>
 
@@ -615,7 +608,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
         </div>
       </div>
 
-      {/* ── FOOTER: DOCTOR SIGNATURE & DIGITAL SEAL WITH QR ── */}
+      {/* ── FOOTER: DOCTOR SIGNATURE & DIGITAL SEAL ── */}
       <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }}>
 
         {/* Doctor Signature */}
@@ -633,37 +626,33 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
           </div>
         </div>
 
-        {/* Dashed Digital Seal Box WITH SCANNABLE QR CODE & CLICK TO VERIFY */}
+        {/* Dashed Digital Seal Box WITH OFFICIAL MASAR LOGO AND CLICK-TO-VERIFY LINK */}
         <a
           href={verifyUrl}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            background: '#ffffff', border: '1.5px dashed #06392c', borderRadius: 14,
-            padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 12,
-            textAlign: 'right', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', textDecoration: 'none',
-            cursor: 'pointer'
+            background: '#ffffff', border: '1.5px dashed #334155', borderRadius: 14,
+            padding: '10px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 6, textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 220,
+            textDecoration: 'none', cursor: 'pointer'
           }}
-          title="اضغط أو امسح الـ QR للتحقق الرقمي من صحة الشهادة"
+          title="اضغط للتحقق الرقمي من صحة هذه الشهادة"
         >
-          {/* QR Code Container */}
-          <div style={{
-            width: 52, height: 52, background: '#ffffff', border: '1.5px solid #06392c',
-            borderRadius: 10, padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-          }}>
-            <img src={qrImageUrl} alt="رمز QR للتحقق" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, background: '#ffffff',
+              border: '1.5px solid #06392c', padding: 4, display: 'flex',
+              alignItems: 'center', justifyContent: 'center'
+            }}>
+              <img src="/brand/masar-logo.png" alt="الختم الرقمي المعتمد — منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#06392c', display: 'flex', alignItems: 'center', gap: 3 }}>
-              الختم الرقمي والتحقق 🔍
-            </div>
-            <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 900, color: '#0f172a', letterSpacing: '0.5px' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#0f172a' }}>الختم الرقمي المعتمد</div>
+            <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 900, color: '#0f172a', letterSpacing: '0.5px', marginTop: 2 }}>
               {form.certNumber}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 800, color: '#047857', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span>تحقق من صحة الشهادة</span>
-              <span style={{ fontSize: 10 }}>↗</span>
             </div>
           </div>
         </a>
@@ -683,21 +672,10 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
           </div>
         </div>
 
-        {/* Verification Link Badge */}
-        <a
-          href={verifyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            background: '#ffffff', borderRadius: 8, padding: '4px 12px', fontSize: 10,
-            fontWeight: 900, color: '#06392c', textDecoration: 'none', display: 'flex',
-            alignItems: 'center', gap: 4, cursor: 'pointer'
-          }}
-          title="اضغط للتحقق الرقمي من صحة هذه الشهادة"
-        >
-          <span>VERIFIED BY MASAR</span>
-          <span style={{ fontSize: 9, color: '#047857', fontWeight: 900 }}>· تحقق من الصحة 🔍</span>
-        </a>
+        {/* Verification Link */}
+        <div style={{ background: '#ffffff', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 900, color: '#06392c' }}>
+          VERIFIED BY MASAR
+        </div>
       </div>
     </div>
   );
