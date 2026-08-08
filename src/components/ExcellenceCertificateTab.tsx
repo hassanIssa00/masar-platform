@@ -672,10 +672,46 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
           </div>
         </div>
 
-        {/* Verification Link */}
-        <div style={{ background: '#ffffff', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 900, color: '#06392c' }}>
-          VERIFIED BY MASAR
-        </div>
+        {/* Real Scannable QR Code + Verification Text (Matching Masar Platform standard) */}
+        <a
+          href={verifyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            textDecoration: 'none',
+            cursor: 'pointer'
+          }}
+          title="اضغط أو امسح الـ QR للتحقق الرقمي من صحة الشهادة"
+        >
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff', lineHeight: 1.3 }}>
+              تحقق من صحة الشهادة
+            </div>
+            <div style={{ fontSize: 9.5, color: '#a8d4b8', lineHeight: 1.3 }}>
+              امسح الكود للتحقق
+            </div>
+          </div>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 8,
+            padding: 3,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 38,
+            height: 38,
+            flexShrink: 0
+          }}>
+            <img
+              src={qrImageUrl}
+              alt="رمز QR للتحقق"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        </a>
       </div>
     </div>
   );
