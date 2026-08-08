@@ -116,8 +116,8 @@ function AcademicSealIcon() {
         <circle cx="28" cy="28" r="16.5" fill="none" stroke="#d9a238" strokeWidth="0.8" strokeDasharray="2 2" />
       </svg>
       <img
-        src="/brand/nexus-logo-new.webp"
-        alt="ختم تأسيس"
+        src="/brand/masar-logo.png"
+        alt="ختم مسار"
         className="absolute w-8 h-8 object-contain"
       />
     </div>
