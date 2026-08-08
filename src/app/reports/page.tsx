@@ -148,7 +148,7 @@ function ReportsContent() {
                     <div className="flex-1 text-center px-4">
                       <h1 className="text-3xl font-black text-indigo-950 tracking-tight">مَسَار · MASAR</h1>
                       <p className="mt-1 text-sm font-black text-blue-700">منصة التأهيل والتعليم الذكي لصعوبات التعلم</p>
-                      <p className="mt-0.5 text-xs font-bold text-slate-500">مؤسس المنصة: أ.د. إسماعيل عيسى — استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
+                      <p className="mt-0.5 text-xs font-bold text-slate-500">مؤسس المنصة: د. إسماعيل عيسى — استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
                     </div>
 
                     {/* Logo */}

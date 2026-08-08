@@ -388,7 +388,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </p>
 
               <p style={{ fontSize:20, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
-                {data.doctorName || (isAr ? 'أ.د. إسماعيل عيسى' : 'Prof. Dr. Ismail Issa')}
+                {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
               </p>
 
               <p style={{ fontSize:11.5, fontWeight:700, color:'#666', margin:0 }}>

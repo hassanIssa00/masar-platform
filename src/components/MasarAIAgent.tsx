@@ -95,7 +95,7 @@ function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?
           studentName: studentName,
           grade: foundStudent ? foundStudent.grade : 'الصف الأول الابتدائي',
           schoolName: 'مدرسة الإخلاص الأهلية بجدة',
-          doctorName: 'أ.د. إسماعيل عيسى',
+          doctorName: 'د. إسماعيل عيسى',
           startDate: new Date().toISOString().slice(0, 10),
           reviewDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
           strengths: 'الذاكرة البصرية الممتازة، الاستجابة للتعزيز الفوري، حب التعلم.',
