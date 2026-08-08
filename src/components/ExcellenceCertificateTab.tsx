@@ -159,26 +159,39 @@ export default function ExcellenceCertificateTab() {
             </div>
           </div>
 
-          {/* Score & Rating Badge Text */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Score Slider & Rating Select Dropdown */}
+          <div className="space-y-3 rounded-xl bg-slate-50 p-3 border border-slate-200">
             <div>
-              <label className="block text-xs font-black text-slate-700 mb-1">نسبة الإنجاز (%)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-black text-slate-700">نسبة الإنجاز (%)</label>
+                <span className="text-xs font-black text-emerald-700 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-slate-200">
+                  %{form.score}
+                </span>
+              </div>
               <input
-                type="number" min="50" max="100"
-                value={form.score}
-                onChange={e => setForm(p => ({ ...p, score: Number(e.target.value) }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
+                type="range" min="70" max="100" value={form.score}
+                onChange={e => {
+                  const s = Number(e.target.value);
+                  const rating = s >= 95 ? 'ممتاز مع مرتبة الشرف 🌟' : s >= 90 ? 'ممتاز مرتفع 🌟' : s >= 80 ? 'جيد جداً مرتفع 🌟' : 'جيد مرتفع 🌟';
+                  setForm(p => ({ ...p, score: s, ratingText: rating }));
+                }}
+                className="w-full accent-emerald-600 cursor-pointer"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-black text-slate-700 mb-1">نص التقدير</label>
-              <input
-                type="text"
+              <label className="block text-xs font-black text-slate-700 mb-1">نص التقدير (اختر من القائمة)</label>
+              <select
                 value={form.ratingText}
                 onChange={e => setForm(p => ({ ...p, ratingText: e.target.value }))}
-                placeholder="ممتاز مع مرتبة الشرف..."
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
-              />
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
+              >
+                <option value="ممتاز مع مرتبة الشرف 🌟">ممتاز مع مرتبة الشرف 🌟</option>
+                <option value="ممتاز مرتفع 🌟">ممتاز مرتفع 🌟</option>
+                <option value="جيد جداً مرتفع 🌟">جيد جداً مرتفع 🌟</option>
+                <option value="جيد جداً 🌟">جيد جداً 🌟</option>
+                <option value="تفوق واستحقاق استثنائي 🌟">تفوق واستحقاق استثنائي 🌟</option>
+              </select>
             </div>
           </div>
 
