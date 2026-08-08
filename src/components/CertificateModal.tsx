@@ -449,7 +449,11 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   </span>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:700, color:'#444' }}>
-                  <span>{isAr ? 'وحقق نسبة إنجاز تراكمية قدرها' : 'Achieved a cumulative completion rate of'}</span>
+                  <span>
+                    {isAr
+                      ? `وحقق نسبة إنجاز تراكمية (${data.score >= 90 ? 'بدرجة ممتاز 🌟' : data.score >= 80 ? 'بدرجة جيد جداً ✨' : data.score >= 70 ? 'بدرجة جيد 👍' : 'بدرجة مقبول'}) قدرها`
+                      : `Achieved a cumulative completion rate (${data.score >= 90 ? 'with Distinction 🌟' : data.score >= 80 ? 'with Very Good standing ✨' : 'with Good standing'}) of`}
+                  </span>
                   <span style={{ background:'#06392c', color:'white', fontFamily:'monospace', fontWeight:900,
                     fontSize:13, padding:'3px 14px', borderRadius:8 }}>
                     {isAr ? `%${data.score}` : `${data.score}%`}
