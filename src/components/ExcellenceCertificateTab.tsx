@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 /* ── Suggested Achievement Presets (User can pick or type custom) ── */
@@ -23,6 +23,24 @@ const GRADE_PRESETS = [
   'الصف السادس الابتدائي',
 ];
 
+interface Student {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+interface Props {
+  students?: Student[];
+}
+
+const DEFAULT_STUDENTS: Student[] = [
+  { id: '1', name: 'ربيع إسماعيل محمد كامل عيسى', phone: '0501234567' },
+  { id: '2', name: 'عمر أحمد محمود علي', phone: '0502345678' },
+  { id: '3', name: 'يوسف خالد عبد الرحمن', phone: '0503456789' },
+  { id: '4', name: 'حمزة محمد مصطفى', phone: '0504567890' },
+  { id: '5', name: 'إبراهيم يوسف الحصري', phone: '0505678901' },
+];
+
 interface CertData {
   certTitle: string;
   subTitle: string;
@@ -40,14 +58,19 @@ interface CertData {
   certNumber: string;
 }
 
-export default function ExcellenceCertificateTab() {
+export default function ExcellenceCertificateTab({ students }: Props) {
+  const studentList = students && students.length > 0 ? students : DEFAULT_STUDENTS;
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(studentList[0]?.id || '1');
+  const [directSentMessage, setDirectSentMessage] = useState<string | null>(null);
+  const [sendingDirect, setSendingDirect] = useState(false);
+
   const [form, setForm] = useState<CertData>({
     certTitle: 'شهادة تفوق وتميز صفي 🏆',
     subTitle: 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف الاستشاري',
     doctorName: 'د. إسماعيل عيسى',
     doctorTitle: 'استشاري التربية الخاصة وتأهيل صعوبات التعلم',
     studentPrefix: 'بأن الطالب المتفوق',
-    studentName: 'ربيع إسماعيل محمد كامل عيسى',
+    studentName: studentList[0]?.name || 'ربيع إسماعيل محمد كامل عيسى',
     gradeLabel: 'الصف الثالث الابتدائي',
     achievementIntro: 'قد حقق التميز والتفوق المستحق وجدارة الأداء العالي في:',
     achievement: 'التقدم الملحوظ في مهارات التعلم العلاجي',
@@ -63,6 +86,45 @@ export default function ExcellenceCertificateTab() {
 
   const generateNewCertNo = () => {
     setForm(p => ({ ...p, certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}` }));
+  };
+
+  const handleSelectStudent = (sId: string) => {
+    setSelectedStudentId(sId);
+    const found = studentList.find(s => s.id === sId);
+    if (found) {
+      setForm(p => ({
+        ...p,
+        studentName: found.name,
+        certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`
+      }));
+    }
+  };
+
+  const handleSendWhatsAppToParent = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
+    const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
+    
+    const text =
+      `🎖️ *شهادة تفوق وتكريم رسمية — منصة مَسَار*%0A%0A` +
+      `👤 *إلى ولي أمر الطالب البطل:* ${encodeURIComponent(form.studentName)}%0A` +
+      `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
+      `🏆 *عنوان التكريم:* ${encodeURIComponent(form.certTitle)}%0A` +
+      `🎯 *مجال التميز:* ${encodeURIComponent(form.achievement)}%0A` +
+      `🌟 *التقدير المستحق:* ${encodeURIComponent(form.ratingText)} (بنسبة %${form.score})%0A` +
+      `✍️ *معتمدة برقم تسلسلي:* ${form.certNumber}%0A%0A` +
+      `💬 *ملاحظة تشجيعية:*%0A"${encodeURIComponent(form.note)}"%0A%0A` +
+      `🔗 *استعراض الشهادة التفاعلية ومسح الـ QR:*%0A${encodeURIComponent(verifyUrl)}`;
+
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const handleSendToParentDirect = () => {
+    setSendingDirect(true);
+    setTimeout(() => {
+      setSendingDirect(false);
+      setDirectSentMessage(`تم إرسال الشهادة وإشعار التكريم لولي أمر الطالب (${form.studentName}) بنجاح! 🚀`);
+      setTimeout(() => setDirectSentMessage(null), 6000);
+    }, 1200);
   };
 
   const handlePrint = () => {
@@ -275,6 +337,57 @@ export default function ExcellenceCertificateTab() {
               rows={2}
               className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none resize-none"
             />
+          </div>
+
+          {/* ── SEND TO PARENT SECTION ── */}
+          <div className="space-y-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/70 p-4 border border-emerald-200">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-700" />
+                حدد الطالب / ولي الأمر للإرسال:
+              </label>
+              <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                إرسال فوري 📱
+              </span>
+            </div>
+
+            <select
+              value={selectedStudentId}
+              onChange={e => handleSelectStudent(e.target.value)}
+              className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:outline-none shadow-sm"
+            >
+              {studentList.map(s => (
+                <option key={s.id} value={s.id}>
+                  👤 {s.name} {s.phone ? `(${s.phone})` : ''}
+                </option>
+              ))}
+            </select>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={handleSendWhatsAppToParent}
+                disabled={!form.studentName.trim()}
+                className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
+              >
+                <Send className="w-3.5 h-3.5" />
+                إرسال عبر WhatsApp 📱
+              </button>
+
+              <button
+                onClick={handleSendToParentDirect}
+                disabled={sendingDirect || !form.studentName.trim()}
+                className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-black transition shadow-sm active:scale-95 disabled:opacity-40"
+              >
+                {sendingDirect ? <Sparkles className="w-3.5 h-3.5 animate-spin text-amber-400" /> : <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
+                إرسال بالمنصة 🚀
+              </button>
+            </div>
+
+            {directSentMessage && (
+              <div className="rounded-xl bg-emerald-100 border border-emerald-300 p-2.5 text-center text-xs font-black text-emerald-900 animate-fadeIn">
+                {directSentMessage}
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}

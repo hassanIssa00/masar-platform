@@ -634,7 +634,7 @@ export default function IkhlasJeddahPage() {
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
 
         {/* ════════════ شهادات التفوق ════════════ */}
-        {activeTab === 'certificates' && <ExcellenceCertificateTab />}
+        {activeTab === 'certificates' && <ExcellenceCertificateTab students={CLASS_STUDENTS} />}
 
         {/* ════════════ نظرة عامة ════════════ */}
         {activeTab === 'overview' && (
