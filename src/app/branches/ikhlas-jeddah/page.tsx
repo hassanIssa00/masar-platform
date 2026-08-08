@@ -21,6 +21,7 @@ import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
 import HomeworkTabManager from '@/components/HomeworkTabManager';
+import ClassEventsArchiveTab from '@/components/ClassEventsArchiveTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -437,6 +438,25 @@ export default function IkhlasJeddahPage() {
       console.warn('Backend API offline (upload photo):', e);
     }
     setPhotoLoading(false);
+  };
+
+  const handleCreateEventFromManager = async (evtData: any) => {
+    try {
+      const r = await fetch(`${API}/school/photos`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          branch: BRANCH,
+          title: evtData.title,
+          category: evtData.category,
+          driveUrl: evtData.driveUrl,
+          photoUrl: evtData.coverImage,
+          caption: evtData.description,
+        }),
+      });
+      if (r.ok) { await fetchPhotos(); }
+    } catch (e) {
+      console.warn('Backend API offline (create event):', e);
+    }
   };
 
   /* ── Posts ── */
@@ -1038,52 +1058,12 @@ export default function IkhlasJeddahPage() {
           </div>
         )}
 
-        {/* ════════════ معرض الصور ════════════ */}
+        {/* ════════════ أرشيف الفعاليات ومعرض الصور ════════════ */}
         {activeTab === 'photos' && (
-          <div className="space-y-5">
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Camera className="w-5 h-5 text-pink-600" /> معرض صور الفصل
-            </h2>
-
-            {/* Upload Form */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm">
-                <Upload className="w-4 h-4 text-pink-600" /> رفع صورة جديدة
-              </h3>
-              <input placeholder="رابط الصورة (URL)" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-pink-400 transition" dir="ltr" />
-              <input placeholder="وصف الصورة (اختياري)" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-pink-400 transition" />
-              <button onClick={uploadPhoto} disabled={photoLoading || !photoUrl}
-                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all disabled:opacity-50 shadow-sm">
-                {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                نشر الصورة
-              </button>
-            </div>
-
-            {/* Photos Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {photos.map((ph) => (
-                <div key={ph.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm group hover:shadow-md transition-shadow">
-                  <img src={ph.photoUrl} alt={ph.caption ?? ''} className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" />
-                  {ph.caption && <p className="text-xs text-slate-700 p-3 font-bold border-t border-slate-100">{ph.caption}</p>}
-                  {Object.keys(ph.reactions ?? {}).length > 0 && (
-                    <div className="px-3 pb-3 flex gap-1.5 flex-wrap">
-                      {Object.entries((ph.reactions as Record<string, number>) ?? {}).map(([emoji, count]) => (
-                        <span key={emoji} className="text-xs bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">{emoji} {String(count)}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {!photos.length && (
-                <div className="col-span-3 bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
-                  <Camera className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-bold">لا توجد صور بعد 📷</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <ClassEventsArchiveTab
+            eventsList={[]}
+            onCreateEvent={handleCreateEventFromManager}
+          />
         )}
 
         {/* ════════════ التقارير ════════════ */}
