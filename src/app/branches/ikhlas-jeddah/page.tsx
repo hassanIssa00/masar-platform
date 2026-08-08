@@ -16,6 +16,7 @@ import {
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/localDb';
 import MasarAIAgent from '@/components/MasarAIAgent';
+import LiveStreamTab from '@/components/LiveStreamTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -30,7 +31,7 @@ const CLASS_STUDENTS = [
   { id: 's7', name: 'فيصل بندر عبد الرحمن الشمري',   phone: '966507234567' },
 ];
 
-type Tab = 'overview' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
+type Tab = 'overview' | 'live' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
 
 function getToken() {
   if (typeof window === 'undefined') return null;
@@ -373,6 +374,7 @@ export default function IkhlasJeddahPage() {
 
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: 'overview',    label: 'نظرة عامة',       icon: BarChart3 },
+    { key: 'live',        label: 'البث المباشر 🔴',  icon: Radio },
     { key: 'schedule',   label: 'جدول الحصص',      icon: Clock },
     { key: 'attendance', label: 'الحضور',           icon: Users },
     { key: 'homework',   label: 'الواجبات',         icon: BookOpen, badge: homeworkList.filter(h => h.status === 'OPEN').length },
@@ -448,6 +450,9 @@ export default function IkhlasJeddahPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        {/* ════════════ البث المباشر ════════════ */}
+        {activeTab === 'live' && <LiveStreamTab isHost={true} />}
 
         {/* ════════════ نظرة عامة ════════════ */}
         {activeTab === 'overview' && (
