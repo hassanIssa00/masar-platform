@@ -456,7 +456,7 @@ function OfficialMasarCertificateDesign({
       {/* ── BOTTOM EMERALD BAR ── */}
       <div style={{
         background: '#06392c', padding: '10px 22px', display: 'flex', alignItems: 'center',
-        justify: 'space-between', borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1
+        justifyContent: 'space-between', borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BottomGoldMedal />
