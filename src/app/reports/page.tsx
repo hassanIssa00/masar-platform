@@ -151,9 +151,11 @@ function ReportsContent() {
                       <p className="mt-0.5 text-xs font-bold text-slate-500">مؤسس المنصة: د. إسماعيل عيسى — استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
                     </div>
 
-                    {/* Logo */}
+                    {/* Masar Logo Only */}
                     <div className="flex flex-col items-center gap-1">
-                      <BrandMark size="lg" showText={false} />
+                      <div className="w-16 h-16 rounded-2xl border-2 border-indigo-900 bg-white flex items-center justify-center shadow-md p-1.5">
+                        <img src="/brand/masar-logo.png" alt="منصة مسار" className="w-full h-full object-contain" />
+                      </div>
                       <p className="text-[9px] font-black text-indigo-700 uppercase tracking-widest">وثيقة معتمدة</p>
                     </div>
                   </div>
@@ -368,10 +370,12 @@ function ReportsContent() {
                     <div className="mt-4 h-px w-56 bg-slate-300" />
                     <p className="mt-2 text-xs font-bold text-slate-400">التوقيع المعتمد</p>
                   </div>
-                  <div className="rounded-lg border-2 border-dashed border-indigo-400 p-4 text-center">
-                    <BrandMark size="lg" showText={false} />
-                    <p className="mt-2 text-xs font-black text-slate-700">الختم الرقمي المعتمد</p>
-                    <p className="mt-1 text-xs font-bold text-indigo-700">{fileNumber}</p>
+                  <div className="rounded-xl border-2 border-indigo-900 bg-indigo-50/40 p-4 text-center shadow-sm flex flex-col items-center gap-2">
+                    <div className="w-14 h-14 rounded-xl border-2 border-indigo-800 bg-white flex items-center justify-center p-1.5 shadow-sm">
+                      <img src="/brand/masar-logo.png" alt="منصة مسار" className="w-full h-full object-contain" />
+                    </div>
+                    <p className="text-xs font-black text-indigo-900">الختم الرقمي المعتمد</p>
+                    <p className="text-xs font-bold text-indigo-700 font-mono">{fileNumber}</p>
                   </div>
                 </footer>
 
