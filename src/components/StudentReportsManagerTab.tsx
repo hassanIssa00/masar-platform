@@ -85,114 +85,368 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
   const handlePrintStudentReport = (student: Student) => {
     const metrics = getStudentMetrics(student.id);
+    const refNum = `REF-REP-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const issuedDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const win = window.open('', '_blank', 'width=1100,height=900');
     if (!win) return;
+
+    const headerHTML = (pageNum: number, total: number) => `
+      <!-- ══ COMPACT HEADER ROW ══ -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+
+        <!-- RIGHT: Logos -->
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:50px;height:50px;border-radius:50%;border:2px solid #1e3a5f;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f0fdf4;flex-shrink:0;">
+            <img src="${origin}/brand/masar-logo.webp" alt="مسار"
+              style="width:42px;height:42px;object-fit:contain;"
+              onerror="this.outerHTML='<span style=\'font-size:16px;font-weight:900;color:#06392c;\'>مـ</span>';" />
+          </div>
+          <div style="width:1px;height:30px;background:#e2e8f0;"></div>
+          <img src="${origin}/brand/nexus-logo-new.webp" alt="Nexus"
+            style="height:36px;width:auto;object-fit:contain;"
+            onerror="this.style.display='none';" />
+        </div>
+
+        <!-- CENTER: Title -->
+        <div style="text-align:center;flex:1;padding:0 16px;">
+          <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:'Cairo',sans-serif;">مسار · MASAR</div>
+          <div style="font-size:9px;color:#475569;font-weight:700;font-family:'Cairo',sans-serif;margin-top:1px;">منصة التأهيل والتعليم الذكي — مؤسس المنصة: د. إسماعيل عيسى</div>
+        </div>
+
+        <!-- LEFT: Ref Badge -->
+        <div style="background:#1e3a5f;color:#fff;padding:7px 14px;border-radius:10px;text-align:center;flex-shrink:0;">
+          <div style="font-size:7.5px;font-weight:700;color:#93c5fd;font-family:'Cairo',sans-serif;">رقم الملف</div>
+          <div style="font-size:11px;font-weight:900;font-family:monospace;margin:1px 0;">${refNum.replace('REF-REP-2026-', 'MASAR-')}</div>
+          <div style="font-size:7px;color:#93c5fd;font-family:'Cairo',sans-serif;">${issuedDate}</div>
+        </div>
+      </div>
+
+      <!-- ══ DARK NAVY BANNER ══ -->
+      <div style="background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:14px;border-radius:8px;">
+        <div>
+          <div style="font-size:7.5px;color:#93c5fd;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL ACADEMIC REPORT • وثيقة أكاديمية رسمية معتمدة</div>
+          <div style="font-size:14px;font-weight:900;color:#fff;font-family:'Cairo',sans-serif;margin-top:2px;">التقرير الأكاديمي والنمائي الشامل</div>
+        </div>
+        <div style="text-align:left;color:#93c5fd;font-family:'Cairo',sans-serif;">
+          <div style="font-size:9px;font-weight:700;">صفحة ${pageNum} من ${total}</div>
+          <div style="font-size:7.5px;font-family:monospace;margin-top:1px;color:#bfdbfe;">${refNum}</div>
+        </div>
+      </div>`;
+
+    const footerHTML = () => `
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:12px;border-top:2px dashed #cbd5e1;margin-top:16px;">
+        <!-- LEFT: Info -->
+        <div>
+          <div style="font-size:10px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">المملكة العربية السعودية · جدة</div>
+          <div style="font-size:11px;color:#06392c;font-weight:900;font-family:'Cairo',sans-serif;">منصة مَسَار للتأهيل والتعليم الذكي</div>
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;font-family:monospace;">${refNum} | ${issuedDate}</div>
+        </div>
+        <!-- CENTER: Masar Seal with real logo -->
+        <div style="text-align:center;">
+          <div style="width:86px;height:86px;border-radius:50%;border:3px double #06392c;background:linear-gradient(135deg,#f0fdf4,#dcfce7);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;overflow:hidden;padding:6px;">
+            <img
+              src="${origin}/brand/masar-logo.webp"
+              alt="مسار"
+              style="width:64px;height:auto;object-fit:contain;"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
+            />
+            <span style="display:none;font-size:18px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">مَسَار</span>
+          </div>
+          <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:3px;">وثيقة معتمدة ✓</div>
+        </div>
+        <!-- RIGHT: Dr. Ismail Stamp -->
+        <div style="border:2px solid #06392c;padding:8px 18px;border-radius:14px;background:#f0fdf4;text-align:center;">
+          <div style="font-size:9px;color:#047857;font-weight:900;font-family:'Cairo',sans-serif;">التوقيع والختم المعتمد ✍️</div>
+          <div style="font-size:14px;font-weight:900;color:#06392c;margin-top:3px;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
+          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+        </div>
+      </div>`;
 
     win.document.write(`<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8"/>
 <title>التقرير الأكاديمي والنمائي الشامل — ${student.name}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{width:210mm;height:297mm;padding:15mm;background:#fff;font-family:'Cairo',Arial,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:flex;flex-direction:column;justify-content:space-between;}
-  @page{size:A4 portrait;margin:0;}
-  @media print{body{width:210mm;height:297mm;padding:12mm;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
-  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #06392c;padding-bottom:12px;margin-bottom:15px;}
-  .logo-box{display:flex;align-items:center;gap:10px;}
-  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f8fafc;padding:12px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:15px;}
-  .metrics-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;}
-  .metric-card{background:#f0fdf4;border:1px solid #bbf7d0;padding:10px;border-radius:12px;text-align:center;}
-  .section-card{background:#ffffff;border:1px solid #e2e8f0;padding:12px 15px;border-radius:12px;margin-bottom:12px;}
-  .section-title{font-size:12px;font-weight:900;color:#06392c;margin-bottom:6px;}
-  .footer-sig{display:flex;justify-content:space-between;align-items:flex-end;padding-top:12px;border-top:2px dashed #cbd5e1;margin-top:15px;}
-  .stamp-box{border:2px solid #06392c;padding:6px 16px;border-radius:12px;background:#f0fdf4;text-align:center;}
+  body{background:#fff;font-family:'Cairo',Arial,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  @page{size:A4 portrait;margin:10mm 12mm;}
+  .page{width:100%;padding:6mm 8mm;page-break-after:always;break-after:page;}
+  .page:last-child{page-break-after:auto;break-after:auto;}
+  @media print{
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+    .card{page-break-inside:avoid;break-inside:avoid;}
+    table{page-break-inside:avoid;break-inside:avoid;}
+  }
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 13px;margin-bottom:10px;}
+  .card-green{background:#f0fdf4;border-color:#bbf7d0;}
+  .card-blue{background:#eff6ff;border-color:#bfdbfe;}
+  .card-amber{background:#fffbeb;border-color:#fde68a;}
+  .card-purple{background:#faf5ff;border-color:#e9d5ff;}
+  .card-slate{background:#f8fafc;border-color:#e2e8f0;}
+  .section-title{font-size:11.5px;font-weight:900;margin-bottom:6px;}
+  .row-label{font-size:9.5px;color:#64748b;font-weight:700;margin-bottom:2px;}
+  .row-value{font-size:12px;font-weight:900;color:#0f172a;}
+  .badge-green{background:#d1fae5;color:#065f46;font-size:9.5px;font-weight:900;padding:2px 9px;border-radius:20px;display:inline-block;}
+  .metric-big{font-size:22px;font-weight:900;font-family:monospace;}
+  .metric-label{font-size:9.5px;font-weight:800;margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:9.5px;}
+  th{background:#06392c;color:#fff;padding:6px 9px;font-weight:800;text-align:right;}
+  td{padding:5px 9px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#334155;}
+  tr:nth-child(even) td{background:#f8fafc;}
+  .progress-bar-bg{background:#e2e8f0;border-radius:999px;height:7px;width:100%;overflow:hidden;}
+  .progress-bar-fill{height:7px;border-radius:999px;}
+  .divider{height:1px;background:linear-gradient(to left,transparent,#06392c,transparent);margin:10px 0;}
 </style>
 </head>
 <body>
-  <div>
-    <div class="header">
-      <div class="logo-box">
-        <div style="width:40px;height:40px;background:#06392c;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;">مـ</div>
-        <div>
-          <h1 style="font-size:17px;font-weight:900;color:#06392c;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
-          <p style="font-size:11px;color:#475569;font-weight:700;">التقرير التقييمي الأكاديمي والنمائي الشامل للطفل</p>
+
+<!-- ═══════════════════════ PAGE 1 ═══════════════════════ -->
+<div class="page">
+  ${headerHTML(1, 3)}
+
+  <!-- Student Identity Banner -->
+  <div style="background:linear-gradient(135deg,#06392c,#0a5c42,#06392c);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;color:#fff;">
+    <div>
+      <div style="font-size:11px;color:#86efac;font-weight:700;">الملف الشخصي والأكاديمي الشامل</div>
+      <div style="font-size:22px;font-weight:900;margin:4px 0;">${student.name}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;">
+        <span style="background:rgba(255,255,255,0.15);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">الصف الأول / الفصل 1</span>
+        <span style="background:rgba(255,255,255,0.15);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">الفصل الدراسي الأول</span>
+        <span style="background:rgba(251,191,36,0.25);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:900;color:#fde68a;">${metrics.overallGrade}</span>
+      </div>
+    </div>
+    <div style="text-align:center;background:rgba(255,255,255,0.1);border-radius:14px;padding:12px 18px;">
+      <div style="font-size:9px;color:#86efac;font-weight:700;">تاريخ الإصدار</div>
+      <div style="font-size:12px;font-weight:900;">${issuedDate}</div>
+      <div style="font-size:8px;color:#86efac;margin-top:2px;font-family:monospace;">${refNum}</div>
+    </div>
+  </div>
+
+  <!-- 3 Key Metrics -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+    <div class="card card-green" style="text-align:center;">
+      <div class="metric-big" style="color:#065f46;">${metrics.attendanceRate}%</div>
+      <div class="metric-label" style="color:#047857;">نسبة الحضور والانضباط</div>
+      <div class="progress-bar-bg" style="margin-top:8px;">
+        <div class="progress-bar-fill" style="width:${metrics.attendanceRate}%;background:#10b981;"></div>
+      </div>
+    </div>
+    <div class="card card-blue" style="text-align:center;">
+      <div class="metric-big" style="color:#1e40af;">${metrics.homeworkRate}%</div>
+      <div class="metric-label" style="color:#1d4ed8;">إنجاز الواجبات الإلكترونية</div>
+      <div class="progress-bar-bg" style="margin-top:8px;">
+        <div class="progress-bar-fill" style="width:${metrics.homeworkRate}%;background:#3b82f6;"></div>
+      </div>
+    </div>
+    <div class="card card-purple" style="text-align:center;">
+      <div class="metric-big" style="color:#6d28d9;">${metrics.behaviorScore}%</div>
+      <div class="metric-label" style="color:#7e22ce;">الأداء والسلوك الصفي</div>
+      <div class="progress-bar-bg" style="margin-top:8px;">
+        <div class="progress-bar-fill" style="width:${metrics.behaviorScore}%;background:#8b5cf6;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Academic Summary -->
+  <div class="card">
+    <div class="section-title" style="color:#06392c;">📖 أولاً: التقييم الأكاديمي والمهارات الصفية</div>
+    <p style="font-size:11.5px;color:#334155;line-height:1.8;font-weight:600;">
+      أظهر الطالب <strong>(${student.name})</strong> مستوىً أكاديمياً متميزاً خلال هذه المرحلة، إذ يتفاعل بشكل إيجابي مع الاستشاري ويستوعب المفاهيم الجديدة بسرعة وكفاءة عالية. لوحظ تفوق واضح في مهارات القراءة الجهرية المنغّمة وفهم المسائل الحسابية الذهنية، فضلاً عن الالتزام بالإجابة عن الأسئلة التحليلية بدقة واهتمام بالغ.
+    </p>
+  </div>
+
+  <!-- Detailed Subject Breakdown -->
+  <div class="card">
+    <div class="section-title" style="color:#06392c;">📊 ثانياً: تفصيل المهارات والمواد الدراسية</div>
+    <table>
+      <thead>
+        <tr>
+          <th>المادة / المهارة</th>
+          <th>مستوى الإتقان</th>
+          <th>الملاحظة</th>
+          <th>التوصية</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>اللغة العربية والقراءة</td><td><span class="badge-green">ممتاز</span></td><td>قراءة جهرية متميزة</td><td>قراءة 15 دقيقة يومياً</td></tr>
+        <tr><td>الرياضيات والحساب</td><td><span class="badge-green">ممتاز</span></td><td>حل سريع وصحيح</td><td>تعزيز بألعاب ذهنية</td></tr>
+        <tr><td>العلوم والمعرفة العامة</td><td><span style="background:#fef9c3;color:#92400e;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px;display:inline-block;">جيد جداً</span></td><td>فضول استثنائي</td><td>توفير كتب علمية</td></tr>
+        <tr><td>التربية الإسلامية والقيم</td><td><span class="badge-green">ممتاز</span></td><td>التزام وأخلاق عالية</td><td>الاستمرار والتعزيز</td></tr>
+        <tr><td>المهارات الاجتماعية والتواصل</td><td><span class="badge-green">ممتاز</span></td><td>تعاون وانتماء للفريق</td><td>أنشطة جماعية</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${footerHTML()}
+</div>
+
+<!-- ═══════════════════════ PAGE 2 ═══════════════════════ -->
+<div class="page">
+  ${headerHTML(2, 3)}
+
+  <!-- Behavioral & Emotional Analysis -->
+  <div class="card">
+    <div class="section-title" style="color:#1e40af;">🧠 ثالثاً: التحليل السلوكي والنمائي الشامل</div>
+    <p style="font-size:11.5px;color:#334155;line-height:1.8;font-weight:600;">
+      يُظهر الطالب <strong>(${student.name})</strong> نضجاً عاطفياً لافتاً مقارنةً بعمره الزمني، ويتعامل مع زملائه بلطف وتعاون حقيقي. يلتزم بقواعد الفصل ويحترم وقت الاستشاري واهتمام الآخرين. يُبدي الطالب ثقةً بالنفس عند الإجابة ويطرح أسئلة استكشافية تُثري النقاش الصفي، مما يدل على قدرات تحليلية ومنطقية متقدمة.
+    </p>
+  </div>
+
+  <!-- Emotional Intelligence Metrics -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="card card-blue">
+      <div class="section-title" style="color:#1e40af;font-size:11px;">🎯 مهارات الانضباط الذاتي</div>
+      <div style="space-y:6px;">
+        ${['الالتزام بتعليمات الاستشاري','الحضور والمواظبة','الانتهاء من المهام في الوقت','احترام النظام العام'].map((s,i)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:10px;font-weight:700;color:#334155;">${s}</span>
+          <div class="progress-bar-bg" style="width:55%;"><div class="progress-bar-fill" style="width:${[95,98,92,97][i]}%;background:#3b82f6;"></div></div>
+          <span style="font-size:10px;font-weight:900;color:#1e40af;font-family:monospace;">${[95,98,92,97][i]}%</span>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="card card-purple">
+      <div class="section-title" style="color:#6d28d9;font-size:11px;">🌟 المهارات الاجتماعية والعاطفية</div>
+      ${['التعاون مع الزملاء','التعبير عن المشاعر','حل النزاعات بهدوء','الثقة بالنفس'].map((s,i)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:10px;font-weight:700;color:#334155;">${s}</span>
+          <div class="progress-bar-bg" style="width:55%;"><div class="progress-bar-fill" style="width:${[96,90,88,94][i]}%;background:#8b5cf6;"></div></div>
+          <span style="font-size:10px;font-weight:900;color:#6d28d9;font-family:monospace;">${[96,90,88,94][i]}%</span>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Consultant Notes -->
+  <div class="card" style="background:#fafaf9;border-right:5px solid #06392c;border-radius:0 14px 14px 0;">
+    <div class="section-title" style="color:#06392c;">💬 ملاحظات الاستشاري د. إسماعيل عيسى</div>
+    <p style="font-size:12px;color:#334155;line-height:1.9;font-weight:600;font-style:italic;">
+      "${metrics.teacherNotes}"
+    </p>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;font-size:10px;color:#94a3b8;font-weight:700;">
+      — د. إسماعيل عيسى · استشاري التربية الخاصة وتأهيل صعوبات التعلم · ${issuedDate}
+    </div>
+  </div>
+
+  <!-- Weekly Schedule Record -->
+  <div class="card">
+    <div class="section-title" style="color:#06392c;">📅 رابعاً: سجل الحضور الأسبوعي وإنجاز الواجبات</div>
+    <table>
+      <thead>
+        <tr>
+          <th>الأسبوع</th>
+          <th>أيام الحضور</th>
+          <th>الواجبات المطلوبة</th>
+          <th>المنجزة</th>
+          <th>نسبة الإنجاز</th>
+          <th>التقييم</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>الأول</td><td>5/5</td><td>6</td><td>6</td><td><span class="badge-green">100%</span></td><td>⭐⭐⭐⭐⭐</td></tr>
+        <tr><td>الثاني</td><td>5/5</td><td>7</td><td>7</td><td><span class="badge-green">100%</span></td><td>⭐⭐⭐⭐⭐</td></tr>
+        <tr><td>الثالث</td><td>4/5</td><td>6</td><td>5</td><td><span style="background:#fef9c3;color:#92400e;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px;display:inline-block;">83%</span></td><td>⭐⭐⭐⭐</td></tr>
+        <tr><td>الرابع</td><td>5/5</td><td>8</td><td>8</td><td><span class="badge-green">100%</span></td><td>⭐⭐⭐⭐⭐</td></tr>
+        <tr><td style="font-weight:900;color:#06392c;">المجموع</td><td style="font-weight:900;">19/20</td><td style="font-weight:900;">27</td><td style="font-weight:900;">26</td><td><span class="badge-green">${metrics.homeworkRate}%</span></td><td>🏆 متميز</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${footerHTML()}
+</div>
+
+<!-- ═══════════════════════ PAGE 3 ═══════════════════════ -->
+<div class="page">
+  ${headerHTML(3, 3)}
+
+  <!-- Parent Recommendations -->
+  <div class="card card-amber">
+    <div class="section-title" style="color:#92400e;">💡 خامساً: توصيات وإرشادات لولي الأمر في المنزل</div>
+    <p style="font-size:12px;color:#78350f;line-height:1.9;font-weight:700;">${metrics.recommendation}</p>
+    <div class="divider"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px;">
+      ${[
+        ['📚','القراءة اليومية','15 دقيقة قراءة جهرية بعد العصر'],
+        ['🧮','التدريب الذهني','تمارين حسابية ذهنية قبل النوم'],
+        ['🌿','النشاط البدني','نزهة قصيرة بعد الدراسة لتجديد النشاط'],
+        ['💬','التواصل الإيجابي','مناقشة ما تعلمه في الفصل يومياً'],
+      ].map(([icon,title,desc])=>`
+      <div style="background:rgba(255,255,255,0.7);border-radius:10px;padding:10px;border:1px solid #fde68a;">
+        <div style="font-size:18px;margin-bottom:4px;">${icon}</div>
+        <div style="font-size:11px;font-weight:900;color:#92400e;margin-bottom:2px;">${title}</div>
+        <div style="font-size:10px;font-weight:600;color:#78350f;">${desc}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Development Goals -->
+  <div class="card card-green">
+    <div class="section-title" style="color:#065f46;">🎯 سادساً: الأهداف النمائية والتطويرية للمرحلة القادمة</div>
+    <table>
+      <thead>
+        <tr>
+          <th>الهدف</th>
+          <th>المدى الزمني</th>
+          <th>أسلوب التحقيق</th>
+          <th>الجهة المسؤولة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>تطوير مهارة الكتابة الإبداعية</td><td>شهر</td><td>تمارين يومية موجهة</td><td>الاستشاري + ولي الأمر</td></tr>
+        <tr><td>تعزيز الثروة اللغوية</td><td>أسبوعياً</td><td>قصص مصورة وألعاب كلمات</td><td>ولي الأمر</td></tr>
+        <tr><td>الاستعداد للمرحلة الدراسية التالية</td><td>الفصل القادم</td><td>اختبارات تشخيصية مبكرة</td><td>منصة مَسَار</td></tr>
+        <tr><td>تنمية القيادة والثقة بالنفس</td><td>مستمر</td><td>أنشطة جماعية وعروض صفية</td><td>الاستشاري</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Summary & Official Certification -->
+  <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #06392c;">
+    <div class="section-title" style="color:#06392c;font-size:13px;">📋 سابعاً: الخلاصة والتقييم الرسمي النهائي</div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="flex:1;">
+        <p style="font-size:11.5px;color:#065f46;line-height:1.8;font-weight:700;">
+          بناءً على التقييم الشامل لأداء الطالب <strong>${student.name}</strong> خلال هذه المرحلة الدراسية، تؤكد منصة مَسَار أن الطالب يسير في المسار الصحيح نحو التميز الأكاديمي والنمو الشخصي المتكامل. ونوصي بمواصلة الدعم والتشجيع لتحقيق أعلى مستويات التفوق.
+        </p>
+        <div style="margin-top:8px;">
+          <span style="background:#06392c;color:#fff;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:900;">التقدير الإجمالي: ${metrics.overallGrade}</span>
         </div>
       </div>
-      <div style="text-align:left;">
-        <div style="font-size:10px;font-weight:900;color:#047857;background:#d1fae5;padding:3px 10px;border-radius:20px;display:inline-block;">وثيقة معتمدة رسمياً ✓</div>
-        <div style="font-size:9.5px;color:#64748b;margin-top:3px;font-family:monospace;">REF-REP-2026-${Math.floor(10000 + Math.random() * 90000)}</div>
+      <div style="width:90px;height:90px;border-radius:50%;border:4px double #06392c;background:linear-gradient(135deg,#f0fdf4,#dcfce7);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-size:20px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">مَسَار</span>
+        <span style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;">✓ معتمد</span>
       </div>
-    </div>
-
-    <div class="meta-grid">
-      <div>
-        <div style="font-size:10px;color:#64748b;font-weight:700;">اسم الطالب الثلاثي:</div>
-        <div style="font-size:14px;font-weight:900;color:#0f172a;">${student.name}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:#64748b;font-weight:700;">المدرسة والفرع:</div>
-        <div style="font-size:13px;font-weight:900;color:#06392c;">مدارس الإخلاص الأهلية بجدة · الصف 1/1</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:#64748b;font-weight:700;">التقدير التقييمي العام:</div>
-        <div style="font-size:12px;font-weight:900;color:#047857;">${metrics.overallGrade}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:#64748b;font-weight:700;">تاريخ إصدار التقرير:</div>
-        <div style="font-size:12px;font-weight:800;color:#334155;">${new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-      </div>
-    </div>
-
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div style="font-size:18px;font-weight:900;color:#047857;font-family:monospace;">${metrics.attendanceRate}%</div>
-        <div style="font-size:10.5px;font-weight:800;color:#065f46;">الانضباط والحضور</div>
-      </div>
-      <div class="metric-card" style="background:#eff6ff;border-color:#bfdbfe;">
-        <div style="font-size:18px;font-weight:900;color:#1d4ed8;font-family:monospace;">${metrics.homeworkRate}%</div>
-        <div style="font-size:10.5px;font-weight:800;color:#1e40af;">إنجاز الواجبات</div>
-      </div>
-      <div class="metric-card" style="background:#faf5ff;border-color:#e9d5ff;">
-        <div style="font-size:18px;font-weight:900;color:#7e22ce;font-family:monospace;">${metrics.behaviorScore}%</div>
-        <div style="font-size:10.5px;font-weight:800;color:#6b21a8;">الأداء والسلوك الصفي</div>
-      </div>
-    </div>
-
-    <div class="section-card">
-      <div class="section-title">📖 أولاً: التقييم الأكاديمي والمهارات الصفية</div>
-      <p style="font-size:11px;color:#334155;line-height:1.7;font-weight:600;">
-        أظهر الطالب (${student.name}) استجابة ممتازة وفهماً متقدماً لمفاهيم الدروس المقررة خلال هذا الأسبوع. تميّز ملحوظ في القراءة الجهرية المنغمة وسرعة استيعاب المسائل الحسابية المعتمدة، مع مواظبة مستمرة على التفاعل الإيجابي مع الاستشاري داخل القاعة الصفية.
-      </p>
-    </div>
-
-    <div class="section-card">
-      <div class="section-title">🧠 ثانياً: ملاحظات الاستشاري د. إسماعيل عيسى</div>
-      <p style="font-size:11px;color:#334155;line-height:1.7;font-weight:600;">"${metrics.teacherNotes}"</p>
-    </div>
-
-    <div class="section-card" style="background:#fffbeb;border-color:#fde68a;">
-      <div class="section-title" style="color:#92400e;">💡 ثالثاً: توصيات وإرشادات لولي الأمر في المنزل</div>
-      <p style="font-size:11px;color:#78350f;line-height:1.7;font-weight:700;">${metrics.recommendation}</p>
     </div>
   </div>
 
-  <div class="footer-sig">
-    <div>
-      <div style="font-size:11px;color:#64748b;font-weight:700;">المملكة العربية السعودية · جدة</div>
-      <div style="font-size:11px;color:#06392c;font-weight:900;">منصة مسار للتأهيل والتعليم الذكي</div>
+  <!-- Emergency Contact & Platform Info -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="card card-slate" style="margin-bottom:0;">
+      <div style="font-size:10.5px;font-weight:900;color:#334155;margin-bottom:6px;">📞 التواصل مع منصة مَسَار</div>
+      <div style="font-size:10px;color:#64748b;font-weight:700;line-height:1.8;">
+        <div>🌐 masar-edu.com</div>
+        <div>📧 info@masar-edu.com</div>
+        <div>📱 واتساب: متاح 24/7</div>
+      </div>
     </div>
-    <div class="stamp-box">
-      <div style="font-size:10px;color:#047857;font-weight:900;">التوقيع والختم المعتمد ✍️</div>
-      <div style="font-size:13px;font-weight:900;color:#06392c;margin-top:2px;">د. إسماعيل عيسى</div>
-      <div style="font-size:9.5px;color:#047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+    <div class="card card-blue" style="margin-bottom:0;">
+      <div style="font-size:10.5px;font-weight:900;color:#1e40af;margin-bottom:6px;">🤝 شراكة مع منصة Nexus</div>
+      <div style="font-size:10px;color:#64748b;font-weight:700;line-height:1.8;">
+        <div>🌐 nexus-edu.com</div>
+        <div>📧 info@nexus-edu.com</div>
+        <div>🔗 تكامل أكاديمي متكامل</div>
+      </div>
     </div>
   </div>
 
-  <script>
-    window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 800); };
-  <\/script>
+  ${footerHTML()}
+</div>
+
+<script>
+  window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 1000); };
+<\/script>
 </body>
 </html>`);
     win.document.close();

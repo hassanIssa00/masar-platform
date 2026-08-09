@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { callGeminiApi, GeminiMessage } from '@/lib/gemini';
 
 // ─── Endpoints & Defaults ───────────────────────────────────────────────────
 const MSEMAX_DEFAULT = process.env.MSEMAX_API_URL || 'http://localhost:8000/v1';
-const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 const FREE_CLOUD_AI_GATEWAY = 'https://text.pollinations.ai/openai';
 
 // ─── System prompt for Masar platform ───────────────────────────────────────
@@ -44,58 +44,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Empty prompt' }, { status: 400 });
     }
 
-    const effectiveGeminiKey = (geminiKey && geminiKey.trim()) ? geminiKey.trim() : GEMINI_API_KEY_ENV;
-
-    // ─── Tier 1: Direct Google Gemini API (if key provided) ─────────────────────
-    if (effectiveGeminiKey) {
-      try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveGeminiKey}`;
-
-        const contents: any[] = [];
-        if (history && Array.isArray(history)) {
-          for (const msg of history.slice(-10)) {
-            contents.push({
-              role: msg.sender === 'user' ? 'user' : 'model',
-              parts: [{ text: msg.text }],
-            });
-          }
-        }
-        contents.push({ role: 'user', parts: [{ text: inputPrompt }] });
-
-        const geminiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: MASAR_SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-          }),
+    // Prepare history messages for Gemini Engine
+    const geminiMessages: GeminiMessage[] = [];
+    if (history && Array.isArray(history)) {
+      for (const msg of history.slice(-10)) {
+        geminiMessages.push({
+          role: msg.sender === 'user' ? 'user' : 'model',
+          content: msg.text || '',
         });
-
-        if (geminiRes.ok) {
-          const gData = await geminiRes.json();
-          let replyText: string = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (replyText) {
-            let actionTaken: string | undefined;
-            const actionMatch = replyText.match(/%%ACTION%%([\s\S]*?)%%END%%/);
-            if (actionMatch) {
-              try {
-                const actionData = JSON.parse(actionMatch[1]);
-                actionTaken = actionData.details || actionData.action;
-              } catch (_) {}
-              replyText = replyText.replace(/%%ACTION%%[\s\S]*?%%END%%/g, '').trim();
-            }
-            return NextResponse.json({
-              success: true,
-              reply: replyText,
-              actionTaken,
-              gateway: 'Google Gemini API (Cloud Tier)',
-            });
-          }
-        }
-      } catch (e: any) {
-        console.warn('Gemini API Error:', e.message);
       }
+    }
+    geminiMessages.push({ role: 'user', content: inputPrompt });
+
+    // ─── Tier 1: Multi-Key Multi-Model Gemini API Engine ─────────────────────
+    const geminiResult = await callGeminiApi({
+      systemPrompt: MASAR_SYSTEM_PROMPT,
+      messages: geminiMessages,
+      temperature: 0.7,
+      customKey: geminiKey,
+    });
+
+    if (geminiResult && geminiResult.text) {
+      let replyText = geminiResult.text;
+      let actionTaken: string | undefined;
+
+      const actionMatch = replyText.match(/%%ACTION%%([\s\S]*?)%%END%%/);
+      if (actionMatch) {
+        try {
+          const actionData = JSON.parse(actionMatch[1]);
+          actionTaken = actionData.details || actionData.action;
+        } catch (_) {}
+        replyText = replyText.replace(/%%ACTION%%[\s\S]*?%%END%%/g, '').trim();
+      }
+
+      return NextResponse.json({
+        success: true,
+        reply: replyText,
+        actionTaken,
+        gateway: `Google Gemini API Engine (${geminiResult.model} • Key #${geminiResult.keyIndex + 1})`,
+      });
     }
 
     // ─── Build OpenAI-Format Messages Array ──────────────────────────────────
