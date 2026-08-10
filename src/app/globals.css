@@ -409,15 +409,26 @@ button {
     print-color-adjust: exact !important;
   }
 
-  /* ── Step 1: Hide Navigation, Sidebars & Interactive Buttons ── */
+  /* ── Step 1: Hide Navigation, Sidebars & Main Website Layout to avoid extra blank pages ── */
   .no-print,
   .print\:hidden,
   nav,
   aside,
   header,
-  button,
-  .no-print * {
+  footer,
+  button {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  body:has(#printable-area) main,
+  body:has(#printable-area) nav,
+  body:has(#printable-area) aside,
+  body:has(#printable-area) footer {
+    display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
     visibility: hidden !important;
   }
 

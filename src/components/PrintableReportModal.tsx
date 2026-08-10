@@ -15,13 +15,15 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
 
   const handlePrint = () => {
     const reportElem = document.getElementById('printable-area');
-    if (!reportElem) {
-      window.print();
-      return;
-    }
+    if (!reportElem) return;
 
     try {
+      // Remove any leftover print iframe
+      const oldIframe = document.getElementById('masar-print-iframe');
+      if (oldIframe) oldIframe.remove();
+
       const iframe = document.createElement('iframe');
+      iframe.id = 'masar-print-iframe';
       iframe.style.position = 'fixed';
       iframe.style.right = '0';
       iframe.style.bottom = '0';
@@ -29,10 +31,12 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
       iframe.style.height = '0';
       iframe.style.border = '0';
       iframe.style.zIndex = '-9999';
+      iframe.style.visibility = 'hidden';
       document.body.appendChild(iframe);
 
-      const doc = iframe.contentWindow?.document;
-      if (doc) {
+      const win = iframe.contentWindow;
+      if (win) {
+        const doc = win.document;
         doc.open();
         doc.write(`
           <!DOCTYPE html>
@@ -46,31 +50,33 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
               body { margin: 0; padding: 20px; background: #ffffff; color: #0f172a; direction: rtl; }
               @page { size: A4 portrait; margin: 8mm; }
               .print\\:hidden { display: none !important; }
+              .grid { display: grid !important; }
+              .flex { display: flex !important; }
+              .hidden { display: none !important; }
             </style>
           </head>
           <body>
-            ${reportElem.outerHTML}
-            <script>
-              setTimeout(() => {
-                window.focus();
-                window.print();
-              }, 400);
-            </script>
+            <div style="direction: rtl; text-align: right;">
+              ${reportElem.innerHTML}
+            </div>
           </body>
           </html>
         `);
         doc.close();
 
+        // Target the IFRAME window explicitly, NOT top window!
         setTimeout(() => {
-          try { document.body.removeChild(iframe); } catch (e) {}
-        }, 6000);
+          win.focus();
+          win.print();
+          setTimeout(() => {
+            try { iframe.remove(); } catch (e) {}
+          }, 3000);
+        }, 500);
         return;
       }
     } catch (e) {
-      console.warn('Iframe print failed, falling back to window.print():', e);
+      console.warn('Iframe print error:', e);
     }
-
-    window.print();
   };
 
   return (
