@@ -17,15 +17,7 @@ function authHeaders() {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-const CLASS_STUDENTS = [
-  { id: 's1', name: 'أحمد محمد علي إبراهيم' },
-  { id: 's2', name: 'يوسف خالد عبد العزيز السهلي' },
-  { id: 's3', name: 'عمر سعد محمد الغامدي' },
-  { id: 's4', name: 'عبد الرحمن فهد علي القحطاني' },
-  { id: 's5', name: 'محمد عبد الله أحمد الزهراني' },
-  { id: 's6', name: 'سلطان ناصر محمد العتيبي' },
-  { id: 's7', name: 'فيصل بندر عبد الرحمن الشمري' },
-];
+const CLASS_STUDENTS: { id: string; name: string }[] = [];
 
 export default function IkhlasHomeworkPage() {
   const [homeworkList, setHomeworkList] = useState<any[]>([]);

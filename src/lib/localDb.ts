@@ -447,6 +447,10 @@ export function clearAllMockData() {
   localStorage.removeItem(KEYS.surveys);
   localStorage.removeItem(KEYS.activity);
   localStorage.removeItem(KEYS.messages);
+  localStorage.removeItem(KEYS.ikhlasLogs);
+  localStorage.removeItem(KEYS.ikhlasPosts);
+  localStorage.removeItem('masar.waitlist.v1');
+  localStorage.removeItem('masar_ai_threads_v2');
   // Mark cleared so firestoreSync won't push stale items back up
   markDataCleared();
 }

@@ -33,15 +33,7 @@ interface Props {
   students?: { id: string; name: string; phone?: string }[];
 }
 
-const DEFAULT_PARENTS: Parent[] = [
-  { id: 'p1', parentName: 'أحمد محمد علي إبراهيم', phone: '966501234567' },
-  { id: 'p2', parentName: 'يوسف خالد عبد العزيز السهلي', phone: '966502234567' },
-  { id: 'p3', parentName: 'عمر سعد محمد الغامدي', phone: '966503234567' },
-  { id: 'p4', parentName: 'عبد الرحمن فهد علي القحطاني', phone: '966504234567' },
-  { id: 'p5', parentName: 'محمد عبد الله أحمد الزهراني', phone: '966505234567' },
-  { id: 'p6', parentName: 'سلطان ناصر محمد العتيبي', phone: '966506234567' },
-  { id: 'p7', parentName: 'فيصل بندر عبد الرحمن الشمري', phone: '966507234567' },
-];
+const DEFAULT_PARENTS: Parent[] = [];
 
 interface CertData {
   certTitle: string;

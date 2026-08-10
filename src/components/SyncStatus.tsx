@@ -7,7 +7,10 @@ import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // Collections to wipe — accounts excluded to preserve login
-const DATA_COLLECTIONS = ['students', 'reports', 'surveys', 'activities', 'messages', 'masar_rooms'];
+const DATA_COLLECTIONS = [
+  'students', 'reports', 'surveys', 'activities', 'messages',
+  'masar_rooms', 'ikhlasLogs', 'ikhlasPosts', 'waitlist'
+];
 
 async function purgeFirestore() {
   for (const colName of DATA_COLLECTIONS) {

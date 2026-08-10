@@ -28,15 +28,7 @@ import AttendanceTabManager from '@/components/AttendanceTabManager';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
-const CLASS_STUDENTS = [
-  { id: 's1', name: 'أحمد محمد علي إبراهيم',        phone: '966501234567' },
-  { id: 's2', name: 'يوسف خالد عبد العزيز السهلي',   phone: '966502234567' },
-  { id: 's3', name: 'عمر سعد محمد الغامدي',           phone: '966503234567' },
-  { id: 's4', name: 'عبد الرحمن فهد علي القحطاني',    phone: '966504234567' },
-  { id: 's5', name: 'محمد عبد الله أحمد الزهراني',    phone: '966505234567' },
-  { id: 's6', name: 'سلطان ناصر محمد العتيبي',        phone: '966506234567' },
-  { id: 's7', name: 'فيصل بندر عبد الرحمن الشمري',   phone: '966507234567' },
-];
+const CLASS_STUDENTS: { id: string; name: string; phone?: string }[] = [];
 
 type Tab = 'overview' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
 
