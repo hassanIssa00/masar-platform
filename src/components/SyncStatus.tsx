@@ -25,17 +25,27 @@ async function purgeFirestore() {
   }
 }
 
+import { getSession } from '@/lib/localDb';
+
 export default function SyncStatus() {
   const [snapshot, setSnapshot] = useState({ students: 0, reports: 0, surveys: 0, activities: 0, lastSync: null as string | null });
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [isStaff, setIsStaff] = useState(false);
 
   const refreshSnapshot = () => {
     queueMicrotask(() => setSnapshot(getSyncSnapshot()));
   };
 
   useEffect(() => {
-    refreshSnapshot();
+    const session = getSession();
+    const staff = session?.role === 'doctor' || session?.role === 'specialist' || session?.role === 'teacher';
+    setIsStaff(staff);
+    if (staff) {
+      refreshSnapshot();
+    }
   }, []);
+
+  if (!isStaff) return null;
 
   const handleClearAll = async () => {
     setStatus('loading');

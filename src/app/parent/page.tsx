@@ -50,19 +50,39 @@ export default function ParentDashboard() {
         return;
       }
 
-      const nextStudents = getStudents();
-      setStudents(nextStudents);
+      const allStudents = getStudents();
+      const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
+      const pName = session.name ? session.name.trim().toLowerCase() : '';
+      const activeId = typeof window !== 'undefined'
+        ? (localStorage.getItem('masar_active_student_id') || localStorage.getItem('masar.current-student-id'))
+        : null;
+
+      // Filter students to strictly match THIS parent's phone, name, or active linked student
+      let myStudents = allStudents.filter((s) => {
+        if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
+        if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
+        if (activeId && s.id === activeId) return true;
+        return false;
+      });
+
+      // Fallback: If no match found by phone/name, but activeId exists, use that single student
+      if (myStudents.length === 0 && activeId) {
+        myStudents = allStudents.filter((s) => s.id === activeId);
+      }
+
+      setStudents(myStudents);
       setReports(getReports());
       setMessages(getMessages());
       setIkhlasLogs(getIkhlasLogs());
       setIkhlasPosts(getIkhlasPosts());
       setParentName(session.name ?? 'ولي الأمر');
-      
-      const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar_active_student_id') : null;
-      if (savedStudentId && nextStudents.some((s) => s.id === savedStudentId)) {
-        setSelectedStudentId(savedStudentId);
-      } else {
-        setSelectedStudentId(nextStudents[0]?.id ?? '');
+
+      if (myStudents.length > 0) {
+        const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
+        setSelectedStudentId(targetId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('masar_active_student_id', targetId);
+        }
       }
     });
 
@@ -150,12 +170,12 @@ export default function ParentDashboard() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link href="/auth/login" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 hover:bg-slate-50 transition shadow-2xs">تبديل الحساب</Link>
-              <Link href="/student/new" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm">إضافة طفل جديد</Link>
+              {students.length === 0 && (
+                <Link href="/student/new" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm">إضافة طفل جديد</Link>
+              )}
             </div>
           </div>
         </header>
-
-        <SyncStatus />
 
         {students.length === 0 ? (
           <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
@@ -171,16 +191,21 @@ export default function ParentDashboard() {
         ) : (
           <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
             
-            {/* Sidebar Student Selection */}
+            {/* Sidebar Student Profile / Selection */}
             <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-base font-black text-slate-950">الأبناء المسجلون ({students.length})</h2>
+              <h2 className="text-base font-black text-slate-950">
+                {students.length === 1 ? 'طفلي المسجل' : `الأبناء المسجلون (${students.length})`}
+              </h2>
               <div className="grid gap-2">
                 {students.map((student) => {
                   const isSelected = selectedStudent?.id === student.id;
                   return (
                     <button
                       key={student.id}
-                      onClick={() => setSelectedStudentId(student.id)}
+                      onClick={() => {
+                        setSelectedStudentId(student.id);
+                        if (typeof window !== 'undefined') localStorage.setItem('masar_active_student_id', student.id);
+                      }}
                       className={`flex items-center gap-3 rounded-xl border p-3.5 text-right transition cursor-pointer ${
                         isSelected
                           ? 'border-teal-700 bg-teal-50 shadow-2xs'
@@ -188,7 +213,7 @@ export default function ParentDashboard() {
                       }`}
                     >
                       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 font-black text-sm">
-                        {student.fullName.slice(0, 1)}
+                        👦
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-black text-slate-950 text-sm truncate">{student.fullName}</p>

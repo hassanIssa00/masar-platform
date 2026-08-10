@@ -35,10 +35,29 @@ export default function Navbar() {
       setMode(savedMode);
 
       const allStudents = getStudents();
-      setStudents(allStudents);
-      if (allStudents.length > 0 && !savedStudentId) {
-        setActiveStudentId(allStudents[0].id);
-        localStorage.setItem('masar_active_student_id', allStudents[0].id);
+      let filteredStudents = allStudents;
+      if (session && session.role === 'parent') {
+        const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
+        const pName = session.name ? session.name.trim().toLowerCase() : '';
+        const activeId = savedStudentId || localStorage.getItem('masar.current-student-id');
+
+        filteredStudents = allStudents.filter((s) => {
+          if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
+          if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
+          if (activeId && s.id === activeId) return true;
+          return false;
+        });
+
+        if (filteredStudents.length === 0 && activeId) {
+          filteredStudents = allStudents.filter((s) => s.id === activeId);
+        }
+      }
+
+      setStudents(filteredStudents);
+      if (filteredStudents.length > 0) {
+        const targetId = (savedStudentId && filteredStudents.some(s => s.id === savedStudentId)) ? savedStudentId : filteredStudents[0].id;
+        setActiveStudentId(targetId);
+        localStorage.setItem('masar_active_student_id', targetId);
       } else {
         setActiveStudentId(savedStudentId);
       }
