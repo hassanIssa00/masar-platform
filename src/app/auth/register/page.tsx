@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
-import { getAccounts, getStudents, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
+import { getAccounts, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 
 type Country = {
@@ -179,9 +179,12 @@ export default function RegisterPage() {
     setLoading(true);
 
     const fullPhone = `${selectedCountry.code}${phone}`;
-    const primaryName = accountType === 'parent' ? parentName : childName || 'معلم / د. إسماعيل عيسى';
+    const primaryName = accountType === 'parent' ? parentName : accountType === 'teacher' ? (parentName || 'معلم') : childName;
 
+    // Clear any existing session (e.g. a previous doctor demo session)
+    // so that the new parent/student account starts fresh
     if (typeof window !== 'undefined') {
+      clearSession();
       localStorage.removeItem('masar.current-student-id');
       localStorage.removeItem('masar_active_student_id');
       localStorage.removeItem('masar_active_mode');

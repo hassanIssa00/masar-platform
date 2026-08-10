@@ -58,7 +58,16 @@ export default function Navbar() {
     if (targetMode === 'student') {
       router.push('/kids');
     } else {
-      router.push('/dashboard');
+      // Route based on role: staff → dashboard, parent → /parent
+      const isStaffRole = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
+      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
+      if (isStaffRole) {
+        router.push('/dashboard');
+      } else if (schoolBranch === 'IKHLAS_JEDDAH') {
+        router.push('/school-parent');
+      } else {
+        router.push('/parent');
+      }
     }
   };
 
@@ -69,7 +78,16 @@ export default function Navbar() {
       setShowPinModal(false);
       setPinInput('');
       setPinError(false);
-      router.push('/dashboard');
+      // Route based on role after PIN unlock
+      const isStaffRole = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
+      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
+      if (isStaffRole) {
+        router.push('/dashboard');
+      } else if (schoolBranch === 'IKHLAS_JEDDAH') {
+        router.push('/school-parent');
+      } else {
+        router.push('/parent');
+      }
     } else {
       setPinError(true);
     }

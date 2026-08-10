@@ -30,8 +30,23 @@ export default function ParentDashboard() {
   useEffect(() => {
     queueMicrotask(() => {
       const session = getSession();
-      if (session?.role === 'doctor' || session?.role === 'specialist' || session?.role === 'teacher') {
+
+      // Not logged in → send to login
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+
+      // Doctor / Staff → their own dashboard
+      if (session.role === 'doctor' || session.role === 'specialist' || session.role === 'teacher') {
         router.push('/dashboard');
+        return;
+      }
+
+      // Ikhlas-branch parent → redirect to school-parent portal
+      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
+      if (schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') {
+        router.replace('/school-parent');
         return;
       }
 
@@ -41,7 +56,7 @@ export default function ParentDashboard() {
       setMessages(getMessages());
       setIkhlasLogs(getIkhlasLogs());
       setIkhlasPosts(getIkhlasPosts());
-      setParentName(getSession()?.name ?? 'ولي الأمر');
+      setParentName(session.name ?? 'ولي الأمر');
       
       const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar_active_student_id') : null;
       if (savedStudentId && nextStudents.some((s) => s.id === savedStudentId)) {
