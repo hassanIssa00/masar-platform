@@ -124,7 +124,14 @@ export default function LoginPage() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('masar_active_mode', 'student');
         }
-        router.push(branch === 'IKHLAS_JEDDAH' ? '/school-student' : '/kids');
+        if (branch === 'IKHLAS_JEDDAH') {
+          const allStudents = getStudents();
+          const linked = allStudents.find((s) => s.fullName === result.account.name || s.parentPhone === result.account.email);
+          const needsSetup = !linked?.dateOfBirth && (typeof window !== 'undefined' ? !localStorage.getItem('school_student_setup_done') : true);
+          router.push(needsSetup ? '/school-student/setup' : '/school-student');
+        } else {
+          router.push('/kids');
+        }
         return;
       }
 

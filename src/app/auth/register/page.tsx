@@ -258,7 +258,7 @@ export default function RegisterPage() {
         if (accountType === 'parent') {
           router.push('/school-parent');
         } else if (accountType === 'student') {
-          router.push('/school-student');
+          router.push('/school-student/setup');
         } else {
           router.push('/branches/ikhlas-jeddah');
         }

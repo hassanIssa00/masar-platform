@@ -38,6 +38,7 @@ export default function StudentDashboard() {
 
   // Student Data from session
   const [studentName, setStudentName] = useState('طالب');
+  const [studentPhoto, setStudentPhoto] = useState<string>('');
   const [studentStars] = useState(0);
   const [studentStreak] = useState(0);
 
@@ -58,12 +59,14 @@ export default function StudentDashboard() {
       router.replace('/school-parent');
       return;
     }
-    // Set student name from session or from linked student record
+    // Set student name and photo from session or from linked student record
     const students = getStudents();
     const linked = students.find((s) =>
       s.parentPhone === session.email || s.fullName === session.name
     );
     setStudentName(linked?.fullName || session.name || 'طالب');
+    const savedPhoto = typeof window !== 'undefined' ? localStorage.getItem('student_photo_url') : null;
+    setStudentPhoto(linked?.photoUrl || savedPhoto || '');
     fetchData();
   }, [router]);
 
@@ -120,8 +123,16 @@ export default function StudentDashboard() {
     <div className="bg-gradient-to-r from-emerald-500 to-teal-400 p-6 rounded-b-3xl text-white shadow-lg mb-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white text-emerald-600 flex items-center justify-center text-2xl font-bold shadow-md">
-            {studentName.split(' ').map((n: string) => n[0]).join('')}
+          <div className="w-16 h-16 rounded-full bg-white text-emerald-600 flex items-center justify-center text-2xl font-bold shadow-md overflow-hidden border-2 border-white">
+            {studentPhoto ? (
+              studentPhoto.startsWith('data:image') ? (
+                <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl">{studentPhoto}</span>
+              )
+            ) : (
+              studentName.split(' ').map((n: string) => n[0]).join('')
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold">مرحباً، {studentName} 👋</h1>
