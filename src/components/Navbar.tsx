@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, Shield, Lock, Check } from 'lucide-react';
+import { Menu, Shield, Lock, Check, LogOut } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
-import { getSession, getStudents, StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, StudentRecord, clearSession } from '@/lib/localDb';
 
 export default function Navbar() {
   const router = useRouter();
@@ -21,6 +21,21 @@ export default function Navbar() {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = () => {
+    clearSession();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('masar_logged_in');
+      localStorage.removeItem('masar_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('masar_user');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('masar_active_mode');
+      localStorage.removeItem('masar_active_student_id');
+    }
+    router.push('/login');
+  };
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -183,6 +198,16 @@ export default function Navbar() {
                 </div>
               </>
             )}
+
+            {/* Always Visible Direct Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
+              title="تسجيل الخروج"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">تسجيل الخروج</span>
+            </button>
 
           </div>
 

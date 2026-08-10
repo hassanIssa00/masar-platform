@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
-  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare, Clock, Bell, Building2
+  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare, Clock, Bell, Building2, LogOut
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
 import {
   getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord,
-  saveMessage, StudentRecord, getIkhlasLogs, getIkhlasPosts, IkhlasDailyLogRecord, IkhlasCommunityPost
+  saveMessage, StudentRecord, getIkhlasLogs, getIkhlasPosts, IkhlasDailyLogRecord, IkhlasCommunityPost, clearSession
 } from '@/lib/localDb';
 
 export default function ParentDashboard() {
@@ -26,6 +26,21 @@ export default function ParentDashboard() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [replyText, setReplyText] = useState('');
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+
+  const handleLogout = () => {
+    clearSession();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('masar_logged_in');
+      localStorage.removeItem('masar_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('masar_user');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('masar_active_mode');
+      localStorage.removeItem('masar_active_student_id');
+    }
+    router.push('/login');
+  };
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -169,7 +184,13 @@ export default function ParentDashboard() {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Link href="/auth/login" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 hover:bg-slate-50 transition shadow-2xs">تبديل الحساب</Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
+              >
+                <LogOut size={16} />
+                <span>تسجيل الخروج</span>
+              </button>
               {students.length === 0 && (
                 <Link href="/student/new" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm">إضافة طفل جديد</Link>
               )}
