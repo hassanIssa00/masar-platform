@@ -53,7 +53,7 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
                 <BrandMark size="lg" />
               </div>
               <div className="text-left space-y-1">
-                <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest">عيادة التأهيل والتعليم العلاجي المتخصص</p>
+                <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest">مركز التأهيل والتعليم العلاجي المتخصص</p>
                 <p className="text-xl font-black text-slate-950">د. إسماعيل عيسى</p>
                 <p className="text-xs font-bold text-slate-600">استشاري التعليم العلاجي وتعديل السلوك وصعوبات التعلم</p>
               </div>
@@ -62,8 +62,8 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
             {/* Official Report Title Bar */}
             <div className="my-6 rounded-xl bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-4 text-center text-white border-y-2 border-amber-400 flex items-center justify-between">
               <div className="text-right">
-                <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest">وثيقة إشرافية معتمدة إلكترونياً · OFFICIAL CLINICAL REPORT</p>
-                <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">{report.program || 'تقرير التقييم الشامل والطبي'}</h3>
+                <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest">وثيقة إشرافية معتمدة إلكترونياً · OFFICIAL ASSESSMENT REPORT</p>
+                <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">{report.program || 'تقرير التقييم الشامل والتحليلي'}</h3>
               </div>
               <div className="hidden sm:flex items-center gap-2 rounded-lg bg-amber-400/20 border border-amber-400/40 px-3 py-1.5 text-xs font-black text-amber-300">
                 <FileCheck size={16} />
@@ -96,7 +96,7 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
             {/* Report Summary */}
             <div className="mt-6 space-y-2">
               <h4 className="text-sm font-black text-slate-950 uppercase tracking-wider border-r-4 border-amber-500 pr-3">
-                الخلاصة والتشخيص السريري المعتمد
+                الخلاصة والتشخيص المعتمد
               </h4>
               <p className="text-sm font-bold text-slate-800 leading-relaxed rounded-xl bg-slate-50 p-4 border border-slate-200">
                 {report.summary}

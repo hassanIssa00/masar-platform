@@ -58,10 +58,10 @@ export default function BranchesPage() {
             <div>
               <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                 <Building2 className="text-teal-600" size={26} />
-                إدارة الفروع والعيادات المتعددة
+                إدارة الفروع والفروع المتعددة
               </h1>
               <p className="text-xs font-bold text-slate-500 mt-1">
-                تشغيل وإدارة فروع وعيادات المركز في مواقع متعددة من مكان واحد
+                تشغيل وإدارة فروع وفروع المركز في مواقع متعددة من مكان واحد
               </p>
             </div>
             <button onClick={openCreate} className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white hover:bg-teal-700 transition shadow-sm">
@@ -70,7 +70,7 @@ export default function BranchesPage() {
           </div>
 
           <FeatureGuideBanner
-            title="إدارة العيادات والفروع المتعددة (Multi-Branch Clinic System)"
+            title="إدارة الفروع المتعددة (Multi-Branch System)"
             description="لوحة تشغيل مركزي للتحكم بجميع الفروع الإقليمية والمحلية للمركز، توزيع الأطباء، ومتابعة الطلاب في كل موقع."
             benefits={[
               'تُمكّن المؤسسة من التوسع وفتح فروع جديدة مع توحيد المعايير والجودة الطبية.',
@@ -103,7 +103,7 @@ export default function BranchesPage() {
             <div className="py-20 text-center rounded-2xl border border-dashed border-slate-300 bg-white space-y-3">
               <Building2 className="mx-auto text-slate-300" size={48} />
               <p className="text-lg font-black text-slate-500">لا توجد فروع مسجلة بعد</p>
-              <p className="text-xs font-bold text-slate-400">ابدأ بإضافة فرع أو عيادة أولى للمركز</p>
+              <p className="text-xs font-bold text-slate-400">ابدأ بإضافة فرع أو مركز أولى للمركز</p>
               <button onClick={openCreate} className="mx-auto flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-black text-white hover:bg-teal-700 transition shadow-sm">
                 <Plus size={16} /> إضافة أول فرع
               </button>
@@ -158,7 +158,7 @@ export default function BranchesPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className="text-xs font-black text-slate-700 block mb-1">اسم الفرع / العيادة</label>
+                    <label className="text-xs font-black text-slate-700 block mb-1">اسم الفرع / المركز</label>
                     <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-black outline-none focus:border-teal-600" required placeholder="مثال: فرع المدينة — القاهرة" />
                   </div>
                   <div>
