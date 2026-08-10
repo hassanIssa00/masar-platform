@@ -388,51 +388,110 @@ button {
 }
 
 /* ══════════════════════════════════════════════════
-   CERTIFICATE A4 LANDSCAPE PRINT OVERRIDE
-   Hides EVERYTHING and shows ONLY #printable-certificate
-   fitted perfectly to 1 page A4 landscape (297mm × 210mm)
-   — NO duplicates, NO extra pages —
+   UNIVERSAL PRINT STYLESHEET (REPORTS & CERTIFICATES)
 ══════════════════════════════════════════════════ */
 @media print {
+  /* Default Page Setup: Portrait A4 for Reports */
   @page {
-    size: A4 landscape !important;
-    margin: 0mm !important;
+    size: A4 portrait;
+    margin: 8mm;
   }
 
   html, body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 297mm !important;
-    height: 210mm !important;
-    overflow: hidden !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     background: #ffffff !important;
+    color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* ── Step 1: Hide ALL elements by default ── */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* ── Step 2: Hide the live-preview card and any no-print element ── */
+  /* ── Step 1: Hide Navigation, Sidebars & Interactive Buttons ── */
   .no-print,
-  #certificate-preview-only,
-  #certificate-preview-only * {
+  .print\:hidden,
+  nav,
+  aside,
+  header,
+  button,
+  .no-print * {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* ── Step 3: Show ONLY the one true printable certificate ── */
+  /* ── Step 2: Ensure Modal Wrappers Collapse for Printing ── */
+  .fixed,
+  [class*="fixed"],
+  .backdrop-blur-sm,
+  .backdrop-blur-md {
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* ── Step 3: Make Printable Report & Certificate Content Visible ── */
+  #printable-area,
+  #printable-area *,
+  .clinical-report,
+  .clinical-report *,
   #printable-certificate,
   #printable-certificate * {
     visibility: visible !important;
+    display: block;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* ── Step 4: Position it perfectly filling ONE A4 landscape page ── */
-  #printable-certificate {
+  /* Inline flex/grid items within printable area stay visible as flex/grid */
+  #printable-area .flex,
+  .clinical-report .flex {
+    display: flex !important;
+  }
+  #printable-area .grid,
+  .clinical-report .grid {
+    display: grid !important;
+  }
+  #printable-area .inline-block,
+  .clinical-report .inline-block {
+    display: inline-block !important;
+  }
+  #printable-area .inline-flex,
+  .clinical-report .inline-flex {
+    display: inline-flex !important;
+  }
+
+  /* ── Step 4: Printable Area Container Fit ── */
+  #printable-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   SPECIAL CERTIFICATE OVERRIDE (A4 LANDSCAPE ONLY)
+══════════════════════════════════════════════════ */
+@media print {
+  body:has(#printable-certificate) {
+    width: 297mm !important;
+    height: 210mm !important;
+    overflow: hidden !important;
+  }
+
+  body:has(#printable-certificate) #printable-certificate {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -442,61 +501,8 @@ button {
     height: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
-    box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    overflow: hidden !important;
     z-index: 999999 !important;
     background: #ffffff !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    border-radius: 0 !important;
-  }
-
-  /* ── Step 5: Neutralise all wrapper/modal backgrounds ── */
-  .fixed,
-  .backdrop-blur-md,
-  .bg-slate-950,
-  .bg-slate-900,
-  [class*="bg-slate"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-  }
-
-  /* ── Step 5b: Collapse CertificateModal outer wrappers to prevent extra pages ── */
-  .print-modal-overlay {
-    position: static !important;
-    display: block !important;
-    overflow: visible !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 297mm !important;
-    height: 210mm !important;
-    max-height: 210mm !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-  }
-
-  .print-modal-wrapper {
-    width: 297mm !important;
-    height: 210mm !important;
-    max-height: 210mm !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-
-  /* ── Step 6: Hide toolbar / modal controls ── */
-  .print\:hidden {
-    display: none !important;
-    visibility: hidden !important;
   }
 }
 
