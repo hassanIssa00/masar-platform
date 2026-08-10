@@ -10,6 +10,7 @@ export type AccountRecord = {
   email: string;
   phone?: string;
   role: UserRole;
+  schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
   createdAt: string;
 };
 
@@ -200,12 +201,15 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
   return next;
 }
 
-export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role'>) {
+export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch'>) {
   localStorage.setItem(KEYS.session, JSON.stringify(account));
   localStorage.setItem('masar-user', JSON.stringify(account));
   localStorage.setItem('masar_logged_in', 'true');
   localStorage.setItem('user_role', account.role);
   localStorage.setItem('user_name', account.name);
+  if (account.schoolBranch) {
+    localStorage.setItem('masar_school_branch', account.schoolBranch);
+  }
 }
 
 export function getSession() {
@@ -213,7 +217,7 @@ export function getSession() {
 
   try {
     const raw = localStorage.getItem(KEYS.session);
-    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role'>) : null;
+    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch'>) : null;
   } catch {
     return null;
   }

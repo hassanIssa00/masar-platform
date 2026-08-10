@@ -101,6 +101,12 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
+      // Restore / sync school branch from account record
+      const branch = result.account.schoolBranch
+        ?? (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
+      if (typeof window !== 'undefined' && result.account.schoolBranch) {
+        localStorage.setItem('masar_school_branch', result.account.schoolBranch);
+      }
       // Track login event
       trackEvent('login', { userId: result.account.id, userName: result.account.name, userRole: result.account.role });
 
@@ -113,18 +119,22 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Student Role -> Student Interactive Experience
+      // 2. Student Role → Student portal (branch-aware)
       if (result.account.role === 'student') {
         if (typeof window !== 'undefined') {
           localStorage.setItem('masar_active_mode', 'student');
         }
-        router.push('/kids');
+        router.push(branch === 'IKHLAS_JEDDAH' ? '/school-student' : '/kids');
         return;
       }
 
-      // 3. Parent Role -> Parent Portal
+      // 3. Parent Role → Parent portal (branch-aware)
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_active_mode', 'parent');
+      }
+      if (branch === 'IKHLAS_JEDDAH') {
+        router.push('/school-parent');
+        return;
       }
       const students = getStudents();
       router.push(students.length > 0 ? '/parent' : '/student/new');

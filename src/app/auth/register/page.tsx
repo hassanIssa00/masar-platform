@@ -195,6 +195,7 @@ export default function RegisterPage() {
       email: email.trim().toLowerCase(),
       phone: fullPhone,
       role: accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student',
+      schoolBranch,
     });
 
     if (typeof window !== 'undefined') {

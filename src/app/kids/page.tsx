@@ -48,8 +48,30 @@ function KidsDashboardContent() {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       const currentSession = getSession();
-      if (currentSession?.role === 'doctor' || currentSession?.role === 'specialist' || currentSession?.role === 'teacher') {
+
+      // Not logged in → send to login
+      if (!currentSession) {
+        router.replace('/login');
+        return;
+      }
+
+      // Doctor / Staff → their dashboard
+      if (currentSession.role === 'doctor' || currentSession.role === 'specialist' || currentSession.role === 'teacher') {
         router.push('/dashboard');
+        return;
+      }
+
+      // Parent → parent portal (not kids)
+      if (currentSession.role === 'parent') {
+        const branch = currentSession.schoolBranch ?? localStorage.getItem('masar_school_branch');
+        router.replace(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
+        return;
+      }
+
+      // Ikhlas student → school-student portal
+      const branch = currentSession.schoolBranch ?? localStorage.getItem('masar_school_branch');
+      if (branch === 'IKHLAS_JEDDAH') {
+        router.replace('/school-student');
         return;
       }
 

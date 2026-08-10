@@ -23,7 +23,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession } from '@/lib/localDb';
+import { clearSession, getSession, getStudents } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -35,19 +35,38 @@ export default function StudentDashboard() {
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Student Data (mocked for now, usually from auth)
-  const [student] = useState({
-    name: 'أحمد محمود',
-    stars: 450,
-    streak: 12
-  });
+
+  // Student Data from session
+  const [studentName, setStudentName] = useState('طالب');
+  const [studentStars] = useState(0);
+  const [studentStreak] = useState(0);
 
   const [selectedHw, setSelectedHw] = useState<any | null>(null);
 
   useEffect(() => {
+    // Auth guard
+    const session = getSession();
+    if (!session) {
+      router.replace('/login');
+      return;
+    }
+    if (session.role === 'doctor' || session.role === 'specialist') {
+      router.replace('/dashboard');
+      return;
+    }
+    if (session.role === 'parent') {
+      router.replace('/school-parent');
+      return;
+    }
+    // Set student name from session or from linked student record
+    const students = getStudents();
+    const linked = students.find((s) =>
+      s.parentPhone === session.email || s.fullName === session.name
+    );
+    setStudentName(linked?.fullName || session.name || 'طالب');
     fetchData();
-  }, []);
+  }, [router]);
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -102,10 +121,10 @@ export default function StudentDashboard() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-white text-emerald-600 flex items-center justify-center text-2xl font-bold shadow-md">
-            {student.name.split(' ').map(n => n[0]).join('')}
+            {studentName.split(' ').map((n: string) => n[0]).join('')}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">مرحباً، {student.name} 👋</h1>
+            <h1 className="text-2xl font-bold">مرحباً، {studentName} 👋</h1>
             <p className="text-emerald-50 text-sm opacity-90">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
         </div>
@@ -121,7 +140,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="text-xs text-emerald-50">نجومك</p>
-            <p className="font-bold text-xl">{student.stars}</p>
+            <p className="font-bold text-xl">{studentStars}</p>
           </div>
         </div>
         <div className="bg-white/20 rounded-2xl p-4 flex-1 flex items-center gap-3 backdrop-blur-sm">
@@ -130,7 +149,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="text-xs text-emerald-50">حماسك</p>
-            <p className="font-bold text-xl">{student.streak} أيام</p>
+            <p className="font-bold text-xl">{studentStreak} أيام</p>
           </div>
         </div>
       </div>

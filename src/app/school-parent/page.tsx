@@ -8,7 +8,7 @@ import {
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession } from '@/lib/localDb';
+import { clearSession, getSession } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -37,18 +37,23 @@ export default function SchoolParentPage() {
   const [submitted, setSubmitted] = useState<string[]>([]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedName = localStorage.getItem('user_name') || localStorage.getItem('masar_user');
-      if (storedName) {
-        try {
-          const parsed = JSON.parse(storedName);
-          setParentName(parsed.name || parsed);
-        } catch {
-          setParentName(storedName);
-        }
-      }
+    // Auth guard
+    const session = getSession();
+    if (!session) {
+      router.replace('/login');
+      return;
     }
-  }, []);
+    if (session.role === 'doctor' || session.role === 'specialist') {
+      router.replace('/dashboard');
+      return;
+    }
+    if (session.role === 'student') {
+      router.replace('/school-student');
+      return;
+    }
+    // Set parent name from session directly
+    setParentName(session.name || 'ولي الأمر');
+  }, [router]);
 
   const handleLogout = () => {
     clearSession();
