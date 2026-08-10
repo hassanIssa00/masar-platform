@@ -1,11 +1,75 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Printer, X, ShieldCheck, CheckCircle2, Award, FileCheck } from 'lucide-react';
 import type { ReportRecord } from '@/lib/localDb';
 import BrandMark from './BrandMark';
 
 export default function PrintableReportModal({ report, onClose }: { report: ReportRecord; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handlePrint();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handlePrint = () => {
+    const reportElem = document.getElementById('printable-area');
+    if (!reportElem) {
+      window.print();
+      return;
+    }
+
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <title>تقرير ${report.studentName || 'الطالب'} - منصة مسار</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700;800;900&display=swap');
+              * { box-sizing: border-box; font-family: 'Cairo', sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              body { margin: 0; padding: 20px; background: #ffffff; color: #0f172a; direction: rtl; }
+              @page { size: A4 portrait; margin: 8mm; }
+              .print\\:hidden { display: none !important; }
+            </style>
+          </head>
+          <body>
+            ${reportElem.outerHTML}
+            <script>
+              setTimeout(() => {
+                window.focus();
+                window.print();
+              }, 400);
+            </script>
+          </body>
+          </html>
+        `);
+        doc.close();
+
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch (e) {}
+        }, 6000);
+        return;
+      }
+    } catch (e) {
+      console.warn('Iframe print failed, falling back to window.print():', e);
+    }
+
     window.print();
   };
 

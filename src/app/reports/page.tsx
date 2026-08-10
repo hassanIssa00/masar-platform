@@ -462,7 +462,7 @@ function ReportsContent() {
                     <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{cleanReportText(report.summary)}</p>
                     <div className="mt-5 flex gap-3">
                       <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
-                      <button onClick={() => window.print()} className="no-print rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700"><Printer size={17} /></button>
+                      <button onClick={() => setPrintReport(report)} className="no-print rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-100 transition cursor-pointer" title="طباعة التقرير / PDF"><Printer size={17} /></button>
                       <button
                         onClick={() => {
                           deleteReport(report.id);
