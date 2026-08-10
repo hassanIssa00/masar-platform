@@ -1,12 +1,13 @@
 'use client';
 
-import { FormEvent, useState, useMemo } from 'react';
+import { FormEvent, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { saveCredential } from '@/lib/auth';
 import { getAccounts, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 
 type Country = {
@@ -86,6 +87,11 @@ export default function RegisterPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
+  useEffect(() => {
+    pullCloudDataToLocal().catch(() => {});
+  }, []);
+
   const filteredCountries = useMemo(() => {
     if (!countrySearch.trim()) return ALL_COUNTRIES;
     const q = countrySearch.trim().toLowerCase();
@@ -131,6 +137,12 @@ export default function RegisterPage() {
     const clean = phone.replace(/\D/g, '');
     if (!clean) return 'رقم الهاتف / الواتساب مطلوب';
     if (clean.length < 8) return 'رقم الهاتف ناقص، يرجى كتابة الرقم كاملاً (8 أرقام على الأقل)';
+    // Duplicate phone check
+    const fullPhone = `${selectedCountry.code}${phone}`;
+    const accounts = getAccounts();
+    if (accounts.some((a) => a.phone && (a.phone === fullPhone || a.phone.includes(clean)))) {
+      return 'رقم الهاتف مسجّل بالفعل مع حساب آخر. يمكنك تسجيل الدخول بدلاً من ذلك.';
+    }
     return '';
   };
 
@@ -149,7 +161,7 @@ export default function RegisterPage() {
       phone: getPhoneError(),
       password: getPasswordError(),
     };
-  }, [parentName, childName, email, phone, password, accountType]);
+  }, [parentName, childName, email, phone, password, accountType, selectedCountry]);
 
   const hasErrors = useMemo(() => {
     if (accountType === 'parent' && errors.parentName) return true;
