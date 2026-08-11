@@ -22,6 +22,8 @@ export interface CalendarSession {
   notes?: string;
 }
 
+import { syncDocToCloud } from '@/lib/firestoreSync';
+
 const LOCAL_SESSIONS_KEY = 'masar.calendar_sessions.v1';
 
 function readCalendarSessions(): CalendarSession[] {
@@ -36,6 +38,9 @@ function readCalendarSessions(): CalendarSession[] {
 function saveCalendarSessions(items: CalendarSession[]) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(LOCAL_SESSIONS_KEY, JSON.stringify(items));
+  items.forEach((item) => {
+    syncDocToCloud('calendar_sessions', item.id, item);
+  });
 }
 
 export default function DoctorCalendarPage() {

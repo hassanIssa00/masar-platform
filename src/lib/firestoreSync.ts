@@ -27,6 +27,9 @@ const KEYS = {
   activity: 'masar.activity.v1',
   messages: 'masar.messages.v1',
   credentials: 'masar.credentials.v1',
+  ikhlasLogs: 'masar.ikhlasLogs.v1',
+  ikhlasPosts: 'masar.ikhlasPosts.v1',
+  calendarSessions: 'masar.calendar_sessions.v1',
 };
 
 function writeLocal<T>(key: string, data: T[]) {
@@ -109,6 +112,9 @@ export async function pullCloudDataToLocal() {
     syncCollection<SurveySubmission>('surveys', KEYS.surveys),
     syncCollection<ActivityRecord>('activities', KEYS.activity),
     syncCollection<MessageRecord>('messages', KEYS.messages),
+    syncCollection<any>('ikhlasLogs', KEYS.ikhlasLogs),
+    syncCollection<any>('ikhlasPosts', KEYS.ikhlasPosts),
+    syncCollection<any>('calendar_sessions', KEYS.calendarSessions),
     syncCollection<any>('credentials', KEYS.credentials),
   ]);
 }
@@ -138,6 +144,9 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   setupListener('messages', KEYS.messages);
   setupListener('accounts', KEYS.accounts);
   setupListener('surveys', KEYS.surveys);
+  setupListener('ikhlasLogs', KEYS.ikhlasLogs);
+  setupListener('ikhlasPosts', KEYS.ikhlasPosts);
+  setupListener('calendar_sessions', KEYS.calendarSessions);
 
   return () => {
     unsubscribes.forEach((unsub) => unsub());
