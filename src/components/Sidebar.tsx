@@ -50,11 +50,18 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     const saved = localStorage.getItem('masar_sidebar_collapsed');
     if (saved === 'true') {
       setCollapsed(true);
+    }
+    const session = getSession();
+    if (session?.role) {
+      setUserRole(session.role);
+    } else if (typeof window !== 'undefined') {
+      setUserRole(localStorage.getItem('user_role') || 'parent');
     }
 
     const handleToggle = () => {
@@ -72,6 +79,21 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
     window.addEventListener('masar_toggle_sidebar', handleToggle);
     return () => window.removeEventListener('masar_toggle_sidebar', handleToggle);
   }, []);
+
+  const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
+
+  const parentLinks = [
+    { name: 'بوابة ولي الأمر 🏠', path: '/parent', icon: Building2 },
+    { name: 'استبيان طفل جديد 📋', path: '/survey', icon: ClipboardList },
+    { name: 'أولادي 👦', path: '/parent', icon: Users },
+  ];
+
+  const studentLinks = [
+    { name: 'فصلي المباشر 🏫', path: '/school-student', icon: Building2 },
+    { name: 'ألعابي 🎮', path: '/kids', icon: Gamepad2 },
+  ];
+
+  const activeNavLinks = isStaff ? adminLinks : userRole === 'student' ? studentLinks : parentLinks;
 
   const toggleCollapse = () => {
     const nextState = !collapsed;
@@ -138,7 +160,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
         {/* Links List */}
         <div className="flex-1 overflow-y-auto p-2.5">
           <div className="grid gap-1.5">
-            {adminLinks.map(({ name, path, icon: Icon }) => {
+            {activeNavLinks.map(({ name, path, icon: Icon }) => {
               const isActive = pathname === path;
               return (
                 <Link

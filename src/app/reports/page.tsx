@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowRight, FilePlus2, Printer, Trash2, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
@@ -33,9 +33,15 @@ function ReportsContent() {
   const [printReport, setPrintReport] = useState<ReportRecord | null>(null);
   const parentMode = searchParams.get('mode') === 'parent';
 
+  const router = useRouter();
+
   useEffect(() => {
     queueMicrotask(() => {
       const session = getSession();
+      if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
+        router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
+        return;
+      }
       if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
       const nextReports = getReports();
       setReports(nextReports);
@@ -45,7 +51,7 @@ function ReportsContent() {
         setSelectedId(reportId);
       }
     });
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const filtered = useMemo(
     () =>

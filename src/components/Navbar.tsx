@@ -106,19 +106,34 @@ export default function Navbar() {
             </button>
 
             {/* Brand Identity */}
-            <Link href="/dashboard" className="focus-ring flex min-w-0 items-center gap-3 rounded-lg">
+            <Link
+              href={
+                isStaff
+                  ? '/dashboard'
+                  : userRole === 'parent'
+                  ? typeof window !== 'undefined' && localStorage.getItem('masar_school_branch') === 'IKHLAS_JEDDAH'
+                    ? '/school-parent'
+                    : '/parent'
+                  : userRole === 'student'
+                  ? '/school-student'
+                  : '/'
+              }
+              className="focus-ring flex min-w-0 items-center gap-3 rounded-lg"
+            >
               <BrandMark size="sm" />
             </Link>
 
-            {/* Dashboard Quick Access Button */}
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs transition shadow-sm"
-              title="الذهاب للوحة التحكم"
-            >
-              <LayoutDashboard size={15} />
-              <span className="hidden sm:inline">لوحة التحكم (الداشبورد)</span>
-            </Link>
+            {/* Dashboard Quick Access Button — STRICTLY FOR STAFF / DOCTOR ONLY */}
+            {isStaff && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs transition shadow-sm"
+                title="الذهاب للوحة التحكم"
+              >
+                <LayoutDashboard size={15} />
+                <span className="hidden sm:inline">لوحة التحكم (الداشبورد)</span>
+              </Link>
+            )}
           </div>
 
           {/* Profile Header Bar */}
