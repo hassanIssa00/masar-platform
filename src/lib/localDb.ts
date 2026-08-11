@@ -201,7 +201,7 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
   return next;
 }
 
-export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch'>) {
+export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>) {
   localStorage.setItem(KEYS.session, JSON.stringify(account));
   localStorage.setItem('masar-user', JSON.stringify(account));
   localStorage.setItem('masar_logged_in', 'true');
@@ -217,7 +217,7 @@ export function getSession() {
 
   try {
     const raw = localStorage.getItem(KEYS.session);
-    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch'>) : null;
+    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>) : null;
   } catch {
     return null;
   }
