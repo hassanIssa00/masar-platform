@@ -45,7 +45,7 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
   const [faceBox, setFaceBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [progress, setProgress] = useState(0); // 0-100 capture progress
 
-  // Load models + open camera
+  // Load models + open camera with robust fallback options
   useEffect(() => {
     let mounted = true;
 
@@ -53,21 +53,38 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
       try {
         await initFaceAuth();
         if (!mounted) return;
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-          audio: false,
-        });
-        if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
+
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+        } catch {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'user' },
+              audio: false,
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+          }
+        }
+
+        if (!mounted) { stream?.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
           setPhase('camera');
         }
       } catch (e: any) {
         setErrorMsg(e.name === 'NotAllowedError'
-          ? 'لم يتم السماح بالوصول للكاميرا. يرجى السماح من إعدادات المتصفح.'
-          : 'حدث خطأ في تشغيل الكاميرا.');
+          ? 'لم يتم السماح بالوصول للكاميرا. يرجى إعطاء الصلاحية في المتصفح.'
+          : 'حدث خطأ في تشغيل الكاميرا. يرجى التحديث وإعادة المحاولة.');
         setPhase('error');
       }
     })();

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
-  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare, Clock, Bell, Building2, LogOut
+  Send, CheckCircle2, BookOpen, Sparkles, Star, MessageSquare, Clock, Bell, Building2, LogOut, ScanFace
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
@@ -184,6 +184,13 @@ export default function ParentDashboard() {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              <Link
+                href="/face-enroll"
+                className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
+              >
+                <ScanFace size={16} />
+                <span>تسجيل الوجه البيومتري</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"

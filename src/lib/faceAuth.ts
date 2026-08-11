@@ -47,6 +47,8 @@ function deobfuscate(encoded: string): number[] {
   return JSON.parse(result);
 }
 
+import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 interface FaceRecord {
   userId: string;
@@ -125,17 +127,21 @@ export function checkBlink(landmarks: any): { isBlinking: boolean; ear: number }
 }
 
 /**
- * Enroll a user's face. Stores encrypted embedding in localStorage.
+ * Enroll a user's face. Stores encrypted embedding in localStorage & Firestore Cloud.
  */
 export function enrollFace(userId: string, descriptor: Float32Array): void {
   const records = readStore().filter(r => r.userId !== userId); // remove old
-  records.push({
+  const newRecord: FaceRecord = {
     userId,
     embeddingEnc: obfuscate(Array.from(descriptor)),
     enrolledAt: new Date().toISOString(),
-  });
+  };
+  records.push(newRecord);
   writeStore(records);
+  syncDocToCloud('faceRecords', userId, newRecord);
 }
+
+
 
 /**
  * Verify a face descriptor against enrolled user.
@@ -193,11 +199,15 @@ export function isFaceEnrolled(userId: string): boolean {
 }
 
 /**
- * Remove face enrollment for a user.
+ * Remove face enrollment for a user (local + cloud).
  */
-export function unenrollFace(userId: string): void {
+export function removeFaceEnrollment(userId: string): void {
   writeStore(readStore().filter(r => r.userId !== userId));
+  deleteDocFromCloud('faceRecords', userId);
 }
+
+/** Alias for removeFaceEnrollment */
+export const unenrollFace = removeFaceEnrollment;
 
 /**
  * Get enrollment date for a user.

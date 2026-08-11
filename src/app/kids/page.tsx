@@ -17,6 +17,7 @@ import {
   Palette,
   Play,
   Route,
+  ScanFace,
   ShieldCheck,
   Star,
   Trophy,
@@ -171,7 +172,11 @@ function KidsDashboardContent() {
             <p className="mt-1 truncate text-xs font-bold text-slate-500">{session?.email ?? 'لم يتم تسجيل بريد'}</p>
           </div>
 
-          <button onClick={logout} className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+          <Link href="/face-enroll" className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100 transition w-full">
+            <ScanFace size={17} />
+            تسجيل الوجه البيومتري
+          </Link>
+          <button onClick={logout} className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 w-full">
             <LogOut size={17} />
             تسجيل الخروج
           </button>

@@ -59,22 +59,22 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md" dir="rtl">
-      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-emerald-900/40 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md" dir="rtl">
+      <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden ring-4 ring-emerald-500/10">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600/20 border border-emerald-600/40 flex items-center justify-center">
-              <ScanFace size={20} className="text-emerald-400" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-sm">
+              <ScanFace size={22} className="text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-base font-black text-white">الدخول بالوجه</h2>
-              <p className="text-xs text-slate-400">انظر للكاميرا وابدأ الدخول تلقائياً</p>
+              <h2 className="text-base font-black text-slate-900">الدخول بالوجه الذكي</h2>
+              <p className="text-xs font-bold text-slate-500">انظر للكاميرا وابدأ الدخول تلقائياً</p>
             </div>
           </div>
           {failCount > 0 && (
-            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30">
+            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
               {failCount}/3 محاولة
             </span>
           )}
@@ -93,15 +93,15 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
 
           {phase === 'success' && (
             <div className="flex flex-col items-center gap-4 py-8">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center animate-pulse">
-                <Shield size={32} className="text-emerald-400" />
+              <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center animate-pulse shadow-md">
+                <Shield size={32} className="text-emerald-600" />
               </div>
               <div className="text-center">
-                <p className="text-slate-400 text-sm mb-1">مرحباً بعودتك 👋</p>
-                <h3 className="text-xl font-black text-white">{matchedName}</h3>
+                <p className="text-slate-500 text-sm font-bold mb-1">مرحباً بعودتك 👋</p>
+                <h3 className="text-xl font-black text-slate-900">{matchedName}</h3>
                 <div className="flex items-center justify-center gap-2 mt-2">
-                  <Loader2 size={14} className="text-emerald-400 animate-spin" />
-                  <span className="text-sm text-emerald-400">جاري تسجيل الدخول...</span>
+                  <Loader2 size={14} className="text-emerald-600 animate-spin" />
+                  <span className="text-sm font-bold text-emerald-600">جاري فتح الحساب...</span>
                 </div>
               </div>
             </div>
@@ -109,23 +109,23 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
 
           {phase === 'fail' && (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="w-14 h-14 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center">
-                <AlertTriangle size={28} className="text-red-400" />
+              <div className="w-14 h-14 rounded-full bg-red-50 border-2 border-red-500 flex items-center justify-center">
+                <AlertTriangle size={28} className="text-red-600" />
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-black text-white mb-1">لم يتم التعرف على الوجه</h3>
-                <p className="text-sm text-slate-400">تأكد من الإضاءة الجيدة وحاول مرة أخرى</p>
+                <h3 className="text-lg font-black text-slate-900 mb-1">لم يتم التعرف على الوجه</h3>
+                <p className="text-sm font-bold text-slate-500">تأكد من تسجيل وجهك أولاً والإضاءة الجيدة</p>
               </div>
               <div className="flex gap-3 w-full">
                 <button
                   onClick={() => setPhase('scanning')}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black flex items-center justify-center gap-1.5 transition"
+                  className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-sm"
                 >
                   <ScanFace size={16} /> حاول مجدداً
                 </button>
                 <button
                   onClick={onFallback}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold flex items-center justify-center gap-1.5 transition"
+                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black flex items-center justify-center gap-1.5 transition border border-slate-200"
                 >
                   <KeyRound size={16} /> كلمة المرور
                 </button>
@@ -134,6 +134,17 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           )}
 
         </div>
+
+        {/* Footer cancel controls */}
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
+          <button onClick={onCancel} className="font-bold text-slate-500 hover:text-slate-800 transition">
+            إلغاء الدخول
+          </button>
+          <button onClick={onFallback} className="font-bold text-emerald-700 hover:underline">
+            استخدام البصمة أو كلمة المرور
+          </button>
+        </div>
+
       </div>
     </div>
   );
