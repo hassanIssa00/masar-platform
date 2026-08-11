@@ -228,7 +228,7 @@ export default function Home() {
           <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Animated Nexus Entry Button in Header — sm and up */}
             <Link 
-              href="https://nexus.masar-platform.org" 
+              href="https://nexus.masarplatform.org" 
               className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-3.5 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95 shrink-0"
             >
               <Trophy size={14} className="text-amber-400 shrink-0" />
@@ -305,7 +305,7 @@ export default function Home() {
                   </Link>
 
                   <Link 
-                    href="https://nexus.masar-platform.org" 
+                    href="https://nexus.masarplatform.org" 
                     className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-6 py-3.5 text-sm sm:text-base font-black text-white shadow-md hover:from-slate-900 hover:to-cyan-900 transition active:scale-95"
                   >
                     <Trophy size={16} className="text-amber-400" />
@@ -601,7 +601,7 @@ export default function Home() {
                 {/* Powerful Motion Action Button with Arrows */}
                 <div className="pt-4 border-t border-slate-200/80">
                   <Link
-                    href="https://nexus.masar-platform.org"
+                    href="https://nexus.masarplatform.org"
                     className="relative overflow-hidden inline-flex items-center justify-between w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 hover:from-slate-900 hover:to-cyan-900 text-white font-black text-xs sm:text-sm transition-all duration-300 shadow-xl group-hover:scale-[1.01]"
                   >
                     <div className="flex items-center gap-2.5 z-10">
@@ -635,7 +635,7 @@ export default function Home() {
                     <p className="text-xs font-bold text-slate-300 mt-1">منظومة متكاملة لجميع أدوار المدرسة: طالب، معلم، ولي أمر، مدير، وموجه</p>
                   </div>
                   <Link
-                    href="https://nexus.masar-platform.org"
+                    href="https://nexus.masarplatform.org"
                     className="group/portal px-6 py-3.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs transition hover:bg-amber-300 shrink-0 shadow-md flex items-center gap-2"
                   >
                     <span>الانتقال للبوابة 🚀</span>
@@ -935,7 +935,7 @@ export default function Home() {
             <span>•</span>
             <Link href="/auth/register" className="hover:text-slate-900 transition">التسجيل</Link>
             <span>•</span>
-            <Link href="https://nexus.masar-platform.org" className="hover:text-slate-900 transition">نظام NEXUS</Link>
+            <Link href="https://nexus.masarplatform.org" className="hover:text-slate-900 transition">نظام NEXUS</Link>
           </div>
         </div>
       </footer>
