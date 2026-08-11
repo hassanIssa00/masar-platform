@@ -1,0 +1,260 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper Functions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Check if caller is authenticated via Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Extract caller UID
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Helper: Check caller role from custom claims token
+    function getRole() {
+      return request.auth.token.role;
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && (
+        getRole() == 'doctor' ||
+        request.auth.token.email == 'dr.ismail@masar.com'
+      );
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && (
+        getRole() == 'teacher' ||
+        getRole() == 'specialist'
+      );
+    }
+
+    function isStaff() {
+      return isDoctor() || isTeacher();
+    }
+
+    // Helper: Check if caller is the owner of a document (by matching uid)
+    function isOwner(userId) {
+      return isAuthenticated() && uid() == userId;
+    }
+
+    // Helper: Verify parent relationship via record fields
+    function isLinkedParent(data) {
+      return isAuthenticated() && (
+        (data.parentPhone != null && request.auth.token.phone_number == data.parentPhone) ||
+        (data.parentEmail != null && request.auth.token.email == data.parentEmail) ||
+        (data.parentId != null && uid() == data.parentId)
+      );
+    }
+
+    // Helper: Field Immutability Guard
+    // Prevents callers from modifying critical ownership or role fields during document updates
+    function isFieldUnchanged(field) {
+      return !(field in request.resource.data) ||
+             !(field in resource.data) ||
+             request.resource.data[field] == resource.data[field];
+    }
+
+    function protectedFieldsUnchanged() {
+      return isFieldUnchanged('role') &&
+             isFieldUnchanged('studentId') &&
+             isFieldUnchanged('parentId') &&
+             isFieldUnchanged('ownerId');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. DEFAULT DENY ALL
+    // ─────────────────────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. HIGHLY SENSITIVE COLLECTIONS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Accounts — Managed server-side via Server API. Direct client writes forbidden.
+    match /accounts/{accountId} {
+      allow read: if isAuthenticated() && (isDoctor() || uid() == accountId);
+      allow write: if false;
+    }
+
+    // Face Biometric Records — 100% Server-only. Client access completely denied.
+    match /faceRecords/{recordId} {
+      allow read, write: if false;
+    }
+
+    // Legacy Credentials — 100% Client access denied.
+    match /credentials/{credId} {
+      allow read, write: if false;
+    }
+
+    // Clinical Reports — Restricted to Doctor, Author Staff, or Linked Parent
+    match /reports/{reportId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // IEP Records — Restricted to Staff and Linked Parent
+    match /iep_records/{iepId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Session Records — Clinical notes restricted to Staff and Linked Parent
+    match /session_records/{sessionId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Consents — Parental consent forms
+    match /consents/{consentId} {
+      allow read: if isDoctor() || isLinkedParent(resource.data);
+      allow create: if isAuthenticated();
+      allow update: if isDoctor() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. SENSITIVE ACADEMIC & STUDENT COLLECTIONS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Students Profiles — Doctor/Staff access all; Parent accesses linked child only
+    match /students/{studentId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Attendance Records — Staff manages; Parent views linked child
+    match /attendance/{attendanceId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Homework Assignments & Submissions
+    match /homework/{homeworkId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Invoices — Financial records
+    match /invoices/{invoiceId} {
+      allow read: if isDoctor() || isLinkedParent(resource.data);
+      allow create, update, delete: if isDoctor();
+    }
+
+    // Direct Messages — Only Sender or Recipient
+    match /messages/{messageId} {
+      allow read: if isDoctor() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isAuthenticated();
+      allow update: if isDoctor() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Surveys — Guests can submit intake evaluation; Doctor manages
+    match /surveys/{surveyId} {
+      allow create: if true; // Guest intake survey submission allowed
+      allow read, update, delete: if isDoctor();
+    }
+
+    // Notifications — Recipient access only
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (isDoctor() || isOwner(resource.data.userId));
+      allow create: if isStaff();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId); // Mark read
+      allow delete: if isDoctor();
+    }
+
+    // Assessment Results
+    match /assessment_results/{resultId} {
+      allow read: if isStaff() || isLinkedParent(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. INTERNAL PLATFORM COLLECTIONS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow write: if isDoctor();
+    }
+
+    match /point_transactions/{txId} {
+      allow read: if isStaff() || isOwner(resource.data.studentId);
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    match /assessment_templates/{templateId} {
+      allow read: if isStaff();
+      allow write: if isDoctor();
+    }
+
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    match /activities/{activityId} {
+      allow read, write: if false; // Server API managed
+    }
+
+    match /ikhlasLogs/{logId} {
+      allow read, create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    match /ikhlasPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    match /calendar_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff();
+      allow update: if isStaff() && protectedFieldsUnchanged();
+      allow delete: if isDoctor();
+    }
+
+    // Waitlist — Public landing page registration allowed
+    match /waitlist/{entryId} {
+      allow create: if true;
+      allow read, update, delete: if isDoctor();
+    }
+
+    match /platform_analytics/{eventId} {
+      allow read, write: if false; // Server API managed
+    }
+
+    match /platform_config/{configId} {
+      allow read, write: if false; // Server API managed
+    }
+  }
+}

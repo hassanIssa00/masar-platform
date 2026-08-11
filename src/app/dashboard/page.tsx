@@ -1,97 +1,86 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowLeft, CalendarClock, ClipboardCheck, FileText, Gamepad2, Gauge, Heart, Star, Target, TrendingUp, UserRoundPlus } from 'lucide-react';
+import {
+  Users, Calendar, FileText, Activity, ArrowLeft, Heart,
+  ShieldAlert, UserRoundPlus, ClipboardCheck, Stamp, Bot, BarChart3, ClipboardList, Building2
+} from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
-import { curriculumPrograms } from '@/data/curriculum';
-import { useRouter } from 'next/navigation';
-import { ActivityRecord, getActivities, getReports, getSession, getStudents, getSurveys, ReportRecord, StudentRecord } from '@/lib/localDb';
-import { trackEvent } from '@/lib/analyticsTracker';
-import MasarAIAgent from '@/components/MasarAIAgent';
+import { getStudents, getReports, StudentRecord, ReportRecord } from '@/lib/localDb';
 
-export default function DashboardPage() {
-  const router = useRouter();
+export default function Dashboard() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
-  const [activities, setActivities] = useState<ActivityRecord[]>([]);
-  const [surveysCount, setSurveysCount] = useState(0);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== 'doctor') {
-      router.replace('/login');
-      return;
-    }
-    queueMicrotask(() => {
-      setStudents(getStudents());
-      setReports(getReports());
-      setActivities(getActivities());
-      setSurveysCount(getSurveys().length);
-    });
-    // Track dashboard visit
-    trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/dashboard' });
-  }, [router]);
-
-  const averageScore = useMemo(() => {
-    if (reports.length === 0) return 0;
-    return Math.round(reports.reduce((total, report) => total + report.score, 0) / reports.length);
-  }, [reports]);
+    setStudents(getStudents());
+    setReports(getReports());
+  }, []);
 
   const stats = [
-    { label: 'طلاب محفوظون', value: String(students.length), note: students.length ? 'من بياناتك الفعلية' : 'ابدأ بإضافة أول طالب', icon: Gauge },
-    { label: 'جلسات اليوم', value: '0', note: 'لم يتم إنشاء جدول جلسات بعد', icon: CalendarClock },
-    { label: 'تقارير مكتملة', value: String(reports.length), note: `${surveysCount} استبيان محفوظ`, icon: ClipboardCheck },
-    { label: 'متوسط الأداء', value: reports.length ? `${averageScore}%` : '0%', note: reports.length ? 'محسوب من التقارير المحفوظة' : 'لا توجد درجات بعد', icon: TrendingUp },
+    { label: 'طلاب محفوظون', value: students.length, note: 'ابدأ بإضافة أول طالب', icon: Users },
+    { label: 'جلسات اليوم', value: 0, note: 'لم يتم إنشاء جدول جلسات بعد', icon: Calendar },
+    { label: 'تقارير مكتملة', value: reports.length, note: '0 استبيان محفوظ', icon: FileText },
+    { label: 'متوسط الأداء', value: '0%', note: 'لا توجد درجات بعد', icon: Activity },
   ];
 
-  const latestReports = reports.slice(0, 5);
-
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950">
+    <div className="min-h-screen bg-slate-50/50 font-sans" dir="rtl">
       <Navbar />
-      <div className="flex" dir="rtl">
+      <div className="flex">
         <Sidebar desktopOnly />
-        <main className="min-w-0 flex-1 px-4 py-5 lg:px-8">
 
-          {/* ✨ WELCOME HERO — Dr. Ismail */}
-          <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-l from-teal-700 via-teal-800 to-slate-900 p-6 shadow-xl text-white" dir="rtl">
-            <div className="flex items-center gap-5">
-              {/* Doctor real photo */}
-              <div className="relative h-24 w-24 shrink-0 rounded-2xl overflow-hidden ring-3 ring-white/30 shadow-xl">
-                <Image
-                  src="/dr-ismail.jpg"
-                  alt="د. إسماعيل عيسى"
-                  fill
-                  className="object-cover object-top"
-                  priority
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-black text-teal-300 tracking-wider">مرحباً بك في منصة مَسَار 👋</p>
-                <h1 className="mt-1 text-2xl font-black text-white leading-snug">د. إسماعيل عيسى</h1>
-                <p className="mt-1.5 text-sm font-bold text-teal-200/80">استشاري التعليم العلاجي وصعوبات التعلم</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
-                    <Star size={12} className="text-amber-400" />
-                    {students.length} طالب مسجل
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
-                    <Heart size={12} className="text-rose-400" />
-                    {reports.length} تقرير مكتمل
+        <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+
+          {/* 🌟 Doctor Welcome Banner */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 md:p-8 text-white shadow-xl border border-teal-800/40">
+            <div className="absolute -left-10 -bottom-10 w-60 h-60 bg-teal-500/10 rounded-full blur-3xl" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-lg shrink-0 bg-slate-800">
+                  <img
+                    src="/dr-ismail.jpg"
+                    alt="د. إسماعيل عيسى"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-xs font-black text-amber-300 border border-amber-400/30">
+                    مرحباً بك في منصة مسار 🌟
+                  </span>
+                  <h1 className="mt-1 text-2xl md:text-3xl font-black tracking-tight text-white">
+                    د. إسماعيل عيسى
+                  </h1>
+                  <p className="text-xs md:text-sm font-bold text-teal-100 opacity-90 mt-0.5">
+                    استشاري التعليم العلاجي وصعوبات التعلم
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
+                      <Users size={12} className="text-teal-300" />
+                      {students.length} طالب مسجل
+                    </div>
+                    <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-teal-100">
+                      <Heart size={12} className="text-rose-400" />
+                      {reports.length} تقرير مكتمل
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 🔗 Quick Access Switcher for Dr. Ismail */}
-            <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
               <span className="text-xs font-black text-amber-300 ml-2">تنقل سريع للدكتور:</span>
               <Link href="/dashboard" className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 🏥 اللوحة الرئيسية
+              </Link>
+              <Link href="/signature" className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-md hover:scale-105">
+                <Stamp size={14} /> التوقيع والختم الإلكتروني ✒️
               </Link>
               <Link href="/branches/ikhlas-jeddah" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 🏫 فصل الإخلاص (جدة)
@@ -128,15 +117,15 @@ export default function DashboardPage() {
 
           <SyncStatus />
 
-          <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {stats.map(({ label, value, note, icon: Icon }) => (
-              <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-black text-slate-500">{label}</p>
                     <p className="mt-3 text-4xl font-black text-slate-950">{value}</p>
                   </div>
-                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-teal-50 text-teal-800">
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-50 text-teal-800">
                     <Icon size={22} />
                   </span>
                 </div>
@@ -145,8 +134,8 @@ export default function DashboardPage() {
             ))}
           </section>
 
-          <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-black text-slate-500">حالات تحتاج متابعة</p>
@@ -158,127 +147,48 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {latestReports.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                  <p className="font-black text-slate-950">لا توجد حالات محفوظة بعد</p>
-                  <p className="mt-2 text-sm font-bold leading-7 text-slate-600">الداشبورد لا يعرض بيانات وهمية. أضف طالبًا أو استبيانًا وسيظهر هنا تلقائيًا.</p>
-                  <Link href="/student/new" className="mt-4 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-                    إضافة أول طالب
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {latestReports.map((report) => (
-                    <ReportCard key={report.id} report={report} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white">
-                  <Target size={20} />
-                </span>
-                <div>
-                  <p className="text-sm font-black text-slate-500">سجل النشاط</p>
-                  <h2 className="text-xl font-black text-slate-950">آخر عمليات المنصة</h2>
-                </div>
-              </div>
-              {activities.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5">
-                  <p className="font-black text-slate-950">لا توجد عمليات محفوظة بعد</p>
-                  <p className="mt-2 text-sm font-bold leading-7 text-slate-600">كل طالب أو تقرير أو استبيان جديد سيظهر هنا تلقائياً.</p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {activities.slice(0, 5).map((activity) => (
-                    <article key={activity.id} className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-sm font-black text-slate-950">{activity.title}</p>
-                      <p className="mt-1 text-xs font-bold leading-6 text-slate-600">{activity.detail}</p>
-                      <p className="mt-2 text-[11px] font-bold text-slate-400">{new Date(activity.createdAt).toLocaleString('ar-SA')}</p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-black text-slate-500">مكتبة المسارات</p>
-                <h2 className="text-xl font-black text-slate-950">كل مسار مرتبط باختبار وتدريب وتقرير</h2>
-              </div>
-              <FileText className="text-slate-400" size={22} />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {curriculumPrograms.map((program) => (
-                <Link key={program.slug} href={`/programs/${program.slug}`} className="rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50">
-                  <span className="mb-3 block h-2 rounded-full" style={{ backgroundColor: program.color }} />
-                  <h3 className="font-black text-slate-950">{program.shortTitle}</h3>
-                  <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{program.modules.length} مراحل، {program.measures.length} مؤشرات قياس</p>
+              <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                <p className="font-black text-slate-900">لا توجد حالات محفوظة بعد</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  الداشبورد لا يعرض بيانات وهمية. أضف طالباً أو استبياناً وسيظهر هنا تلقائياً.
+                </p>
+                <Link
+                  href="/student/new"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition"
+                >
+                  إضافة أول طالب
                 </Link>
-              ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-black text-slate-950">مكتبة المسارات</h2>
+              <p className="text-xs font-bold text-slate-500">كل مسار مرتبط باختبار وتدريب وتدوين تقارير</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  { name: 'التهجي البسيط', href: '/programs/reading' },
+                  { name: 'القراءة والكتابة', href: '/programs/reading' },
+                  { name: 'الرياضيات', href: '/programs/math' },
+                  { name: 'صعوبات التعلم', href: '/programs/learning-difficulties' },
+                  { name: 'تعديل السلوك', href: '/programs/learning-difficulties' },
+                  { name: 'التخاطب والنطق', href: '/programs/learning-difficulties' },
+                  { name: 'طيف التوحد', href: '/programs/learning-difficulties' },
+                ].map((p, idx) => (
+                  <Link
+                    key={idx}
+                    href={p.href}
+                    className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-xs font-black text-slate-900 hover:bg-teal-50 transition border border-slate-100"
+                  >
+                    <span>{p.name}</span>
+                    <ArrowLeft size={14} className="text-slate-400" />
+                  </Link>
+                ))}
+              </div>
             </div>
           </section>
+
         </main>
       </div>
-      {/* 🤖 Masar AI Agent Widget */}
-      <MasarAIAgent />
-    </div>
-  );
-}
-
-function ReportCard({ report }: { report: ReportRecord }) {
-  const isCompleted = report.status === 'completed';
-  return (
-    <article className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      {/* Top row: student info + status badge + score */}
-      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
-        <div className="min-w-0">
-          <p className="text-[14px] font-black text-slate-950 leading-tight">{report.studentName}</p>
-          <p className="mt-0.5 text-[12px] font-bold text-slate-500">{report.grade}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className={`rounded-full px-3 py-1 text-[11px] font-black ${isCompleted ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
-            {isCompleted ? 'مكتمل' : 'قيد المراجعة'}
-          </span>
-          <span className="text-[13px] font-black text-slate-700 w-10 text-left">{report.score}%</span>
-        </div>
-      </div>
-      {/* Progress bar */}
-      <div className="px-4 py-2.5">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${report.score}%`, backgroundColor: report.score >= 70 ? '#0f766e' : report.score >= 40 ? '#d97706' : '#ef4444' }}
-          />
-        </div>
-      </div>
-      {/* Program label */}
-      {report.program && (
-        <div className="px-4 pb-2">
-          <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">{report.program}</span>
-        </div>
-      )}
-      {/* Summary — fully contained, no overflow */}
-      {report.summary && (
-        <div className="mx-4 mb-4 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
-          <p className="text-[12px] font-bold text-slate-600 leading-relaxed">{report.summary}</p>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function Progress({ value }: { value: number }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="h-2 w-full min-w-28 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-teal-700" style={{ width: `${value}%` }} />
-      </div>
-      <span className="w-10 text-sm font-black text-slate-700">{value}%</span>
     </div>
   );
 }

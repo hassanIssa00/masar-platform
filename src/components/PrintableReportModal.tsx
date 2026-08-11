@@ -5,78 +5,99 @@ import { Printer, X, ShieldCheck, CheckCircle2, Award, FileCheck } from 'lucide-
 import type { ReportRecord } from '@/lib/localDb';
 import BrandMark from './BrandMark';
 
+// ── Hijri date helper ─────────────────────────────────────────────────────────
+function getTodayHijri(): string {
+  try {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date());
+  } catch {
+    return new Date().toLocaleDateString('ar-SA');
+  }
+}
+
 export default function PrintableReportModal({ report, onClose }: { report: ReportRecord; onClose: () => void }) {
+  const hijriDate = getTodayHijri();
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handlePrint();
-    }, 400);
+    const timer = setTimeout(() => handlePrint(), 400);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePrint = () => {
-    const reportElem = document.getElementById('printable-area');
-    if (!reportElem) return;
+    const printContents = document.getElementById('printable-area')?.innerHTML;
+    if (!printContents) return;
 
-    try {
-      // Remove any leftover print iframe
-      const oldIframe = document.getElementById('masar-print-iframe');
-      if (oldIframe) oldIframe.remove();
-
-      const iframe = document.createElement('iframe');
-      iframe.id = 'masar-print-iframe';
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.style.zIndex = '-9999';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
-
-      const win = iframe.contentWindow;
-      if (win) {
-        const doc = win.document;
-        doc.open();
-        doc.write(`
-          <!DOCTYPE html>
-          <html dir="rtl" lang="ar">
-          <head>
-            <title>تقرير ${report.studentName || 'الطالب'} - منصة مسار</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-            <style>
-              @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700;800;900&display=swap');
-              * { box-sizing: border-box; font-family: 'Cairo', sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              body { margin: 0; padding: 20px; background: #ffffff; color: #0f172a; direction: rtl; }
-              @page { size: A4 portrait; margin: 8mm; }
-              .print\\:hidden { display: none !important; }
-              .grid { display: grid !important; }
-              .flex { display: flex !important; }
-              .hidden { display: none !important; }
-            </style>
-          </head>
-          <body>
-            <div style="direction: rtl; text-align: right;">
-              ${reportElem.innerHTML}
-            </div>
-          </body>
-          </html>
-        `);
-        doc.close();
-
-        // Target the IFRAME window explicitly, NOT top window!
-        setTimeout(() => {
-          win.focus();
-          win.print();
-          setTimeout(() => {
-            try { iframe.remove(); } catch (e) {}
-          }, 3000);
-        }, 500);
-        return;
-      }
-    } catch (e) {
-      console.warn('Iframe print error:', e);
+    const win = window.open('', '_blank', 'width=900,height=1200');
+    if (!win) {
+      // Fallback: direct window print
+      window.print();
+      return;
     }
+
+    win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8"/>
+  <title>تقرير ${report.studentName || 'الطالب'} - منصة مسار</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;font-family:'Cairo',Arial,sans-serif;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    body{margin:0;padding:20px;background:#fff;color:#0f172a;direction:rtl}
+    @page{size:A4 portrait;margin:10mm}
+    .print-hidden{display:none!important}
+    img{max-width:100%;display:block}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 12px;text-align:right}
+    thead{background:#0f172a;color:#fff}
+    thead th{color:#fbbf24;font-weight:900;font-size:11px}
+    tbody tr:nth-child(even){background:#f8fafc}
+    /* ── Layout Helpers ── */
+    .flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
+    .gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}
+    .grid{display:grid}.grid-cols-4{grid-template-columns:repeat(4,1fr)}.grid-cols-2{grid-template-columns:repeat(2,1fr)}
+    .border-b{border-bottom:1px solid #e2e8f0}.border-t{border-top:1px solid #e2e8f0}
+    .border-b-2{border-bottom:2px solid #fbbf24}.border-t-2{border-top:2px solid #fbbf24}
+    .pb-6{padding-bottom:24px}.mb-6{margin-bottom:24px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}.pt-6{padding-top:24px}
+    .p-4{padding:16px}.p-6{padding:24px}.p-3{padding:12px}.px-3{padding-left:12px;padding-right:12px}
+    .py-1{padding-top:4px;padding-bottom:4px}
+    .rounded-xl{border-radius:12px}.rounded-full{border-radius:9999px}.rounded-2xl{border-radius:16px}
+    .bg-slate-50{background:#f8fafc}.bg-white{background:#fff}.bg-slate-900{background:#0f172a}
+    .bg-amber-400{background:#fbbf24}.bg-indigo-950{background:#1e1b4b}
+    .border{border:1px solid #e2e8f0}.border-slate-200{border-color:#e2e8f0}.border-amber-400{border-color:#fbbf24}
+    .border-r-4{border-right:4px solid #f59e0b}.pr-3{padding-right:12px}
+    .text-xs{font-size:11px}.text-sm{font-size:13px}.text-base{font-size:15px}.text-xl{font-size:20px}.text-lg{font-size:18px}
+    .text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}
+    .font-black{font-weight:900}.font-bold{font-weight:700}.font-mono{font-family:monospace}
+    .text-slate-950{color:#020617}.text-slate-900{color:#0f172a}.text-slate-800{color:#1e293b}
+    .text-slate-700{color:#334155}.text-slate-600{color:#475569}.text-slate-500{color:#64748b}.text-slate-400{color:#94a3b8}
+    .text-amber-600{color:#d97706}.text-amber-400{color:#fbbf24}.text-amber-300{color:#fcd34d}
+    .text-white{color:#fff}.text-indigo-700{color:#4338ca}
+    .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:0.15em}.leading-relaxed{line-height:1.625}
+    .shrink-0{flex-shrink:0}.overflow-hidden{overflow:hidden}
+    .space-y-2>*+*{margin-top:8px}.space-y-3>*+*{margin-top:12px}
+    /* signature */
+    .sig-box{border:1px solid #e2e8f0;border-radius:12px;padding:12px;text-align:center;min-width:220px}
+    .sig-img{height:72px;object-fit:contain;margin:0 auto}
+    .hijri-date{font-family:'Cairo',sans-serif;font-size:12px;font-weight:900;color:#0f172a;margin-top:4px}
+  </style>
+</head>
+<body>
+<div style="direction:rtl;text-align:right">
+  ${printContents}
+</div>
+<script>
+  window.onload = function(){
+    setTimeout(function(){ window.print(); window.close(); }, 600);
+  };
+</script>
+</body>
+</html>`);
+    win.document.close();
   };
 
   return (
@@ -108,9 +129,9 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
         {/* Outer Frame Padding Container */}
         <div className="p-4 sm:p-8 bg-slate-100 print:p-0 print:bg-white" dir="rtl" id="printable-area">
 
-          {/* Printable Document Body - ROYAL GOLD DOUBLE BORDER FRAME */}
-          <div className="relative rounded-2xl border-4 border-slate-900 bg-white p-6 sm:p-10 shadow-lg ring-1 ring-amber-300 print:border-4 print:border-slate-950 print:p-6">
-            
+          {/* Printable Document Body */}
+          <div className="relative rounded-2xl border-4 border-slate-900 bg-white p-6 sm:p-10 shadow-lg ring-1 ring-amber-300">
+
             {/* Decorative Corner Elements */}
             <div className="absolute top-2 right-2 w-8 h-8 border-t-2 border-r-2 border-amber-500 pointer-events-none" />
             <div className="absolute top-2 left-2 w-8 h-8 border-t-2 border-l-2 border-amber-500 pointer-events-none" />
@@ -217,7 +238,7 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
               </div>
             )}
 
-            {/* Signature & Official Seal Footer */}
+            {/* ── Signature & Official Seal Footer ── */}
             <div className="mt-8 pt-6 border-t-2 border-amber-400 flex items-end justify-between">
               <div className="flex items-center gap-2 text-slate-500 text-xs">
                 <ShieldCheck size={20} className="text-amber-500 shrink-0" />
@@ -226,11 +247,28 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
                   <p className="text-[10px] text-slate-400">منصة مَسَار التعليمية · جميع الحقوق محفوظة</p>
                 </div>
               </div>
-              <div className="text-center space-y-2">
-                <p className="text-xs font-black text-slate-700">توقيع واستشارية التعليم العلاجي</p>
-                <div className="h-14 w-40 border-2 border-dashed border-amber-400 rounded-xl bg-amber-50/60 grid place-items-center text-slate-900 font-serif font-black italic text-sm shadow-inner">
-                  د. إسماعيل عيسى ✍️
+
+              {/* Doctor Signature Block with Hijri Date */}
+              <div className="flex flex-col items-center gap-1 border border-slate-200 rounded-2xl p-4 bg-slate-50 min-w-[200px]">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">توقيع الاستشاري المعتمد</p>
+                {/* Signature image */}
+                <div className="relative h-16 w-44 my-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/dr-ismail-signature.png"
+                    alt="توقيع د. إسماعيل عيسى"
+                    className="sig-img w-full h-full object-contain"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+                  />
                 </div>
+                {/* Hijri Date — embedded as part of the signature block */}
+                <p className="text-[11px] font-black text-slate-900 font-mono tracking-wide">
+                  {hijriDate}
+                </p>
+                <p className="text-[11px] font-black text-slate-900">د. إسماعيل عيسى</p>
+                <p className="text-[9px] font-bold text-teal-700 flex items-center gap-1">
+                  <ShieldCheck size={10} /> توقيع إلكتروني موثق
+                </p>
               </div>
             </div>
 

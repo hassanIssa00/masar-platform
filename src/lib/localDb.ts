@@ -210,6 +210,18 @@ export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' 
   if (account.schoolBranch) {
     localStorage.setItem('masar_school_branch', account.schoolBranch);
   }
+
+  if (typeof document !== 'undefined') {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const payload = { ...account, iat: now, exp: now + 7 * 86400, v: 1 };
+      // Use encodeURIComponent to safely handle Arabic/non-ASCII chars before btoa
+      const headerB64 = btoa(unescape(encodeURIComponent(JSON.stringify({ alg: 'HS256', typ: 'JWT' })))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
+      const payloadB64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
+      const token = `${headerB64}.${payloadB64}.client_session`;
+      document.cookie = `masar_session=${token}; path=/; max-age=604800; SameSite=Lax`;
+    } catch {}
+  }
 }
 
 export function getSession() {

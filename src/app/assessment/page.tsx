@@ -90,25 +90,25 @@ function PlacementAssessmentContent() {
       }
     }, 0);
 
-    return () => window.clearTimeout(timeout);
   }, [searchParams, router]);
 
-  const isStudentFlow = Boolean(studentIdParam || localStorage.getItem?.('masar.current-student-id'));
+  const isStudentFlow = Boolean(studentIdParam || (typeof window !== 'undefined' && localStorage.getItem('masar.current-student-id')));
 
   useEffect(() => {
-    if (!finished || !isStudentFlow || !savedStudentId) return;
+    if (!finished) return;
 
     const timeout = window.setTimeout(() => {
-      // Route to the correct dashboard based on the registered account type
-      const activeMode = typeof window !== 'undefined'
-        ? localStorage.getItem('masar_active_mode')
-        : null;
-      const dest = activeMode === 'parent' ? '/parent' : '/kids';
-      router.push(`${dest}?student=${savedStudentId}`);
+      // Route directly to the student's profile page in Masar
+      const targetStudentId = savedStudentId || student?.id || studentIdParam || '';
+      if (targetStudentId) {
+        router.push(`/student/${targetStudentId}`);
+      } else {
+        router.push('/students');
+      }
     }, 1400);
 
     return () => window.clearTimeout(timeout);
-  }, [finished, isStudentFlow, router, savedStudentId]);
+  }, [finished, isStudentFlow, router, savedStudentId, student?.id, studentIdParam]);
 
   const domains = useMemo(() => {
     const grouped = new Map<string, ResponseRecord[]>();
@@ -403,8 +403,8 @@ function PlacementAssessmentContent() {
                   {!isStudentFlow && <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
                     عرض التقرير الرسمي
                   </Link>}
-                  <Link href={isStudentFlow ? `/kids?student=${savedStudentId || student?.id || studentIdParam || ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-                    {isStudentFlow ? 'فتح صفحة الطالب' : `فتح ${recommendedProgram.label}`}
+                  <Link href={isStudentFlow ? `/student/${savedStudentId || student?.id || studentIdParam || ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    {isStudentFlow ? 'فتح صفحة الطالب في مسار' : `فتح ${recommendedProgram.label}`}
                   </Link>
                 </div>
                 {!isStudentFlow && <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>}

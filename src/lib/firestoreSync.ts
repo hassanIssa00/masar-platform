@@ -115,7 +115,6 @@ export async function pullCloudDataToLocal() {
     syncCollection<any>('ikhlasLogs', KEYS.ikhlasLogs),
     syncCollection<any>('ikhlasPosts', KEYS.ikhlasPosts),
     syncCollection<any>('calendar_sessions', KEYS.calendarSessions),
-    syncCollection<any>('credentials', KEYS.credentials),
   ]);
 }
 

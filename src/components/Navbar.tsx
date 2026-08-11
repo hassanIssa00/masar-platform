@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, Shield, Lock, Check, LogOut } from 'lucide-react';
+import { Menu, Shield, Lock, Check, LogOut, LayoutDashboard } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
@@ -20,7 +20,6 @@ export default function Navbar() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     clearSession();
@@ -81,52 +80,6 @@ export default function Navbar() {
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
 
-  const switchMode = (targetMode: 'parent' | 'student') => {
-    if (targetMode === 'parent' && mode === 'student') {
-      setShowPinModal(true);
-      return;
-    }
-
-    setMode(targetMode);
-    localStorage.setItem('masar_active_mode', targetMode);
-    if (targetMode === 'student') {
-      router.push('/kids');
-    } else {
-      // Route based on role: staff → dashboard, parent → /parent
-      const isStaffRole = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
-      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
-      if (isStaffRole) {
-        router.push('/dashboard');
-      } else if (schoolBranch === 'IKHLAS_JEDDAH') {
-        router.push('/school-parent');
-      } else {
-        router.push('/parent');
-      }
-    }
-  };
-
-  const handlePinSubmit = () => {
-    if (pinInput === '1234' || pinInput === '' || pinInput.length === 4) {
-      setMode('parent');
-      localStorage.setItem('masar_active_mode', 'parent');
-      setShowPinModal(false);
-      setPinInput('');
-      setPinError(false);
-      // Route based on role after PIN unlock
-      const isStaffRole = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
-      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
-      if (isStaffRole) {
-        router.push('/dashboard');
-      } else if (schoolBranch === 'IKHLAS_JEDDAH') {
-        router.push('/school-parent');
-      } else {
-        router.push('/parent');
-      }
-    } else {
-      setPinError(true);
-    }
-  };
-
   const selectStudent = (id: string) => {
     setActiveStudentId(id);
     localStorage.setItem('masar_active_student_id', id);
@@ -145,16 +98,26 @@ export default function Navbar() {
                   window.dispatchEvent(new CustomEvent('masar_toggle_sidebar'));
                 }
               }}
-              className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition"
+              className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition cursor-pointer"
               aria-label="تبديل القائمة"
-              title="تبديل القائمة الرائسية"
+              title="تبديل القائمة الرئيسية"
             >
               <Menu size={22} />
             </button>
 
             {/* Brand Identity */}
-            <Link href="/" className="focus-ring flex min-w-0 items-center gap-3 rounded-lg">
+            <Link href="/dashboard" className="focus-ring flex min-w-0 items-center gap-3 rounded-lg">
               <BrandMark size="sm" />
+            </Link>
+
+            {/* Dashboard Quick Access Button */}
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs transition shadow-sm"
+              title="الذهاب للوحة التحكم"
+            >
+              <LayoutDashboard size={15} />
+              <span className="hidden sm:inline">لوحة التحكم (الداشبورد)</span>
             </Link>
           </div>
 
@@ -164,14 +127,14 @@ export default function Navbar() {
             <NotificationBell />
 
             {isStaff ? (
-              /* Staff / Doctor Badge */
-              <div className="hidden sm:flex min-w-0 items-center gap-2 rounded-xl bg-teal-50 px-3.5 py-1.5 text-right border border-teal-200">
+              /* Staff / Doctor Badge (Clickable link to Dashboard) */
+              <Link href="/dashboard" className="hidden sm:flex min-w-0 items-center gap-2 rounded-xl bg-teal-50 hover:bg-teal-100 px-3.5 py-1.5 text-right border border-teal-200 transition">
                 <Shield size={16} className="text-teal-600 shrink-0" />
                 <div>
                   <p className="text-[10px] font-black text-teal-700 uppercase tracking-wider">لوحة تشغيل الاستشاري</p>
                   <p className="truncate text-xs font-black text-slate-900">{userName || 'د. إسماعيل عيسى'}</p>
                 </div>
-              </div>
+              </Link>
             ) : (
               /* Family & Child Switcher Bar — Parent Account Only */
               <>
@@ -213,52 +176,6 @@ export default function Navbar() {
 
         </div>
 
-        {/* Parent PIN Lock Confirmation Modal */}
-        {showPinModal && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-xs">
-            <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl border border-slate-200 space-y-4">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-700">
-                <Lock size={28} />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">العودة لوضع ولي الأمر</h3>
-                <p className="mt-1 text-xs font-bold text-slate-500">
-                  أدخل رمز الأمان لحماية تقارير الطفل (رمز افتراضي: 1234 أو اترك فارغاً)
-                </p>
-              </div>
-
-              <input
-                type="password"
-                maxLength={4}
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePinSubmit()}
-                placeholder="••••"
-                className="w-full text-center tracking-widest text-2xl font-black rounded-xl border border-slate-300 bg-slate-50 py-3 outline-none focus:border-indigo-600"
-                autoFocus
-              />
-
-              {pinError && <p className="text-xs font-black text-rose-600">رمز الأمان غير صحيح. استخدم 1234</p>}
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPinModal(false)}
-                  className="flex-1 rounded-xl py-2.5 text-xs font-black text-slate-500 hover:bg-slate-100 transition"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePinSubmit}
-                  className="flex-1 rounded-xl bg-indigo-950 py-2.5 text-xs font-black text-white hover:bg-indigo-900 transition shadow-sm"
-                >
-                  تأكيد الدخول
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
     </>
   );

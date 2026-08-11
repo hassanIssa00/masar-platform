@@ -333,11 +333,16 @@ export default function PlatformSettingsPage() {
   /* ── Load data ─────────────────────────── */
   const loadSummary = useCallback(async () => {
     setLoading(true);
-    const [sum, cfg] = await Promise.all([fetchAnalyticsSummary(), getPlatformConfig()]);
-    setSummary(sum);
-    setConfig(cfg);
-    setAccounts(getAccounts());
-    setLoading(false);
+    try {
+      const [sum, cfg] = await Promise.all([fetchAnalyticsSummary(), getPlatformConfig()]);
+      setSummary(sum);
+      setConfig(cfg);
+      setAccounts(getAccounts());
+    } catch (e) {
+      console.warn('Error loading platform settings:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

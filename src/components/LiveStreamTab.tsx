@@ -95,7 +95,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
   const fetchToken = async (roomName: string, username: string, hostFlag: boolean) => {
     setLoadingToken(true);
     try {
-      const res = await fetch(`/api/livekit/token?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}&isHost=${hostFlag}`);
+      const res = await fetch(`/api/livekit/token?room=${encodeURIComponent(roomName)}`);
       const data = await res.json();
       if (data.token) { setToken(data.token); setWsUrl(data.wsUrl); }
     } catch (err) {

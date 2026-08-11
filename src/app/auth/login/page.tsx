@@ -3,30 +3,90 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, ShieldCheck, UserRound, ScanFace } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogIn,
+  ShieldCheck,
+  UserRound,
+  ScanFace,
+  Mail,
+  X,
+  Loader2,
+} from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { authenticate, ensureDemoAccount, getDemoPassword } from '@/lib/auth';
+import { authenticate, signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
 import { getStudents, setSession } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
+
+// Google icon SVG (official brand colors)
+function GoogleIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+// Apple icon SVG
+function AppleIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.11-.97.04-2.14.65-2.83 1.46-.62.72-1.16 1.88-1.01 3.01 1.08.08 2.18-.54 2.85-1.36z" />
+    </svg>
+  );
+}
+
+// Microsoft icon SVG
+function MicrosoftIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 23 23" aria-hidden="true">
+      <path fill="#f35325" d="M1 1h10v10H1z" />
+      <path fill="#81bc06" d="M12 1h10v10H12z" />
+      <path fill="#05a6f0" d="M1 12h10v10H1z" />
+      <path fill="#ffba08" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [otpStep, setOtpStep] = useState<1 | 2 | 3>(1);
-  const [otp, setOtp] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
   const [message, setMessage] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [faceLoginOpen, setFaceLoginOpen] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
 
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
+
+    // Check if coming back from Google redirect
+    handleGoogleRedirectResult('parent').then((result) => {
+      if (result && result.ok) {
+        setSession(result.account);
+        redirectAfterLogin(result.account);
+      }
+    });
+
     if (typeof window !== 'undefined') {
       const savedEmail = localStorage.getItem('masar_remember_email');
       const savedPass = localStorage.getItem('masar_remember_pass');
@@ -37,66 +97,57 @@ export default function LoginPage() {
     }
   }, []);
 
-  const loginAs = (type: 'doctor' | 'masar_student' | 'ikhlas_student' | 'masar_parent' | 'ikhlas_parent') => {
-    if (typeof window !== 'undefined') {
-      let email = 'dr.ismail@masar.com';
-      let name = 'د. إسماعيل عيسى';
-      let role = 'doctor';
-      let targetUrl = '/branches/ikhlas-jeddah';
+  // ─── Redirect helper based on account role/branch ───────────────────────────
+  function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string }) {
+    const branch =
+      account.schoolBranch ??
+      (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
 
-      if (type === 'doctor') {
-        email = 'dr.ismail@masar.com';
-        name = 'د. إسماعيل عيسى';
-        role = 'doctor';
-        targetUrl = '/dashboard';
-      } else if (type === 'masar_student') {
-        email = 'student.masar@masar.com';
-        name = 'أحمد محمد سيد (طالب مسار)';
-        role = 'student';
+    if (typeof window !== 'undefined' && account.schoolBranch) {
+      localStorage.setItem('masar_school_branch', account.schoolBranch);
+    }
+
+    trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
+
+    let targetUrl = '/dashboard';
+    if (account.role === 'doctor' || account.role === 'specialist' || account.role === 'teacher') {
+      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'parent');
+      targetUrl = '/dashboard';
+    } else if (account.role === 'student') {
+      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'student');
+      if (branch === 'IKHLAS_JEDDAH') {
+        const allStudents = getStudents();
+        const linked = allStudents.find(
+          (s) => s.fullName === account.name || s.parentPhone === account.email,
+        );
+        const needsSetup =
+          !linked?.dateOfBirth &&
+          (typeof window !== 'undefined'
+            ? !localStorage.getItem('school_student_setup_done')
+            : true);
+        targetUrl = needsSetup ? '/school-student/setup' : '/school-student';
+      } else {
         targetUrl = '/kids';
-      } else if (type === 'ikhlas_student') {
-        email = 'student.ikhlas@masar.com';
-        name = 'يوسف خالد (طالب - الإخلاص صف أول)';
-        role = 'student';
-        targetUrl = '/school-student';
-      } else if (type === 'masar_parent') {
-        email = 'parent.masar@masar.com';
-        name = 'أبو أحمد (ولي أمر مسار)';
-        role = 'parent';
-        targetUrl = '/parent';
-      } else if (type === 'ikhlas_parent') {
-        email = 'parent.ikhlas@masar.com';
-        name = 'أبو يوسف (ولي أمر - الإخلاص صف أول)';
-        role = 'parent';
-        targetUrl = '/school-parent';
       }
+    } else {
+      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'parent');
+      if (branch === 'IKHLAS_JEDDAH') {
+        targetUrl = '/school-parent';
+      } else {
+        const students = getStudents();
+        targetUrl = students.length > 0 ? '/parent' : '/student/new';
+      }
+    }
 
-      const account = ensureDemoAccount(email) || {
-        id: 'acc_' + Date.now(),
-        name,
-        email,
-        role: role as any,
-        createdAt: new Date().toISOString(),
-      };
-
-      setSession(account);
-      localStorage.setItem('user_name', JSON.stringify({ name }));
-      localStorage.setItem('masar_active_mode', role);
-      trackEvent('login', { userId: type, userName: name });
+    if (typeof window !== 'undefined') {
+      window.location.href = targetUrl;
+    } else {
       router.push(targetUrl);
     }
-  };
+  }
 
-  const fillDemo = (type: 'doctor' | 'parent') => {
-    const demoEmail = type === 'doctor' ? 'dr.ismail@masar.com' : 'parent@masar.com';
-    const demoPass = type === 'doctor' ? 'masar2026' : 'parent123';
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setLoginError('');
-    setLoginMessage('تم تعبئة بيانات الدخول. اضغط تسجيل الدخول للمتابعة.');
-  };
-
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+  // ─── Email/Password Login ────────────────────────────────────────────────────
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginError('');
     setLoginMessage('');
@@ -106,110 +157,160 @@ export default function LoginPage() {
       return;
     }
 
+    // Call server-side authentication API (sets HttpOnly masar_session cookie)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ identifier: email, password }),
+      });
+
+      if (res.status === 429) {
+        setLoginError('محاولات دخول كثيرة جداً. يرجى المحاولة بعد قليل.');
+        return;
+      }
+
+      const data = await res.json();
+
+      if (res.ok && data.ok && data.account) {
+        if (rememberMe) {
+          localStorage.setItem('masar_remember_email', email);
+        } else {
+          localStorage.removeItem('masar_remember_email');
+        }
+        localStorage.removeItem('masar_remember_pass');
+        setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى لوحة التحكم...');
+        setSession(data.account);
+        // Wait for cookie to be written then hard navigate
+        setTimeout(() => {
+          window.location.replace('/dashboard');
+        }, 800);
+        return;
+      }
+
+      // API returned error
+      if (data.error) {
+        setLoginError(data.error);
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback local auth check
     const result = authenticate(email, password);
 
     if (result.ok) {
       if (rememberMe) {
         localStorage.setItem('masar_remember_email', email);
-        localStorage.setItem('masar_remember_pass', password);
       } else {
         localStorage.removeItem('masar_remember_email');
-        localStorage.removeItem('masar_remember_pass');
       }
+      localStorage.removeItem('masar_remember_pass');
+      setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى لوحة التحكم...');
       setSession(result.account);
-      // Restore / sync school branch from account record
-      const branch = result.account.schoolBranch
-        ?? (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
-      if (typeof window !== 'undefined' && result.account.schoolBranch) {
-        localStorage.setItem('masar_school_branch', result.account.schoolBranch);
-      }
-      // Track login event
-      trackEvent('login', { userId: result.account.id, userName: result.account.name, userRole: result.account.role });
-
-      // 1. Doctor / Admin Role -> Doctor Dashboard
-      if (result.account.role === 'doctor' || result.account.role === 'specialist' || result.account.role === 'teacher') {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('masar_active_mode', 'parent');
-        }
-        router.push('/dashboard');
-        return;
-      }
-
-      // 2. Student Role → Student portal (branch-aware)
-      if (result.account.role === 'student') {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('masar_active_mode', 'student');
-        }
-        if (branch === 'IKHLAS_JEDDAH') {
-          const allStudents = getStudents();
-          const linked = allStudents.find((s) => s.fullName === result.account.name || s.parentPhone === result.account.email);
-          const needsSetup = !linked?.dateOfBirth && (typeof window !== 'undefined' ? !localStorage.getItem('school_student_setup_done') : true);
-          router.push(needsSetup ? '/school-student/setup' : '/school-student');
-        } else {
-          router.push('/kids');
-        }
-        return;
-      }
-
-      // 3. Parent Role → Parent portal (branch-aware)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('masar_active_mode', 'parent');
-      }
-      if (branch === 'IKHLAS_JEDDAH') {
-        router.push('/school-parent');
-        return;
-      }
-      const students = getStudents();
-      router.push(students.length > 0 ? '/parent' : '/student/new');
+      setTimeout(() => {
+        window.location.replace('/dashboard');
+      }, 800);
       return;
     }
 
     setLoginError(
       result.reason === 'missing'
-        ? 'الحساب غير موجود. أنشئ حساب جديد أو استخدم بيانات الدكتور التجريبية.'
-        : 'كلمة المرور غير صحيحة. جرّب استعادة كلمة المرور أو زر بيانات الدكتور.',
+        ? 'الحساب غير موجود. يُرجى التحقق من البريد الإلكتروني أو التواصل مع الإدارة.'
+        : 'كلمة المرور غير صحيحة. يُرجى المحاولة مجدداً أو استعادة كلمة المرور.',
     );
     trackEvent('login_failed', { userName: email });
   };
 
-  const handleOtp = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  // ─── Google Sign-In ──────────────────────────────────────────────────────────
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setLoginError('');
 
-    if (otpStep === 1) {
-      setMessage('تم تجهيز رمز التحقق التجريبي: 4829');
-      setOtpStep(2);
-      return;
+    const result = await signInWithGoogle('parent');
+
+    setGoogleLoading(false);
+
+    if (result.ok) {
+      setSession(result.account);
+      trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
+      redirectAfterLogin(result.account);
+    } else if (result.reason) {
+      setLoginError(result.reason);
     }
+  };
 
-    if (otpStep === 2) {
-      if (otp !== '4829') {
-        setMessage('رمز التحقق غير صحيح. استخدم 4829 للتجربة المحلية.');
-        return;
-      }
-      setMessage('تم التحقق. أدخل كلمة مرور جديدة ثم احفظ.');
-      setOtpStep(3);
-      return;
+  // ─── Apple Sign-In ───────────────────────────────────────────────────────────
+  const handleAppleLogin = async () => {
+    setAppleLoading(true);
+    setLoginError('');
+
+    const result = await signInWithApple('parent');
+
+    setAppleLoading(false);
+
+    if (result.ok) {
+      setSession(result.account);
+      trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
+      redirectAfterLogin(result.account);
+    } else if (result.reason) {
+      setLoginError(result.reason);
     }
+  };
 
-    setMessage('تم حفظ كلمة المرور الجديدة محليًا.');
-    setTimeout(() => {
-      setForgotOpen(false);
-      setOtpStep(1);
-      setOtp('');
-      setMessage('');
-    }, 900);
+  // ─── Microsoft Sign-In ───────────────────────────────────────────────────────
+  const handleMicrosoftLogin = async () => {
+    setMsLoading(true);
+    setLoginError('');
+
+    const result = await signInWithMicrosoft('parent');
+
+    setMsLoading(false);
+
+    if (result.ok) {
+      setSession(result.account);
+      trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
+      redirectAfterLogin(result.account);
+    } else if (result.reason) {
+      setLoginError(result.reason);
+    }
+  };
+
+  // ─── Forgot Password ─────────────────────────────────────────────────────────
+  const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+
+    const result = await sendPasswordReset(forgotEmail);
+    setForgotLoading(false);
+
+    if (result.ok) {
+      setForgotSent(true);
+    } else {
+      setForgotError(result.reason);
+    }
+  };
+
+  const closeForgot = () => {
+    setForgotOpen(false);
+    setForgotEmail('');
+    setForgotError('');
+    setForgotSent(false);
+    setForgotLoading(false);
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50/80 via-slate-50 to-emerald-50/70 p-4 text-slate-900" dir="rtl">
-      
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50/80 via-slate-50 to-emerald-50/70 p-4 text-slate-900"
+      dir="rtl"
+    >
       {/* Background Soft Glows */}
       <div className="fixed top-10 right-10 w-96 h-96 bg-teal-200/40 rounded-full blur-[120px] pointer-events-none" />
       <div className="fixed bottom-10 left-10 w-96 h-96 bg-emerald-200/30 rounded-full blur-[120px] pointer-events-none" />
 
       <main className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl lg:grid-cols-[0.95fr_1.05fr]">
-        
-        {/* Left Side Info Panel - Pure Bright Light Theme */}
+        {/* Left Side Info Panel */}
         <section className="hidden bg-gradient-to-br from-teal-50 via-emerald-50/80 to-slate-50 border-l border-slate-200 p-8 text-slate-900 lg:flex lg:flex-col lg:justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
             <BrandMark size="md" />
@@ -219,22 +320,25 @@ export default function LoginPage() {
             <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-100/70 px-3.5 py-1.5 text-xs font-black text-teal-800">
               بوابة تشغيل المنصة
             </span>
-            
+
             <h1 className="text-3xl font-black leading-tight text-slate-900">
-              دخول مباشر لكل حساب بدون تعقيد
+              بوابة آمنة لكل حساب
             </h1>
 
             <p className="text-sm font-bold leading-relaxed text-slate-600">
-              حساب الدكتور يدخل لوحة التشغيل والتقارير الإكلينيكية، وحساب ولي الأمر يدخل لمتابعة بيانات الطالب واختبارات المستوى.
+              سجّل دخولك ببريدك الإلكتروني أو حساب جوجل للوصول إلى لوحة التشغيل والتقارير الإكلينيكية أو متابعة بيانات الطالب واختبارات المستوى.
             </p>
 
             <div className="grid gap-3 pt-2">
               {[
-                'جلسة محفوظة محلياً بأمان',
+                'تسجيل دخول سريع بحساب جوجل',
                 'تحقق فوري من الحساب وكلمة المرور',
-                'دخول آمن ومباشر بنظام المشتركين'
+                'دخول آمن ومباشر بنظام المشتركين',
               ].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 text-xs sm:text-sm font-bold text-slate-800 border border-slate-200/80 shadow-sm">
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-3.5 text-xs sm:text-sm font-bold text-slate-800 border border-slate-200/80 shadow-sm"
+                >
                   <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
                   <span>{item}</span>
                 </div>
@@ -257,108 +361,89 @@ export default function LoginPage() {
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
           </div>
 
-          {/* ⚡ Quick 1-Click Login Shortcuts */}
-          <div className="mt-6 bg-slate-50 border border-slate-200 rounded-3xl p-4 space-y-2.5 text-right">
-            <p className="text-xs font-black text-slate-800 flex items-center justify-between">
-              <span>⚡ تسجيل دخول فوري بنقرة واحدة (بدون كلمة مرور):</span>
-              <span className="text-[10px] text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full font-bold">وصول سريـع</span>
-            </p>
+          {/* ── Social Sign-In Buttons ── */}
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              id="btn-google-login"
+              onClick={handleGoogleLogin}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-black text-sm transition-all shadow-sm border border-slate-300 active:scale-95 disabled:opacity-60"
+            >
+              {googleLoading ? (
+                <Loader2 size={18} className="animate-spin text-slate-500" />
+              ) : (
+                <GoogleIcon size={18} />
+              )}
+              <span>{googleLoading ? 'جارٍ...' : 'حساب Google'}</span>
+            </button>
 
-            <div className="grid grid-cols-1 gap-2">
-              {/* 1. Doctor Ismail */}
-              <button
-                type="button"
-                onClick={() => loginAs('doctor')}
-                className="w-full flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-sm transition-all hover:scale-[1.01]"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center text-sm">👨‍⚕️</span>
-                  <span>حساب د. إسماعيل عيسى (طبيب أطفال / لوحة التشغيل)</span>
-                </span>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg">دخول فوري ➔</span>
-              </button>
-
-              {/* 2. Student in Ikhlas Grade 1 */}
-              <button
-                type="button"
-                onClick={() => loginAs('ikhlas_student')}
-                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-950 font-bold text-xs shadow-2xs transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs">🏫</span>
-                  <span>طالب فـي فصل مدارس الإخلاص الأهلية (صف أول)</span>
-                </span>
-                <span className="text-[10px] text-emerald-700 font-black">دخول ➔</span>
-              </button>
-
-              {/* 3. Student in Masar */}
-              <button
-                type="button"
-                onClick={() => loginAs('masar_student')}
-                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-xs shadow-2xs transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center text-xs">🎓</span>
-                  <span>طالب فـي منصة مسار (التجربة التفاعلية)</span>
-                </span>
-                <span className="text-[10px] text-indigo-700 font-black">دخول ➔</span>
-              </button>
-
-              {/* 4. Parent in Ikhlas Grade 1 */}
-              <button
-                type="button"
-                onClick={() => loginAs('ikhlas_parent')}
-                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-amber-300 hover:bg-amber-50 text-amber-950 font-bold text-xs shadow-2xs transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs">👨‍👩‍👦</span>
-                  <span>ولي أمر فـي مدارس الإخلاص الأهلية (صف أول)</span>
-                </span>
-                <span className="text-[10px] text-amber-700 font-black">دخول ➔</span>
-              </button>
-
-              {/* 5. Parent in Masar */}
-              <button
-                type="button"
-                onClick={() => loginAs('masar_parent')}
-                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-xs shadow-2xs transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center text-xs">🏡</span>
-                  <span>ولي أمر فـي منصة مسار</span>
-                </span>
-                <span className="text-[10px] text-teal-700 font-black">دخول ➔</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              id="btn-apple-login"
+              onClick={handleAppleLogin}
+              disabled={appleLoading}
+              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-sm transition-all shadow-sm border border-slate-800 active:scale-95 disabled:opacity-60"
+            >
+              {appleLoading ? (
+                <Loader2 size={18} className="animate-spin text-white" />
+              ) : (
+                <AppleIcon size={18} />
+              )}
+              <span>{appleLoading ? 'جارٍ...' : 'حساب Apple'}</span>
+            </button>
           </div>
 
-          {/* Face ID Login Button (Light Theme) */}
+          {/* Face ID Login Button */}
           <button
             type="button"
             onClick={() => setFaceLoginOpen(true)}
-            className="w-full mt-4 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-sm transition-all shadow-sm border border-emerald-300 group"
+            className="w-full mt-3 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-sm transition-all shadow-sm border border-emerald-300 group"
           >
             <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition">
               <ScanFace size={18} />
             </div>
             <span>الدخول بالوجه — Face ID</span>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full border border-emerald-300">🔒 آمن 100%</span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full border border-emerald-300">
+              🔒 آمن 100%
+            </span>
           </button>
 
-          <div className="relative my-4 text-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
-            <span className="relative bg-white px-3 text-[10px] font-black text-slate-400">أو ادخل بالبريد الإلكتروني</span>
+          <div className="relative my-5 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <span className="relative bg-white px-3 text-[10px] font-black text-slate-400">
+              أو ادخل بالبريد الإلكتروني
+            </span>
           </div>
+
+          {loginMessage && (
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs font-bold text-emerald-800">
+              <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
+              <span>{loginMessage}</span>
+            </div>
+          )}
+
+          {loginError && (
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-xs font-bold text-rose-700">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <span>{loginError}</span>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4 text-right">
             <label className="block">
-              <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">البريد الإلكتروني أو رقم الهاتف</span>
+              <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">
+                البريد الإلكتروني أو رقم الهاتف
+              </span>
               <input
+                id="input-login-email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 type="text"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
-                placeholder="dr.ismail@masar.com"
+                placeholder="name@example.com أو 05xxxxxxxx"
                 required
               />
             </label>
@@ -367,6 +452,7 @@ export default function LoginPage() {
               <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">كلمة المرور</span>
               <span className="flex rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition">
                 <input
+                  id="input-login-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   type={showPassword ? 'text' : 'password'}
@@ -374,7 +460,11 @@ export default function LoginPage() {
                   placeholder="اكتب كلمة المرور"
                   required
                 />
-                <button type="button" onClick={() => setShowPassword((current) => !current)} className="grid w-12 place-items-center text-slate-400 hover:text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="grid w-12 place-items-center text-slate-400 hover:text-slate-600"
+                >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </span>
@@ -390,13 +480,19 @@ export default function LoginPage() {
                 />
                 تذكرني على هذا الجهاز
               </label>
-              <button type="button" onClick={() => setForgotOpen(true)} className="font-black text-teal-700 hover:underline">
+              <button
+                type="button"
+                id="btn-forgot-password"
+                onClick={() => { setForgotOpen(true); setForgotEmail(email); }}
+                className="font-black text-teal-700 hover:underline"
+              >
                 نسيت كلمة المرور؟
               </button>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              id="btn-login-submit"
+              type="submit"
               className="focus-ring flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95"
             >
               <LogIn size={18} />
@@ -413,7 +509,7 @@ export default function LoginPage() {
         </section>
       </main>
 
-      {/* Face ID Login Modal */}
+      {/* ── Face ID Login Modal ── */}
       {faceLoginOpen && (
         <FaceLoginModal
           onCancel={() => setFaceLoginOpen(false)}
@@ -421,41 +517,101 @@ export default function LoginPage() {
         />
       )}
 
-      {/* Forgot Password Modal */}
+      {/* ── Forgot Password Modal (Real Firebase Reset) ── */}
       {forgotOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <form onSubmit={handleOtp} className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 text-right">
-            <div className="flex items-start justify-between gap-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 text-right">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 mb-5">
               <div>
-                <p className="text-xs font-black text-teal-700">استعادة كلمة المرور</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-900">رمز تحقق محلي</h2>
+                <p className="text-xs font-black text-teal-700">استعادة الحساب</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-900">نسيت كلمة المرور؟</h2>
               </div>
-              <button type="button" onClick={() => setForgotOpen(false)} className="rounded-xl px-3 py-1.5 text-xs font-black text-slate-500 hover:bg-slate-100">
-                إغلاق
+              <button
+                type="button"
+                onClick={closeForgot}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              >
+                <X size={20} />
               </button>
             </div>
 
-            {message && <p className="mt-4 rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs font-bold leading-relaxed text-teal-900">{message}</p>}
+            {/* Success State */}
+            {forgotSent ? (
+              <div className="text-center py-4 space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center">
+                  <Mail size={32} className="text-teal-600" />
+                </div>
+                <div>
+                  <p className="text-lg font-black text-slate-900">تم إرسال الرابط! ✅</p>
+                  <p className="mt-2 text-sm font-bold text-slate-500 leading-relaxed">
+                    تحقق من بريدك الإلكتروني{' '}
+                    <span className="font-black text-teal-700">{forgotEmail}</span>
+                    {' '}وستجد رسالة فيها رابط لإعادة تعيين كلمة المرور.
+                    <br />
+                    <span className="text-xs text-slate-400 mt-1 block">
+                      الرابط صالح لمدة ساعة واحدة فقط.
+                    </span>
+                  </p>
+                </div>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs font-bold text-amber-800 text-right">
+                  💡 لم تجد الرسالة؟ تحقق من مجلد Spam أو Junk
+                </div>
+                <button
+                  type="button"
+                  onClick={closeForgot}
+                  className="w-full mt-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition"
+                >
+                  حسناً، سأتحقق من بريدي
+                </button>
+              </div>
+            ) : (
+              /* Form State */
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                  أدخل بريدك الإلكتروني وسنرسل لك رابطاً آمناً لإعادة تعيين كلمة المرور فوراً.
+                </p>
 
-            <label className="mt-5 block">
-              <span className="mb-2 block text-xs font-black text-slate-700">
-                {otpStep === 1 ? 'البريد أو الهاتف' : otpStep === 2 ? 'رمز التحقق' : 'كلمة المرور الجديدة'}
-              </span>
-              <input
-                value={otp}
-                onChange={(event) => setOtp(event.target.value)}
-                type={otpStep === 3 ? 'password' : 'text'}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white"
-                placeholder={otpStep === 2 ? '4829' : ''}
-                required
-              />
-            </label>
+                {forgotError && (
+                  <div className="flex items-start gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-xs font-bold text-rose-700">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <span>{forgotError}</span>
+                  </div>
+                )}
 
-            <button type="submit" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition">
-              <KeyRound size={18} />
-              {otpStep === 1 ? 'إرسال الرمز' : otpStep === 2 ? 'تأكيد الرمز' : 'حفظ كلمة المرور'}
-            </button>
-          </form>
+                <label className="block">
+                  <span className="mb-2 block text-xs font-black text-slate-700">البريد الإلكتروني</span>
+                  <div className="relative">
+                    <Mail size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      id="input-forgot-email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      type="email"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
+                      placeholder="name@example.com"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                </label>
+
+                <button
+                  id="btn-send-reset"
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition disabled:opacity-60"
+                >
+                  {forgotLoading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <KeyRound size={18} />
+                  )}
+                  {forgotLoading ? 'جارٍ الإرسال...' : 'إرسال رابط الاستعادة'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

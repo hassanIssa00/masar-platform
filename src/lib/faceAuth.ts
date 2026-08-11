@@ -16,12 +16,18 @@ let modelsLoaded = false;
 // ─── Lazy load face-api.js (client-only) ────────────────────────────────────
 async function loadModels() {
   if (modelsLoaded) return;
+
   const faceapi = await import('face-api.js');
+
+  // Force re-fetch of model weights (bypass any corrupt cached version)
+  const ts = Date.now();
+  const url = `${MODELS_URL}?v=${ts}`;
+
   await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL),
-    faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URL),
+    faceapi.nets.tinyFaceDetector.loadFromUri(url),
+    faceapi.nets.faceLandmark68Net.loadFromUri(url),
+    faceapi.nets.faceRecognitionNet.loadFromUri(url),
+    faceapi.nets.faceExpressionNet.loadFromUri(url),
   ]);
   modelsLoaded = true;
 }

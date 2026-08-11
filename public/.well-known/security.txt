@@ -1,0 +1,18 @@
+Contact: mailto:masarplatformorg@gmail.com
+Expires: 2027-08-11T00:00:00.000Z
+Preferred-Languages: ar, en
+Canonical: https://masarplatform.org/.well-known/security.txt
+Policy: https://masarplatform.org/security-policy
+
+# Masar Platform — Security Disclosure
+#
+# If you have discovered a security vulnerability in the Masar Platform
+# (masarplatform.org), please report it responsibly to the contact above.
+#
+# We ask that you:
+#   - Give us reasonable time to investigate and remediate before public disclosure
+#   - Not exploit the vulnerability or access user data beyond what is needed to
+#     demonstrate the issue
+#   - Not disclose the issue publicly until we have had the opportunity to address it
+#
+# We appreciate responsible disclosure and will acknowledge your report promptly.

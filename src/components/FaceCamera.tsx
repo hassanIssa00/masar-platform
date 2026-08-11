@@ -45,49 +45,61 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
   const [faceBox, setFaceBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [progress, setProgress] = useState(0); // 0-100 capture progress
 
-  // Load models + open camera with robust fallback options
-  useEffect(() => {
-    let mounted = true;
+  const startCamera = async () => {
+    try {
+      setPhase('loading');
+      setErrorMsg('');
 
-    (async () => {
+      // Request camera stream (must be user-triggered or immediate)
+      let stream: MediaStream | null = null;
       try {
-        await initFaceAuth();
-        if (!mounted) return;
-
-        let stream: MediaStream | null = null;
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+      } catch {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            video: { facingMode: 'user' },
             audio: false,
           });
         } catch {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: 'user' },
-              audio: false,
-            });
-          } catch {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
-              audio: false,
-            });
-          }
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
         }
-
-        if (!mounted) { stream?.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current && stream) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setPhase('camera');
-        }
-      } catch (e: any) {
-        setErrorMsg(e.name === 'NotAllowedError'
-          ? 'لم يتم السماح بالوصول للكاميرا. يرجى إعطاء الصلاحية في المتصفح.'
-          : 'حدث خطأ في تشغيل الكاميرا. يرجى التحديث وإعادة المحاولة.');
-        setPhase('error');
       }
-    })();
+
+      streamRef.current = stream;
+      if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // Load AI models (if not already loaded)
+      await initFaceAuth();
+
+      setPhase('camera');
+    } catch (e: any) {
+      console.error('FaceCamera error:', e);
+      const errName = e?.name || 'UnknownError';
+      const errText = e?.message || String(e);
+
+      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+        setErrorMsg('المتصفح يمنع الكاميرا. يرجى الضغط على زر القفل 🔒 بجانب رابط الموقع في أعلى المتصفح واختيار "السماح بالمرور للكاميرا (Allow Camera)" ثم تحديث الصفحة.');
+      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+        setErrorMsg('لم يتم العثور على كاميرا متصلة بالجهاز.');
+      } else {
+        setErrorMsg(`سبب عدم تشغيل الكاميرا: (${errName}: ${errText}). يرجى التأكد من توصيل الكاميرا والسماح بها من المتصفح.`);
+      }
+      setPhase('error');
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    startCamera();
 
     return () => {
       mounted = false;
@@ -214,15 +226,27 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
         )}
 
         {phase === 'error' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 gap-3 p-4">
-            <XCircle size={40} className="text-red-400" />
-            <p className="text-sm font-bold text-red-300 text-center">{errorMsg}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition"
-            >
-              <RefreshCw size={14} /> إعادة المحاولة
-            </button>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 gap-3.5 p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/50 flex items-center justify-center text-red-400">
+              <Camera size={28} />
+            </div>
+            <p className="text-xs sm:text-sm font-bold text-red-200 max-w-xs leading-relaxed">{errorMsg}</p>
+            <div className="flex flex-col gap-2 w-full max-w-xs">
+              <button
+                type="button"
+                onClick={startCamera}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition shadow-lg active:scale-95"
+              >
+                <Camera size={16} /> منح الإذن وتفعيل الكاميرا
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition"
+              >
+                إلغاء / الدخول بكلمة المرور
+              </button>
+            </div>
           </div>
         )}
 

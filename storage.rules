@@ -1,0 +1,61 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Firebase Storage Security Rules — Masar Platform
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// STATUS: Firebase Storage is NOT currently used by this application.
+//
+// The app performs NO file uploads/downloads via the Firebase Storage SDK.
+// No firebase/storage SDK calls exist in src/. These rules are deployed as a
+// defensive baseline so that if the Storage bucket is ever accidentally enabled
+// or accessed (e.g. from a third-party script or misconfiguration), all access
+// is denied by default.
+//
+// If Firebase Storage is added in the future:
+//   1. Add explicit rules here for each upload path.
+//   2. Enforce App Check on Storage in the Firebase Console.
+//   3. Add MIME-type and file-size restrictions in the rules.
+//   4. Ensure uploads are scoped to the authenticated user's UID.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DEFAULT: Deny all reads and writes.
+    // Any path not explicitly matched below is fully blocked.
+    // ─────────────────────────────────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLIC BRAND ASSETS — read-only, no authenticated write path
+    //
+    // Usage: logos, landing page images stored at /public/*.
+    // These are the only paths that may be read without authentication.
+    // Writes are always denied (manage via Firebase Console / Admin SDK only).
+    // ─────────────────────────────────────────────────────────────────────────
+    match /public/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // NOTE: The /uploads/ path below is intentionally commented out because
+    // the application does not currently use file uploads. Uncomment and adapt
+    // this block only when authenticated uploads are implemented.
+    //
+    // match /uploads/{userId}/{fileName} {
+    //   allow read: if request.auth != null
+    //     && request.auth.uid == userId;
+    //   allow write: if request.auth != null
+    //     && request.auth.uid == userId
+    //     && request.resource.size < 10 * 1024 * 1024      // 10 MB max
+    //     && request.resource.contentType.matches('image/.*|application/pdf');
+    // }
+    // ─────────────────────────────────────────────────────────────────────────
+
+  }
+}

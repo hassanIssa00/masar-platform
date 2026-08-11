@@ -23,7 +23,7 @@ function LiveViewer() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent('مشاهد — ولي أمر')}&isHost=false`
+          `/api/livekit/token?room=${encodeURIComponent(roomId)}`
         );
         const data = await res.json();
         if (data.token) { setToken(data.token); setWsUrl(data.wsUrl); }

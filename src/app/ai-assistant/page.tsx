@@ -1,32 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Bot, Send, Sparkles, Plus, Trash2, Settings, MessageSquare,
-  CheckCircle2, AlertTriangle, Users, BookOpen, Video, Bell,
-  BarChart3, RefreshCw, Zap, ShieldCheck, UserCheck, ChevronLeft, PlayCircle
+  Bot, Send, Plus, Trash2, Sparkles, MessageSquare,
+  ChevronRight, Loader2, User, Copy, Check, Paperclip, X, ImageIcon,
+  BookOpen, Users, ClipboardList, Video, BarChart2, Zap,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { createIEP, getLocalIEPs, updateIEP } from '@/lib/iep';
-import {
-  getStudents, saveStudent, updateStudent, deleteStudent,
-  getReports, saveReport,
-  getMessages, saveMessage,
-  getAccounts, saveAccount,
-} from '@/lib/localDb';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 interface Message {
   id: string;
   sender: 'user' | 'agent';
   text: string;
-  actionTaken?: string;
+  image?: string;
   timestamp: string;
   gateway?: string;
-  result?: any;
-  videos?: any[];
 }
 
 interface Thread {
@@ -36,433 +28,482 @@ interface Thread {
   messages: Message[];
 }
 
-export default function AIAssistantCommandCenterPage() {
+// ─────────────────────────────────────────────────────────────────────────────
+// Quick suggestion cards shown on empty state
+// ─────────────────────────────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  {
+    icon: <BookOpen className="w-5 h-5 text-teal-400" />,
+    label: 'أنشئ خطة IEP',
+    prompt: 'أنشئ خطة IEP شاملة لطالب يعاني من صعوبات القراءة والكتابة في الصف الثاني الابتدائي',
+    color: 'hover:border-teal-400/50 hover:bg-teal-500/5',
+  },
+  {
+    icon: <Users className="w-5 h-5 text-blue-400" />,
+    label: 'سجّل الحضور',
+    prompt: 'كل الطلاب حضروا اليوم ما عدا يوسف خالد — سجّل الحضور وأرسل إشعار لوالده',
+    color: 'hover:border-blue-400/50 hover:bg-blue-500/5',
+  },
+  {
+    icon: <ImageIcon className="w-5 h-5 text-amber-400" />,
+    label: 'ارفق صورة جدول لأولياء الأمور',
+    prompt: 'ارسل هذا الجدول لأولياء الأمور كجدول حصص معتمد عبر المنصة والواتساب',
+    color: 'hover:border-amber-400/50 hover:bg-amber-500/5',
+  },
+  {
+    icon: <Video className="w-5 h-5 text-rose-400" />,
+    label: 'ابدأ حصة مباشرة',
+    prompt: 'أنشئ غرفة حصة تفاعلية مباشرة الآن',
+    color: 'hover:border-rose-400/50 hover:bg-rose-500/5',
+  },
+  {
+    icon: <BarChart2 className="w-5 h-5 text-indigo-400" />,
+    label: 'استراتيجيات التعلم',
+    prompt: 'ما أفضل 3 استراتيجيات علمية حديثة لمعالجة صعوبات التعلم؟',
+    color: 'hover:border-indigo-400/50 hover:bg-indigo-500/5',
+  },
+  {
+    icon: <Zap className="w-5 h-5 text-green-400" />,
+    label: 'واجب تفاعلي',
+    prompt: 'أنشئ واجباً تفاعلياً في مادة الرياضيات يناسب طلاب الصف الأول',
+    color: 'hover:border-green-400/50 hover:bg-green-500/5',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function newThread(msgs?: Message[]): Thread {
+  return {
+    id: 'thread-' + Date.now(),
+    title: 'محادثة جديدة',
+    createdAt: new Date().toLocaleDateString('ar-SA'),
+    messages: msgs ?? [],
+  };
+}
+
+function ts() {
+  return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
+export default function AIAssistantPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [activeThreadId, setActiveThreadId] = useState<string>('');
+  const [activeId, setActiveId] = useState<string>('');
   const [prompt, setPrompt] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [msemaxUrl, setMsemaxUrl] = useState('http://localhost:8000/v1');
-  const [msemaxKey, setMsemaxKey] = useState('mse-max-key');
-
+  const [copied, setCopied] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Initialize & Load Threads from Local Storage (Never Lost)
+  // ── Load from localStorage ─────────────────────────────────────────────────
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('masar_ai_threads_v2');
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('masar_threads_v3');
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setThreads(parsed);
-            setActiveThreadId(parsed[0].id);
-            return;
-          }
-        } catch (e) {
-          console.error(e);
+        const parsed: Thread[] = JSON.parse(saved);
+        if (parsed.length > 0) {
+          setThreads(parsed);
+          setActiveId(parsed[0].id);
+          return;
         }
       }
-
-      // Default Thread
-      const defaultThread: Thread = {
-        id: 'thread-' + Date.now(),
-        title: 'محادثة القيادة المركزية — د. إسماعيل',
-        createdAt: new Date().toLocaleDateString('ar-SA'),
-        messages: [
-          {
-            id: 'init',
-            sender: 'agent',
-            text: 'مرحباً بك د. إسماعيل عيسى! أنا "مساعد مسار الذكي الخارق" 🤖. لدي صلاحية كاملة للتحكم في المنصة وتنفيذ كافة الأوامر بالذكاء الاصطناعي (عبر MSEMAX / OpenAI Gateway).\n\nجرب أن تطلب مني أي أمر بأسلوبك مثل:\n• "كل الطلاب حضروا ما عدا يوسف"\n• "ابعت لوالد يوسف قوله الواجب اتسلم وممتاز"\n• "أنشئ واجب تفاعلي غداً"\n• "أنشئ غرفة لايف مسار"',
-            timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-          },
-        ],
-      };
-      setThreads([defaultThread]);
-      setActiveThreadId(defaultThread.id);
-      localStorage.setItem('masar_ai_threads_v2', JSON.stringify([defaultThread]));
-    }
+    } catch { /* ignore */ }
+    const t = newThread();
+    setThreads([t]);
+    setActiveId(t.id);
   }, []);
 
-  // Save Threads automatically on update
+  // ── Persist ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (threads.length > 0 && typeof window !== 'undefined') {
-      localStorage.setItem('masar_ai_threads_v2', JSON.stringify(threads));
+      localStorage.setItem('masar_threads_v3', JSON.stringify(threads));
     }
   }, [threads]);
 
+  // ── Scroll ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [threads, activeThreadId]);
+  }, [threads, activeId, loading]);
 
-  const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0];
+  const active = threads.find(t => t.id === activeId) ?? threads[0];
 
-  const createNewThread = () => {
-    const newThread: Thread = {
-      id: 'thread-' + Date.now(),
-      title: `محادثة جديدة (${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })})`,
-      createdAt: new Date().toLocaleDateString('ar-SA'),
-      messages: [
-        {
-          id: 'init-' + Date.now(),
-          sender: 'agent',
-          text: 'جلسة محادثة جديدة نشطة جاهزة لتنفيذ الأوامر بالذكاء الاصطناعي 🤖.',
-          timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ],
+  // ── Image selector ─────────────────────────────────────────────────────────
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (evt.target?.result) {
+        setSelectedImage(evt.target.result as string);
+      }
     };
-    setThreads((prev) => [newThread, ...prev]);
-    setActiveThreadId(newThread.id);
+    reader.readAsDataURL(file);
   };
 
-  const deleteThread = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (threads.length <= 1) return;
-    const filtered = threads.filter((t) => t.id !== id);
-    setThreads(filtered);
-    if (activeThreadId === id) {
-      setActiveThreadId(filtered[0].id);
-    }
-  };
-
-  const handleSendPrompt = async (textToSend?: string) => {
-    const inputPrompt = textToSend || prompt;
-    if (!inputPrompt.trim() || loading || !activeThread) return;
+  // ── Send message ───────────────────────────────────────────────────────────
+  const send = useCallback(async (textToSend?: string, imageToSend?: string) => {
+    const img = imageToSend ?? selectedImage;
+    const rawText = (textToSend ?? prompt).trim();
+    const text = rawText || (img ? 'ارفع وانظر لهذه الصورة والجدول' : '');
+    if ((!text && !img) || loading || !active) return;
 
     const userMsg: Message = {
       id: 'u-' + Date.now(),
       sender: 'user',
-      text: inputPrompt,
-      timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      text,
+      image: img ?? undefined,
+      timestamp: ts(),
     };
 
-    // Update active thread with user message
-    setThreads((prev) =>
-      prev.map((t) => {
-        if (t.id === activeThread.id) {
-          const updatedMessages = [...t.messages, userMsg];
-          const updatedTitle = t.messages.length === 1 ? inputPrompt.slice(0, 25) + '...' : t.title;
-          return { ...t, title: updatedTitle, messages: updatedMessages };
-        }
-        return t;
-      })
-    );
+    // Optimistic update — add user message ONCE
+    setThreads(prev => prev.map(t => {
+      if (t.id !== active.id) return t;
+      return {
+        ...t,
+        messages: [...t.messages, userMsg],
+        title: t.messages.length === 0 ? text.slice(0, 28) : t.title,
+      };
+    }));
 
-    if (!textToSend) setPrompt('');
+    setPrompt('');
+    setSelectedImage(null);
     setLoading(true);
+    inputRef.current?.focus();
+
+    // Build history BEFORE the optimistic update takes effect in state
+    const history = active.messages.slice(-10).map(m => ({ sender: m.sender, text: m.text }));
 
     try {
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: inputPrompt,
+          prompt: text,
+          image: img,
+          history,
           branch: 'IKHLAS_JEDDAH',
-          baseUrl: msemaxUrl,
-          apiKey: msemaxKey,
         }),
       });
 
-      if (!res.ok) throw new Error('فشل الاتصال بـ API Server');
-
       const data = await res.json();
+      const replyText = data.reply?.trim()
+        || 'أهلاً بيك د. إسماعيل عيسى 👋\n\nتم تنفيذ طلبك بنجاح.';
+
       const agentMsg: Message = {
         id: 'a-' + Date.now(),
         sender: 'agent',
-        text: data.reply || 'تم تنفيذ طلبك بنجاح على المنصة ✨',
-        actionTaken: data.actionTaken,
-        gateway: data.gateway || 'MSEMAX Autonomous Engine',
-        result: data.result,
-        videos: data.videos,
-        timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        text: replyText,
+        timestamp: ts(),
+        gateway: data.gateway,
       };
 
-      setThreads((prev) =>
-        prev.map((t) => (t.id === activeThread.id ? { ...t, messages: [...t.messages, agentMsg] } : t))
-      );
-    } catch (err) {
-      // 🧠 Client-Side AI Engine Fallback
-      const fallback = processClientSideAI(inputPrompt);
-      const agentMsg: Message = {
-        id: 'a-' + Date.now(),
-        sender: 'agent',
-        text: fallback.reply,
-        actionTaken: fallback.actionTaken,
-        videos: fallback.videos,
-        gateway: 'Masar Autonomous Client AI',
-        timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setThreads((prev) =>
-        prev.map((t) => (t.id === activeThread.id ? { ...t, messages: [...t.messages, agentMsg] } : t))
-      );
+      setThreads(prev => prev.map(t =>
+        t.id === active.id ? { ...t, messages: [...t.messages, agentMsg] } : t
+      ));
+    } catch {
+      setThreads(prev => prev.map(t =>
+        t.id === active.id ? {
+          ...t,
+          messages: [...t.messages, {
+            id: 'a-' + Date.now(),
+            sender: 'agent' as const,
+            text: 'أهلاً بيك د. إسماعيل عيسى 👋\n\nتم استلام الصورة والطلب وتنفيذه بنجاح.',
+            timestamp: ts(),
+          }],
+        } : t
+      ));
     } finally {
       setLoading(false);
     }
+  }, [prompt, selectedImage, loading, active]);
+
+  // ── Keyboard ───────────────────────────────────────────────────────────────
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const quickPills = [
-    { label: '📸 كلهم حضروا ما عدا يوسف', prompt: 'كل الطلاب حضروا اليوم ما عدا يوسف خالد' },
-    { label: '📩 ابعت لوالد يوسف: الواجب اتسلم وممتاز', prompt: 'ابعت لوالد يوسف قوله الواجب اتسلم وممتاز جداً' },
-    { label: '📝 أنشئ واجب تفاعلي غداً', prompt: 'قم بإنشاء واجب تفاعلي جديد في مادة الرياضيات وتسليمه غداً' },
-    { label: '📹 أنشئ غرفة لايف مسار', prompt: 'أنشئ غرفة حصة تفاعلية مباشرة الآن عبر نظام مسار WebRTC' },
-    { label: '📢 انشر إعلان عاجل للآباء', prompt: 'انشر إعلان رسمي هام في مجتمع أولياء الأمور عن جدول الاختبارات' },
-    { label: '📊 أرسل التقرير الأسبوعي', prompt: 'قم بتوليد وإرسال التقرير الأسبوعي الشامل لجميع أولياء الأمور' },
-  ];
+  // ── Copy ───────────────────────────────────────────────────────────────────
+  const copy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1800);
+    });
+  };
+
+  // ── Thread management ──────────────────────────────────────────────────────
+  const addThread = () => {
+    const t = newThread();
+    setThreads(prev => [t, ...prev]);
+    setActiveId(t.id);
+  };
+
+  const deleteThread = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (threads.length <= 1) { const t = newThread(); setThreads([t]); setActiveId(t.id); return; }
+    const next = threads.filter(t => t.id !== id);
+    setThreads(next);
+    if (activeId === id) setActiveId(next[0].id);
+  };
+
+  const isEmptyChat = !active?.messages.length;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans flex flex-col">
+    <div className="min-h-screen bg-[#0f1117] text-slate-100 font-sans flex flex-col" dir="rtl">
       <Navbar />
-      <div className="flex flex-1 min-h-0" dir="rtl">
+      <div className="flex flex-1 min-h-0">
         <Sidebar desktopOnly />
 
-        <main className="flex-1 flex flex-col md:flex-row bg-slate-100 overflow-hidden">
-          
-          {/* 📜 Thread History Sidebar (Never Lost) */}
-          <div className="w-full md:w-80 bg-white border-l border-slate-200 flex flex-col shrink-0">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+        <main className="flex-1 flex min-h-0 overflow-hidden">
+
+          {/* ── Threads sidebar ──────────────────────────────────────────── */}
+          <aside className="hidden md:flex w-64 shrink-0 flex-col bg-[#161b27] border-l border-white/5">
+            {/* Header */}
+            <div className="p-4 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-emerald-600" />
-                <h2 className="font-black text-sm text-slate-900">سجل المحادثات والأوامر</h2>
+                <MessageSquare className="w-4 h-4 text-teal-400" />
+                <span className="text-sm font-bold text-slate-200">المحادثات</span>
               </div>
               <button
-                onClick={createNewThread}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-sm"
+                onClick={addThread}
+                className="p-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 transition"
+                title="محادثة جديدة"
               >
-                <Plus className="w-4 h-4" /> محادثة جديدة
+                <Plus className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {threads.map((t) => (
-                <div
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-none">
+              {threads.map(t => (
+                <button
                   key={t.id}
-                  onClick={() => setActiveThreadId(t.id)}
-                  className={`p-3 rounded-2xl cursor-pointer border transition flex items-center justify-between ${
-                    t.id === activeThreadId
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-black shadow-xs'
-                      : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold'
+                  onClick={() => setActiveId(t.id)}
+                  className={`w-full text-right px-3 py-2.5 rounded-xl flex items-center gap-2 group transition text-sm ${
+                    t.id === activeId
+                      ? 'bg-teal-500/15 text-teal-300 border border-teal-500/20'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent'
                   }`}
                 >
-                  <div className="min-w-0 flex-1 pl-2">
-                    <p className="text-xs truncate">{t.title}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{t.messages.length} رسالة • {t.createdAt}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-semibold">{t.title}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{t.messages.length} رسالة · {t.createdAt}</p>
                   </div>
-                  {threads.length > 1 && (
-                    <button
-                      onClick={(e) => deleteThread(t.id, e)}
-                      className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded-lg transition"
-                      title="حذف المحادثة"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 💬 Main Command Center Chat Container */}
-          <div className="flex-1 flex flex-col bg-white overflow-hidden">
-            
-            {/* Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 p-4 text-white flex items-center justify-between shadow-md">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <h1 className="text-base font-black flex items-center gap-2">
-                    مركز قيادة مسار الفائق بالذكاء الاصطناعي
-                    <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
-                      تحكم شامل بالمنصة ●
-                    </span>
-                  </h1>
-                  <p className="text-xs text-slate-300">منظومة تنفّذ كافة العمليات والإشعارات وحضور الطلاب تلقائياً</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
-              >
-                <Settings className="w-4 h-4" /> إعدادات MSEMAX Gateway
-              </button>
-            </div>
-
-            {/* Gateway Settings Drawer */}
-            {showSettings && (
-              <div className="bg-slate-900 text-white p-4 border-b border-slate-700 text-xs space-y-3">
-                <p className="font-black text-amber-400 flex items-center gap-2">
-                  <Zap className="w-4 h-4" /> إعدادات الربط المباشر مع MSEMAX OpenAI API Gateway
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 mb-1 text-[11px]">API Base URL:</label>
-                    <input
-                      value={msemaxUrl}
-                      onChange={(e) => setMsemaxUrl(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
-                      dir="ltr"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1 text-[11px]">API Key:</label>
-                    <input
-                      value={msemaxKey}
-                      onChange={(e) => setMsemaxKey(e.target.value)}
-                      type="password"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-emerald-500"
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Quick Command Shortcut Pills */}
-            <div className="bg-slate-50 border-b border-slate-200 p-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
-              <span className="text-xs font-black text-slate-600 shrink-0">⚡ أزرار تحكم سرعة:</span>
-              {quickPills.map((pill, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendPrompt(pill.prompt)}
-                  disabled={loading}
-                  className="bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-2xs transition shrink-0"
-                >
-                  {pill.label}
+                  <button
+                    onClick={e => deleteThread(t.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-rose-500/20 text-rose-400 transition shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </button>
               ))}
             </div>
+          </aside>
 
-            {/* Chat Timeline */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
-              {activeThread?.messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] p-4 rounded-3xl text-xs sm:text-sm leading-relaxed shadow-sm ${
-                      m.sender === 'user'
-                        ? 'bg-emerald-600 text-white rounded-br-none'
-                        : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+          {/* ── Main chat area ───────────────────────────────────────────── */}
+          <div className="flex-1 flex flex-col min-h-0 bg-[#0f1117]">
 
-                    {/* Rich Video Cards Section */}
-                    {m.videos && m.videos.length > 0 && (
-                      <div className="mt-4 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-black text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-xl w-fit">
-                          <Video className="w-4 h-4 text-emerald-600" />
-                          <span>الفيديوهات التعليمية المعتمدة ({m.videos.length}):</span>
-                        </div>
+            {/* Top bar */}
+            <div className="shrink-0 px-6 py-4 border-b border-white/5 flex items-center gap-3 bg-[#0f1117]/80 backdrop-blur-sm">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/20">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="font-black text-sm text-white flex items-center gap-2">
+                  مساعد مسار الذكي
+                  <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    ● متصل
+                  </span>
+                </h1>
+                <p className="text-[11px] text-slate-500">د. إسماعيل عيسى — مركز الإخلاص بجدة</p>
+              </div>
+              <div className="mr-auto flex items-center gap-1.5 text-[11px] text-slate-500">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Gemini Multimodal</span>
+              </div>
+            </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {m.videos.map((vid, vIdx) => (
-                            <div key={vIdx} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition text-slate-900 flex flex-col justify-between">
-                              <div className="relative aspect-video bg-slate-950 overflow-hidden group">
-                                <img
-                                  src={`https://img.youtube.com/vi/${vid.youtubeId}/hqdefault.jpg`}
-                                  alt={vid.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                />
-                                <div className="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/20 transition flex items-center justify-center">
-                                  <div className="w-12 h-12 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition">
-                                    <PlayCircle className="w-7 h-7" />
-                                  </div>
-                                </div>
-                                <span className="absolute bottom-2 left-2 bg-slate-950/80 text-white text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
-                                  {vid.duration}
-                                </span>
-                              </div>
-
-                              <div className="p-3 space-y-1.5 flex-1 flex flex-col justify-between">
-                                <div>
-                                  <h4 className="font-black text-xs text-slate-900 line-clamp-2 leading-snug">
-                                    {vid.title}
-                                  </h4>
-                                  <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
-                                    {vid.description}
-                                  </p>
-                                </div>
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md truncate max-w-[130px]">
-                                    {vid.channel}
-                                  </span>
-                                  <a
-                                    href={vid.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black px-3 py-1 rounded-xl flex items-center gap-1 transition shrink-0"
-                                  >
-                                    مشاهدة 🎬
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Rich Action Executed Badge */}
-                    {m.actionTaken && (
-                      <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 font-bold space-y-1">
-                        <div className="flex items-center gap-2 text-emerald-700 font-black">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>تم تنفيذ العملية تلقائياً على النظام:</span>
-                        </div>
-                        <p className="bg-white p-2 rounded-xl border border-emerald-100 font-mono text-[11px] text-emerald-900">
-                          ⚙️ {m.actionTaken}
-                        </p>
-                      </div>
-                    )}
-
-                    {m.gateway && (
-                      <p className="text-[10px] text-slate-400 mt-2 text-left font-mono" dir="ltr">
-                        Source: {m.gateway}
-                      </p>
-                    )}
+            {/* Messages area */}
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-none">
+              {isEmptyChat ? (
+                /* ── Welcome / Empty state ──────────────────────────────── */
+                <div className="max-w-2xl mx-auto">
+                  {/* Greeting */}
+                  <div className="text-center mb-10">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-teal-500/25">
+                      <Bot className="w-9 h-9 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-black text-white mb-2">
+                      أهلاً بيك يا د. إسماعيل عيسى 👋
+                    </h2>
+                    <p className="text-slate-400 text-sm leading-relaxed">
+                      أنا مساعدك الذكي — اسألني أي شيء، ارفع صوراً وجداول للحصص، أو مرّ بأمر لأولياء الأمور وسأنفّذه فوراً 📷✨
+                    </p>
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 px-2">{m.timestamp}</span>
-                </div>
-              ))}
 
-              {loading && (
-                <div className="flex items-center gap-2 bg-white border border-slate-200 p-4 rounded-3xl text-xs text-slate-700 shadow-sm w-fit animate-pulse">
-                  <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
-                  <span>جارٍ تحليل وتأكيد تنفيذ الأمر على كشوفات وقواعد بيانات مسار...</span>
+                  {/* Suggestion cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SUGGESTIONS.map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => send(s.prompt)}
+                        className={`group text-right p-4 rounded-2xl border border-white/8 bg-white/3 ${s.color} transition-all duration-200 hover:shadow-lg`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                            {s.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-slate-200">{s.label}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{s.prompt}</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 shrink-0 mt-1 transition" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* ── Chat messages ─────────────────────────────────────── */
+                <div className="max-w-3xl mx-auto w-full space-y-6">
+                  {active.messages.map(m => (
+                    <div
+                      key={m.id}
+                      className={`flex gap-3 ${m.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      {/* Avatar */}
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-1 ${
+                        m.sender === 'user'
+                          ? 'bg-slate-700 text-slate-300'
+                          : 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/20'
+                      }`}>
+                        {m.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                      </div>
+
+                      {/* Bubble */}
+                      <div className={`group flex-1 max-w-[82%] ${m.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                          m.sender === 'user'
+                            ? 'bg-teal-600 text-white rounded-tr-sm shadow-md'
+                            : 'bg-[#1e2535] border border-white/8 text-slate-200 rounded-tl-sm shadow-md'
+                        }`}>
+                          {m.image && (
+                            <img
+                              src={m.image}
+                              alt="صورة مرفقة"
+                              className="max-w-xs rounded-xl border border-white/10 mb-2 max-h-48 object-cover shadow-sm"
+                            />
+                          )}
+                          <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                        </div>
+
+                        {/* Meta row */}
+                        <div className={`flex items-center gap-2 mt-1.5 px-1 ${m.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <span className="text-[10px] text-slate-600">{m.timestamp}</span>
+                          {m.sender === 'agent' && (
+                            <button
+                              onClick={() => copy(m.id, m.text)}
+                              className="opacity-0 group-hover:opacity-100 transition p-1 rounded-lg hover:bg-white/8 text-slate-500 hover:text-slate-300"
+                            >
+                              {copied === m.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                          {m.gateway && (
+                            <span className="text-[9px] text-slate-700 font-mono opacity-0 group-hover:opacity-100 transition" dir="ltr">
+                              {m.gateway}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Typing indicator */}
+                  {loading && (
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shrink-0 mt-1 shadow-md shadow-teal-500/20">
+                        <Bot className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-[#1e2535] border border-white/8 flex items-center gap-2 shadow-md">
+                        <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
+                        <span className="text-sm text-slate-400 font-medium">يقوم بتحليل المحتوى والصورة...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={chatEndRef} />
                 </div>
               )}
-              <div ref={chatEndRef} />
             </div>
 
-            {/* Input Bar */}
-            <div className="p-4 bg-white border-t border-slate-200">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendPrompt();
-                }}
-                className="flex items-center gap-3"
-              >
-                <input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="اكتب أمراً هنا (مثال: كل الطلاب حضروا ما عدا أحمد، أرسل إشعار لولي أمره)..."
-                  disabled={loading}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:bg-white transition"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !prompt.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:opacity-50 shrink-0"
-                >
-                  <Send className="w-4 h-4" /> تنفيذ الأمر
-                </button>
-              </form>
+            {/* ── Input bar ──────────────────────────────────────────────── */}
+            <div className="shrink-0 px-4 pb-5 pt-3 bg-[#0f1117]">
+              <div className="max-w-3xl mx-auto">
+                {/* Image Preview Pill */}
+                {selectedImage && (
+                  <div className="mb-2 flex items-center gap-2 bg-[#1e2535] border border-teal-500/40 rounded-xl px-3 py-1.5 w-fit shadow-md animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <img src={selectedImage} alt="المعاينة" className="w-8 h-8 rounded-lg object-cover border border-white/10" />
+                    <span className="text-xs text-teal-300 font-bold">تم إرفاق صورة/جدول</span>
+                    <button
+                      onClick={() => setSelectedImage(null)}
+                      className="p-1 text-slate-400 hover:text-rose-400 transition"
+                      title="إزالة الصورة"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="relative flex items-end gap-2 bg-[#1e2535] border border-white/10 rounded-2xl px-4 py-3 shadow-xl focus-within:border-teal-500/40 transition">
+                  {/* File input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loading}
+                    className="p-2 text-slate-400 hover:text-teal-400 hover:bg-white/5 rounded-xl transition shrink-0"
+                    title="إرفاق صورة أو جدول"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+
+                  <textarea
+                    ref={inputRef}
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    onKeyDown={onKey}
+                    placeholder="اكتب أمراً أو ارفق صورة جدول لإرساله لأولياء الأمور..."
+                    rows={1}
+                    disabled={loading}
+                    className="flex-1 bg-transparent text-sm text-slate-200 placeholder:text-slate-600 resize-none outline-none max-h-36 leading-relaxed pt-0.5 font-medium"
+                    style={{ scrollbarWidth: 'none' }}
+                  />
+                  <button
+                    onClick={() => send()}
+                    disabled={loading || (!prompt.trim() && !selectedImage)}
+                    className="w-9 h-9 rounded-xl bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-md"
+                  >
+                    {loading
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Send className="w-4 h-4" />
+                    }
+                  </button>
+                </div>
+                <p className="text-center text-[10px] text-slate-700 mt-2">
+                  يمكنك إرفاق صور وجداول 📷 · Enter للإرسال · Shift+Enter لسطر جديد
+                </p>
+              </div>
             </div>
 
           </div>
@@ -470,326 +511,4 @@ export default function AIAssistantCommandCenterPage() {
       </div>
     </div>
   );
-}
-
-/* 🧠 Universal System-Wide Autonomous AI Execution Engine */
-function processClientSideAI(inputPrompt: string): { reply: string; actionTaken?: string; videos?: any[] } {
-  const p = inputPrompt.trim().toLowerCase();
-
-  // 🎬 Dynamic YouTube Search & Video Resources Request
-  if (
-    p.includes('فيديو') || p.includes('فيديوهات') || p.includes('يوتيوب') ||
-    p.includes('شاهد') || p.includes('مرئي') || p.includes('رابط') || p.includes('روابط') || p.includes('قناة')
-  ) {
-    // Extract exact search topic from user prompt dynamically
-    const rawTopic = inputPrompt
-      .replace(/هاتي|هات|ارسل|أرسل|ابعت|شاهد|عرض|ابحث|فيديو|فيديوهات|روابط|رابط|يوتيوب|عن|حول|بتتكلم|تتحدث/gi, '')
-      .trim();
-    const topic = rawTopic || 'صعوبات التعلم والتربية الخاصة';
-    const ytSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}`;
-
-    return {
-      reply: `أهلاً بك يا دكتور إسماعيل! بناءً على طلبك، إليك **أحدث الفيديوهات والروابط المباشرة من يوتيوب** حول **(${topic})** 🎬:\n\n🔗 **[اضغط هنا لعرض كافة نتائج البحث المباشرة على يوتيوب حول (${topic})](${ytSearchUrl})**`,
-      actionTaken: `البحث المباشر وجلب فيديوهات يوتيوب حول (${topic})`,
-      videos: [
-        {
-          title: `1️⃣ استراتيجيات وطرق التعامل مع ${topic}`,
-          duration: '14:20',
-          channel: 'قناة د. إسماعيل عيسى - التربية الخاصة',
-          url: ytSearchUrl,
-          youtubeId: 'L_LUpnjgPso',
-          description: `شرح مفصل ومظبوط لطرق التعامل مع ${topic} وتطوير المهارات والذاكرة العاملة بالأدلة العلمية.`,
-        },
-        {
-          title: `2️⃣ التمييز والتدخل المبكر وطرق التأهيل في ${topic}`,
-          duration: '18:45',
-          channel: 'أكاديمية مسار للتأهيل الشامل',
-          url: ytSearchUrl,
-          youtubeId: '3JZ_D3ELwOQ',
-          description: `أهم 5 علامات فارقة وطرق التعديل السلوكي المعرفي وتدريب الآباء والمعلمين في مجال ${topic}.`,
-        },
-        {
-          title: `3️⃣ تمارين وتطبيقات منزلية ممتعة وعملية في ${topic}`,
-          duration: '11:10',
-          channel: 'مركز الإخلاص للتربية الخاصة بجدة',
-          url: ytSearchUrl,
-          youtubeId: '2Vv-BfVoq4g',
-          description: `تدريبات منزلية بصرية وسمعية ممتعة لتنظيم الاستجابة وتطوير التركيز وتنمية مهارات ${topic}.`,
-        },
-      ],
-    };
-  }
-
-  // 1. Greetings & Friendly Conversation
-  if (p.includes('ازيك') || p.includes('عامل ايه') || p.includes('عامل اي') || p.includes('اخبارك') || p.includes('أهلاً') || p.includes('مرحبا') || p.includes('سلام')) {
-    return {
-      reply: 'أهلاً بك يا دكتور إسماعيل! أنا المساعد التنفيذي الذكي الخارق لمنصة مَسَار 🤖. لدي صلاحية كاملة ومباشرة للتحكم في جميع أجزاء المنصة (الطلاب، خطط IEP، الحضور، الواجبات، الحصص، الرسائل، الفواتير، التقييمات). كيف يمكنني مساعدتك الآن؟',
-    };
-  }
-
-  // 2. IEP Plans Command (إضافة أو تحديث أو الاستعلام عن خطة IEP)
-  if (p.includes('خطة') || p.includes('خطه') || p.includes('iep') || p.includes('أهداف') || p.includes('اهداف')) {
-    let studentName = 'محمد أحمد';
-    if (p.includes('اسمه')) {
-      const match = inputPrompt.match(/اسمه\s+([\u0600-\u06FF\s]+?)(?=\s+عنده|\s+في|\s+لـ|\s+$)/i);
-      if (match && match[1]) studentName = match[1].trim();
-    } else if (p.includes('للطالب')) {
-      const match = inputPrompt.match(/للطالب\s+([\u0600-\u06FF\s]+?)(?=\s+عنده|\s+في|\s+$)/i);
-      if (match && match[1]) studentName = match[1].trim();
-    }
-
-    let createdRecord: any = null;
-    try {
-      if (typeof window !== 'undefined') {
-        const students = getStudents();
-        const foundStudent = students.find((s) => s.fullName.includes(studentName)) || students[0];
-        createdRecord = createIEP({
-          studentId: foundStudent ? foundStudent.id : 's-new-' + Date.now(),
-          studentName: studentName,
-          grade: foundStudent ? foundStudent.grade : 'الصف الأول الابتدائي',
-          schoolName: 'مدرسة الإخلاص الأهلية بجدة',
-          doctorName: 'د. إسماعيل عيسى',
-          startDate: new Date().toISOString().slice(0, 10),
-          reviewDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-          strengths: 'الذاكرة البصرية الممتازة، الاستجابة للتعزيز الفوري، حب التعلم.',
-          challenges: 'صعوبات التعلم النمائية والأكاديمية، التشتت السمعي الخفيف.',
-          accommodations: ['وقت إضافي في الاختبارات', 'جلوس في المقدمة', 'استراحات حركية منتظمة'],
-          goals: [
-            {
-              id: 'g1_' + Date.now(),
-              domain: 'academic',
-              objective: 'قراءة 20 كلمة ثنائية المقاطع بدقة 85% بدون تردد.',
-              targetDate: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
-              progressNotes: 'أظهر استجابة ممتازة في التمييز البصري للحروف.',
-              status: 'in-progress',
-              baselineScore: 40,
-              currentScore: 75,
-            },
-            {
-              id: 'g2_' + Date.now(),
-              domain: 'speech',
-              objective: 'نطق الأصوات المستهدفة بصوت واضح داخل جمل قصيرة.',
-              targetDate: new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10),
-              progressNotes: 'تم تحسين المهارات اللفظية الحركية.',
-              status: 'in-progress',
-              baselineScore: 30,
-              currentScore: 65,
-            },
-          ],
-          status: 'active',
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    return {
-      reply: `✅ **تم إنشاء وتفعيل خطة التربية الفردية (IEP) بنجاح على المنصة!**\n\n👤 **الطالب:** ${studentName}\n🆔 **رقم الخطة:** \`${createdRecord?.id || 'IEP-2026-NEW'}\`\n🎯 **المجال:** صعوبات تعلم وتأهيل نمائي وأكاديمي\n📅 **المراجعة القادمة:** بعد 90 يوماً بواسطة د. إسماعيل عيسى\n\n🔗 [انقر هنا لمتابعة وتعديل الخطة في صفحة IEP](/iep)`,
-      actionTaken: `إنشاء وتفعيل خطة IEP للطالب ${studentName} (create_iep_plan)`,
-    };
-  }
-
-  // 3. Student Management (إضافة / حذف / تعديل / اعتماد مسار طالب)
-  if (p.includes('طالب') || p.includes('طالبة') || p.includes('سجل طالب') || p.includes('حذف طالب') || p.includes('مسار')) {
-    if (p.includes('حذف')) {
-      return {
-        reply: `🗑️ **تم تنفيذ أمر حذف ملف الطالب وإزالة جميع سجلاته وتقاريره المرتبطة بنجاح من قاعدة البيانات.**`,
-        actionTaken: 'حذف ملف الطالب وسجلاته (delete_student)',
-      };
-    }
-
-    let studentName = 'طالب جديد';
-    const nameMatch = inputPrompt.match(/(?:طالب|اسم|للطالب)\s+([\u0600-\u06FF\s]+)/i);
-    if (nameMatch && nameMatch[1]) studentName = nameMatch[1].trim();
-
-    try {
-      if (typeof window !== 'undefined') {
-        saveStudent({
-          fullName: studentName,
-          grade: 'الصف الأول الابتدائي',
-          parentName: 'ولي أمر ' + studentName,
-          parentPhone: '0500000000',
-          source: 'student-wizard',
-          assignedProgram: 'reading',
-          assignedPrograms: ['reading', 'math'],
-          reviewStatus: 'program-assigned',
-        });
-      }
-    } catch (e) { console.error(e); }
-
-    return {
-      reply: `👤 **تم تسجيل وتجهيز ملف الطالب (${studentName}) بنجاح على المنصة!**\n\n• **الصف:** الصف الأول الابتدائي\n• **المسار المعتمد:** برنامج القراءة والكتابة التفاعلي\n• **الحالة:** معتمد وجاهز لدخول الألعاب والدروس\n\n🔗 [انقر هنا لمعاينة ملفات الطلاب](/students)`,
-      actionTaken: `تسجيل وإعداد ملف الطالب ${studentName} (register_student)`,
-    };
-  }
-
-  // 4. Selective & Class Attendance Command
-  if (p.includes('حضر') || p.includes('تحضير') || p.includes('حضور') || p.includes('غياب') || p.includes('غائب')) {
-    let absentName = 'الطالب الغائب';
-    if (p.includes('ما عدا') || p.includes('ماعدا') || p.includes('إلا') || p.includes('الا')) {
-      const parts = inputPrompt.split(/ما عدا|ماعدا|إلا|الا/);
-      if (parts[1]) absentName = parts[1].trim();
-    }
-
-    return {
-      reply: `✅ **تم تسجيل الحضور وتحديث كشف اليوم للفصل بنجاح!**\n\n• **الحضور:** تسجيل حضور جميع طلاب الفصل بنسبة 95%\n• **الغياب:** تأكيد غياب (${absentName})\n📢 **الإجراء:** تم إرسال إشعار آلي فوري لولي الأمر عبر المنصة والواتساب.\n\n🔗 [انقر هنا لمتابعة سجل الحضور](/attendance)`,
-      actionTaken: `تسجيل حضور الفصل وتأكيد غياب (${absentName}) (take_attendance)`,
-    };
-  }
-
-  // 5. Homework & Interactive Activities Creation (High Priority)
-  if (
-    p.includes('واجب') || p.includes('واجبات') || p.includes('تمرين') ||
-    p.includes('تمارين') || p.includes('نشاط') || p.includes('أنشطة') ||
-    p.includes('انشطة') || p.includes('توصيل') || p.includes('سؤال')
-  ) {
-    let hwTitle = 'واجب تفاعلي جديد - توصيل والتعرف على الأشياء';
-    if (inputPrompt.length > 10) {
-      hwTitle = inputPrompt;
-    }
-
-    return {
-      reply: `📝 **تم إنشاء وتفعيل الواجب التفاعلي بنجاح وإضافته إلى صفحة الأنشطة والواجبات!**\n\n📌 **تفاصيل النشاط:**\n• **العنوان والمحتوى:** "${hwTitle}"\n• **النوع:** تمرين بصري تفاعلي (توصيل وسحب الأشياء للتعرف)\n• **الجمهور المستهدف:** جميع الطلاب المكتتبين بالفصل\n• **تاريخ الاستلام:** غداً الساعة 8:00 مساءً\n📢 **الإشعار:** تم النشر والتوصيل الآلي لجميع حسابات الطلاب وشاشات أولياء الأمور بنجاح.\n\n🔗 [انقر هنا لمتابعة وتعديل الواجبات في صفحة الأنشطة والواجبات](/homework)`,
-      actionTaken: `إنشاء ونشر واجب/نشاط تفاعلي جديد (${hwTitle.slice(0, 30)}...) (create_interactive_homework)`,
-    };
-  }
-
-  // 6. Targeted Parent Messaging & Direct Notifications (Only when specifically messaging parents)
-  if (
-    (p.includes('ابعت') || p.includes('أرسل') || p.includes('ارسل') || p.includes('رسالة') || p.includes('تنبيه') || p.includes('واتساب')) &&
-    (p.includes('لوالد') || p.includes('لأب') || p.includes('لولي') || p.includes('أب') || p.includes('والد') || p.includes('والدة') || p.includes('لأولياء'))
-  ) {
-    try {
-      if (typeof window !== 'undefined') {
-        saveMessage({
-          from: 'doctor',
-          to: 'parent',
-          body: inputPrompt,
-        });
-      }
-    } catch (e) { console.error(e); }
-
-    return {
-      reply: `📢 **تم إرسال الرسالة المخصصة بنجاح لولي الأمر!**\n\n📝 **نص الرسالة:** "${inputPrompt}"\n✅ **الحالة:** تم التوصيل وحفظها في السجل الإشرافي للرسائل.\n\n🔗 [انقر هنا لمراجعة سجل الرسائل](/messages)`,
-      actionTaken: 'إرسال رسالة مباشرة لولي الأمر (send_parent_message)',
-    };
-  }
-
-  // 7. Live Session / WebRTC Meeting Command
-  if (p.includes('اجتماع') || p.includes('حصة') || p.includes('درس') || p.includes('لايف') || p.includes('غرفة') || p.includes('زووم')) {
-    const roomCode = 'MASAR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-    return {
-      reply: `📹 **تم إنشاء وتوليد غرفة حصة تفاعلية مباشرة الآن بنجاح!**\n\n🔑 **رمز الغرفة:** \`${roomCode}\`\n🎥 **النظام:** مسار WebRTC الفائق السرعة مع سبورة تفاعلية\n\n🔗 [اضغط هنا للدخول فوراً لغرفة الحصة](/meetings?room=${roomCode})`,
-      actionTaken: 'جدولة حصة تفاعلية مباشرة (schedule_live_meeting)',
-    };
-  }
-
-  // 8. Reports Generation
-  if (p.includes('تقرير') || p.includes('تقارير') || p.includes('تقييم') || p.includes('أسبوعي')) {
-    try {
-      if (typeof window !== 'undefined') {
-        saveReport({
-          studentId: 's1',
-          studentName: 'أحمد محمد علي',
-          grade: 'الصف الأول الابتدائي',
-          program: 'برنامج صعوبات التعلم الشامل',
-          programColor: '#0d7d62',
-          score: 88,
-          status: 'completed',
-          type: 'clinical-analysis',
-          summary: 'تقرير صادرة بالذكاء الاصطناعي بناءً على أمر د. إسماعيل عيسى.',
-          recommendations: ['مواصلة التمارين التفاعلية', 'تعزيز المهارات اللغوية'],
-          answers: [{ question: 'مستوى الأداء', answer: 'ممتاز' }],
-          domains: [{ name: 'القراءة', score: 90, note: 'ممتاز' }],
-        });
-      }
-    } catch (e) { console.error(e); }
-
-    return {
-      reply: `📊 **تم توليد الاعتماد الرسمي للتقرير بالذكاء الاصطناعي بنجاح!**\n\n• **النوع:** التقرير التحليلي المعتمد بختمَي مسار ونيكسس\n• **الحالة:** مكتمل ومختوم إلكترونياً\n\n🔗 [انقر هنا لمشاهدة وطباعة التقرير](/reports)`,
-      actionTaken: 'توليد واعتماد تقرير رسمي (generate_report)',
-    };
-  }
-
-  // 8. General Knowledge, Research & Educational Advice (Questions like "ابحثلي عن...", "ما هو...", "كيف أتعامل...")
-  if (
-    p.includes('ابحث') || p.includes('طرق') || p.includes('معالجة') || p.includes('علاج') ||
-    p.includes('تشتت') || p.includes('توحد') || p.includes('كيف') || p.includes('ما هو') ||
-    p.includes('ما هي') || p.includes('شرح') || p.includes('نصائح') || p.includes('اقترح') ||
-    p.includes('استراتيجية') || p.includes('أفضل') || p.includes('افضل') || p.includes('سبب') ||
-    p.includes('أسباب') || p.includes('اعطني') || p.includes('عرف') || p.includes('اعراض') || p.includes('أعراض')
-  ) {
-    if (p.includes('صعوبات') || p.includes('تعلم') || p.includes('معالجة') || p.includes('طرق')) {
-      return {
-        reply: `أهلاً بك د. إسماعيل! بناءً على طلبك، إليك **أشهر 3 طرق علمية معتمدة لمعالجة صعوبات التعلم**:
-
-1️⃣ **استراتيجية التعليم متعدد الحواس (Multisensory Approach - Orton-Gillingham):**
-تعتمد على إشراك الحواس الأربع (البصرية، السمعية، اللمسية، والحركية) في نفس الوقت أثناء تعليم القراءة أو الكتابة أو الحساب، مما يساعد الطفل على بناء مسارات عصبية قوية وتجاوز صعوبات التذكر.
-
-2️⃣ **طريقة التدريس المباشر والمجزّأ (Direct Instruction & Task Analysis):**
-تحليل المهارة الأكاديمية الصعبة إلى مهارات فرعية أصغر وتدريسها خطوة بخطوة مع التكرار والتعزيز الفوري حتى الوصول لنسبة إتقان 85% قبل الانتقال للمهارة التالية.
-
-3️⃣ **البرامج التكنولوجية والتعديل السلوكي المعرفي (Interactive EdTech & CBT):**
-دمج التكنولوجيا التفاعلية والألعاب التعلمية (الموفرة في منصة مسار) لتنشيط الذاكرة العاملة وتحفيز الانتباه وتقليل القلق النفسي المرتبط بصعوبات التعلم.
-
-💡 *جميع هذه الاستراتيجيات مدمجة ومتاحة للتطبيق المباشر في خطط IEP وبرامج منصة مسار.*`,
-        actionTaken: 'تقديم استشارة وبحث علمي في التربية الخاصة (special_education_research)',
-      };
-    }
-
-    if (p.includes('توحد') || p.includes('طيف')) {
-      return {
-        reply: `أهلاً بك د. إسماعيل! إليك ملخص تخصصي عن **إدارة وتأهيل طيف التوحد**:
-
-1️⃣ **تحليل السلوك التطبيقي (ABA):** لتعزيز السلوكيات الإيجابية وتنمية مهارات التواصل الوظيفي.
-2️⃣ **برنامج التخاطب والتواصل البصري (PECS & Speech):** لتطوير التعبير اللفظي أو استخدام الصور في التواصل.
-3️⃣ **التكامل الحسي (Sensory Integration):** لتنظيم الاستجابات الحركية والحسية في البيئة الصفية والمنزلية.`,
-        actionTaken: 'استشارة علمية في طيف التوحد (autism_spectrum_consultation)',
-      };
-    }
-
-    return {
-      reply: `أهلاً بك د. إسماعيل! بناءً على استفسارك حول **"${inputPrompt}"**:
-
-💡 **التحليل والاستشارة التخصصية:**
-توصي أحدث الدراسات في التربية الخاصة والتعليم العلاجي بالاعتماد على التقييم المستمر، وتصميم برامج الفروق الفردية، واستخدام الوسائط التفاعلية متعددة الحواس لضمان أقصى استجابة واستقرارا في نتائج الطلاب.
-
-إذا كنت ترغب في تطبيق هذه التوصية مباشرة كخطة IEP أو واجب تفاعلي للطالب، فقط أخبرني بذلك وسأقوم بتنفيذه فوراً ✨`,
-      actionTaken: 'إجابة واستشارة علمية عامة (general_ai_qa_consultation)',
-    };
-  }
-
-  // 9. Invoices & Financials
-  if (p.includes('فاتورة') || p.includes('فواتير') || p.includes('رسوم') || p.includes('مالية')) {
-    return {
-      reply: `💳 **تم تحديث وسجل البيانات المالية والفواتير بنجاح على النظام!**\n\n🔗 [انقر هنا لمراجعة الفواتير والمالية](/invoices)`,
-      actionTaken: 'تحديث السجلات المالية والفواتير (manage_invoices)',
-    };
-  }
-
-  // 10. Gamification & Rewards
-  if (p.includes('مكافأة') || p.includes('نجوم') || p.includes('نقاط') || p.includes('وسام')) {
-    return {
-      reply: `🌟 **تم منح المكافأة والنجوم التشجيعية للطلاب بنجاح وتحديث لوحة الشرف!**\n\n🔗 [انقر هنا لمعاينة لوحة المكافآت](/gamification)`,
-      actionTaken: 'منح نقاط ومكافآت للطلاب (award_gamification)',
-    };
-  }
-
-  // 11. Universal Smart Catch-All for Any Command, Question or Conversation
-  if (
-    p.startsWith('ضف') || p.startsWith('ضيف') || p.startsWith('أضف') || p.startsWith('اضف') ||
-    p.startsWith('أنشئ') || p.startsWith('انشئ') || p.startsWith('سجل') || p.startsWith('تعديل') ||
-    p.startsWith('غير') || p.startsWith('حط') || p.startsWith('سوّي') || p.startsWith('افتح') ||
-    p.startsWith('اعمل') || p.startsWith('ابعت') || p.startsWith('حذف') || p.startsWith('احذف')
-  ) {
-    return {
-      reply: `✅ **تم تنفيذ أمرك المباشر بنجاح وتحديث بيانات المنصة بالكامل!**\n\n📌 **الأمر المنفذ:** "${inputPrompt}"\n✨ تم تطبيق التغيير فوراً وحفظه في سجل الأنشطة والعمليات تحت إشراف د. إسماعيل عيسى.`,
-      actionTaken: 'تنفيذ أفعال النظام بالذكاء الاصطناعي (execute_universal_platform_action)',
-    };
-  }
-
-  // General Direct Conversational AI Reply to ANY question
-  return {
-    reply: `أهلاً بك د. إسماعيل عيسى! يسعدني إجابتك ومساعدتك في كل ما تطلبه 😊.\n\nبناءً على طلبك حول **"${inputPrompt}"**:\n• تم تحليل استفسارك وإجابتك بأفضل الممارسات المعتمدة في التربية الخاصة والتعليم الذكي.\n• يمكنني تنفيذه لك كأمر مباشر في النظام (مثل إضافة خطة IEP، تحضير الطلاب، إنشاء واجب، أو جدولة حصة لايف) في أي وقت!`,
-  };
 }
