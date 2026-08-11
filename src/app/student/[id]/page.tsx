@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
-import { getReports, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { getReports, getStudents, getSession, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function StudentProfilePage() {
   const params = useParams<{ id: string }>();
@@ -160,10 +160,6 @@ export default function StudentProfilePage() {
             </div>
           )}
         </section>
-      </main>
-    </div>
-  );
-}
       </main>
     </div>
   );

@@ -9,7 +9,7 @@ import {
   PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X,
   ClipboardList, Users, Building2, Bot, Trophy, BookMarked, ShieldCheck, ClipboardPen, Stamp
 } from 'lucide-react';
-import { clearSession } from '@/lib/localDb';
+import { clearSession, getSession } from '@/lib/localDb';
 
 const adminLinks = [
   { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
