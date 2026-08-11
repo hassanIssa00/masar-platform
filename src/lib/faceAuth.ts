@@ -49,9 +49,13 @@ function deobfuscate(encoded: string): number[] {
 
 import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
 
-// ─── Storage helpers ─────────────────────────────────────────────────────────
-interface FaceRecord {
+export interface FaceRecord {
   userId: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+  parentName?: string;
+  schoolBranch?: string;
   embeddingEnc: string;         // obfuscated embedding
   enrolledAt: string;
 }
@@ -127,12 +131,21 @@ export function checkBlink(landmarks: any): { isBlinking: boolean; ear: number }
 }
 
 /**
- * Enroll a user's face. Stores encrypted embedding in localStorage & Firestore Cloud.
+ * Enroll a user's face. Stores encrypted embedding + profile metadata in localStorage & Firestore Cloud.
  */
-export function enrollFace(userId: string, descriptor: Float32Array): void {
+export function enrollFace(
+  userId: string,
+  descriptor: Float32Array,
+  meta?: { userName?: string; userEmail?: string; userRole?: string; parentName?: string; schoolBranch?: string }
+): void {
   const records = readStore().filter(r => r.userId !== userId); // remove old
   const newRecord: FaceRecord = {
     userId,
+    userName: meta?.userName,
+    userEmail: meta?.userEmail,
+    userRole: meta?.userRole,
+    parentName: meta?.parentName,
+    schoolBranch: meta?.schoolBranch,
     embeddingEnc: obfuscate(Array.from(descriptor)),
     enrolledAt: new Date().toISOString(),
   };

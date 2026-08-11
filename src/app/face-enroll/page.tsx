@@ -124,8 +124,8 @@ export default function FaceEnrollPage() {
           setProgress(p);
           if (p >= 100) {
             clearInterval(interval);
-            // Enroll with the descriptor
-            enrollFace(userId, result.descriptor);
+            // Enroll with the descriptor & profile metadata
+            enrollFace(userId, result.descriptor, { userName, userRole });
             stopCamera();
             setPhase('success');
           }

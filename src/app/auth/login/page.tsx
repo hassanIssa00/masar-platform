@@ -23,9 +23,18 @@ export default function LoginPage() {
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [faceLoginOpen, setFaceLoginOpen] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('masar_remember_email');
+      const savedPass = localStorage.getItem('masar_remember_pass');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        if (savedPass) setPassword(savedPass);
+      }
+    }
   }, []);
 
   const loginAs = (type: 'doctor' | 'masar_student' | 'ikhlas_student' | 'masar_parent' | 'ikhlas_parent') => {
@@ -100,6 +109,13 @@ export default function LoginPage() {
     const result = authenticate(email, password);
 
     if (result.ok) {
+      if (rememberMe) {
+        localStorage.setItem('masar_remember_email', email);
+        localStorage.setItem('masar_remember_pass', password);
+      } else {
+        localStorage.removeItem('masar_remember_email');
+        localStorage.removeItem('masar_remember_pass');
+      }
       setSession(result.account);
       // Restore / sync school branch from account record
       const branch = result.account.schoolBranch
@@ -316,17 +332,17 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Face ID Login Button */}
+          {/* Face ID Login Button (Light Theme) */}
           <button
             type="button"
             onClick={() => setFaceLoginOpen(true)}
-            className="w-full mt-4 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm transition-all shadow-lg hover:scale-[1.01] border border-slate-700 group"
+            className="w-full mt-4 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-sm transition-all shadow-sm border border-emerald-300 group"
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center group-hover:bg-emerald-500/30 transition">
-              <ScanFace size={18} className="text-emerald-400" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+              <ScanFace size={18} />
             </div>
             <span>الدخول بالوجه — Face ID</span>
-            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">🔒 آمن 100%</span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full border border-emerald-300">🔒 آمن 100%</span>
           </button>
 
           <div className="relative my-4 text-center">
@@ -365,9 +381,14 @@ export default function LoginPage() {
             </label>
 
             <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
-              <label className="flex items-center gap-2 font-bold text-slate-600">
-                <input type="checkbox" className="accent-teal-600 rounded" />
-                تذكرني
+              <label className="flex items-center gap-2 font-bold text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="accent-teal-600 rounded w-4 h-4 cursor-pointer"
+                />
+                تذكرني على هذا الجهاز
               </label>
               <button type="button" onClick={() => setForgotOpen(true)} className="font-black text-teal-700 hover:underline">
                 نسيت كلمة المرور؟
