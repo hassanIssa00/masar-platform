@@ -100,21 +100,40 @@ export async function detectFace(video: HTMLVideoElement): Promise<{
   expressions: any;
   box: { x: number; y: number; width: number; height: number };
 } | null> {
-  const faceapi = await import('face-api.js');
-  const detection = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-    .withFaceLandmarks()
-    .withFaceDescriptor()
-    .withFaceExpressions();
+  if (
+    !video ||
+    video.paused ||
+    video.ended ||
+    !video.videoWidth ||
+    !video.videoHeight ||
+    video.readyState < 2
+  ) {
+    return null;
+  }
 
-  if (!detection) return null;
+  try {
+    const faceapi = await import('face-api.js');
+    const detection = await faceapi
+      .detectSingleFace(
+        video,
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
+      )
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+      .withFaceExpressions();
 
-  return {
-    descriptor: detection.descriptor,
-    landmarks: detection.landmarks,
-    expressions: detection.expressions,
-    box: detection.detection.box,
-  };
+    if (!detection) return null;
+
+    return {
+      descriptor: detection.descriptor,
+      landmarks: detection.landmarks,
+      expressions: detection.expressions,
+      box: detection.detection.box,
+    };
+  } catch (err) {
+    console.warn('detectFace frame exception caught & gracefully handled:', err);
+    return null;
+  }
 }
 
 /**

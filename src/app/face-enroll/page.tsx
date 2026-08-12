@@ -98,7 +98,12 @@ export default function FaceEnrollPage() {
   }
 
   async function runDetectionLoop() {
-    if (!videoRef.current || videoRef.current.readyState < 2) {
+    if (
+      !videoRef.current ||
+      videoRef.current.readyState < 2 ||
+      !videoRef.current.videoWidth ||
+      !videoRef.current.videoHeight
+    ) {
       animRef.current = requestAnimationFrame(runDetectionLoop);
       return;
     }

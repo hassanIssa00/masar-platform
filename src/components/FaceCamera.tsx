@@ -110,7 +110,12 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
 
   // Continuous face detection loop
   const runLoop = useCallback(async () => {
-    if (!videoRef.current || videoRef.current.readyState < 2) {
+    if (
+      !videoRef.current ||
+      videoRef.current.readyState < 2 ||
+      !videoRef.current.videoWidth ||
+      !videoRef.current.videoHeight
+    ) {
       animRef.current = requestAnimationFrame(runLoop);
       return;
     }
