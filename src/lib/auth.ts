@@ -75,7 +75,10 @@ export async function handleGoogleRedirectResult(
     return { ok: true, account, isNew: true };
   } catch (err) {
     console.error('Google Redirect Result Error:', err);
-    return null;
+    const authErr = err as AuthError;
+    const pending = consumeOAuthPending(preferredRole, schoolBranch);
+    const providerLabel = pending.provider === 'apple' ? 'Apple' : pending.provider === 'microsoft' ? 'Microsoft' : 'Google';
+    return { ok: false, reason: oauthErrorMessage(authErr, providerLabel) };
   }
 }
 
@@ -214,7 +217,7 @@ function currentHostLabel() {
 }
 
 function shouldUseRedirectFallback(code?: string) {
-  return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported';
+  return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported' || code === 'auth/internal-error';
 }
 
 function saveOAuthPending(
@@ -289,6 +292,10 @@ function oauthErrorMessage(authErr: AuthError, providerLabel: string) {
 
   if (authErr.code === 'auth/operation-not-allowed') {
     return `تسجيل الدخول عبر ${providerLabel} غير مفعل في Firebase Authentication > Sign-in method.`;
+  }
+
+  if (authErr.code === 'auth/internal-error') {
+    return `Firebase رفض تسجيل الدخول عبر ${providerLabel}. راجع تفعيل المزود وإضافة الدومين (${currentHostLabel()}) في Authorized domains.`;
   }
 
   if (authErr.code === 'auth/invalid-api-key' || authErr.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {

@@ -21,21 +21,12 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
 
   useEffect(() => {
     const session = getSession();
-    // Block doctors, specialists, and teachers from accessing student program pages
-    if (
-      session?.role === 'doctor' ||
-      session?.role === 'specialist' ||
-      session?.role === 'teacher'
-    ) {
-      router.replace('/dashboard');
-      return;
-    }
     // Block unauthenticated access
     if (!session) {
       router.replace('/kids');
       return;
     }
-    setAuthorized(true);
+    queueMicrotask(() => setAuthorized(true));
   }, [router]);
 
   if (!authorized) {

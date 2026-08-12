@@ -161,6 +161,8 @@ export default function RegisterPage() {
       if (result && result.ok) {
         setSession(result.account);
         router.push(accountType === 'parent' ? '/parent' : '/student/new');
+      } else if (result?.reason) {
+        setGoogleError(result.reason);
       }
     });
   }, [accountType, router, schoolBranch]);

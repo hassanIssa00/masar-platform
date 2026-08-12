@@ -84,13 +84,15 @@ export default function LoginPage() {
       if (result && result.ok) {
         setSession(result.account, false);
         redirectAfterLogin(result.account);
+      } else if (result?.reason) {
+        setLoginError(result.reason);
       }
     });
 
     if (typeof window !== 'undefined') {
       const savedEmail = localStorage.getItem('masar_remember_email');
       if (savedEmail) {
-        setEmail(savedEmail);
+        queueMicrotask(() => setEmail(savedEmail));
       }
       localStorage.removeItem('masar_remember_pass');
     }
