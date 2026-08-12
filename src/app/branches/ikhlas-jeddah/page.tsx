@@ -24,13 +24,15 @@ import HomeworkTabManager from '@/components/HomeworkTabManager';
 import ClassEventsArchiveTab from '@/components/ClassEventsArchiveTab';
 import StudentReportsManagerTab from '@/components/StudentReportsManagerTab';
 import AttendanceTabManager from '@/components/AttendanceTabManager';
+import ClassroomStudentsTab from '@/components/ClassroomStudentsTab';
+import ClassroomParentsTab from '@/components/ClassroomParentsTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 const CLASS_STUDENTS: { id: string; name: string; phone?: string }[] = [];
 
-type Tab = 'overview' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
+type Tab = 'overview' | 'students' | 'parents' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
 
 function getToken() {
   if (typeof window === 'undefined') return null;
@@ -501,6 +503,8 @@ export default function IkhlasJeddahPage() {
 
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: 'overview',      label: 'نظرة عامة',         icon: BarChart3 },
+    { key: 'students',      label: 'إدارة الطلاب 👨‍🎓',   icon: Users },
+    { key: 'parents',       label: 'أولياء الأمور 👨‍👩‍👧', icon: UserCheck },
     { key: 'live',          label: 'البث المباشر 🔴',    icon: Radio },
     { key: 'certificates',  label: 'شهادات التفوق 🏆',   icon: Award },
     { key: 'schedule',      label: 'جدول الحصص',        icon: Clock },
@@ -621,6 +625,12 @@ export default function IkhlasJeddahPage() {
         {/* ── MAIN CONTENT AREA (CENTERED OR FULL WIDTH) ── */}
         <main className="flex-1 p-4 md:p-6 min-w-0">
           <div className="max-w-7xl mx-auto space-y-6">
+
+        {/* ════════════ إدارة طلاب الفصل ════════════ */}
+        {activeTab === 'students' && <ClassroomStudentsTab />}
+
+        {/* ════════════ إدارة أولياء أمور الفصل ════════════ */}
+        {activeTab === 'parents' && <ClassroomParentsTab />}
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
