@@ -113,10 +113,21 @@ export async function detectFace(video: HTMLVideoElement): Promise<{
 
   try {
     const faceapi = await import('face-api.js');
+
+    // ─ Draw video to a fixed-size canvas to avoid tensor shape mismatch ─
+    // face-api TinyFaceDetector requires inputSize ∈ {128,160,224,320,416,512,608}
+    const INPUT_SIZE = 224;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = INPUT_SIZE;
+    offscreen.height = INPUT_SIZE;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
+
     const detection = await faceapi
       .detectSingleFace(
-        video,
-        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
+        offscreen,
+        new faceapi.TinyFaceDetectorOptions({ inputSize: INPUT_SIZE, scoreThreshold: 0.4 })
       )
       .withFaceLandmarks()
       .withFaceDescriptor()
@@ -124,11 +135,21 @@ export async function detectFace(video: HTMLVideoElement): Promise<{
 
     if (!detection) return null;
 
+    // Scale bounding box back to original video dimensions for correct overlay
+    const scaleX = video.videoWidth / INPUT_SIZE;
+    const scaleY = video.videoHeight / INPUT_SIZE;
+    const origBox = {
+      x: detection.detection.box.x * scaleX,
+      y: detection.detection.box.y * scaleY,
+      width: detection.detection.box.width * scaleX,
+      height: detection.detection.box.height * scaleY,
+    };
+
     return {
       descriptor: detection.descriptor,
       landmarks: detection.landmarks,
       expressions: detection.expressions,
-      box: detection.detection.box,
+      box: origBox,
     };
   } catch (err) {
     console.warn('detectFace frame exception caught & gracefully handled:', err);
