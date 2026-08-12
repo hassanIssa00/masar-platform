@@ -14,6 +14,113 @@
   --line: #dbe3ee;
 }
 
+/* ══════════════════════════════════════════════════
+   DARK MODE — .dark class on <html>
+══════════════════════════════════════════════════ */
+html.dark {
+  --background: #0d1117;
+  --ink: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #14b8a6;
+  --primary-dark: #0f766e;
+  --accent: #94a3b8;
+  --gold: #fbbf24;
+  --coral: #fb923c;
+  --paper: #161b22;
+  --line: #30363d;
+}
+
+html.dark body {
+  background: var(--background);
+  color: var(--ink);
+}
+
+html.dark .bg-white { background-color: #161b22 !important; }
+html.dark .bg-slate-50 { background-color: #1a2030 !important; }
+html.dark .bg-slate-100 { background-color: #1e2533 !important; }
+html.dark .bg-gray-50 { background-color: #111827 !important; }
+html.dark .bg-gray-100 { background-color: #1a2035 !important; }
+html.dark .bg-emerald-50 { background-color: #052e22 !important; }
+
+html.dark .border-slate-200 { border-color: #30363d !important; }
+html.dark .border-slate-100 { border-color: #21282f !important; }
+html.dark .border-gray-200 { border-color: #30363d !important; }
+
+html.dark .text-slate-900 { color: #e2e8f0 !important; }
+html.dark .text-slate-950 { color: #f1f5f9 !important; }
+html.dark .text-slate-800 { color: #cbd5e1 !important; }
+html.dark .text-slate-700 { color: #94a3b8 !important; }
+html.dark .text-slate-600 { color: #64748b !important; }
+html.dark .text-slate-500 { color: #475569 !important; }
+
+html.dark nav,
+html.dark aside,
+html.dark header { background-color: #161b22 !important; border-color: #30363d !important; }
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #1a2030 !important;
+  color: #e2e8f0 !important;
+  border-color: #30363d !important;
+}
+
+html.dark ::-webkit-scrollbar-track { background: #161b22; }
+html.dark ::-webkit-scrollbar-thumb { background: #334155; border-color: #161b22; }
+
+/* ══════════════════════════════════════════════════
+   SENSORY MODE — .sensory-mode class on <html>
+   Low contrast, warm cream tones, reduced blue light
+══════════════════════════════════════════════════ */
+html.sensory-mode {
+  --background: #fdf6ec;
+  --ink: #3d2b1f;
+  --muted: #7a5f4a;
+  --primary: #7c5c3e;
+  --primary-dark: #5c3d20;
+  --accent: #8b6c55;
+  --gold: #a0742a;
+  --coral: #9c5a2e;
+  --paper: #fffbf4;
+  --line: #e8d9c5;
+}
+
+html.sensory-mode body {
+  background: var(--background);
+  color: var(--ink);
+  font-size: 105%;
+  line-height: 1.8;
+}
+
+html.sensory-mode .bg-white { background-color: #fffbf4 !important; }
+html.sensory-mode .bg-slate-50 { background-color: #fdf6ec !important; }
+html.sensory-mode .bg-slate-100 { background-color: #f7ede0 !important; }
+html.sensory-mode .bg-gray-50 { background-color: #fdf6ec !important; }
+html.sensory-mode .bg-emerald-50 { background-color: #f0ede5 !important; }
+html.sensory-mode .bg-teal-50 { background-color: #efe9e0 !important; }
+
+html.sensory-mode .border-slate-200 { border-color: #e8d9c5 !important; }
+html.sensory-mode .border-slate-100 { border-color: #f0e4d2 !important; }
+html.sensory-mode .border-emerald-200 { border-color: #d5c4b0 !important; }
+
+html.sensory-mode .text-slate-900 { color: #3d2b1f !important; }
+html.sensory-mode .text-slate-800 { color: #5a3e2b !important; }
+html.sensory-mode .text-slate-700 { color: #7a5f4a !important; }
+html.sensory-mode .text-slate-950 { color: #2a1a10 !important; }
+
+html.sensory-mode input,
+html.sensory-mode textarea,
+html.sensory-mode select {
+  background-color: #fffbf4 !important;
+  color: #3d2b1f !important;
+  border-color: #e8d9c5 !important;
+}
+
+html.sensory-mode nav,
+html.sensory-mode aside,
+html.sensory-mode header { background-color: #fffbf4 !important; border-color: #e8d9c5 !important; }
+
+
 * {
   box-sizing: border-box;
 }
