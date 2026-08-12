@@ -615,15 +615,23 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
             {form.doctorTitle}
           </p>
 
-          <div style={{ position: 'relative', width: 220, marginTop: 4 }}>
+          {/* Handwritten Signature Image & Line */}
+          <div style={{ position: 'relative', width: 220, marginTop: 14 }}>
+            <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>التوقيع المعتمد ✍️</span>
+            </div>
             <img
               src="/dr-ismail-signature.png"
               alt="التوقيع المعتمد"
-              style={{ height: 48, objectFit: 'contain', marginBottom: -12, mixBlendMode: 'multiply' }}
+              style={{
+                position: 'absolute',
+                bottom: 2,
+                right: 0,
+                height: 48,
+                objectFit: 'contain',
+                pointerEvents: 'none'
+              }}
             />
-            <div style={{ borderBottom: '1.5px solid #94a3b8', width: '100%', paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
-              <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>التوقيع المعتمد ✍️</span>
-            </div>
           </div>
         </div>
 

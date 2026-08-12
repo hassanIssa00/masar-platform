@@ -551,24 +551,25 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                 </p>
 
                 {/* Handwritten Signature Image & Line */}
-                <div style={{ position: 'relative', width: 220, marginTop: 4 }}>
+                <div style={{ position: 'relative', width: 220, marginTop: 14 }}>
+                  <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', paddingBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>
+                      {isAr ? 'التوقيع المعتمد ✍️' : 'Authorized Signature ✍️'}
+                    </span>
+                  </div>
                   <img
                     src="/dr-ismail-signature.png"
                     alt="التوقيع المعتمد"
                     style={{
+                      position: 'absolute',
+                      bottom: 2,
+                      right: isAr ? 0 : 'auto',
+                      left: isAr ? 'auto' : 0,
                       height: 48,
                       objectFit: 'contain',
-                      marginBottom: -12,
-                      marginLeft: isAr ? '0' : 'auto',
-                      marginRight: isAr ? 'auto' : '0',
-                      mixBlendMode: 'multiply'
+                      pointerEvents: 'none'
                     }}
                   />
-                  <div style={{ borderBottom: '1.5px solid #94a3b8', width: '100%', paddingTop: 4, display: 'flex', justifyContent: isAr ? 'flex-start' : 'flex-end' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>
-                      {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
-                    </span>
-                  </div>
                 </div>
               </div>
 
