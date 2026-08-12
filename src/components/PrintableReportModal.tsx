@@ -239,7 +239,7 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
             )}
 
             {/* ── Signature & Official Seal Footer ── */}
-            <div className="mt-8 pt-6 border-t-2 border-amber-400 flex items-end justify-between">
+            <div className="mt-8 pt-6 border-t-2 border-amber-400 flex items-end justify-between print-break-inside-avoid">
               <div className="flex items-center gap-2 text-slate-500 text-xs">
                 <ShieldCheck size={20} className="text-amber-500 shrink-0" />
                 <div>
@@ -248,27 +248,43 @@ export default function PrintableReportModal({ report, onClose }: { report: Repo
                 </div>
               </div>
 
-              {/* Doctor Signature Block with Hijri Date */}
-              <div className="flex flex-col items-center gap-1 border border-slate-200 rounded-2xl p-4 bg-slate-50 min-w-[200px]">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">توقيع الاستشاري المعتمد</p>
-                {/* Signature image */}
-                <div className="relative h-16 w-44 my-1">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/dr-ismail-signature.png"
-                    alt="توقيع د. إسماعيل عيسى"
-                    className="sig-img w-full h-full object-contain"
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
-                  />
+              {/* Official Stamp & Doctor Signature Block */}
+              <div className="flex items-center gap-4">
+                {/* Stamp SVG */}
+                <div className="w-24 h-24 shrink-0 grid place-items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 160 160">
+                    <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
+                    <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
+                    <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+                    <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
+                    <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
+                    <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" />
+                    <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
+                    <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{hijriDate}</text>
+                    <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+                  </svg>
                 </div>
-                {/* Hijri Date — embedded as part of the signature block */}
-                <p className="text-[11px] font-black text-slate-900 font-mono tracking-wide">
-                  {hijriDate}
-                </p>
-                <p className="text-[11px] font-black text-slate-900">د. إسماعيل عيسى</p>
-                <p className="text-[9px] font-bold text-teal-700 flex items-center gap-1">
-                  <ShieldCheck size={10} /> توقيع إلكتروني موثق
-                </p>
+
+                {/* Doctor Signature Block */}
+                <div className="flex flex-col items-center gap-1 border border-slate-200 rounded-2xl p-3 bg-slate-50 min-w-[190px]">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">توقيع الاستشاري المعتمد</p>
+                  <div className="relative h-14 w-40 my-0.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/dr-ismail-signature.png"
+                      alt="توقيع د. إسماعيل عيسى"
+                      className="sig-img w-full h-full object-contain"
+                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+                    />
+                  </div>
+                  <p className="text-[11px] font-black text-slate-900 font-mono tracking-wide">
+                    {hijriDate}
+                  </p>
+                  <p className="text-[11px] font-black text-slate-900">د. إسماعيل عيسى</p>
+                  <p className="text-[9px] font-bold text-teal-700 flex items-center gap-1">
+                    <ShieldCheck size={10} /> توقيع إلكتروني موثق
+                  </p>
+                </div>
               </div>
             </div>
 

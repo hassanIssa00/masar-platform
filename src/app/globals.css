@@ -266,234 +266,95 @@ button {
   }
 }
 
-/* HIGH QUALITY PRINT & PDF ALIGNMENT STYLES */
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 18mm 14mm 14mm 14mm;
-  }
-
-  /* Hide all non-report UI */
-  nav,
-  aside,
-  .no-print,
-  [class*="Sidebar"],
-  [class*="Navbar"] {
-    display: none !important;
-  }
-
-  html, body {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    font-size: 10pt !important;
-  }
-
-  /* Reset all wrappers so report fills the page */
-  .flex, .min-h-screen {
-    display: block !important;
-  }
-
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-
-  /* The report card itself */
-  .clinical-report {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    background: white !important;
-    /* Prevent first content from touching top edge */
-    padding-top: 4mm !important;
-  }
-
-  /* Preserve colours in print */
-  .clinical-report * {
-    print-color-adjust: exact !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-
-  /* Prevent mid-element page breaks */
-  .clinical-report header {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    break-before: avoid !important;
-  }
-
-  .clinical-report section,
-  .clinical-report article {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin-bottom: 6mm !important;
-  }
-
-  .clinical-report footer {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin-top: 8mm !important;
-  }
-
-  /* Ensure grids are symmetric */
-  .clinical-report .grid {
-    display: grid !important;
-  }
-
-  /* Tables */
-  .clinical-report table {
-    width: 100% !important;
-    table-layout: fixed !important;
-    border-collapse: collapse !important;
-  }
-
-  .clinical-report th,
-  .clinical-report td {
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-  }
-
-  /* Two-column grids stay two columns in print */
-  @supports (display: grid) {
-    .clinical-report .md\:grid-cols-2 {
-      grid-template-columns: 1fr 1fr !important;
-    }
-    .clinical-report .md\:grid-cols-3 {
-      grid-template-columns: 1fr 1fr 1fr !important;
-    }
-  }
-  /* Each numbered section: avoid break inside, but allow break before */
-  .print-report-section {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* When a section is forced onto a new page, give it breathing room at top */
-  .print-report-section h2 {
-    padding-top: 6mm !important;
-    margin-top: 0 !important;
-  }
-
-  /* Specifically the first child section after a page break gets more room */
-  .clinical-report .print-report-section:first-of-type h2 {
-    padding-top: 2mm !important;
-  }
-}
-
 /* ══════════════════════════════════════════════════
-   UNIVERSAL PRINT STYLESHEET (REPORTS & CERTIFICATES)
+   UNIVERSAL A4 PRINT STYLESHEET (REPORTS & CERTIFICATES)
 ══════════════════════════════════════════════════ */
 @media print {
-  /* Default Page Setup: Portrait A4 for Reports */
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 12mm 10mm;
   }
 
   html, body {
-    margin: 0 !important;
-    padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    min-height: auto !important;
     overflow: visible !important;
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 10pt !important;
+    direction: rtl !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* ── Step 1: Hide Navigation, Sidebars & Main Website Layout to avoid extra blank pages ── */
+  /* ── Step 1: Hide all non-printable UI ── */
   .no-print,
+  .print-hidden,
   .print\:hidden,
   nav,
   aside,
-  header,
-  footer,
-  button {
+  .print-modal-overlay > :not(.print-modal-wrapper),
+  .print-modal-wrapper > :first-child {
     display: none !important;
-    visibility: hidden !important;
   }
 
-  body:has(#printable-area) main,
-  body:has(#printable-area) nav,
-  body:has(#printable-area) aside,
-  body:has(#printable-area) footer {
-    display: none !important;
-    height: 0 !important;
-    max-height: 0 !important;
-    overflow: hidden !important;
-    visibility: hidden !important;
-  }
-
-  /* ── Step 2: Ensure Modal Wrappers Collapse for Printing ── */
+  /* ── Step 2: Unconstrain Modals & Flex Containers ── */
   .fixed,
-  [class*="fixed"],
-  .backdrop-blur-sm,
-  .backdrop-blur-md {
+  .absolute,
+  [class*="backdrop-blur"],
+  .print-modal-overlay,
+  .print-modal-wrapper {
     position: static !important;
-    background: transparent !important;
+    background: #ffffff !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
     inset: auto !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
+    border: none !important;
   }
 
-  /* ── Step 3: Make Printable Report & Certificate Content Visible ── */
-  #printable-area,
-  #printable-area *,
-  .clinical-report,
-  .clinical-report *,
-  #printable-certificate,
-  #printable-certificate * {
-    visibility: visible !important;
-    display: block;
+  /* ── Step 3: Prevent Page Break Fragmentation ── */
+  .print-break-inside-avoid,
+  .card,
+  .sig-box,
+  .stamp-container,
+  .report-section,
+  .print-report-section,
+  article,
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .section-title {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  /* ── Step 4: Ensure Images & Colors Print High Quality ── */
+  img, svg {
+    max-width: 100% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  /* Inline flex/grid items within printable area stay visible as flex/grid */
-  #printable-area .flex,
-  .clinical-report .flex {
-    display: flex !important;
-  }
-  #printable-area .grid,
-  .clinical-report .grid {
-    display: grid !important;
-  }
-  #printable-area .inline-block,
-  .clinical-report .inline-block {
-    display: inline-block !important;
-  }
-  #printable-area .inline-flex,
-  .clinical-report .inline-flex {
-    display: inline-flex !important;
-  }
-
-  /* ── Step 4: Printable Area Container Fit ── */
-  #printable-area {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
   }
 }
 
 /* ══════════════════════════════════════════════════
-   SPECIAL CERTIFICATE OVERRIDE (A4 LANDSCAPE ONLY)
+   SPECIAL CERTIFICATE OVERRIDE (A4 LANDSCAPE)
 ══════════════════════════════════════════════════ */
 @media print {
   body:has(#printable-certificate) {
@@ -516,4 +377,5 @@ button {
     background: #ffffff !important;
   }
 }
+
 

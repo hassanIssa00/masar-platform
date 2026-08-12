@@ -603,49 +603,60 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
       </div>
 
       {/* ── FOOTER: DOCTOR SIGNATURE & DIGITAL SEAL ── */}
-      <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }}>
+      <div style={{ padding: '14px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
         {/* Doctor Signature */}
-        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>يعتمد:</span>
-          <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+          <h3 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
             {form.doctorName}
           </h3>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
             {form.doctorTitle}
           </p>
 
-          <div style={{ borderBottom: '1px solid #cbd5e1', width: 220, marginTop: 10, paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
-            <span style={{ fontSize: 9.5, fontWeight: 900, color: '#94a3b8' }}>التوقيع المعتمد ✍️</span>
+          <div style={{ position: 'relative', width: 220, marginTop: 4 }}>
+            <img
+              src="/dr-ismail-signature.png"
+              alt="التوقيع المعتمد"
+              style={{ height: 48, objectFit: 'contain', marginBottom: -12, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+            />
+            <div style={{ borderBottom: '1.5px solid #94a3b8', width: '100%', paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
+              <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>التوقيع المعتمد ✍️</span>
+            </div>
           </div>
         </div>
 
-        {/* Dashed Digital Seal Box WITH OFFICIAL MASAR LOGO AND CLICK-TO-VERIFY LINK */}
+        {/* Digital Seal Box with Stamp SVG and Click-to-Verify link */}
         <a
           href={verifyUrl}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            background: '#ffffff', border: '1.5px dashed #334155', borderRadius: 14,
-            padding: '10px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 6, textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 220,
+            background: '#ffffff', border: '1.5px dashed #06392c', borderRadius: 16,
+            padding: '8px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 4, textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', minWidth: 200,
             textDecoration: 'none', cursor: 'pointer'
           }}
           title="اضغط للتحقق الرقمي من صحة هذه الشهادة"
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, background: '#ffffff',
-              border: '1.5px solid #06392c', padding: 4, display: 'flex',
-              alignItems: 'center', justifyContent: 'center'
-            }}>
-              <img src="/brand/masar-logo.png" alt="الختم الرقمي المعتمد — منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            </div>
+          <div style={{ width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
+              <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
+              <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+              <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
+              <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
+              <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" />
+              <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
+              <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{form.date}</text>
+              <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+            </svg>
           </div>
 
           <div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#0f172a' }}>الختم الرقمي المعتمد</div>
-            <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 900, color: '#0f172a', letterSpacing: '0.5px', marginTop: 2 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 900, color: '#06392c' }}>الختم الرقمي المعتمد</div>
+            <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
               {form.certNumber}
             </div>
           </div>

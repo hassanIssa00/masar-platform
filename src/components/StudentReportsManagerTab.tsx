@@ -135,30 +135,35 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       </div>`;
 
     const footerHTML = () => `
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:12px;border-top:2px dashed #cbd5e1;margin-top:16px;">
-        <!-- LEFT: Info -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:12px;border-top:2px dashed #cbd5e1;margin-top:16px;break-inside:avoid;page-break-inside:avoid;">
+        <!-- LEFT: Info & QR Verification -->
         <div>
           <div style="font-size:10px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">المملكة العربية السعودية · جدة</div>
           <div style="font-size:11px;color:#06392c;font-weight:900;font-family:'Cairo',sans-serif;">منصة مَسَار للتأهيل والتعليم الذكي</div>
           <div style="font-size:9px;color:#94a3b8;font-weight:600;font-family:monospace;">${refNum} | ${issuedDate}</div>
         </div>
-        <!-- CENTER: Masar Seal with real logo -->
+        <!-- CENTER: Circular Official Stamp SVG -->
         <div style="text-align:center;">
-          <div style="width:86px;height:86px;border-radius:50%;border:3px double #06392c;background:linear-gradient(135deg,#f0fdf4,#dcfce7);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;overflow:hidden;padding:6px;">
-            <img
-              src="${origin}/brand/masar-logo.webp"
-              alt="مسار"
-              style="width:64px;height:auto;object-fit:contain;"
-              onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
-            />
-            <span style="display:none;font-size:18px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">مَسَار</span>
-          </div>
-          <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:3px;">وثيقة معتمدة ✓</div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
+            <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
+            <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+            <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
+            <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
+            <image href="${origin}/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" />
+            <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
+            <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">${issuedDate}</text>
+            <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+          </svg>
+          <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">وثيقة إشرافية معتمدة ✓</div>
         </div>
-        <!-- RIGHT: Dr. Ismail Stamp -->
-        <div style="border:2px solid #06392c;padding:8px 18px;border-radius:14px;background:#f0fdf4;text-align:center;">
+        <!-- RIGHT: Dr. Ismail Signature Block -->
+        <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:#f0fdf4;text-align:center;min-width:180px;">
           <div style="font-size:9px;color:#047857;font-weight:900;font-family:'Cairo',sans-serif;">التوقيع والختم المعتمد ✍️</div>
-          <div style="font-size:14px;font-weight:900;color:#06392c;margin-top:3px;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
+          <div style="height:36px;margin:2px 0;">
+            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;" />
+          </div>
+          <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
           <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
         </div>
       </div>`;

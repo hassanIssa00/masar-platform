@@ -1,9 +1,117 @@
-// Updated: 2026-08-08 - Certified & Evaluated Certificate Modal
+// Updated: 2026-08-12 - Real Dr. Ismail Stamp in Certificate
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
+
+// ── Load signature image as transparent PNG (same as signature/page.tsx) ─────
+async function loadTransparentSignature(src: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(''); return; }
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, img.width, img.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+          if (brightness > 175) {
+            data[i+3] = 0;
+          } else {
+            data[i] = 15; data[i+1] = 23; data[i+2] = 42;
+            data[i+3] = Math.min(255, Math.round((255 - brightness) * 2.2));
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch { resolve(''); }
+    };
+    img.onerror = () => resolve('');
+    img.src = src;
+  });
+}
+
+// ── Ring decorative dots for stamp ───────────────────────────────────────────
+function ringDots(cx: number, cy: number, r: number, count: number, ink: string) {
+  return Array.from({ length: count }, (_, i) => {
+    const a = (i / count) * Math.PI * 2 - Math.PI / 2;
+    return (
+      <circle key={i}
+        cx={cx + Math.cos(a) * r} cy={cy + Math.sin(a) * r}
+        r={i % 6 === 0 ? 2.0 : 1.0} fill={ink} />
+    );
+  });
+}
+
+// ── Compact Dr. Ismail Stamp (matches signature page design) ─────────────────
+function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolean; dateStr: string }) {
+  const SZ = 160;
+  const CX = SZ / 2;
+  const CY = SZ / 2;
+  const INK = '#0f172a';
+  const RO = 76;
+  const RI = 68;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
+      <circle cx={CX} cy={CY} r={RO} fill="none" stroke={INK} strokeWidth="2.5" />
+      {ringDots(CX, CY, (RO + RI) / 2, 60, INK)}
+      <circle cx={CX} cy={CY} r={RI} fill="white" stroke={INK} strokeWidth="1.2" />
+
+      {/* Top label */}
+      <text x={CX} y={CY - 44} textAnchor="middle"
+        fontFamily="Cairo, Amiri, Arial" fontSize="6.5" fontWeight="bold" fill={INK}
+        direction={isAr ? 'rtl' : 'ltr'}>
+        {isAr ? 'الختم الرسمي المعتمد' : 'OFFICIAL APPROVED STAMP'}
+      </text>
+
+      {/* Name */}
+      <text x={CX} y={CY - 30} textAnchor="middle"
+        fontFamily="Cairo, Amiri, Arial" fontSize="10.5" fontWeight="900" fill={INK}
+        direction={isAr ? 'rtl' : 'ltr'}>
+        {isAr ? 'د. إسماعيل عيسى' : 'DR. ISMAIL ISSA'}
+      </text>
+
+      {/* Decorative stars + divider */}
+      <text x={CX - 38} y={CY - 21} textAnchor="middle" fontSize="6" fill={INK}>✦</text>
+      <text x={CX + 38} y={CY - 21} textAnchor="middle" fontSize="6" fill={INK}>✦</text>
+      <line x1={CX - 56} y1={CY - 17} x2={CX + 56} y2={CY - 17} stroke={INK} strokeWidth="0.8" />
+
+      {/* Signature image */}
+      {sigB64 && (
+        <image href={sigB64} x={CX - 56} y={CY - 16} width="112" height="34"
+          preserveAspectRatio="xMidYMid meet" />
+      )}
+      {!sigB64 && (
+        <text x={CX} y={CY + 6} textAnchor="middle"
+          fontFamily="Cairo, Amiri, Arial" fontSize="6" fill={INK} opacity="0.4">
+          {isAr ? 'التوقيع' : 'Signature'}
+        </text>
+      )}
+
+      <line x1={CX - 56} y1={CY + 20} x2={CX + 56} y2={CY + 20} stroke={INK} strokeWidth="0.8" />
+
+      {/* Date */}
+      <text x={CX} y={CY + 32} textAnchor="middle"
+        fontFamily="Cairo, Amiri, Arial" fontSize="7.5" fontWeight="900" fill={INK}
+        letterSpacing="0.5">
+        {dateStr}
+      </text>
+
+      {/* Bottom label */}
+      <text x={CX} y={CY + 44} textAnchor="middle"
+        fontFamily="Cairo, Amiri, Arial" fontSize="5" fontWeight="bold" fill={INK}>
+        {isAr ? 'منصة مسار · التعليم العلاجي' : 'MASAR PLATFORM · JEDDAH'}
+      </text>
+    </svg>
+  );
+}
 
 export interface CertificateData {
   studentName: string;
@@ -183,12 +291,39 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const [editingEnName, setEditingEnName] = useState(false);
   const [nameEn, setNameEn] = useState(data.studentNameEn || '');
+  const [sigB64, setSigB64] = useState('');
 
   const isAr = lang === 'ar';
   const certNo = data.certNumber || `NSR-CERT-2026-${Math.random().toString().slice(2, 7)}`;
   const displayName = isAr ? data.studentName : (nameEn || data.studentName);
 
   const certRef = useRef<HTMLDivElement>(null);
+
+  // Load Dr. Ismail's transparent signature
+  useEffect(() => {
+    loadTransparentSignature('/dr-ismail-signature.jpg').then((b64) => {
+      if (b64) { setSigB64(b64); }
+      else { loadTransparentSignature('/dr-ismail-signature.png').then(setSigB64); }
+    });
+  }, []);
+
+  // Build today's date string for stamp
+  const stampDate = (() => {
+    try {
+      const now = new Date();
+      if (isAr) {
+        const d = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day: 'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+        const m = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { month: 'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+        const y = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year: 'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+        return `${d} / ${m} / ${y} هـ`;
+      } else {
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear());
+        return `${day} / ${month} / ${year} AD`;
+      }
+    } catch { return data.completionDate; }
+  })();
 
   const handlePrint = () => {
     window.print();
@@ -400,46 +535,48 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── OFFICIAL REPORT FOOTER MATCHING SCREENSHOT (PERFECT SYMMETRY) ── */}
-            <div style={{ padding: '16px 28px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
+            {/* ── OFFICIAL REPORT FOOTER (PERFECT SYMMETRY WITH STAMP & SIGNATURE) ── */}
+            <div style={{ padding: '14px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir={isAr ? 'rtl' : 'ltr'}>
 
-              {/* RIGHT (RTL first): Doctor Approval Text & Signature Rule (Clean, No Box) */}
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Doctor Approval & Handwritten Signature */}
+              <div style={{ textAlign: isAr ? 'right' : 'left', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
                   {isAr ? 'يعتمد:' : 'Certified by:'}
                 </span>
-                <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+                <h3 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
                   {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
                 </p>
 
-                {/* Signature Underline Rule */}
-                <div style={{ borderBottom: '1px solid #cbd5e1', width: 220, marginTop: 12, paddingTop: 4, display: 'flex', justifyContent: 'flex-start' }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 900, color: '#94a3b8' }}>
-                    {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
-                  </span>
+                {/* Handwritten Signature Image & Line */}
+                <div style={{ position: 'relative', width: 220, marginTop: 4 }}>
+                  <img
+                    src="/dr-ismail-signature.png"
+                    alt="التوقيع المعتمد"
+                    style={{
+                      height: 48,
+                      objectFit: 'contain',
+                      marginBottom: -12,
+                      marginLeft: isAr ? '0' : 'auto',
+                      marginRight: isAr ? 'auto' : '0',
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+                    }}
+                  />
+                  <div style={{ borderBottom: '1.5px solid #94a3b8', width: '100%', paddingTop: 4, display: 'flex', justifyContent: isAr ? 'flex-start' : 'flex-end' }}>
+                    <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>
+                      {isAr ? 'التوقيع المعتمد' : 'Authorized Signature'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* LEFT (RTL last): Dashed Digital Seal Box with Dual Logos (Solid Black Lines & Text) */}
-              <div style={{ background: '#ffffff', border: '1.5px dashed #334155', borderRadius: 14, padding: '10px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', minWidth: 240 }}>
-                {/* Single Logo (Masar Only) */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, background: '#ffffff', border: '1.5px solid #06392c', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src="/brand/masar-logo.png" alt="منصة مسار" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  </div>
-                </div>
-
-                {/* Seal Title & Serial Code */}
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: '#0f172a' }}>
-                    {isAr ? 'الختم الرقمي المعتمد' : 'Official Digital Seal'}
-                  </div>
-                  <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 900, color: '#0f172a', letterSpacing: '0.5px', marginTop: 2 }}>
-                    {certNo}
-                  </div>
+              {/* Official Circular Stamp (Arabic or English) */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <DrIsmailStamp sigB64={sigB64} isAr={isAr} dateStr={stampDate} />
+                <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
+                  {certNo}
                 </div>
               </div>
 

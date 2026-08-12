@@ -384,20 +384,41 @@ function ReportsContent() {
                   </ReportSection>
                 )}
 
-                <footer className="mt-8 grid gap-6 border-t border-slate-200 pt-6 md:grid-cols-[1fr_180px]">
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-500">يعتمد هذا التقرير رسمياً من:</p>
-                    <h3 className="mt-3 text-2xl font-black text-indigo-950">د. إسماعيل عيسى</h3>
-                    <p className="mt-1 font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
-                    <div className="mt-4 h-px w-56 bg-slate-300" />
-                    <p className="mt-2 text-xs font-bold text-slate-400">التوقيع المعتمد</p>
-                  </div>
-                  <div className="rounded-xl border-2 border-indigo-900 bg-indigo-50/40 p-4 text-center shadow-sm flex flex-col items-center gap-2">
-                    <div className="w-14 h-14 rounded-xl border-2 border-indigo-800 bg-white flex items-center justify-center p-1.5 shadow-sm">
-                      <img src="/brand/masar-logo.png" alt="منصة مسار" className="w-full h-full object-contain" />
+                <footer className="mt-8 flex items-end justify-between border-t border-slate-200 pt-6 print-break-inside-avoid" dir="rtl">
+                  {/* Doctor Signature Block */}
+                  <div className="text-right flex flex-col gap-1">
+                    <p className="text-xs font-bold text-slate-500">يعتمد هذا التقرير رسمياً من:</p>
+                    <h3 className="text-xl font-black text-slate-950 margin-0">د. إسماعيل عيسى</h3>
+                    <p className="text-xs font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
+                    <div className="relative w-56 mt-2">
+                      <img
+                        src="/dr-ismail-signature.png"
+                        alt="التوقيع المعتمد"
+                        className="h-12 object-contain -mb-3 filter drop-shadow-sm"
+                      />
+                      <div className="border-b-2 border-slate-400 w-full pt-1">
+                        <p className="text-[10px] font-black text-slate-500">التوقيع المعتمد ✍️</p>
+                      </div>
                     </div>
-                    <p className="text-xs font-black text-indigo-900">الختم الرقمي المعتمد</p>
-                    <p className="text-xs font-bold text-indigo-700 font-mono">{fileNumber}</p>
+                  </div>
+
+                  {/* Circular Official Stamp SVG & Serial */}
+                  <div className="flex flex-col items-center gap-1.5 rounded-2xl border-2 border-emerald-900 bg-emerald-50/40 p-3 text-center shadow-sm min-w-[190px]">
+                    <div className="w-24 h-24 grid place-items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 160 160">
+                        <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
+                        <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
+                        <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+                        <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
+                        <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
+                        <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" />
+                        <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
+                        <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{selected.date}</text>
+                        <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+                      </svg>
+                    </div>
+                    <p className="text-[11px] font-black text-emerald-950">الختم الرقمي المعتمد</p>
+                    <p className="text-[10px] font-bold text-emerald-800 font-mono tracking-wide">{fileNumber}</p>
                   </div>
                 </footer>
 
