@@ -390,16 +390,15 @@ function ReportsContent() {
                     <p className="text-xs font-bold text-slate-500">يعتمد هذا التقرير رسمياً من:</p>
                     <h3 className="text-xl font-black text-slate-950 margin-0">د. إسماعيل عيسى</h3>
                     <p className="text-xs font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
-                    <div className="relative w-56 mt-2">
+                    <div className="relative w-56 mt-4">
+                      <div className="border-b-2 border-slate-400 w-full pb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-500">التوقيع المعتمد ✍️</span>
+                      </div>
                       <img
                         src="/dr-ismail-signature.png"
                         alt="التوقيع المعتمد"
-                        className="h-12 object-contain -mb-3"
-                        style={{ mixBlendMode: 'multiply' }}
+                        className="absolute bottom-1 right-0 h-12 object-contain pointer-events-none"
                       />
-                      <div className="border-b-2 border-slate-400 w-full pt-1">
-                        <p className="text-[10px] font-black text-slate-500">التوقيع المعتمد ✍️</p>
-                      </div>
                     </div>
                   </div>
 
