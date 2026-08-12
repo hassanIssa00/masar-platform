@@ -1,5 +1,9 @@
 'use client';
 
+import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from './firebase';
+
 export type ClassStudentRecord = {
   id: string;
   fullName: string;
@@ -30,7 +34,7 @@ export type ClassParentRecord = {
 };
 
 const CLASS_STUDENTS_KEY = 'masar_class_students_v1';
-const CLASS_PARENTS_KEY = 'masar_class_parents_v1';
+const CLOUD_COLLECTION = 'class_students';
 
 const INITIAL_CLASS_STUDENTS: ClassStudentRecord[] = [
   {
@@ -69,6 +73,8 @@ export function getClassStudents(): ClassStudentRecord[] {
     const raw = localStorage.getItem(CLASS_STUDENTS_KEY);
     if (!raw) {
       localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(INITIAL_CLASS_STUDENTS));
+      // Seed cloud with initial data
+      INITIAL_CLASS_STUDENTS.forEach((s) => syncDocToCloud(CLOUD_COLLECTION, s.id, s));
       return INITIAL_CLASS_STUDENTS;
     }
     return JSON.parse(raw);
@@ -77,24 +83,38 @@ export function getClassStudents(): ClassStudentRecord[] {
   }
 }
 
+export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[]> {
+  try {
+    const snap = await getDocs(collection(db, CLOUD_COLLECTION));
+    if (!snap.empty) {
+      const items = snap.docs.map((d) => d.data() as ClassStudentRecord);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(items));
+      }
+      return items;
+    }
+  } catch (e) {
+    console.error('Error fetching class students from cloud DB:', e);
+  }
+  return getClassStudents();
+}
+
 export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullName: string }): ClassStudentRecord {
   const list = getClassStudents();
   const now = new Date().toISOString();
   const existingIndex = list.findIndex((s) => s.id === student.id);
 
+  let target: ClassStudentRecord;
+
   if (existingIndex >= 0) {
-    const updated: ClassStudentRecord = {
+    target = {
       ...list[existingIndex],
       ...student,
       updatedAt: now,
     };
-    list[existingIndex] = updated;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
-    }
-    return updated;
+    list[existingIndex] = target;
   } else {
-    const newStudent: ClassStudentRecord = {
+    target = {
       id: student.id || `cls-std-${Date.now()}`,
       fullName: student.fullName,
       fullNameEn: student.fullNameEn || '',
@@ -110,12 +130,17 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
       createdAt: now,
       updatedAt: now,
     };
-    list.unshift(newStudent);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
-    }
-    return newStudent;
+    list.unshift(target);
   }
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
+  }
+
+  // ☁️ Sync directly to Server Database Cloud
+  syncDocToCloud(CLOUD_COLLECTION, target.id, target);
+
+  return target;
 }
 
 export function deleteClassStudent(id: string): void {
@@ -123,6 +148,9 @@ export function deleteClassStudent(id: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
   }
+
+  // ☁️ Delete from Server Database Cloud
+  deleteDocFromCloud(CLOUD_COLLECTION, id);
 }
 
 export function getClassParents(): ClassParentRecord[] {

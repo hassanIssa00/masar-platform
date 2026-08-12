@@ -7,7 +7,7 @@ import {
   Bell, Send, CheckCircle, XCircle, Plus, Video,
   AlertTriangle, Loader2, Star, MessageSquare,
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
-  Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText,
+  Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
   Menu, X, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import {
@@ -26,13 +26,16 @@ import StudentReportsManagerTab from '@/components/StudentReportsManagerTab';
 import AttendanceTabManager from '@/components/AttendanceTabManager';
 import ClassroomStudentsTab from '@/components/ClassroomStudentsTab';
 import ClassroomParentsTab from '@/components/ClassroomParentsTab';
+import ClassroomQuizzesTab from '@/components/ClassroomQuizzesTab';
+import StudentAIChatTab from '@/components/StudentAIChatTab';
+import SmartScheduleTab from '@/components/SmartScheduleTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 const CLASS_STUDENTS: { id: string; name: string; phone?: string }[] = [];
 
-type Tab = 'overview' | 'students' | 'parents' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
+type Tab = 'overview' | 'students' | 'parents' | 'quizzes' | 'ai-chat' | 'smart-schedule' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
 
 function getToken() {
   if (typeof window === 'undefined') return null;
@@ -502,17 +505,20 @@ export default function IkhlasJeddahPage() {
   };
 
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
-    { key: 'overview',      label: 'نظرة عامة',         icon: BarChart3 },
-    { key: 'students',      label: 'إدارة الطلاب 👨‍🎓',   icon: Users },
-    { key: 'parents',       label: 'أولياء الأمور 👨‍👩‍👧', icon: UserCheck },
-    { key: 'live',          label: 'البث المباشر 🔴',    icon: Radio },
-    { key: 'certificates',  label: 'شهادات التفوق 🏆',   icon: Award },
-    { key: 'schedule',      label: 'جدول الحصص',        icon: Clock },
-    { key: 'attendance',    label: 'الحضور',             icon: Users },
-    { key: 'homework',      label: 'الواجبات',           icon: BookOpen, badge: homeworkList.filter(h => h.status === 'OPEN').length },
-    { key: 'meetings',      label: 'الاجتماعات',         icon: Video },
-    { key: 'photos',        label: 'الصور',              icon: Camera },
-    { key: 'reports',       label: 'التقارير',            icon: BarChart3 },
+    { key: 'overview',        label: 'نظرة عامة',              icon: BarChart3 },
+    { key: 'students',        label: 'إدارة الطلاب 👨‍🎓',        icon: Users },
+    { key: 'parents',         label: 'أولياء الأمور 👨‍👩‍👧',     icon: UserCheck },
+    { key: 'ai-chat',         label: 'شات AI للطلاب 🤖',        icon: MessageSquare },
+    { key: 'smart-schedule',  label: 'الجدول الذكي 📅',         icon: Bell },
+    { key: 'quizzes',         label: 'الكويزات والاختبارات 📝', icon: HelpCircle },
+    { key: 'live',            label: 'البث المباشر 🔴',         icon: Radio },
+    { key: 'certificates',    label: 'شهادات التفوق 🏆',        icon: Award },
+    { key: 'schedule',        label: 'جدول الحصص',             icon: Clock },
+    { key: 'attendance',      label: 'الحضور',                  icon: Users },
+    { key: 'homework',        label: 'الواجبات',                icon: BookOpen, badge: homeworkList.filter(h => h.status === 'OPEN').length },
+    { key: 'meetings',        label: 'الاجتماعات',              icon: Video },
+    { key: 'photos',          label: 'الصور',                   icon: Camera },
+    { key: 'reports',         label: 'التقارير',                 icon: BarChart3 },
   ];
 
   const jsDay = new Date().getDay();
@@ -626,11 +632,20 @@ export default function IkhlasJeddahPage() {
         <main className="flex-1 p-4 md:p-6 min-w-0">
           <div className="max-w-7xl mx-auto space-y-6">
 
+        {/* ════════════ الكويزات والاختبارات التفاعلية ════════════ */}
+        {activeTab === 'quizzes' && <ClassroomQuizzesTab />}
+
         {/* ════════════ إدارة طلاب الفصل ════════════ */}
         {activeTab === 'students' && <ClassroomStudentsTab />}
 
         {/* ════════════ إدارة أولياء أمور الفصل ════════════ */}
         {activeTab === 'parents' && <ClassroomParentsTab />}
+
+        {/* ════════════ شات AI للطلاب ════════════ */}
+        {activeTab === 'ai-chat' && <StudentAIChatTab />}
+
+        {/* ════════════ الجدول الذكي وإشعارات الأولياء ════════════ */}
+        {activeTab === 'smart-schedule' && <SmartScheduleTab />}
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
