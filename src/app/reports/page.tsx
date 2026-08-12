@@ -31,6 +31,7 @@ function ReportsContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [assignMessage, setAssignMessage] = useState('');
   const [printReport, setPrintReport] = useState<ReportRecord | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const parentMode = searchParams.get('mode') === 'parent';
 
   const router = useRouter();
@@ -476,7 +477,7 @@ function ReportsContent() {
     },
   ] as const;
 
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+
 
   const knownTypes = CATEGORIES.flatMap((c) => [...c.types]);
   const categorized = CATEGORIES.map((cat) => ({
