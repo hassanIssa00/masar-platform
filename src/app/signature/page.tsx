@@ -159,8 +159,8 @@ export default function SignaturePage() {
   const dateStrAr = hijri.day
     ? `${hijri.day}  /  ${hijri.month}  /  ${hijri.year}  هـ`
     : '';
-  const dateStrEn = greg.day
-    ? `${greg.day}  /  ${greg.month}  /  ${greg.year}  AD`
+  const dateStrEn = hijri.day
+    ? `${hijri.day}  /  ${hijri.month}  /  ${hijri.year}  AH`
     : '';
 
   return (
@@ -198,7 +198,7 @@ export default function SignaturePage() {
           </span>
           <h1 className="text-3xl sm:text-4xl font-black text-gray-900">الختم الإلكتروني الرسمي المعتمد</h1>
           <p className="text-sm font-bold text-gray-500">
-            يتوفر باللغتين العربية والإنجليزية مع تحديث تلقائي يومي للتاريخ
+            التاريخ الهجري يتحدث تلقائياً كل يوم داخل الختم — متاح باللغتين العربية والإنجليزية
           </p>
         </div>
 
@@ -265,12 +265,12 @@ export default function SignaturePage() {
                   <image href={sigB64} x={CX - 170} y={CY - 68} width="340" height="138" preserveAspectRatio="xMidYMid meet" />
                 )}
 
-                <line x1={CX - 150} y1={CY + 70} x2={CX + 150} y2={CY + 70} stroke={INK} strokeWidth="1.5" />
+                <line x1={CX - 150} y1={CY + 65} x2={CX + 150} y2={CY + 65} stroke={INK} strokeWidth="1.5" />
 
-                <text x={CX} y={CY + 104} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="24" fontWeight="900" fill={INK} direction="rtl" letterSpacing="1">
+                <text x={CX} y={CY + 98} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="23" fontWeight="900" fill={INK} direction="rtl" letterSpacing="1">
                   {dateStrAr}
                 </text>
-                <text x={CX} y={CY + 130} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="12" fill={INK} direction="rtl">
+                <text x={CX} y={CY + 122} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="11" fontWeight="bold" fill={INK} direction="rtl">
                   منصة مسار · التعليم العلاجي · جدة
                 </text>
               </svg>
@@ -304,12 +304,12 @@ export default function SignaturePage() {
                   <image href={sigB64} x={CX - 170} y={CY - 68} width="340" height="138" preserveAspectRatio="xMidYMid meet" />
                 )}
 
-                <line x1={CX - 150} y1={CY + 70} x2={CX + 150} y2={CY + 70} stroke={INK} strokeWidth="1.5" />
+                <line x1={CX - 150} y1={CY + 65} x2={CX + 150} y2={CY + 65} stroke={INK} strokeWidth="1.5" />
 
-                <text x={CX} y={CY + 104} textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="22" fontWeight="900" letterSpacing="2" fill={INK}>
+                <text x={CX} y={CY + 98} textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="21" fontWeight="900" letterSpacing="1.5" fill={INK}>
                   {dateStrEn}
                 </text>
-                <text x={CX} y={CY + 130} textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="11" fontWeight="bold" letterSpacing="0.8" fill={INK}>
+                <text x={CX} y={CY + 122} textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="9.5" fontWeight="bold" letterSpacing="0.3" fill={INK}>
                   MASAR PLATFORM · REMEDIAL EDUCATION · JEDDAH
                 </text>
               </svg>
