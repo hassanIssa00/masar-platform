@@ -85,9 +85,17 @@ function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolea
       <text x={CX + 38} y={CY - 21} textAnchor="middle" fontSize="6" fill={INK}>✦</text>
       <line x1={CX - 56} y1={CY - 17} x2={CX + 56} y2={CY - 17} stroke={INK} strokeWidth="0.8" />
 
-      {/* Signature image — PNG direct with multiply blend, no black box */}
-      <image href="/dr-ismail-signature.png" x={CX - 56} y={CY - 16} width="112" height="34"
+      {/* ClipPath: constrains signature to the zone between the two lines */}
+      <defs>
+        <clipPath id="sig-clip">
+          <rect x={CX - 56} y={CY - 16} width="112" height="35" />
+        </clipPath>
+      </defs>
+
+      {/* Signature image — clipped to stay between dividers */}
+      <image href="/dr-ismail-signature.png" x={CX - 56} y={CY - 16} width="112" height="35"
         preserveAspectRatio="xMidYMid meet"
+        clipPath="url(#sig-clip)"
         style={{ mixBlendMode: 'multiply' } as React.CSSProperties} />
 
       <line x1={CX - 56} y1={CY + 20} x2={CX + 56} y2={CY + 20} stroke={INK} strokeWidth="0.8" />
