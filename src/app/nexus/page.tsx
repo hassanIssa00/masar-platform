@@ -81,7 +81,7 @@ export default function NexusPage() {
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 lg:px-8">
           <Link href="/">
-            <BrandMark size="md" dark />
+            <BrandMark size="md" dark hideNexus={false} />
           </Link>
 
           <div className="flex items-center gap-3">

@@ -14,7 +14,7 @@ const sizes = {
   lg: 58,
 };
 
-export default function BrandMark({ size = 'md', showText = true, dark = false, isEn = false, hideNexus = false }: BrandMarkProps) {
+export default function BrandMark({ size = 'md', showText = true, dark = false, isEn = false, hideNexus = true }: BrandMarkProps) {
   const markSize = sizes[size];
   const textSm = size === 'sm';
 
