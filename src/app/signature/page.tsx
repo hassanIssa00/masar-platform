@@ -29,51 +29,8 @@ function getHijriParts() {
   }
 }
 
-// ── Convert JPG/PNG signature image to transparent PNG with dark ink strokes ─
-async function loadTransparentSignature(src: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(''); return; }
-
-        ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, img.width, img.height);
-        const data = imgData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const brightness = (r + g + b) / 3;
-
-          if (brightness > 175) {
-            // White/light paper background → completely transparent
-            data[i + 3] = 0;
-          } else {
-            // Dark ink stroke → pure sharp dark ink (#0f172a)
-            data[i]     = 15;  // R
-            data[i + 1] = 23;  // G
-            data[i + 2] = 42;  // B
-            data[i + 3] = Math.min(255, Math.round((255 - brightness) * 2.2));
-          }
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      } catch {
-        resolve('');
-      }
-    };
-    img.onerror = () => resolve('');
-    img.src = src;
-  });
-}
+// Signature image path — we use mix-blend-mode:multiply to make white bg transparent
+const SIG_SRC = '/dr-ismail-signature.png';
 
 // ── Ring decorative dots ──────────────────────────────────────────────────────
 function ringDots(cx: number, cy: number, r: number, count: number, ink: string) {
@@ -103,7 +60,6 @@ function getEnglishDates() {
 export default function SignaturePage() {
   const [hijri, setHijri]       = useState({ day: '', month: '', year: '', enDay: '', enMonth: '', enYear: '', fullLong: '' });
   const [greg, setGreg]         = useState({ day: '', month: '', year: '', monthName: '', fullG: '' });
-  const [sigB64, setSigB64]     = useState('');
   const [activeTab, setActiveTab] = useState<'ar' | 'en'>('ar');
   const svgArRef = useRef<SVGSVGElement>(null);
   const svgEnRef = useRef<SVGSVGElement>(null);
@@ -111,16 +67,6 @@ export default function SignaturePage() {
   useEffect(() => {
     setHijri(getHijriParts());
     setGreg(getEnglishDates());
-  }, []);
-
-  useEffect(() => {
-    loadTransparentSignature('/dr-ismail-signature.jpg').then((b64) => {
-      if (b64) {
-        setSigB64(b64);
-      } else {
-        loadTransparentSignature('/dr-ismail-signature.png').then(setSigB64);
-      }
-    });
   }, []);
 
   // ── Download stamp as transparent PNG ──
@@ -266,9 +212,12 @@ export default function SignaturePage() {
                 <text x={CX + 105} y={CY - 76} textAnchor="middle" fontSize="14" fill={INK}>✦</text>
                 <line x1={CX - 150} y1={CY - 70} x2={CX + 150} y2={CY - 70} stroke={INK} strokeWidth="1.5" />
 
-                {sigB64 && (
-                  <image href={sigB64} x={CX - 170} y={CY - 68} width="340" height="138" preserveAspectRatio="xMidYMid meet" />
-                )}
+                <image
+                  href={SIG_SRC}
+                  x={CX - 160} y={CY - 62} width="320" height="130"
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ mixBlendMode: 'multiply' }}
+                />
 
                 <line x1={CX - 150} y1={CY + 65} x2={CX + 150} y2={CY + 65} stroke={INK} strokeWidth="1.5" />
 
@@ -305,9 +254,12 @@ export default function SignaturePage() {
                 <text x={CX + 105} y={CY - 76} textAnchor="middle" fontSize="14" fill={INK}>✦</text>
                 <line x1={CX - 150} y1={CY - 70} x2={CX + 150} y2={CY - 70} stroke={INK} strokeWidth="1.5" />
 
-                {sigB64 && (
-                  <image href={sigB64} x={CX - 170} y={CY - 68} width="340" height="138" preserveAspectRatio="xMidYMid meet" />
-                )}
+                <image
+                  href={SIG_SRC}
+                  x={CX - 160} y={CY - 62} width="320" height="130"
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ mixBlendMode: 'multiply' }}
+                />
 
                 <line x1={CX - 150} y1={CY + 65} x2={CX + 150} y2={CY + 65} stroke={INK} strokeWidth="1.5" />
 
