@@ -277,19 +277,19 @@ function PlacementAssessmentContent() {
           </div>
         </header>
 
-        {!isStudentFlow && <section className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        <section className="mb-5 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {placementAssessments.map((item) => (
             <button
               key={item.key}
               onClick={() => resetForGrade(item.key)}
-              className={`shrink-0 rounded-lg border px-4 py-3 text-sm font-black transition ${
-                gradeKey === item.key ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-black transition-all cursor-pointer shadow-2xs ${
+                gradeKey === item.key ? 'border-blue-700 bg-blue-700 text-white ring-2 ring-blue-300' : 'border-slate-200 bg-white text-slate-700 hover:bg-blue-50/60'
               }`}
             >
               {item.shortTitle}
             </button>
           ))}
-        </section>}
+        </section>
 
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -331,7 +331,7 @@ function PlacementAssessmentContent() {
                   </label>
                   {/* Grade picker */}
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-black text-slate-600">الاختبار / الصف</span>
+                    <span className="mb-1.5 block text-xs font-black text-slate-600">تغيير الاختبار / الصف</span>
                     <select
                       value={gradeKey}
                       onChange={(e) => resetForGrade(e.target.value as PlacementGradeKey)}
@@ -355,10 +355,20 @@ function PlacementAssessmentContent() {
                 <span className="mb-2 block text-sm font-black text-slate-700">العمر</span>
                 <input value={studentAge} onChange={(event) => setStudentAge(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-blue-700" placeholder="مثال: 8" />
               </label>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-xs font-black text-slate-500">المستوى الحالي</p>
-                <p className="mt-1 font-black text-slate-950">{assessment.shortTitle}</p>
-              </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-black text-slate-700">المستوى الحالي (اختر من القائمة)</span>
+                <select
+                  value={gradeKey}
+                  onChange={(e) => resetForGrade(e.target.value as PlacementGradeKey)}
+                  className="w-full rounded-lg border border-blue-300 bg-blue-50/70 px-4 py-3 text-sm font-black text-blue-950 outline-none focus:border-blue-700 cursor-pointer shadow-2xs"
+                >
+                  {placementAssessments.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.shortTitle}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {!finished ? (
@@ -532,11 +542,14 @@ function getRecommendedProgram(domains: Array<{ name: string; score: number }>) 
 }
 
 function getGradeKeyFromStudentGrade(grade: string): PlacementGradeKey {
-  if (grade.includes('الأول')) return 'g1';
-  if (grade.includes('الثاني')) return 'g2';
-  if (grade.includes('الثالث')) return 'g3';
-  if (grade.includes('الرابع')) return 'g4';
-  if (grade.includes('الخامس')) return 'g5';
-  if (grade.includes('السادس')) return 'g6';
+  if (!grade) return 'general';
+  const g = grade.trim();
+  if (g.includes('روضة') || g.includes('تمهيدي') || g.toUpperCase().includes('KG')) return 'kg';
+  if (g.includes('الأول') || g.includes('الاول') || g.includes('1')) return 'g1';
+  if (g.includes('الثاني') || g.includes('2')) return 'g2';
+  if (g.includes('الثالث') || g.includes('3')) return 'g3';
+  if (g.includes('الرابع') || g.includes('4')) return 'g4';
+  if (g.includes('الخامس') || g.includes('5')) return 'g5';
+  if (g.includes('السادس') || g.includes('6')) return 'g6';
   return 'general';
 }

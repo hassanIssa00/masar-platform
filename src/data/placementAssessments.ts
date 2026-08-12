@@ -1,4 +1,4 @@
-export type PlacementGradeKey = 'general' | 'g1' | 'g2' | 'g3' | 'g4' | 'g5' | 'g6';
+export type PlacementGradeKey = 'general' | 'kg' | 'g1' | 'g2' | 'g3' | 'g4' | 'g5' | 'g6';
 
 export type PlacementCategory =
   | 'arabic'
@@ -154,12 +154,21 @@ function upperQuestions(prefix: PlacementGradeKey, level: number) {
 export const placementAssessments: PlacementAssessment[] = [
   {
     key: 'general',
-    title: 'التقييم العام قبل التسجيل',
-    shortTitle: 'عام',
+    title: 'التقييم العام قبل التسجيل (شامل)',
+    shortTitle: 'عام (تقييم شامل)',
     subtitle: 'قياس سريع للقدرات الأساسية قبل تحديد مسار الطالب.',
     questionCount: 25,
     subjects: ['قدرات عقلية وذكاء', 'قراءة وكتابة', 'رياضيات', 'رسم وتوصيل خطوط'],
     questions: lowerQuestions('general', 0),
+  },
+  {
+    key: 'kg',
+    title: 'اختبار تحديد مستوى مرحلة الروضة / التمهيدي',
+    shortTitle: 'مرحلة الروضة / التمهيدي',
+    subtitle: 'ألوان، أشكال، تمييز بصري، وتأزر حركي للمرحلة التمهيدية.',
+    questionCount: 25,
+    subjects: ['تمييز الألوان والأشكال', 'المهارات الذهنية', 'التآزر الحركي البصري'],
+    questions: lowerQuestions('kg', 0),
   },
   {
     key: 'g1',

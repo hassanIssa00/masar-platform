@@ -36,34 +36,34 @@ function ReportsContent() {
   const router = useRouter();
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const session = getSession();
-      if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
-        router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
-        return;
-      }
-      if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
-      const nextReports = getReports();
-      setReports(nextReports);
-      setStudents(getStudents());
-      const reportId = searchParams.get('report');
-      if (reportId && nextReports.some((report) => report.id === reportId)) {
-        setSelectedId(reportId);
-      }
-    });
+    const session = getSession();
+    if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
+      router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
+      return;
+    }
+    if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
+    const rawReports = getReports();
+    const nextReports = Array.isArray(rawReports) ? rawReports.filter(Boolean) : [];
+    setReports(nextReports);
+    const rawStudents = getStudents();
+    setStudents(Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : []);
+    const reportId = searchParams.get('report');
+    if (reportId && nextReports.some((report) => report && report.id === reportId)) {
+      setSelectedId(reportId);
+    }
   }, [searchParams, router]);
 
   const filtered = useMemo(
     () =>
       filter === 'all'
         ? reports
-        : reports.filter((report) => report.program.includes(filter) || (filter === 'التقرير التحليلي' && ['clinical-analysis', 'student-assessment-analysis'].includes(report.type))),
+        : reports.filter((report) => report && ((report.program && report.program.includes(filter)) || (filter === 'التقرير التحليلي' && ['clinical-analysis', 'student-assessment-analysis'].includes(report.type)))),
     [filter, reports],
   );
-  const selected = reports.find((report) => report.id === selectedId);
-  const selectedStudent = selected ? students.find((student) => student.id === selected.studentId || student.fullName === selected.studentName) : null;
+  const selected = reports.find((report) => report && report.id === selectedId);
+  const selectedStudent = selected ? students.find((student) => student && (student.id === selected.studentId || student.fullName === selected.studentName)) : null;
 
-  const getScoreColor = (score: number) => {
+  const getScoreColor = (score: number = 0) => {
     if (score >= 75) return '#15803d';
     if (score >= 50) return '#b7791f';
     return '#b91c1c';
@@ -71,23 +71,28 @@ function ReportsContent() {
 
   if (selected) {
     const isAnswersReport = selected.type === 'survey-answers' || selected.type === 'student-assessment-answers';
-    const decision = getDecisionFromScore(selected.score);
-    const fileNumber = `MASAR-${selected.id.slice(-6).toUpperCase()}`;
-    const sortedDomains = [...selected.domains].sort((first, second) => first.score - second.score);
-    const supportDomains = sortedDomains.filter((domain) => domain.score < 70);
-    const strengthDomains = [...selected.domains].sort((first, second) => second.score - first.score).slice(0, 2);
+    const reportScore = typeof selected.score === 'number' ? selected.score : 0;
+    const decision = getDecisionFromScore(reportScore);
+    const fileNumber = `MASAR-${(selected.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
+    const domainsList = Array.isArray(selected.domains) ? selected.domains : [];
+    const recommendationsList = Array.isArray(selected.recommendations) ? selected.recommendations : [];
+    const answersList = Array.isArray(selected.answers) ? selected.answers : [];
+    
+    const sortedDomains = [...domainsList].sort((first, second) => (first.score ?? 0) - (second.score ?? 0));
+    const supportDomains = sortedDomains.filter((domain) => (domain.score ?? 0) < 70);
+    const strengthDomains = [...domainsList].sort((first, second) => (second.score ?? 0) - (first.score ?? 0)).slice(0, 2);
     const clinicalLabel =
       isAnswersReport
         ? 'تقرير إجابات تفصيلية بدون تشخيص'
-        : selected.score >= 85
+        : reportScore >= 85
         ? 'مؤشرات تعلم مستقرة مع احتياج متابعة دورية'
-        : selected.score >= 70
+        : reportScore >= 70
           ? 'صعوبات تعلم نمائية وأكاديمية خفيفة إلى متوسطة'
-          : selected.score >= 50
+          : reportScore >= 50
             ? 'صعوبات تعلم متوسطة تحتاج تدخلاً علاجياً منظماً'
             : 'صعوبات تعلم مرتفعة تحتاج إعادة تدريس وتشخيصاً دقيقاً';
-    const homeRecommendations = selected.recommendations.slice(0, 3);
-    const schoolRecommendations = selected.recommendations.slice(3, 6).length ? selected.recommendations.slice(3, 6) : selected.recommendations.slice(0, 3);
+    const homeRecommendations = recommendationsList.slice(0, 3);
+    const schoolRecommendations = recommendationsList.slice(3, 6).length ? recommendationsList.slice(3, 6) : recommendationsList.slice(0, 3);
     const iepRows = (supportDomains.length ? supportDomains : sortedDomains).slice(0, 4);
     const approveProgram = (slug: string) => {
       if (!selectedStudent) return;
@@ -271,59 +276,65 @@ function ReportsContent() {
                   {assignMessage && <p className="mt-4 rounded-lg bg-white p-3 text-sm font-black text-teal-900 ring-1 ring-teal-100">{assignMessage}</p>}
                 </section>}
 
-                <ReportSection number="1" title="تحليل نقاط القوة والاحتياج">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {selected.domains.map((domain) => (
-                      <MetricBar key={domain.name} title={domain.name} value={domain.score} note={domain.note} />
-                    ))}
-                  </div>
-                </ReportSection>
-
-                <ReportSection number="2" title="ملخص القوة والصعوبات">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                      <h3 className="font-black text-emerald-950">نقاط القوة</h3>
-                      <ul className="mt-3 space-y-2 text-sm font-bold leading-7 text-emerald-900">
-                        {strengthDomains.map((domain) => (
-                          <li key={domain.name}>- {domain.name}: {domain.score}%</li>
-                        ))}
-                      </ul>
+                {domainsList.length > 0 && (
+                  <ReportSection number="1" title="تحليل نقاط القوة والاحتياج">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {domainsList.map((domain) => (
+                        <MetricBar key={domain.name} title={domain.name} value={domain.score} note={domain.note} />
+                      ))}
                     </div>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                      <h3 className="font-black text-amber-950">صعوبات تحتاج تدخل</h3>
-                      <ul className="mt-3 space-y-2 text-sm font-bold leading-7 text-amber-900">
-                        {(supportDomains.length ? supportDomains : sortedDomains.slice(0, 2)).map((domain) => (
-                          <li key={domain.name}>- {domain.name}: {domain.score}%</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </ReportSection>
+                  </ReportSection>
+                )}
 
-                <ReportSection number="3" title="أهداف خطة التربية الفردية التفصيلية IEP">
-                  <div className="overflow-hidden rounded-lg border border-purple-200">
-                    <table className="w-full min-w-[760px] text-right text-sm">
-                      <thead className="bg-purple-700 text-white">
-                        <tr>
-                          <th className="p-3">المجال</th>
-                          <th className="p-3">الهدف التعليمي</th>
-                          <th className="p-3">معيار الإتقان</th>
-                          <th className="p-3">الموعد</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {iepRows.map((domain, index) => (
-                          <tr key={domain.name} className="border-b border-purple-100 last:border-0">
-                            <td className="p-3 font-black text-purple-800">{domain.name}</td>
-                            <td className="p-3 font-bold text-slate-800">{getGoalForDomain(domain.name)}</td>
-                            <td className="p-3 font-bold text-slate-700">دقة 80% في قياسين متتاليين</td>
-                            <td className="p-3 font-bold text-slate-600">{getPlanMonth(index)}</td>
+                {domainsList.length > 0 && (
+                  <ReportSection number="2" title="ملخص القوة والصعوبات">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                        <h3 className="font-black text-emerald-950">نقاط القوة</h3>
+                        <ul className="mt-3 space-y-2 text-sm font-bold leading-7 text-emerald-900">
+                          {strengthDomains.map((domain) => (
+                            <li key={domain.name}>- {domain.name}: {domain.score}%</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <h3 className="font-black text-amber-950">صعوبات تحتاج تدخل</h3>
+                        <ul className="mt-3 space-y-2 text-sm font-bold leading-7 text-amber-900">
+                          {(supportDomains.length ? supportDomains : sortedDomains.slice(0, 2)).map((domain) => (
+                            <li key={domain.name}>- {domain.name}: {domain.score}%</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </ReportSection>
+                )}
+
+                {domainsList.length > 0 && (
+                  <ReportSection number="3" title="أهداف خطة التربية الفردية التفصيلية IEP">
+                    <div className="overflow-hidden rounded-lg border border-purple-200">
+                      <table className="w-full min-w-[760px] text-right text-sm">
+                        <thead className="bg-purple-700 text-white">
+                          <tr>
+                            <th className="p-3">المجال</th>
+                            <th className="p-3">الهدف التعليمي</th>
+                            <th className="p-3">معيار الإتقان</th>
+                            <th className="p-3">الموعد</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </ReportSection>
+                        </thead>
+                        <tbody>
+                          {iepRows.map((domain, index) => (
+                            <tr key={domain.name} className="border-b border-purple-100 last:border-0">
+                              <td className="p-3 font-black text-purple-800">{domain.name}</td>
+                              <td className="p-3 font-bold text-slate-800">{getGoalForDomain(domain.name)}</td>
+                              <td className="p-3 font-bold text-slate-700">دقة 80% في قياسين متتاليين</td>
+                              <td className="p-3 font-bold text-slate-600">{getPlanMonth(index)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </ReportSection>
+                )}
 
                 <ReportSection number="4" title="تحليل النمط السلوكي ABC">
                   <div className="overflow-hidden rounded-lg border border-amber-200">
@@ -350,23 +361,27 @@ function ReportsContent() {
                   </div>
                 </ReportSection>
 
-                <ReportSection number="5" title="توصيات المنزل والمدرسة">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <RecommendationBox title="توصيات المنزل" items={homeRecommendations} tone="home" />
-                    <RecommendationBox title="توصيات المدرسة" items={schoolRecommendations} tone="school" />
-                  </div>
-                </ReportSection>
+                {recommendationsList.length > 0 && (
+                  <ReportSection number="5" title="توصيات المنزل والمدرسة">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <RecommendationBox title="توصيات المنزل" items={homeRecommendations} tone="home" />
+                      <RecommendationBox title="توصيات المدرسة" items={schoolRecommendations} tone="school" />
+                    </div>
+                  </ReportSection>
+                )}
 
-                <ReportSection number="6" title="الإجابات التفصيلية المحفوظة">
-                  <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 print:max-h-none print:overflow-visible">
-                    {selected.answers.map((answer, index) => (
-                      <article key={`${answer.question}-${index}`} className="rounded-xl bg-white p-3.5 border border-slate-200 shadow-sm print:break-inside-avoid">
-                        <p className="text-xs font-black leading-6 text-slate-500">سؤال {index + 1}: {answer.question}</p>
-                        <p className="mt-1 text-sm font-black leading-7 text-slate-950">{answer.answer}</p>
-                      </article>
-                    ))}
-                  </div>
-                </ReportSection>
+                {answersList.length > 0 && (
+                  <ReportSection number="6" title="الإجابات التفصيلية المحفوظة">
+                    <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 print:max-h-none print:overflow-visible">
+                      {answersList.map((answer, index) => (
+                        <article key={`${answer.question}-${index}`} className="rounded-xl bg-white p-3.5 border border-slate-200 shadow-sm print:break-inside-avoid">
+                          <p className="text-xs font-black leading-6 text-slate-500">سؤال {index + 1}: {answer.question}</p>
+                          <p className="mt-1 text-sm font-black leading-7 text-slate-950">{answer.answer}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </ReportSection>
+                )}
 
                 <footer className="mt-8 grid gap-6 border-t border-slate-200 pt-6 md:grid-cols-[1fr_180px]">
                   <div className="text-right">
@@ -686,13 +701,15 @@ function getPlanMonth(index: number) {
   return ['سبتمبر 2026', 'أكتوبر 2026', 'نوفمبر 2026', 'ديسمبر 2026'][index] ?? 'ديسمبر 2026';
 }
 
-function getReportPrintTitle(report: ReportRecord) {
+function getReportPrintTitle(report?: ReportRecord | null) {
+  if (!report) return 'التقرير الشامل';
   if (report.type === 'survey-answers') return 'تقرير إجابات ولي الأمر التفصيلية';
   if (report.type === 'student-assessment-answers') return 'تقرير إجابات اختبار الطالب التفصيلية';
   return 'التقرير التحليلي وخطة التدخل';
 }
 
-function cleanReportText(value: string) {
+function cleanReportText(value?: string | null) {
+  if (!value || typeof value !== 'string') return '';
   return value
     .replaceAll('التحليل الإكلينيكي الشامل', 'التقرير التحليلي الشامل')
     .replaceAll('الإكلينيكية', 'التخصصية')
