@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
-// ── Load signature image as transparent PNG (same as signature/page.tsx) ─────
+// ── Load signature image as transparent PNG ─────────────────────────────────
 async function loadTransparentSignature(src: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new window.Image();
@@ -21,6 +21,8 @@ async function loadTransparentSignature(src: string): Promise<string> {
         const imgData = ctx.getImageData(0, 0, img.width, img.height);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
+          // Skip pixels that are already transparent (avoid double-processing)
+          if (data[i+3] < 10) { data[i+3] = 0; continue; }
           const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
           if (brightness > 175) {
             data[i+3] = 0;
@@ -83,17 +85,10 @@ function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolea
       <text x={CX + 38} y={CY - 21} textAnchor="middle" fontSize="6" fill={INK}>✦</text>
       <line x1={CX - 56} y1={CY - 17} x2={CX + 56} y2={CY - 17} stroke={INK} strokeWidth="0.8" />
 
-      {/* Signature image */}
-      {sigB64 && (
-        <image href={sigB64} x={CX - 56} y={CY - 16} width="112" height="34"
-          preserveAspectRatio="xMidYMid meet" />
-      )}
-      {!sigB64 && (
-        <text x={CX} y={CY + 6} textAnchor="middle"
-          fontFamily="Cairo, Amiri, Arial" fontSize="6" fill={INK} opacity="0.4">
-          {isAr ? 'التوقيع' : 'Signature'}
-        </text>
-      )}
+      {/* Signature image — PNG direct with multiply blend, no black box */}
+      <image href="/dr-ismail-signature.png" x={CX - 56} y={CY - 16} width="112" height="34"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ mixBlendMode: 'multiply' } as React.CSSProperties} />
 
       <line x1={CX - 56} y1={CY + 20} x2={CX + 56} y2={CY + 20} stroke={INK} strokeWidth="0.8" />
 
