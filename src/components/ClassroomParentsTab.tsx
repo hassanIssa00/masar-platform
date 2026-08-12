@@ -6,7 +6,8 @@ import {
   CheckCircle2, Sparkles, User, Search, Copy, ShieldCheck,
   Mail, ExternalLink, MessageCircle
 } from 'lucide-react';
-import { getClassParents, getClassStudents, ClassParentRecord } from '@/lib/classDb';
+import { getClassParents, getClassStudents, ClassParentRecord,
+  getStudentHomeworkLogs, getStudentNotes, getStudentCertificateLogs } from '@/lib/classDb';
 
 export default function ClassroomParentsTab() {
   const [parents, setParents] = useState<ClassParentRecord[]>([]);
@@ -16,6 +17,7 @@ export default function ClassroomParentsTab() {
   const [zoomUrlInput, setZoomUrlInput] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
 
   const refresh = () => {
     const list = getClassParents();
@@ -59,6 +61,54 @@ export default function ClassroomParentsTab() {
     setActionSuccess(`تم إرسال رابط البث المباشر / الجلسة لـ (${selectedParent.name}) بنجاح 📹`);
     setZoomUrlInput('');
     setTimeout(() => setActionSuccess(''), 4000);
+  };
+
+  const handleSendFullReport = () => {
+    if (!selectedParent) return;
+    setReportLoading(true);
+    // Find the linked student id from class students list
+    const students = getClassStudents();
+    const linkedStudent = students.find(s => s.fullName === selectedParent.studentName);
+    const sid = linkedStudent?.id ?? '';
+    const hwLogs = sid ? getStudentHomeworkLogs(sid) : [];
+    const notes  = sid ? getStudentNotes(sid) : [];
+    const certs  = sid ? getStudentCertificateLogs(sid) : [];
+
+    const phone = selectedParent.phone.replace(/\D/g, '');
+    const wap   = phone.startsWith('966') ? phone : '966' + phone.replace(/^0/, '');
+    const day   = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let m = `🏫 *مدرسة الإخلاص الأهلية — مسار التعليمي*\n`;
+    m += `📋 *تقرير شامل للطالب: ${selectedParent.studentName}*\n`;
+    m += `📅 *التاريخ:* ${day}\n`;
+    m += `👨\u200d👩\u200d👦 *ولي الأمر:* ${selectedParent.name}\n\n`;
+
+    if (hwLogs.length) {
+      m += `📚 *الواجبات (${hwLogs.length}):*\n`;
+      hwLogs.slice(0, 6).forEach(h => {
+        const ic = h.status === 'submitted' ? '✅' : h.status === 'late' ? '⏰' : '❌';
+        m += `${ic} ${h.title} — ${h.subject}${h.grade !== undefined ? ` (${h.grade}/10)` : ''}\n`;
+      });
+      m += '\n';
+    } else { m += `📚 *الواجبات:* لا توجد سجلات حتى الآن\n\n`; }
+
+    if (notes.length) {
+      m += `📝 *ملاحظات المعلم (${notes.length}):*\n`;
+      notes.slice(0, 3).forEach(n => { m += `• ${n.text}\n`; });
+      m += '\n';
+    }
+
+    if (certs.length) {
+      m += `🏆 *الشهادات والإنجازات:*\n`;
+      certs.forEach(c => { m += `🎖️ ${c.title} — ${c.completionDate}\n`; });
+      m += '\n';
+    }
+
+    m += `\n🌟 نتمنى لابنكم التوفيق والنجاح!\n_منصة مسار للتعليم الذكي_`;
+    setReportLoading(false);
+    window.open(`https://wa.me/${wap}?text=${encodeURIComponent(m)}`, '_blank');
+    setActionSuccess(`✅ تم فتح واتساب لإرسال التقرير الشامل للطالب ${selectedParent.studentName}`);
+    setTimeout(() => setActionSuccess(''), 5000);
   };
 
   return (
@@ -263,6 +313,28 @@ export default function ClassroomParentsTab() {
                     مشاركة رابط الجلسة
                   </button>
                 </form>
+              </div>
+
+              {/* Full Student Report Sender */}
+              <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <FileText size={18} className="text-emerald-600" />
+                  إرسال تقرير شامل للطالب
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">واجبات + ملاحظات + شهادات</span>
+                </h3>
+                <p className="text-xs font-bold text-slate-500">
+                  يتم توليد تقرير كامل للطالب <strong>{selectedParent.studentName}</strong> من بيانات الفصل ويُرسل مباشرة عبر الواتساب لولي الأمر.
+                </p>
+                <button
+                  onClick={handleSendFullReport}
+                  disabled={reportLoading}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs font-black text-white hover:bg-emerald-700 transition shadow-sm disabled:opacity-60"
+                >
+                  {reportLoading
+                    ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />جاري التوليد...</>
+                    : <><Send size={15} />إرسال التقرير عبر واتساب الآن</>
+                  }
+                </button>
               </div>
             </div>
           ) : (

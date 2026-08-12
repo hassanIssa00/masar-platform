@@ -33,6 +33,104 @@ export type ClassParentRecord = {
   createdAt: string;
 };
 
+// ── Per-Student Records ────────────────────────────────────────────────────
+
+export type StudentNote = {
+  id: string;
+  studentId: string;
+  text: string;
+  createdAt: string;
+};
+
+export type StudentHomeworkLog = {
+  id: string;
+  studentId: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  grade?: number; // out of 10
+  status: 'submitted' | 'late' | 'missing';
+  teacherFeedback?: string;
+  createdAt: string;
+};
+
+export type StudentCertificateLog = {
+  id: string;
+  studentId: string;
+  title: string;
+  programTitle: string;
+  completionDate: string;
+  score: number;
+  createdAt: string;
+};
+
+// ── Storage keys & Cloud collections for per-student records ──────────────
+const NOTES_KEY = 'masar_student_notes_v1';
+const HW_LOG_KEY = 'masar_student_hw_logs_v1';
+const CERT_LOG_KEY = 'masar_student_cert_logs_v1';
+const CLOUD_NOTES = 'student_notes';
+const CLOUD_HW_LOGS = 'student_homework_logs';
+const CLOUD_CERT_LOGS = 'student_cert_logs';
+
+function readList<T>(key: string): T[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+}
+function writeList<T>(key: string, data: T[]) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* full */ }
+}
+
+// ── Student Notes ─────────────────────────────────────────────────────────
+export function getStudentNotes(studentId: string): StudentNote[] {
+  return readList<StudentNote>(NOTES_KEY).filter(n => n.studentId === studentId);
+}
+export function saveStudentNote(note: Omit<StudentNote, 'id' | 'createdAt'>): StudentNote {
+  const all = readList<StudentNote>(NOTES_KEY);
+  const newNote: StudentNote = { ...note, id: `note-${Date.now()}`, createdAt: new Date().toISOString() };
+  writeList(NOTES_KEY, [newNote, ...all]);
+  syncDocToCloud(CLOUD_NOTES, newNote.id, newNote);
+  return newNote;
+}
+export function deleteStudentNote(noteId: string) {
+  writeList(NOTES_KEY, readList<StudentNote>(NOTES_KEY).filter(n => n.id !== noteId));
+  deleteDocFromCloud(CLOUD_NOTES, noteId);
+}
+
+// ── Student Homework Logs ─────────────────────────────────────────────────
+export function getStudentHomeworkLogs(studentId: string): StudentHomeworkLog[] {
+  return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => h.studentId === studentId);
+}
+export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'>): StudentHomeworkLog {
+  const all = readList<StudentHomeworkLog>(HW_LOG_KEY);
+  const existing = all.findIndex(h => h.id === (log as any).id);
+  const newLog: StudentHomeworkLog = { ...log, id: (log as any).id || `hw-log-${Date.now()}`, createdAt: new Date().toISOString() };
+  if (existing >= 0) { all[existing] = newLog; writeList(HW_LOG_KEY, all); }
+  else { writeList(HW_LOG_KEY, [newLog, ...all]); }
+  syncDocToCloud(CLOUD_HW_LOGS, newLog.id, newLog);
+  return newLog;
+}
+export function deleteStudentHomeworkLog(id: string) {
+  writeList(HW_LOG_KEY, readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => h.id !== id));
+  deleteDocFromCloud(CLOUD_HW_LOGS, id);
+}
+
+// ── Student Certificate Logs ──────────────────────────────────────────────
+export function getStudentCertificateLogs(studentId: string): StudentCertificateLog[] {
+  return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => c.studentId === studentId);
+}
+export function saveStudentCertificateLog(log: Omit<StudentCertificateLog, 'id' | 'createdAt'>): StudentCertificateLog {
+  const all = readList<StudentCertificateLog>(CERT_LOG_KEY);
+  const newLog: StudentCertificateLog = { ...log, id: `cert-log-${Date.now()}`, createdAt: new Date().toISOString() };
+  writeList(CERT_LOG_KEY, [newLog, ...all]);
+  syncDocToCloud(CLOUD_CERT_LOGS, newLog.id, newLog);
+  return newLog;
+}
+export function deleteStudentCertificateLog(id: string) {
+  writeList(CERT_LOG_KEY, readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => c.id !== id));
+  deleteDocFromCloud(CLOUD_CERT_LOGS, id);
+}
+
 const CLASS_STUDENTS_KEY = 'masar_class_students_v1';
 const CLOUD_COLLECTION = 'class_students';
 

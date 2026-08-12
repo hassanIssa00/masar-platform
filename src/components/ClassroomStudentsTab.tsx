@@ -12,6 +12,7 @@ import {
   ClassStudentRecord
 } from '@/lib/classDb';
 import CertificateModal from './CertificateModal';
+import StudentProfileModal from './StudentProfileModal';
 
 export default function ClassroomStudentsTab() {
   const [students, setStudents] = useState<ClassStudentRecord[]>([]);
@@ -37,6 +38,7 @@ export default function ClassroomStudentsTab() {
   } | null>(null);
 
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
+  const [profileStudent, setProfileStudent] = useState<ClassStudentRecord | null>(null);
 
   const refresh = () => {
     const list = getClassStudents();
@@ -252,6 +254,14 @@ export default function ClassroomStudentsTab() {
                   </button>
 
                   <button
+                    onClick={() => setProfileStudent(selectedStudent)}
+                    className="flex items-center gap-1.5 rounded-xl border border-teal-300 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-900 hover:bg-teal-100 transition"
+                  >
+                    <FileText size={16} className="text-teal-600" />
+                    ملف الطالب
+                  </button>
+
+                  <button
                     onClick={() => setConfirmDeleteId(selectedStudent.id)}
                     className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-rose-700 hover:bg-rose-100 transition"
                     title="حذف الطالب من الفصل"
@@ -462,6 +472,14 @@ export default function ClassroomStudentsTab() {
             doctorName: 'د. إسماعيل عيسى',
           }}
           onClose={() => setShowCertData(null)}
+        />
+      )}
+
+      {/* Student Profile Modal */}
+      {profileStudent && (
+        <StudentProfileModal
+          student={profileStudent}
+          onClose={() => setProfileStudent(null)}
         />
       )}
     </div>
