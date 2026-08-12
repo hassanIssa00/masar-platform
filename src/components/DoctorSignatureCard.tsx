@@ -36,7 +36,8 @@ export default function DoctorSignatureCard({
             src="/dr-ismail-signature.png"
             alt="توقيع د. إسماعيل عيسى الإلكتروني"
             fill
-            className="object-contain filter drop-shadow-xs"
+            className="object-contain"
+            style={{ mixBlendMode: 'multiply' }}
             priority
           />
         </div>
@@ -98,7 +99,8 @@ export default function DoctorSignatureCard({
             src="/dr-ismail-signature.png"
             alt="التوقيع الإلكتروني المباشر للدكتور إسماعيل عيسى"
             fill
-            className="object-contain filter drop-shadow-md"
+            className="object-contain"
+            style={{ mixBlendMode: 'multiply' }}
             priority
           />
         </div>

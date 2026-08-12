@@ -561,7 +561,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                       marginBottom: -12,
                       marginLeft: isAr ? '0' : 'auto',
                       marginRight: isAr ? 'auto' : '0',
-                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+                      mixBlendMode: 'multiply'
                     }}
                   />
                   <div style={{ borderBottom: '1.5px solid #94a3b8', width: '100%', paddingTop: 4, display: 'flex', justifyContent: isAr ? 'flex-start' : 'flex-end' }}>

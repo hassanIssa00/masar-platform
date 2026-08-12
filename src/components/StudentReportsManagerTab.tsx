@@ -150,7 +150,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
             <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
             <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
             <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
-            <image href="${origin}/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" />
+            <image href="${origin}/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply" />
             <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
             <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">${issuedDate}</text>
             <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
@@ -161,7 +161,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:#f0fdf4;text-align:center;min-width:180px;">
           <div style="font-size:9px;color:#047857;font-weight:900;font-family:'Cairo',sans-serif;">التوقيع والختم المعتمد ✍️</div>
           <div style="height:36px;margin:2px 0;">
-            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;" />
+            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;" />
           </div>
           <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
           <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
