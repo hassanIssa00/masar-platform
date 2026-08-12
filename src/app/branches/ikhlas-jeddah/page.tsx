@@ -508,7 +508,7 @@ export default function IkhlasJeddahPage() {
     { key: 'overview',        label: 'نظرة عامة',              icon: BarChart3 },
     { key: 'students',        label: 'إدارة الطلاب 👨‍🎓',        icon: Users },
     { key: 'parents',         label: 'أولياء الأمور 👨‍👩‍👧',     icon: UserCheck },
-    { key: 'ai-chat',         label: 'شات AI للطلاب 🤖',        icon: MessageSquare },
+    { key: 'ai-chat',         label: 'مساعد المعلم الذكي 🤖',   icon: MessageSquare },
     { key: 'smart-schedule',  label: 'الجدول الذكي 📅',         icon: Bell },
     { key: 'quizzes',         label: 'الكويزات والاختبارات 📝', icon: HelpCircle },
     { key: 'live',            label: 'البث المباشر 🔴',         icon: Radio },
