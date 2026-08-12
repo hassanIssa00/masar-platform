@@ -54,12 +54,12 @@ function ringDots(cx: number, cy: number, r: number, count: number, ink: string)
 
 // ── Compact Dr. Ismail Stamp (matches signature page design) ─────────────────
 function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolean; dateStr: string }) {
-  const SZ = 160;
+  const SZ = 100;
   const CX = SZ / 2;
   const CY = SZ / 2;
   const INK = '#0f172a';
-  const RO = 76;
-  const RI = 68;
+  const RO = 47;
+  const RI = 42;
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
       <circle cx={CX} cy={CY} r={RO} fill="none" stroke={INK} strokeWidth="2.5" />
@@ -537,50 +537,43 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
             </div>
 
-            {/* ── OFFICIAL REPORT FOOTER (PERFECT SYMMETRY WITH STAMP & SIGNATURE) ── */}
-            <div style={{ padding: '14px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir={isAr ? 'rtl' : 'ltr'}>
+            {/* ── OFFICIAL REPORT FOOTER ── */}
+            <div style={{ padding: '10px 28px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1, borderTop: '1px solid #e8edf0' }} dir={isAr ? 'rtl' : 'ltr'}>
 
-              {/* Doctor Approval & Handwritten Signature */}
-              <div style={{ textAlign: isAr ? 'right' : 'left', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
-                  {isAr ? 'يعتمد:' : 'Certified by:'}
+              {/* RIGHT (RTL): Doctor name + inline signature */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 260 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
+                  {isAr ? 'يعتمد هذا التقرير رسمياً من:' : 'Officially certified by:'}
                 </span>
-                <h3 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif', lineHeight: 1.1 }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
                   {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
                 </p>
-
-                {/* Handwritten Signature Image & Line */}
-                <div style={{ position: 'relative', width: 220, marginTop: 14 }}>
-                  {/* Signature image sits above the line, no background box */}
-                  <div style={{ position: 'absolute', bottom: 6, right: isAr ? 0 : 'auto', left: isAr ? 'auto' : 0, pointerEvents: 'none', background: 'white' }}>
-                    <img
-                      src="/dr-ismail-signature.png"
-                      alt="التوقيع المعتمد"
-                      style={{
-                        height: 52,
-                        objectFit: 'contain',
-                        mixBlendMode: 'multiply',
-                        display: 'block',
-                      }}
-                    />
-                  </div>
-                  <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', paddingBottom: 2, marginTop: 54, display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>
-                      {isAr ? 'التوقيع المعتمد ✍️' : 'Authorized Signature ✍️'}
-                    </span>
-                  </div>
+                {/* Signature image inline above underline */}
+                <div style={{ marginTop: 6, width: 180 }}>
+                  <img
+                    src="/dr-ismail-signature.png"
+                    alt="التوقيع المعتمد"
+                    style={{ height: 44, objectFit: 'contain', mixBlendMode: 'multiply', display: 'block' }}
+                  />
+                  <div style={{ borderBottom: '1.5px solid #94a3b8', paddingTop: 2 }} />
+                  <span style={{ fontSize: 9, fontWeight: 900, color: '#64748b' }}>
+                    {isAr ? 'التوقيع المعتمد 🔥' : 'Authorized Signature ✍️'}
+                  </span>
                 </div>
               </div>
 
-              {/* Official Circular Stamp (Arabic or English) */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              {/* LEFT (RTL): Compact stamp + label */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <DrIsmailStamp sigB64={sigB64} isAr={isAr} dateStr={stampDate} />
-                <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color: '#334155', letterSpacing: '0.3px', textAlign: 'center' }}>
+                  {isAr ? 'الختم الرقمي المعتمد' : 'OFFICIAL DIGITAL STAMP'}
+                </span>
+                <span style={{ fontSize: 8.5, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
                   {certNo}
-                </div>
+                </span>
               </div>
 
             </div>
