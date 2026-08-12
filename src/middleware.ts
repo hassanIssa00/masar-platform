@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/register',
   '/waitlist',
   '/verify/',
+  '/programs/simple-spelling',
   '/programs/reading',
   '/programs/math',
   '/programs/learning-difficulties',

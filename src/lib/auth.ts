@@ -9,7 +9,10 @@ import {
   getRedirectResult,
   sendPasswordResetEmail,
   AuthError,
+  User,
 } from 'firebase/auth';
+
+const OAUTH_PENDING_KEY = 'masar.oauth.pending.v1';
 
 // ─── Handle Redirect Result (On Page Load) ───────────────────────────────────
 export async function handleGoogleRedirectResult(
@@ -19,6 +22,20 @@ export async function handleGoogleRedirectResult(
   try {
     const result = await getRedirectResult(auth);
     if (!result) return null;
+
+    const pending = consumeOAuthPending(preferredRole, schoolBranch);
+    preferredRole = pending.preferredRole;
+    schoolBranch = pending.schoolBranch;
+    const createdVia =
+      pending.provider === 'apple' || result.providerId === 'apple.com'
+        ? 'apple'
+        : pending.provider === 'microsoft' || result.providerId === 'microsoft.com'
+          ? 'microsoft'
+          : 'google';
+
+    if (createdVia === 'apple' && !normalize(result.user.email ?? '')) {
+      return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, 'apple', 'مستخدم أبل');
+    }
 
     const user = result.user;
     const email = normalize(user.email ?? '');
@@ -50,7 +67,7 @@ export async function handleGoogleRedirectResult(
         email: account.email,
         role: account.role,
         ...(validBranch ? { schoolBranch: validBranch } : {}),
-        createdVia: 'google',
+        createdVia,
         createdAt: new Date().toISOString(),
       });
     } catch {}
@@ -123,6 +140,21 @@ export async function signInWithGoogle(
     const authErr = err as AuthError;
     console.error('Google Sign-In Error Code:', authErr.code, authErr.message);
 
+    if (shouldUseRedirectFallback(authErr.code)) {
+      saveOAuthPending('google', preferredRole, schoolBranch);
+      await signInWithRedirect(auth, googleProvider);
+      return { ok: false, reason: '' };
+    }
+
+    const friendlyReason = oauthErrorMessage(authErr, 'Google');
+    if (
+      friendlyReason ||
+      authErr.code === 'auth/popup-closed-by-user' ||
+      authErr.code === 'auth/cancelled-popup-request'
+    ) {
+      return { ok: false, reason: friendlyReason };
+    }
+
     if (authErr.code === 'auth/popup-closed-by-user' || authErr.code === 'auth/cancelled-popup-request') {
       return { ok: false, reason: '' };
     }
@@ -168,6 +200,153 @@ const systemAccounts = [
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
+}
+
+function getValidBranch(schoolBranch?: string) {
+  return schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
+    ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
+    : undefined;
+}
+
+function currentHostLabel() {
+  if (typeof window === 'undefined') return 'الدومين الحالي';
+  return window.location.hostname || 'الدومين الحالي';
+}
+
+function shouldUseRedirectFallback(code?: string) {
+  return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported';
+}
+
+function saveOAuthPending(
+  provider: 'google' | 'apple' | 'microsoft',
+  preferredRole: UserRole,
+  schoolBranch?: string,
+) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      OAUTH_PENDING_KEY,
+      JSON.stringify({
+        provider,
+        preferredRole,
+        schoolBranch: getValidBranch(schoolBranch),
+        createdAt: Date.now(),
+      }),
+    );
+  } catch {}
+}
+
+function consumeOAuthPending(defaultRole: UserRole, defaultBranch?: string) {
+  if (typeof window === 'undefined') {
+    return {
+      preferredRole: defaultRole,
+      schoolBranch: getValidBranch(defaultBranch),
+      provider: undefined as string | undefined,
+    };
+  }
+
+  try {
+    const raw = sessionStorage.getItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    if (!raw) {
+      return {
+        preferredRole: defaultRole,
+        schoolBranch: getValidBranch(defaultBranch),
+        provider: undefined as string | undefined,
+      };
+    }
+
+    const pending = JSON.parse(raw) as {
+      provider?: string;
+      preferredRole?: UserRole;
+      schoolBranch?: string;
+      createdAt?: number;
+    };
+    const isFresh = pending.createdAt ? Date.now() - pending.createdAt < 10 * 60 * 1000 : false;
+
+    return {
+      preferredRole: isFresh && pending.preferredRole ? pending.preferredRole : defaultRole,
+      schoolBranch: getValidBranch(isFresh ? pending.schoolBranch ?? defaultBranch : defaultBranch),
+      provider: isFresh ? pending.provider : undefined,
+    };
+  } catch {
+    return {
+      preferredRole: defaultRole,
+      schoolBranch: getValidBranch(defaultBranch),
+      provider: undefined as string | undefined,
+    };
+  }
+}
+
+function oauthErrorMessage(authErr: AuthError, providerLabel: string) {
+  if (authErr.code === 'auth/popup-closed-by-user' || authErr.code === 'auth/cancelled-popup-request') {
+    return '';
+  }
+
+  if (authErr.code === 'auth/unauthorized-domain') {
+    return `الدومين الحالي (${currentHostLabel()}) غير مضاف في Firebase Authentication > Settings > Authorized domains.`;
+  }
+
+  if (authErr.code === 'auth/operation-not-allowed') {
+    return `تسجيل الدخول عبر ${providerLabel} غير مفعل في Firebase Authentication > Sign-in method.`;
+  }
+
+  if (authErr.code === 'auth/invalid-api-key' || authErr.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+    return 'إعدادات Firebase غير صحيحة. راجع إعدادات مشروع Firebase المستخدمة في الواجهة.';
+  }
+
+  return `حدث خطأ أثناء تسجيل الدخول عبر ${providerLabel} (${authErr.code || 'error'}).`;
+}
+
+async function mapFirebaseUserToAccount(
+  user: User,
+  preferredRole: UserRole,
+  schoolBranch: string | undefined,
+  createdVia: 'google' | 'apple' | 'microsoft',
+  fallbackName: string,
+): Promise<GoogleSignInResult> {
+  const email = normalize(user.email ?? '');
+  const fallbackEmail = createdVia === 'apple' && !email ? `${user.uid}@apple.masarplatform.org` : '';
+  const resolvedEmail = email || fallbackEmail;
+
+  if (!resolvedEmail) {
+    return { ok: false, reason: `لم يتم الحصول على البريد الإلكتروني من حساب ${fallbackName}.` };
+  }
+
+  if (resolvedEmail === 'dr.ismail@masar.com') {
+    return { ok: false, reason: 'لا يمكن استخدام هذا الحساب للدخول الاجتماعي.' };
+  }
+
+  const accounts = getAccounts();
+  const existing = accounts.find(
+    (a) => normalize(a.email) === resolvedEmail || (createdVia === 'apple' && a.id === user.uid),
+  );
+
+  if (existing) {
+    return { ok: true, account: existing, isNew: false };
+  }
+
+  const validBranch = getValidBranch(schoolBranch);
+  const account = saveAccount({
+    name: user.displayName ?? user.email?.split('@')[0] ?? fallbackName,
+    email: resolvedEmail,
+    role: preferredRole,
+    ...(validBranch ? { schoolBranch: validBranch } : {}),
+  });
+
+  try {
+    await syncDocToCloud('accounts', account.id, {
+      name: account.name,
+      email: account.email,
+      role: account.role,
+      ...(validBranch ? { schoolBranch: validBranch } : {}),
+      createdVia,
+      firebaseUid: user.uid,
+      createdAt: new Date().toISOString(),
+    });
+  } catch {}
+
+  return { ok: true, account, isNew: true };
 }
 
 function readCredentials(): CredentialRecord[] {
@@ -340,6 +519,22 @@ export async function signInWithApple(
     return { ok: true, account, isNew: true };
   } catch (err) {
     const authErr = err as AuthError;
+    if (shouldUseRedirectFallback(authErr.code)) {
+      const { appleProvider } = await import('@/lib/firebase');
+      saveOAuthPending('apple', preferredRole, schoolBranch);
+      await signInWithRedirect(auth, appleProvider);
+      return { ok: false, reason: '' };
+    }
+
+    const friendlyReason = oauthErrorMessage(authErr, 'Apple');
+    if (
+      friendlyReason ||
+      authErr.code === 'auth/popup-closed-by-user' ||
+      authErr.code === 'auth/cancelled-popup-request'
+    ) {
+      return { ok: false, reason: friendlyReason };
+    }
+
     if (authErr.code === 'auth/popup-closed-by-user' || authErr.code === 'auth/cancelled-popup-request') {
       return { ok: false, reason: '' };
     }

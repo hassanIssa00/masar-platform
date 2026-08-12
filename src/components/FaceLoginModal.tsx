@@ -17,12 +17,15 @@ type Phase = 'scanning' | 'success' | 'fail' | 'no_enrolled';
 
 export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>('scanning');
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (typeof window === 'undefined') return 'scanning';
+    return getAccounts().some((account) => isFaceEnrolled(account.id)) ? 'scanning' : 'no_enrolled';
+  });
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
 
   const handleDescriptor = (descriptor: Float32Array) => {
-    const { userId, distance } = findBestMatch(descriptor);
+    const { userId } = findBestMatch(descriptor);
 
     if (!userId) {
       const count = failCount + 1;
@@ -81,6 +84,25 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         </div>
 
         <div className="p-6 space-y-4">
+          {phase === 'no_enrolled' && (
+            <div className="flex flex-col items-center gap-4 py-5">
+              <div className="w-14 h-14 rounded-full bg-amber-50 border-2 border-amber-400 flex items-center justify-center">
+                <AlertTriangle size={28} className="text-amber-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-black text-slate-900 mb-1">لم يتم تسجيل أي وجه بعد</h3>
+                <p className="text-sm font-bold text-slate-500 leading-7">
+                  سجّل الدخول بكلمة المرور أولاً، ثم فعّل Face ID من صفحة الحساب.
+                </p>
+              </div>
+              <button
+                onClick={onFallback}
+                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-sm"
+              >
+                <KeyRound size={16} /> الدخول بكلمة المرور
+              </button>
+            </div>
+          )}
 
           {phase === 'scanning' && (
             <FaceCamera

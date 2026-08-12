@@ -194,7 +194,7 @@ export default function Dashboard() {
               <p className="text-xs font-bold text-slate-500">كل مسار مرتبط باختبار وتدريب وتدوين تقارير</p>
               <div className="mt-4 space-y-3">
                 {[
-                  { name: 'التهجي البسيط', href: '/programs/reading' },
+                  { name: 'التهجي البسيط', href: '/programs/simple-spelling' },
                   { name: 'القراءة والكتابة', href: '/programs/reading' },
                   { name: 'الرياضيات', href: '/programs/math' },
                   { name: 'صعوبات التعلم', href: '/programs/learning-difficulties' },
