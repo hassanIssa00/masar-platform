@@ -12,15 +12,20 @@ import BrandMark from '@/components/BrandMark';
 function getHijriParts() {
   const now = new Date();
   try {
-    const day   = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day:   'numeric' }).format(now);
-    const month = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { month: 'numeric' }).format(now);
-    const year  = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year:  'numeric' }).format(now);
+    const day   = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { day:   'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+    const month = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { month: 'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+    const year  = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year:  'numeric' }).format(now).replace(/[^\d٠-٩]/g, '');
+
+    const enDay   = new Intl.DateTimeFormat('en-US-u-ca-islamic', { day:   '2-digit' }).format(now).replace(/\D/g, '');
+    const enMonth = new Intl.DateTimeFormat('en-US-u-ca-islamic', { month: '2-digit' }).format(now).replace(/\D/g, '');
+    const enYear  = new Intl.DateTimeFormat('en-US-u-ca-islamic', { year:  'numeric' }).format(now).replace(/\D/g, '');
+
     const fullLong = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
       day: 'numeric', month: 'long', year: 'numeric',
     }).format(now);
-    return { day, month, year, fullLong };
+    return { day, month, year, enDay, enMonth, enYear, fullLong };
   } catch {
-    return { day: '1', month: '1', year: '1448', fullLong: '1 محرم 1448' };
+    return { day: '٢٩', month: '٢', year: '١٤٤٨', enDay: '29', enMonth: '02', enYear: '1448', fullLong: '٢٩ صفر ١٤٤٨ هـ' };
   }
 }
 
@@ -96,7 +101,7 @@ function getEnglishDates() {
 }
 
 export default function SignaturePage() {
-  const [hijri, setHijri]       = useState({ day: '', month: '', year: '', fullLong: '' });
+  const [hijri, setHijri]       = useState({ day: '', month: '', year: '', enDay: '', enMonth: '', enYear: '', fullLong: '' });
   const [greg, setGreg]         = useState({ day: '', month: '', year: '', monthName: '', fullG: '' });
   const [sigB64, setSigB64]     = useState('');
   const [activeTab, setActiveTab] = useState<'ar' | 'en'>('ar');
@@ -134,7 +139,7 @@ export default function SignaturePage() {
       ctx.drawImage(img, 0, 0, 440, 440);
       URL.revokeObjectURL(url);
       const a = document.createElement('a');
-      const dateTag = lang === 'ar' ? `${hijri.day}-${hijri.month}-${hijri.year}AH` : `${greg.day}-${greg.month}-${greg.year}AD`;
+      const dateTag = lang === 'ar' ? `${hijri.day}-${hijri.month}-${hijri.year}AH` : `${hijri.enDay}-${hijri.enMonth}-${hijri.enYear}AH`;
       a.download = `Stamp-Dr-Ismail-${lang.toUpperCase()}-${dateTag}.png`;
       a.href = canvas.toDataURL('image/png');
       a.click();
@@ -159,8 +164,8 @@ export default function SignaturePage() {
   const dateStrAr = hijri.day
     ? `${hijri.day}  /  ${hijri.month}  /  ${hijri.year}  هـ`
     : '';
-  const dateStrEn = hijri.day
-    ? `${hijri.day}  /  ${hijri.month}  /  ${hijri.year}  AH`
+  const dateStrEn = hijri.enDay
+    ? `${hijri.enDay}  /  ${hijri.enMonth}  /  ${hijri.enYear}  AH`
     : '';
 
   return (
