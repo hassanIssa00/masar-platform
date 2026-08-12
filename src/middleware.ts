@@ -10,6 +10,8 @@ import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.serv
  * the session cookie is available on the server.
  */
 const PUBLIC_PATHS = [
+  '/',
+  '/signature',
   '/auth/login',
   '/auth/register',
   '/login',

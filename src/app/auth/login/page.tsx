@@ -311,7 +311,7 @@ export default function LoginPage() {
         {/* Left Side Info Panel */}
         <section className="hidden bg-gradient-to-br from-teal-50 via-emerald-50/80 to-slate-50 border-l border-slate-200 p-8 text-slate-900 lg:flex lg:flex-col lg:justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
-            <BrandMark size="md" />
+            <BrandMark size="md" hideNexus={true} />
           </Link>
 
           <div className="space-y-6">
@@ -353,7 +353,7 @@ export default function LoginPage() {
         <section className="p-6 sm:p-10 flex flex-col justify-center">
           <div className="text-center">
             <Link href="/" className="mb-4 inline-flex justify-center">
-              <BrandMark size="lg" showText={false} />
+              <BrandMark size="lg" showText={false} hideNexus={true} />
             </Link>
             <h1 className="text-3xl font-black text-slate-900">تسجيل الدخول</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">مرحبًا بك في منصة د. إسماعيل عيسى</p>
