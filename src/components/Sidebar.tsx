@@ -50,7 +50,14 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const session = getSession();
+      if (session?.role) return session.role;
+      return localStorage.getItem('user_role') || 'doctor';
+    }
+    return 'doctor';
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('masar_sidebar_collapsed');
@@ -60,8 +67,6 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
     const session = getSession();
     if (session?.role) {
       setUserRole(session.role);
-    } else if (typeof window !== 'undefined') {
-      setUserRole(localStorage.getItem('user_role') || 'parent');
     }
 
     const handleToggle = () => {
