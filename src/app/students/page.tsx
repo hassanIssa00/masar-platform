@@ -12,7 +12,7 @@ import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
-import VoiceNoteRecorder from '@/components/VoiceNoteRecorder';
+import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
 import { Award } from 'lucide-react';
 
 export default function StudentsControlPage() {
@@ -23,6 +23,10 @@ export default function StudentsControlPage() {
   const [message, setMessage] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCertData, setShowCertData] = useState<{ studentName: string; studentNameEn?: string; programTitle: string; completionDate: string; score: number } | null>(null);
+
+  // Note management state for selected student
+  const [teacherNoteText, setTeacherNoteText] = useState('');
+  const [studentNotesList, setStudentNotesList] = useState<StudentNote[]>([]);
 
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
@@ -61,14 +65,33 @@ export default function StudentsControlPage() {
 
   const selectedStudent = students.find((student) => student.id === selectedId) ?? students[0] ?? null;
 
-  // Sync selected track slugs whenever student selection changes
+  // Sync selected track slugs and notes whenever student selection changes
   useEffect(() => {
     if (selectedStudent) {
       const activeSlugs = selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
       setSelectedTrackSlugs(activeSlugs);
+      setStudentNotesList(getStudentNotes(selectedStudent.id));
       setMessage('');
     }
   }, [selectedId, selectedStudent]);
+
+  const handleSaveTeacherNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherNoteText.trim() || !selectedStudent) return;
+    const newNote = saveStudentNote({
+      studentId: selectedStudent.id,
+      text: teacherNoteText.trim(),
+    });
+    setStudentNotesList((prev) => [newNote, ...prev]);
+    setTeacherNoteText('');
+    setMessage(`✅ تم حفظ الملاحظة بنجاح في ملف الطالب والسجل السحابي`);
+    setTimeout(() => setMessage(''), 4000);
+  };
+
+  const handleDeleteTeacherNote = (noteId: string) => {
+    deleteStudentNote(noteId);
+    setStudentNotesList((prev) => prev.filter((n) => n.id !== noteId));
+  };
 
   const studentReports = useMemo(
     () => reports.filter((report) => selectedStudent && (report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName)),
@@ -266,9 +289,59 @@ export default function StudentsControlPage() {
                           </div>
                         </div>
 
-                        {/* Voice Note Recorder Section */}
-                        <div className="mt-5">
-                          <VoiceNoteRecorder onSave={(txt) => setMessage(`تم تسجيل الملاحظة الصوتية للطالب ${selectedStudent.fullName}`)} />
+                        {/* Teacher Note Input & History Card */}
+                        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                              <MessageSquareText size={16} className="text-teal-600" />
+                              إضافة ملاحظة على الطالب
+                            </h3>
+                            <span className="text-[10px] font-bold text-slate-400">تُحفظ تلقائياً في السجل السحابي والتقارير ☁️</span>
+                          </div>
+
+                          <form onSubmit={handleSaveTeacherNote} className="space-y-3">
+                            <textarea
+                              rows={2}
+                              placeholder="اكتب ملاحظتك التقييمية أو السلوكية على الطالب هنا (مثل: أظهر ربيع تفوقاً ممتازاً في مهارة القراءة اليوم)..."
+                              value={teacherNoteText}
+                              onChange={(e) => setTeacherNoteText(e.target.value)}
+                              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-900 placeholder-slate-400 focus:border-teal-600 focus:outline-none resize-none shadow-2xs"
+                            />
+                            <button
+                              type="submit"
+                              disabled={!teacherNoteText.trim()}
+                              className="rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-black text-white hover:bg-teal-700 transition shadow-sm disabled:opacity-40"
+                            >
+                              حفظ الملاحظة في ملف الطالب
+                            </button>
+                          </form>
+
+                          {/* Saved Notes History */}
+                          {studentNotesList.length > 0 && (
+                            <div className="space-y-2 pt-2 border-t border-slate-200">
+                              <p className="text-[11px] font-black text-slate-500">سجل الملاحظات المحفوظة للطالب ({studentNotesList.length}):</p>
+                              <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+                                {studentNotesList.map((n) => (
+                                  <div key={n.id} className="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+                                    <div className="space-y-1 min-w-0">
+                                      <p className="text-xs font-bold text-slate-800 leading-relaxed whitespace-pre-wrap">{n.text}</p>
+                                      <p className="text-[10px] font-bold text-slate-400">
+                                        {new Date(n.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteTeacherNote(n.id)}
+                                      className="text-slate-300 hover:text-rose-500 transition shrink-0 p-1 rounded-lg hover:bg-rose-50"
+                                      title="حذف الملاحظة"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                           <Info label="اسم الطالب" value={selectedStudent.fullName} />
