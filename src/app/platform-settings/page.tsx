@@ -521,7 +521,7 @@ export default function PlatformSettingsPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <StatCard label="إجمالي الزيارات" value={summary.totalVisits} today={summary.todayVisits} icon={Eye} color="bg-sky-500" />
                   <StatCard label="تسجيل الدخول" value={summary.totalLogins} today={summary.todayLogins} icon={LogIn} color="bg-emerald-600" />
-                  <StatCard label="حسابات مسجلة" value={summary.totalRegistrations} today={summary.todayRegistrations} icon={UserPlus} color="bg-violet-600" />
+                  <StatCard label="حسابات مسجلة" value={accounts.length} today={summary.todayRegistrations} icon={UserPlus} color="bg-violet-600" />
                   <StatCard label="محاولات فاشلة" value={summary.totalFailedLogins} icon={ShieldAlert} color="bg-rose-500" />
                 </div>
 
