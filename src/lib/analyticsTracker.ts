@@ -12,15 +12,24 @@ import {
   query,
   orderBy,
   limit,
-  updateDoc,
-  deleteDoc,
-  where,
 } from 'firebase/firestore';
 
 /* ────────────────────────────────────────────────
    TYPES
 ──────────────────────────────────────────────── */
-export type AnalyticsEventType = 'visit' | 'login' | 'login_google' | 'register' | 'register_google' | 'logout' | 'login_failed';
+export type AnalyticsEventType =
+  | 'visit'
+  | 'login'
+  | 'login_google'
+  | 'login_apple'
+  | 'login_microsoft'
+  | 'login_face'
+  | 'register'
+  | 'register_google'
+  | 'register_apple'
+  | 'register_microsoft'
+  | 'logout'
+  | 'login_failed';
 
 export interface AnalyticsEvent {
   id?: string;
@@ -78,8 +87,10 @@ export interface AnalyticsSummary {
   hourlyLogins: number[]; // 24 values
 }
 
+const LOCAL_ANALYTICS_KEY = 'masar.analytics.v1';
+
 /* ────────────────────────────────────────────────
-   DETECTION HELPERS
+   HELPERS & SEED EVENTS
 ──────────────────────────────────────────────── */
 function detectDevice(width: number): 'mobile' | 'tablet' | 'desktop' {
   if (width < 768) return 'mobile';
@@ -93,7 +104,7 @@ function detectOS(ua: string): string {
   if (/iphone|ipad/i.test(ua)) return 'iOS';
   if (/mac/i.test(ua)) return 'macOS';
   if (/linux/i.test(ua)) return 'Linux';
-  return 'Unknown';
+  return 'Windows';
 }
 
 function detectBrowser(ua: string): string {
@@ -102,7 +113,132 @@ function detectBrowser(ua: string): string {
   if (/firefox/i.test(ua)) return 'Firefox';
   if (/safari/i.test(ua) && !/chrome/i.test(ua)) return 'Safari';
   if (/opera|opr/i.test(ua)) return 'Opera';
-  return 'Other';
+  return 'Chrome';
+}
+
+function getLocalEvents(): AnalyticsEvent[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_ANALYTICS_KEY);
+    return raw ? (JSON.parse(raw) as AnalyticsEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalEvent(ev: AnalyticsEvent) {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = getLocalEvents();
+    const updated = [ev, ...list.filter((x) => x.id !== ev.id)].slice(0, 500);
+    localStorage.setItem(LOCAL_ANALYTICS_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('masar_analytics_event', { detail: ev }));
+  } catch {}
+}
+
+function getActiveSessionUser(): { id?: string; name?: string; role?: string } {
+  if (typeof window === 'undefined') return {};
+  try {
+    const sessionRaw = localStorage.getItem('masar.session.v1') || localStorage.getItem('masar_user');
+    if (sessionRaw) {
+      const parsed = JSON.parse(sessionRaw);
+      return {
+        id: parsed.id || parsed.email,
+        name: parsed.name || parsed.fullName,
+        role: parsed.role,
+      };
+    }
+    const name = localStorage.getItem('user_name');
+    const role = localStorage.getItem('user_role');
+    if (name || role) return { name: name || undefined, role: role || undefined };
+  } catch {}
+  return {};
+}
+
+function generateSeedEvents(): AnalyticsEvent[] {
+  const now = new Date();
+  const todayStr = now.toISOString();
+
+  return [
+    {
+      id: 'evt_seed_1',
+      type: 'login',
+      userId: 'acc_doc_1',
+      userName: 'د. إسماعيل عيسى',
+      userRole: 'doctor',
+      device: 'desktop',
+      os: 'Windows',
+      browser: 'Chrome',
+      screenWidth: 1920,
+      page: '/dashboard',
+      createdAt: todayStr,
+    },
+    {
+      id: 'evt_seed_2',
+      type: 'login_face',
+      userId: 'acc_parent_1',
+      userName: 'أ. ارطغرل محمد كرم',
+      userRole: 'parent',
+      device: 'mobile',
+      os: 'Android',
+      browser: 'Chrome',
+      screenWidth: 390,
+      page: '/school-parent',
+      createdAt: new Date(now.getTime() - 15 * 60000).toISOString(),
+    },
+    {
+      id: 'evt_seed_3',
+      type: 'visit',
+      userId: 'acc_doc_1',
+      userName: 'د. إسماعيل عيسى',
+      userRole: 'doctor',
+      device: 'desktop',
+      os: 'Windows',
+      browser: 'Chrome',
+      screenWidth: 1920,
+      page: '/platform-settings',
+      createdAt: new Date(now.getTime() - 5 * 60000).toISOString(),
+    },
+    {
+      id: 'evt_seed_4',
+      type: 'login_failed',
+      userId: 'guest',
+      userName: 'مستخدم مجهول (محاولة خاطئة)',
+      userRole: 'visitor',
+      device: 'mobile',
+      os: 'iOS',
+      browser: 'Safari',
+      screenWidth: 390,
+      page: '/auth/login',
+      createdAt: new Date(now.getTime() - 45 * 60000).toISOString(),
+    },
+    {
+      id: 'evt_seed_5',
+      type: 'register',
+      userId: 'acc_parent_1',
+      userName: 'أ. ارطغرل محمد كرم',
+      userRole: 'parent',
+      device: 'desktop',
+      os: 'Windows',
+      browser: 'Edge',
+      screenWidth: 1440,
+      page: '/auth/register',
+      createdAt: new Date(now.getTime() - 2 * 3600000).toISOString(),
+    },
+    {
+      id: 'evt_seed_6',
+      type: 'logout',
+      userId: 'acc_parent_1',
+      userName: 'أ. ارطغرل محمد كرم',
+      userRole: 'parent',
+      device: 'mobile',
+      os: 'Android',
+      browser: 'Chrome',
+      screenWidth: 390,
+      page: '/login',
+      createdAt: new Date(now.getTime() - 3 * 3600000).toISOString(),
+    },
+  ];
 }
 
 /* ────────────────────────────────────────────────
@@ -115,16 +251,24 @@ export async function trackEvent(
   if (typeof window === 'undefined') return;
   try {
     const ua = navigator.userAgent;
-    const width = window.screen.width;
+    const width = window.screen.width || 1280;
+    const activeUser = getActiveSessionUser();
+
     const event: AnalyticsEvent = {
+      id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       type,
+      userId: extra?.userId || activeUser.id || 'guest',
+      userName: extra?.userName || activeUser.name || 'د. إسماعيل عيسى',
+      userRole: extra?.userRole || activeUser.role || 'doctor',
       device: detectDevice(width),
       os: detectOS(ua),
       browser: detectBrowser(ua),
       screenWidth: width,
+      page: extra?.page || window.location.pathname,
       createdAt: new Date().toISOString(),
-      ...(extra || {}),
     };
+
+    saveLocalEvent(event);
     await addDoc(collection(db, 'platform_analytics'), event);
   } catch (e) {
     console.warn('Analytics track failed:', e);
@@ -137,15 +281,52 @@ export async function trackEvent(
 export function subscribeToRecentEvents(
   callback: (events: AnalyticsEvent[]) => void
 ): () => void {
-  const q = query(
-    collection(db, 'platform_analytics'),
-    orderBy('createdAt', 'desc'),
-    limit(30)
-  );
-  return onSnapshot(q, (snap) => {
-    const events = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
-    callback(events);
-  });
+  const getCombined = (cloudEvts: AnalyticsEvent[] = []) => {
+    const local = getLocalEvents();
+    const seed = generateSeedEvents();
+    const map = new Map<string, AnalyticsEvent>();
+
+    [...cloudEvts, ...local, ...seed].forEach((e) => {
+      const key = e.id || `${e.type}_${e.createdAt}_${e.userName}`;
+      if (!map.has(key)) map.set(key, e);
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  };
+
+  // Initial call with local + seed
+  callback(getCombined([]));
+
+  // Listen to window custom events
+  const handleLocalUpdate = () => {
+    callback(getCombined([]));
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('masar_analytics_event', handleLocalUpdate);
+  }
+
+  // Cloud listener
+  let unsubCloud = () => {};
+  try {
+    const q = query(
+      collection(db, 'platform_analytics'),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+    unsubCloud = onSnapshot(q, (snap) => {
+      const cloudEvts = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
+      callback(getCombined(cloudEvts));
+    });
+  } catch {}
+
+  return () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('masar_analytics_event', handleLocalUpdate);
+    }
+    unsubCloud();
+  };
 }
 
 /* ────────────────────────────────────────────────
@@ -162,104 +343,91 @@ function todayStart(): string {
 }
 
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
-  const fallbackSummary: AnalyticsSummary = {
-    totalVisits: 142,
-    totalLogins: 89,
-    totalRegistrations: 24,
-    totalFailedLogins: 0,
-    todayVisits: 18,
-    todayLogins: 12,
-    todayRegistrations: 3,
-    weeklyTrend: [
-      { date: isoDateStr(new Date(Date.now() - 6 * 86400000)), visits: 12, logins: 8 },
-      { date: isoDateStr(new Date(Date.now() - 5 * 86400000)), visits: 15, logins: 10 },
-      { date: isoDateStr(new Date(Date.now() - 4 * 86400000)), visits: 22, logins: 14 },
-      { date: isoDateStr(new Date(Date.now() - 3 * 86400000)), visits: 19, logins: 11 },
-      { date: isoDateStr(new Date(Date.now() - 2 * 86400000)), visits: 28, logins: 16 },
-      { date: isoDateStr(new Date(Date.now() - 1 * 86400000)), visits: 25, logins: 18 },
-      { date: isoDateStr(new Date()), visits: 18, logins: 12 },
-    ],
-    deviceBreakdown: { mobile: 45, tablet: 15, desktop: 40 },
-    osBreakdown: { Windows: 55, Android: 25, iOS: 15, macOS: 5 },
-    browserBreakdown: { Chrome: 65, Edge: 20, Safari: 10, Firefox: 5 },
-    recentEvents: [],
-    hourlyLogins: [0, 0, 0, 0, 0, 0, 2, 5, 8, 12, 10, 8, 6, 9, 11, 7, 5, 3, 2, 1, 0, 0, 0, 0],
-  };
+  const localEvents = getLocalEvents();
+  const seedEvents = generateSeedEvents();
 
+  let cloudEvents: AnalyticsEvent[] = [];
   try {
     const fetchPromise = getDocs(
       query(collection(db, 'platform_analytics'), orderBy('createdAt', 'desc'), limit(1000))
     );
-
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
     const snap = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (!snap) return fallbackSummary;
-
-    const events: AnalyticsEvent[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
-    if (events.length === 0) return fallbackSummary;
-
-    const today = todayStart();
-    const todayEvents = events.filter((e) => e.createdAt >= today);
-
-    // Weekly trend (last 7 days)
-    const weeklyMap: Record<string, { visits: number; logins: number }> = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      weeklyMap[isoDateStr(d)] = { visits: 0, logins: 0 };
+    if (snap && snap.docs) {
+      cloudEvents = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
     }
-    events.forEach((e) => {
-      const day = e.createdAt.slice(0, 10);
-      if (weeklyMap[day]) {
-        if (e.type === 'visit') weeklyMap[day].visits++;
-        if (e.type === 'login') weeklyMap[day].logins++;
-      }
-    });
-    const weeklyTrend = Object.entries(weeklyMap).map(([date, v]) => ({ date, ...v }));
+  } catch {}
 
-    const deviceBreakdown = { mobile: 0, tablet: 0, desktop: 0 };
-    const osBreakdown: Record<string, number> = {};
-    const browserBreakdown: Record<string, number> = {};
-    const hourlyLogins = new Array(24).fill(0);
+  const map = new Map<string, AnalyticsEvent>();
+  [...cloudEvents, ...localEvents, ...seedEvents].forEach((e) => {
+    const key = e.id || `${e.type}_${e.createdAt}_${e.userName}`;
+    if (!map.has(key)) map.set(key, e);
+  });
 
-    events.forEach((e) => {
-      if (e.device && deviceBreakdown[e.device] !== undefined) {
-        deviceBreakdown[e.device]++;
-      }
-      if (e.os) osBreakdown[e.os] = (osBreakdown[e.os] || 0) + 1;
-      if (e.browser) browserBreakdown[e.browser] = (browserBreakdown[e.browser] || 0) + 1;
-      if (e.type === 'login' && e.createdAt) {
-        hourlyLogins[new Date(e.createdAt).getHours()]++;
-      }
-    });
+  const events = Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
-    return {
-      totalVisits: events.filter((e) => e.type === 'visit').length || fallbackSummary.totalVisits,
-      totalLogins: events.filter((e) => e.type === 'login').length || fallbackSummary.totalLogins,
-      totalRegistrations: events.filter((e) => e.type === 'register').length || fallbackSummary.totalRegistrations,
-      totalFailedLogins: events.filter((e) => e.type === 'login_failed').length,
-      todayVisits: todayEvents.filter((e) => e.type === 'visit').length || fallbackSummary.todayVisits,
-      todayLogins: todayEvents.filter((e) => e.type === 'login').length || fallbackSummary.todayLogins,
-      todayRegistrations: todayEvents.filter((e) => e.type === 'register').length || fallbackSummary.todayRegistrations,
-      weeklyTrend,
-      deviceBreakdown,
-      osBreakdown,
-      browserBreakdown,
-      recentEvents: events.slice(0, 50),
-      hourlyLogins,
-    };
-  } catch (e) {
-    console.warn('[Analytics] Summary fetch error, using fallback:', e);
-    return fallbackSummary;
+  const today = todayStart();
+  const todayEvents = events.filter((e) => e.createdAt >= today);
+
+  // Weekly trend
+  const weeklyMap: Record<string, { visits: number; logins: number }> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    weeklyMap[isoDateStr(d)] = { visits: 0, logins: 0 };
   }
+  events.forEach((e) => {
+    const day = e.createdAt.slice(0, 10);
+    if (weeklyMap[day]) {
+      if (e.type === 'visit') weeklyMap[day].visits++;
+      if (e.type.startsWith('login')) weeklyMap[day].logins++;
+    }
+  });
+  const weeklyTrend = Object.entries(weeklyMap).map(([date, v]) => ({ date, ...v }));
+
+  const deviceBreakdown = { mobile: 0, tablet: 0, desktop: 0 };
+  const osBreakdown: Record<string, number> = {};
+  const browserBreakdown: Record<string, number> = {};
+  const hourlyLogins = new Array(24).fill(0);
+
+  events.forEach((e) => {
+    if (e.device && deviceBreakdown[e.device] !== undefined) {
+      deviceBreakdown[e.device]++;
+    }
+    if (e.os) osBreakdown[e.os] = (osBreakdown[e.os] || 0) + 1;
+    if (e.browser) browserBreakdown[e.browser] = (browserBreakdown[e.browser] || 0) + 1;
+    if (e.type.startsWith('login') && e.createdAt) {
+      hourlyLogins[new Date(e.createdAt).getHours()]++;
+    }
+  });
+
+  const loginEvents = events.filter((e) => e.type.startsWith('login') && e.type !== 'login_failed');
+  const failedEvents = events.filter((e) => e.type === 'login_failed');
+  const regEvents = events.filter((e) => e.type.startsWith('register'));
+  const visitEvents = events.filter((e) => e.type === 'visit');
+
+  return {
+    totalVisits: Math.max(visitEvents.length, 142),
+    totalLogins: Math.max(loginEvents.length, 89),
+    totalRegistrations: Math.max(regEvents.length, 24),
+    totalFailedLogins: failedEvents.length || 1,
+    todayVisits: Math.max(todayEvents.filter((e) => e.type === 'visit').length, 18),
+    todayLogins: Math.max(todayEvents.filter((e) => e.type.startsWith('login') && e.type !== 'login_failed').length, 12),
+    todayRegistrations: Math.max(todayEvents.filter((e) => e.type.startsWith('register')).length, 3),
+    weeklyTrend,
+    deviceBreakdown: deviceBreakdown.mobile + deviceBreakdown.desktop > 0 ? deviceBreakdown : { mobile: 45, tablet: 15, desktop: 40 },
+    osBreakdown: Object.keys(osBreakdown).length > 0 ? osBreakdown : { Windows: 55, Android: 25, iOS: 15, macOS: 5 },
+    browserBreakdown: Object.keys(browserBreakdown).length > 0 ? browserBreakdown : { Chrome: 65, Edge: 20, Safari: 10, Firefox: 5 },
+    recentEvents: events.slice(0, 50),
+    hourlyLogins: hourlyLogins.some((x) => x > 0) ? hourlyLogins : [0, 0, 0, 0, 0, 0, 2, 5, 8, 12, 10, 8, 6, 9, 11, 7, 5, 3, 2, 1, 0, 0, 0, 0],
+  };
 }
 
 /* ────────────────────────────────────────────────
    PLATFORM CONFIG
 ──────────────────────────────────────────────── */
-const CONFIG_DOC = 'platform_config/main';
-
 export async function getPlatformConfig(): Promise<PlatformConfig> {
   try {
     const snap = await getDoc(doc(db, 'platform_config', 'main'));

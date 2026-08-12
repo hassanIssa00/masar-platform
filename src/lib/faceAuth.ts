@@ -19,15 +19,11 @@ async function loadModels() {
 
   const faceapi = await import('face-api.js');
 
-  // Force re-fetch of model weights (bypass any corrupt cached version)
-  const ts = Date.now();
-  const url = `${MODELS_URL}?v=${ts}`;
-
   await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(url),
-    faceapi.nets.faceLandmark68Net.loadFromUri(url),
-    faceapi.nets.faceRecognitionNet.loadFromUri(url),
-    faceapi.nets.faceExpressionNet.loadFromUri(url),
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL),
+    faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URL),
   ]);
   modelsLoaded = true;
 }

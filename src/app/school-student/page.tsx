@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   BookOpen,
   Star,
@@ -20,10 +21,12 @@ import {
   Play,
   Square,
   Upload,
-  LogOut
+  LogOut,
+  ScanFace,
+  Sparkles
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, getIkhlasPosts } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -75,35 +78,37 @@ export default function StudentDashboard() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+      const token = localStorage.getItem('masar_token') || localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       };
 
-      // In a real app, these endpoints would exist. We'll mock the response if it fails.
       let hwData = [];
       let meetData = [];
       try {
         const hwRes = await fetch(`${API}/school/homework?branch=${BRANCH}`, { headers });
         if (hwRes.ok) hwData = await hwRes.json();
-      } catch (e) {
-        hwData = [
-          { id: '1', title: 'حل تمارين الرياضيات صفحة 45', subject: 'رياضيات', dueDate: '2026-08-07', status: 'pending', points: 20 },
-          { id: '2', title: 'قراءة سورة الملك', subject: 'قرآن', dueDate: '2026-08-06', status: 'submitted', points: 15 },
-          { id: '3', title: 'تعبير عن فضل الوالدين', subject: 'لغتي', dueDate: '2026-08-05', status: 'graded', points: 30, score: 95, comment: 'ممتاز جداً يا بطل!' }
-        ];
+      } catch (e) {}
+
+      // Fall back to actual local database posts created by teachers/doctors (NO fake mock data!)
+      if (!Array.isArray(hwData) || hwData.length === 0) {
+        const posts = getIkhlasPosts();
+        const hwPosts = posts.filter((p) => p.type === 'homework');
+        hwData = hwPosts.map((p) => ({
+          id: p.id,
+          title: p.title,
+          subject: 'واجب منزلي',
+          dueDate: p.dueDate || p.createdAt.slice(0, 10),
+          status: 'pending',
+          points: 10,
+        }));
       }
 
       try {
         const meetRes = await fetch(`${API}/school/meetings?branch=${BRANCH}`, { headers });
         if (meetRes.ok) meetData = await meetRes.json();
-      } catch (e) {
-        meetData = [
-          { id: 'm1', title: 'حصة لغتي المباشرة', time: '10:00 AM', roomCode: 'room123' },
-          { id: 'm2', title: 'مراجعة رياضيات', time: '12:30 PM', roomCode: 'room456' }
-        ];
-      }
+      } catch (e) {}
 
       setHomeworks(hwData);
       setMeetings(meetData);
@@ -120,10 +125,10 @@ export default function StudentDashboard() {
   };
 
   const renderHeader = () => (
-    <div className="bg-gradient-to-r from-emerald-500 to-teal-400 p-6 rounded-b-3xl text-white shadow-lg mb-6">
+    <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 p-6 rounded-b-3xl text-white shadow-xl mb-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white text-emerald-600 flex items-center justify-center text-2xl font-bold shadow-md overflow-hidden border-2 border-white">
+          <div className="w-16 h-16 rounded-full bg-white text-emerald-700 flex items-center justify-center text-2xl font-bold shadow-md overflow-hidden border-2 border-white">
             {studentPhoto ? (
               studentPhoto.startsWith('data:image') ? (
                 <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
@@ -135,34 +140,55 @@ export default function StudentDashboard() {
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">مرحباً، {studentName} 👋</h1>
-            <p className="text-emerald-50 text-sm opacity-90">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <h1 className="text-2xl font-black">مرحباً، {studentName} 👋</h1>
+            <p className="text-emerald-50 text-xs font-bold opacity-90">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition">
+        <button onClick={handleLogout} className="p-2.5 bg-white/20 hover:bg-white/30 rounded-2xl transition text-white">
           <LogOut size={20} />
         </button>
       </div>
 
-      <div className="flex gap-4">
-        <div className="bg-white/20 rounded-2xl p-4 flex-1 flex items-center gap-3 backdrop-blur-sm">
-          <div className="bg-amber-400 p-2 rounded-full shadow-inner">
-            <Star className="text-white fill-white" size={24} />
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="bg-white/20 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-sm border border-white/10">
+          <div className="bg-amber-400 p-2.5 rounded-2xl shadow-inner">
+            <Star className="text-white fill-white" size={22} />
           </div>
           <div>
-            <p className="text-xs text-emerald-50">نجومك</p>
-            <p className="font-bold text-xl">{studentStars}</p>
+            <p className="text-xs font-bold text-emerald-50">نجومك</p>
+            <p className="font-black text-xl">{studentStars}</p>
           </div>
         </div>
-        <div className="bg-white/20 rounded-2xl p-4 flex-1 flex items-center gap-3 backdrop-blur-sm">
-          <div className="bg-orange-500 p-2 rounded-full shadow-inner">
-            <Flame className="text-white fill-white" size={24} />
+        <div className="bg-white/20 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-sm border border-white/10">
+          <div className="bg-orange-500 p-2.5 rounded-2xl shadow-inner">
+            <Flame className="text-white fill-white" size={22} />
           </div>
           <div>
-            <p className="text-xs text-emerald-50">حماسك</p>
-            <p className="font-bold text-xl">{studentStreak} أيام</p>
+            <p className="text-xs font-bold text-emerald-50">حماسك</p>
+            <p className="font-black text-xl">{studentStreak} أيام</p>
           </div>
         </div>
+      </div>
+
+      {/* Biometric Face Enrollment Shortcut Banner */}
+      <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 shadow-md">
+            <ScanFace size={22} />
+          </div>
+          <div>
+            <h3 className="font-black text-sm text-white">تسجيل الوجه البيومتري 📷</h3>
+            <p className="text-[11px] font-bold text-emerald-100 opacity-90">الدخول السريع لمدرسك بمجرد النظر للكاميرا</p>
+          </div>
+        </div>
+        <Link
+          href="/face-enroll"
+          className="bg-white text-emerald-800 hover:bg-emerald-50 font-black text-xs px-3.5 py-2.5 rounded-xl shadow-md transition shrink-0 flex items-center gap-1 active:scale-95"
+        >
+          <span>سجّل وجهك</span>
+          <ChevronRight size={14} className="rotate-180" />
+        </Link>
       </div>
     </div>
   );
@@ -192,46 +218,58 @@ export default function StudentDashboard() {
 
   const renderHomeworkTab = () => (
     <div className="space-y-4">
-      {homeworks.map(hw => (
-        <div key={hw.id} onClick={() => hw.status === 'pending' && setSelectedHw(hw)} className={`bg-white p-5 rounded-2xl shadow-sm border border-gray-100 transition-all ${hw.status === 'pending' ? 'hover:shadow-md cursor-pointer hover:border-emerald-200' : 'opacity-80'}`}>
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${SUBJECT_COLORS[hw.subject] || 'bg-gray-100 text-gray-600'}`}>
-                <BookOpen size={20} />
+      {homeworks.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm space-y-3">
+          <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+            🎉
+          </div>
+          <h3 className="text-lg font-black text-slate-900">لا توجد واجبات منزلية مطلوبة حالياً</h3>
+          <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
+            أحسنت يا بطل! لم ينشر معلمك واجبات جديدة بعد. ستظهر الواجبات فور نشرها من معلم الفصل.
+          </p>
+        </div>
+      ) : (
+        homeworks.map((hw) => (
+          <div key={hw.id} onClick={() => hw.status === 'pending' && setSelectedHw(hw)} className={`bg-white p-5 rounded-2xl shadow-sm border border-gray-100 transition-all ${hw.status === 'pending' ? 'hover:shadow-md cursor-pointer hover:border-emerald-200' : 'opacity-80'}`}>
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${SUBJECT_COLORS[hw.subject] || 'bg-gray-100 text-gray-600'}`}>
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800">{hw.title}</h3>
+                  <p className="text-xs text-gray-500">{hw.subject} • التسليم: {hw.dueDate}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-gray-800">{hw.title}</h3>
-                <p className="text-xs text-gray-500">{hw.subject} • التسليم: {hw.dueDate}</p>
-              </div>
+              {hw.status === 'pending' && (
+                <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                  <Star size={12} className="fill-amber-700" /> {hw.points}
+                </span>
+              )}
+              {hw.status === 'submitted' && (
+                <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                  <Clock size={12} /> قيد المراجعة
+                </span>
+              )}
+              {hw.status === 'graded' && (
+                <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle size={12} /> مصحح
+                </span>
+              )}
             </div>
-            {hw.status === 'pending' && (
-              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                <Star size={12} className="fill-amber-700" /> {hw.points}
-              </span>
-            )}
-            {hw.status === 'submitted' && (
-              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                <Clock size={12} /> قيد المراجعة
-              </span>
-            )}
+
             {hw.status === 'graded' && (
-              <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                <CheckCircle size={12} /> مصحح
-              </span>
+              <div className="mt-4 bg-emerald-50 p-4 rounded-xl border border-emerald-100 animate-fade-in-up">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-emerald-800 font-bold">الدرجة: {hw.score}/100</span>
+                  <span className="flex text-amber-500"><Star size={16} className="fill-amber-500" /> +{hw.points}</span>
+                </div>
+                <p className="text-sm text-emerald-700 bg-white p-3 rounded-lg border border-emerald-100">"{hw.comment}"</p>
+              </div>
             )}
           </div>
-
-          {hw.status === 'graded' && (
-            <div className="mt-4 bg-emerald-50 p-4 rounded-xl border border-emerald-100 animate-fade-in-up">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-emerald-800 font-bold">الدرجة: {hw.score}/100</span>
-                <span className="flex text-amber-500"><Star size={16} className="fill-amber-500" /> +{hw.points}</span>
-              </div>
-              <p className="text-sm text-emerald-700 bg-white p-3 rounded-lg border border-emerald-100">"{hw.comment}"</p>
-            </div>
-          )}
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 
@@ -283,8 +321,14 @@ export default function StudentDashboard() {
         </div>
       ))}
       {meetings.length === 0 && (
-        <div className="text-center text-gray-500 py-10 bg-white rounded-2xl shadow-sm">
-          لا توجد حصص مباشرة اليوم.
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm space-y-3">
+          <div className="w-16 h-16 bg-blue-50 border border-blue-200 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+            📹
+          </div>
+          <h3 className="text-lg font-black text-slate-900">لا توجد حصص افتراضية جارية الآن</h3>
+          <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
+            سيظهر رابط الدخول المباشر للحصة فور إطلاقها من قبل د. إسماعيل عيسى أو معلّمي الفصل.
+          </p>
         </div>
       )}
     </div>

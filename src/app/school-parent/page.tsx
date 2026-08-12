@@ -1,14 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Clock, BookOpen, Video, MessageSquare, Camera,
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
-  Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut
+  Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
+  ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession, getSession } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, StudentRecord } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -28,6 +30,8 @@ export default function SchoolParentPage() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [parentName, setParentName] = useState<string>('');
+  const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
 
   // الواجب
@@ -53,6 +57,25 @@ export default function SchoolParentPage() {
     }
     // Set parent name from session directly
     setParentName(session.name || 'ولي الأمر');
+
+    // Retrieve linked student record
+    const allStudents = getStudents();
+    const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
+    const pName = session.name ? session.name.trim().toLowerCase() : '';
+    const activeId = typeof window !== 'undefined'
+      ? (localStorage.getItem('masar_active_student_id') || localStorage.getItem('masar.current-student-id'))
+      : null;
+
+    const linked = allStudents.find((s) => {
+      if (activeId && s.id === activeId) return true;
+      if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
+      if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
+      return false;
+    }) || allStudents[0] || null;
+
+    if (linked) {
+      setStudentRecord(linked);
+    }
   }, [router]);
 
   const handleLogout = () => {
@@ -111,7 +134,7 @@ export default function SchoolParentPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" dir="rtl">
       {/* Header - White Elegant Theme */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-3.5">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-3.5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
@@ -124,14 +147,19 @@ export default function SchoolParentPage() {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
+            {/* Student Info Button (User Icon) */}
+            <button
+              onClick={() => setShowStudentModal(true)}
+              title="عرض بطاقة بيانات ابنك الطالب"
+              className="w-10 h-10 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-400/60 flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-500/20"
+            >
               <User className="w-5 h-5 text-emerald-700" />
-            </div>
+            </button>
             
             <button
               onClick={handleLogout}
               title="تسجيل الخروج"
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm"
+              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               <span>خروج</span>
@@ -140,19 +168,21 @@ export default function SchoolParentPage() {
         </div>
       </div>
 
-      {/* Bottom Nav - Light Mode Glass */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl">
-        <div className="max-w-2xl mx-auto grid grid-cols-7 gap-0.5 px-1 py-2">
+      {/* Prominent Floating Bottom Navigation Bar */}
+      <div className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
+        <div className="grid grid-cols-7 gap-1">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex flex-col items-center gap-1 py-1.5 rounded-xl transition-all ${
-                  active ? 'text-emerald-700 bg-emerald-50 font-black shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-2xl transition-all duration-200 cursor-pointer ${
+                  active
+                    ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-black shadow-lg shadow-emerald-600/30 scale-105'
+                    : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-100/80'
                 }`}>
-                <Icon className={`w-4 h-4 ${active ? 'text-emerald-700 stroke-[2.5]' : ''}`} />
-                <span className="text-[10px]">{t.label}</span>
+                <Icon className={`w-4 h-4 ${active ? 'text-white stroke-[2.5]' : 'text-slate-600'}`} />
+                <span className="text-[10px] leading-none">{t.label}</span>
               </button>
             );
           })}
@@ -169,6 +199,31 @@ export default function SchoolParentPage() {
         {/* ══════════════ الرئيسية ══════════════ */}
         {!loading && tab === 'home' && (
           <div className="space-y-4">
+            {/* Face Biometric Enrollment Banner for Parent */}
+            <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 text-white shadow-xl border border-emerald-700/50 relative overflow-hidden flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 shadow-inner">
+                  <ScanFace size={24} className="text-emerald-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-sm text-white">تسجيل الوجه البيومتري 📷</h3>
+                    <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-400/30">دخول سريع</span>
+                  </div>
+                  <p className="text-xs font-bold text-teal-100 opacity-90 mt-0.5">
+                    سجّل ملامح وجهك الآن لتبدأ الدخول المباشر للمنصة بمجرد النظر للكاميرا بدون كلمة مرور
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/face-enroll"
+                className="shrink-0 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-xs px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <span>سجّل وجهك</span>
+                <ChevronLeft size={14} />
+              </Link>
+            </div>
+
             {/* تنبيه تأخر استلام الطفل العاجل */}
             {dashboard?.todayLog?.lateAlertSent && (
               <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-4.5 flex items-center gap-3.5 animate-pulse shadow-md shadow-rose-100">
@@ -513,6 +568,107 @@ export default function SchoolParentPage() {
           </div>
         )}
       </div>
+
+      {/* Student Info Modal */}
+      {showStudentModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowStudentModal(false)}
+              className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 rounded-full bg-teal-50 border-4 border-emerald-400/80 shadow-lg flex items-center justify-center mx-auto text-4xl overflow-hidden">
+                {studentRecord?.photoUrl ? (
+                  studentRecord.photoUrl.startsWith('data:image') ? (
+                    <img src={studentRecord.photoUrl} alt={studentRecord.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{studentRecord.photoUrl}</span>
+                  )
+                ) : (
+                  <span>🎓</span>
+                )}
+              </div>
+
+              <div>
+                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-200">
+                  <GraduationCap size={14} className="text-emerald-600" />
+                  <span>طالب مقيّد — مدارس الإخلاص الأهلية 🏫</span>
+                </span>
+                <h2 className="text-xl font-black text-slate-900 mt-2">
+                  {studentRecord?.fullName || 'الطالب المسجل'}
+                </h2>
+                <p className="text-xs font-bold text-slate-500 mt-0.5">
+                  متابعة وتقييم فصل د. إسماعيل عيسى
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2.5 text-xs font-bold text-slate-700 border-t border-b border-slate-100 py-4">
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <GraduationCap size={15} className="text-teal-600" /> الصف الدراسي:
+                </span>
+                <span className="font-black text-slate-900">{studentRecord?.grade || 'الصف الأول الابتدائي'}</span>
+              </div>
+
+              {studentRecord?.dateOfBirth && (
+                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                  <span className="text-slate-500 flex items-center gap-1.5">
+                    <Calendar size={15} className="text-teal-600" /> تاريخ الميلاد:
+                  </span>
+                  <span className="font-black text-slate-900">{studentRecord.dateOfBirth}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <Phone size={15} className="text-teal-600" /> هاتف ولي الأمر:
+                </span>
+                <span className="font-black text-slate-900" dir="ltr">{studentRecord?.parentPhone || 'مسجل بالنظام'}</span>
+              </div>
+
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <Building2 size={15} className="text-teal-600" /> الفرع والمدرسة:
+                </span>
+                <span className="font-black text-emerald-800">فرع الإخلاص — جدة 📍</span>
+              </div>
+
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <ShieldCheck size={15} className="text-teal-600" /> حالة الملف الحيوية:
+                </span>
+                <span className="font-black text-emerald-700 bg-emerald-100/70 px-2.5 py-0.5 rounded-md">
+                  {studentRecord?.reviewStatus || 'مكتمل ومفعل'}
+                </span>
+              </div>
+            </div>
+
+            {/* Face Enroll Shortcut inside modal */}
+            <div className="mt-5 space-y-2">
+              <Link
+                href="/face-enroll"
+                onClick={() => setShowStudentModal(false)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 py-3.5 text-xs font-black text-white shadow-lg transition active:scale-95 cursor-pointer"
+              >
+                <ScanFace size={18} />
+                <span>تسجيل / تحديث بصمة الوجه الذكية 📷</span>
+              </Link>
+
+              <button
+                onClick={() => setShowStudentModal(false)}
+                className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition text-center cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

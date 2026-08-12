@@ -45,6 +45,8 @@ function KidsDashboardContent() {
   const [session, setSessionState] = useState<ReturnType<typeof getSession>>(null);
   const [newPassword, setNewPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
+  const [isStaffPreview, setIsStaffPreview] = useState(false);
+  const [allStudents, setAllStudents] = useState<StudentRecord[]>([]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -56,9 +58,19 @@ function KidsDashboardContent() {
         return;
       }
 
-      // Doctor / Staff → their dashboard
-      if (currentSession.role === 'doctor' || currentSession.role === 'specialist' || currentSession.role === 'teacher') {
-        router.push('/dashboard');
+      const isStaff = currentSession.role === 'doctor' || currentSession.role === 'specialist' || currentSession.role === 'teacher';
+
+      // Staff (doctor etc.) → allow preview mode with student picker
+      if (isStaff) {
+        setIsStaffPreview(true);
+        setAllStudents(getStudents());
+        const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
+        if (studentId) {
+          const s = getStudents().find((item) => item.id === studentId) ?? null;
+          setStudent(s);
+          setReports(studentId ? getReports().filter((r) => r.studentId === studentId) : []);
+        }
+        setSessionState(currentSession);
         return;
       }
 
@@ -136,7 +148,29 @@ function KidsDashboardContent() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#f4f7fb] text-slate-950">
+      {/* Staff Preview Banner */}
+      {isStaffPreview && (
+        <div className="sticky top-0 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 flex flex-wrap items-center gap-3 shadow-md">
+          <span className="text-sm font-black">🔍 وضع معاينة الدكتور — تشاهد صفحة الطالب</span>
+          <select
+            className="rounded-lg border border-amber-700/30 bg-white/90 px-3 py-1.5 text-sm font-black outline-none cursor-pointer"
+            value={student?.id ?? ''}
+            onChange={(e) => {
+              const s = allStudents.find((st) => st.id === e.target.value) ?? null;
+              setStudent(s);
+              setReports(s ? getReports().filter((r) => r.studentId === s.id) : []);
+            }}
+          >
+            <option value="">— اختر طالب —</option>
+            {allStudents.map((s) => (
+              <option key={s.id} value={s.id}>{s.fullName} {s.grade ? `— ${s.grade}` : ''}</option>
+            ))}
+          </select>
+          <a href="/dashboard" className="mr-auto text-xs font-black underline">← العودة للوحة الدكتور</a>
+        </div>
+      )}
       <div className="mx-auto grid min-h-screen max-w-[1480px] gap-5 px-4 py-4 lg:grid-cols-[310px_minmax(0,1fr)]">
+
         <aside className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
           <BrandMark size="sm" />
 

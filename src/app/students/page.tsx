@@ -28,7 +28,7 @@ export default function StudentsControlPage() {
 
   const refresh = () => {
     const session = getSession();
-    if (!session || session.role !== 'doctor') {
+    if (!session || (session.role !== 'doctor' && session.role !== 'specialist' && session.role !== 'teacher')) {
       router.replace('/login');
       return;
     }

@@ -227,7 +227,11 @@ export function authenticate(identifier: string, password: string): AuthResult {
   );
 
   if (accountMatch) {
-    if (cleanPassword === '123456' || cleanPassword.length >= 6) {
+    // Check if there is a saved credential with a custom password for doctor
+    const savedCred = getCredentialByEmailOrPhone(cleanIdentifier);
+    const validPassword = savedCred ? savedCred.password === cleanPassword : cleanPassword === '123456';
+
+    if (validPassword) {
       return {
         ok: true,
         account: saveAccount({

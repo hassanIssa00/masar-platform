@@ -107,51 +107,48 @@ export default function StudentSetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden" dir="rtl">
-      {/* Dynamic Background Effects */}
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-x-hidden bg-gradient-to-br from-teal-50/80 via-slate-50 to-emerald-50/70 p-4 py-10 text-slate-900" dir="rtl">
+      {/* Background Soft Glows */}
+      <div className="fixed top-10 right-10 w-96 h-96 bg-teal-200/40 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-10 left-10 w-96 h-96 bg-emerald-200/30 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-lg relative z-10">
+      <main className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl text-right z-10">
         {/* Brand Header */}
-        <div className="flex justify-center mb-6">
-          <BrandMark size="lg" />
-        </div>
-
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-black text-emerald-400 border border-emerald-500/20">
-            <Sparkles size={14} />
+          <div className="flex justify-center mb-3">
+            <BrandMark size="lg" />
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-black text-emerald-800 border border-emerald-200">
+            <Sparkles size={14} className="text-emerald-600" />
             <span>مدارس الإخلاص الأهلية بجدة 🏫</span>
           </span>
-          <h1 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <h1 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">
             مرحباً بك يا بطل! 👋
           </h1>
-          <p className="mt-2 text-xs sm:text-sm font-bold text-slate-300">
+          <p className="mt-1.5 text-xs sm:text-sm font-bold text-slate-500">
             دعنا نكمّل ملفك الشخصي لإعداد حسابك المباشر في فصل د. إسماعيل عيسى
           </p>
         </div>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg relative z-10">
-        <form onSubmit={handleSubmit} className="bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 py-8 px-6 shadow-2xl rounded-3xl sm:px-8 space-y-6">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           
           {error && (
-            <div className="rounded-2xl bg-rose-500/10 border border-rose-500/30 p-4 text-xs font-black text-rose-400 text-center">
+            <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs font-black text-rose-700 text-center">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="rounded-2xl bg-emerald-500/20 border border-emerald-500/40 p-4 text-xs font-black text-emerald-300 text-center flex items-center justify-center gap-2">
-              <Check size={18} />
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs font-black text-emerald-800 text-center flex items-center justify-center gap-2">
+              <Check size={18} className="text-emerald-600" />
               <span>تم حفظ البيانات بنجاح! جاري التوجيه للوحة التحكم...</span>
             </div>
           )}
 
           {/* 1. Date of Birth Section */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-xs font-black text-slate-200">
-              <Calendar size={16} className="text-emerald-400" />
+            <label className="flex items-center gap-2 text-xs font-black text-slate-800">
+              <Calendar size={16} className="text-teal-600" />
               <span>تاريخ الميلاد الكامل (مطلوب)</span>
             </label>
             <div className="relative">
@@ -161,11 +158,11 @@ export default function StudentSetupPage() {
                 value={dateOfBirth}
                 max={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/90 px-4 py-3.5 text-sm font-black text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition cursor-pointer"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition cursor-pointer"
               />
             </div>
             {calculatedAge !== null && calculatedAge >= 0 && (
-              <p className="text-xs font-black text-emerald-400 flex items-center gap-1.5 mt-1">
+              <p className="text-xs font-black text-teal-700 flex items-center gap-1.5 mt-1">
                 <span>🎂 العمر المحسوب: {calculatedAge} سنوات</span>
               </p>
             )}
@@ -173,14 +170,14 @@ export default function StudentSetupPage() {
 
           {/* 2. Photo / Avatar Selection */}
           <div className="space-y-3 pt-2">
-            <label className="flex items-center gap-2 text-xs font-black text-slate-200">
-              <Camera size={16} className="text-teal-400" />
+            <label className="flex items-center gap-2 text-xs font-black text-slate-800">
+              <Camera size={16} className="text-teal-600" />
               <span>الصورة الشخصية أو رمز الآفتار</span>
             </label>
 
             {/* Live Preview */}
             <div className="flex justify-center my-2">
-              <div className="relative w-24 h-24 rounded-full bg-slate-900 border-4 border-emerald-500/50 shadow-xl flex items-center justify-center overflow-hidden text-4xl">
+              <div className="relative w-24 h-24 rounded-full bg-teal-50 border-4 border-emerald-400 shadow-lg flex items-center justify-center overflow-hidden text-4xl">
                 {customPhoto ? (
                   <img src={customPhoto} alt="صورة الطالب" className="w-full h-full object-cover" />
                 ) : (
@@ -193,8 +190,8 @@ export default function StudentSetupPage() {
 
             {/* Custom Upload Button */}
             <div className="flex justify-center">
-              <label className="inline-flex items-center gap-2 rounded-xl bg-slate-700/80 hover:bg-slate-700 border border-slate-600 px-4 py-2.5 text-xs font-black text-slate-200 cursor-pointer transition">
-                <Upload size={16} className="text-teal-400" />
+              <label className="inline-flex items-center gap-2 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-300 px-4 py-2.5 text-xs font-black text-slate-800 cursor-pointer transition shadow-sm">
+                <Upload size={16} className="text-teal-600" />
                 <span>رفع صورة شخصية من جهازك</span>
                 <input
                   type="file"
@@ -207,7 +204,7 @@ export default function StudentSetupPage() {
 
             {/* Preset Avatars Grid */}
             <div className="pt-2">
-              <p className="text-[11px] font-bold text-slate-400 mb-2.5 text-center">أو اختر رمز آفتار مميز يناسبك:</p>
+              <p className="text-[11px] font-bold text-slate-500 mb-2.5 text-center">أو اختر رمز آفتار مميز يناسبك:</p>
               <div className="grid grid-cols-4 gap-2.5">
                 {PRESET_AVATARS.map((av) => {
                   const isSelected = !customPhoto && selectedAvatar === av.id;
@@ -221,14 +218,14 @@ export default function StudentSetupPage() {
                       }}
                       className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border transition cursor-pointer ${
                         isSelected
-                          ? 'border-emerald-500 bg-emerald-500/20 shadow-md scale-105'
-                          : 'border-slate-700/80 bg-slate-900/60 hover:bg-slate-700/50'
+                          ? 'border-emerald-600 bg-emerald-50 shadow-md scale-105'
+                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                       }`}
                     >
                       <span className="text-2xl mb-1">{av.emoji}</span>
-                      <span className="text-[10px] font-black text-slate-300 truncate w-full text-center">{av.label}</span>
+                      <span className="text-[10px] font-black text-slate-700 truncate w-full text-center">{av.label}</span>
                       {isSelected && (
-                        <span className="absolute -top-1 -left-1 bg-emerald-500 text-white rounded-full p-0.5">
+                        <span className="absolute -top-1 -left-1 bg-emerald-600 text-white rounded-full p-0.5 shadow-sm">
                           <Check size={12} />
                         </span>
                       )}
@@ -244,7 +241,7 @@ export default function StudentSetupPage() {
             <button
               type="submit"
               disabled={loading || success}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-emerald-500/20 transition disabled:opacity-50 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 px-6 py-4 text-sm font-black text-white shadow-xl shadow-teal-700/20 transition disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -261,7 +258,7 @@ export default function StudentSetupPage() {
           </div>
 
         </form>
-      </div>
+      </main>
     </div>
   );
 }

@@ -180,12 +180,11 @@ export default function LoginPage() {
           localStorage.removeItem('masar_remember_email');
         }
         localStorage.removeItem('masar_remember_pass');
-        setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى لوحة التحكم...');
+        setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
         setSession(data.account);
-        // Wait for cookie to be written then hard navigate
         setTimeout(() => {
-          window.location.replace('/dashboard');
-        }, 800);
+          redirectAfterLogin(data.account);
+        }, 600);
         return;
       }
 
@@ -206,11 +205,11 @@ export default function LoginPage() {
         localStorage.removeItem('masar_remember_email');
       }
       localStorage.removeItem('masar_remember_pass');
-      setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى لوحة التحكم...');
+      setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
       setSession(result.account);
       setTimeout(() => {
-        window.location.replace('/dashboard');
-      }, 800);
+        redirectAfterLogin(result.account);
+      }, 600);
       return;
     }
 
@@ -251,7 +250,7 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
-      trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
+      trackEvent('login_apple', { userId: result.account.id, isNew: result.isNew });
       redirectAfterLogin(result.account);
     } else if (result.reason) {
       setLoginError(result.reason);
@@ -269,7 +268,7 @@ export default function LoginPage() {
 
     if (result.ok) {
       setSession(result.account);
-      trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
+      trackEvent('login_microsoft', { userId: result.account.id, isNew: result.isNew });
       redirectAfterLogin(result.account);
     } else if (result.reason) {
       setLoginError(result.reason);

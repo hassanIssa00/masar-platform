@@ -212,7 +212,7 @@ export default function RegisterPage() {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
       }
-      trackEvent('register_google', { userId: result.account.id, isNew: result.isNew });
+      trackEvent('register_apple', { userId: result.account.id, isNew: result.isNew });
 
       if (schoolBranch === 'IKHLAS_JEDDAH') {
         if (accountType === 'parent') router.push('/school-parent');

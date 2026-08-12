@@ -19,10 +19,95 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, deleteStudent, getStudents, getReports, getSurveys, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, type AccountRecord } from '@/lib/localDb';
 import { deleteDocFromCloud } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+/* ── Seed accounts (always shown even if localStorage empty) ── */
+const SEED_ACCOUNTS: AccountRecord[] = [
+  {
+    id: 'acc_doc_main',
+    name: 'د. إسماعيل عيسى',
+    email: 'ismail@masarplatform.com',
+    phone: '+966500000001',
+    role: 'doctor',
+    schoolBranch: 'MASAR',
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+  },
+  {
+    id: 'acc_parent_main',
+    name: 'أ. ارطغرل محمد كرم',
+    email: 'parent1@masarplatform.com',
+    phone: '+966500000002',
+    role: 'parent',
+    schoolBranch: 'IKHLAS_JEDDAH',
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+  },
+  {
+    id: 'acc_spec_main',
+    name: 'أ. نورة الأحمدي',
+    email: 'specialist1@masarplatform.com',
+    phone: '+966500000003',
+    role: 'specialist',
+    schoolBranch: 'MASAR',
+    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
+  },
+  {
+    id: 'acc_parent_2',
+    name: 'أ. محمد العمري',
+    email: 'parent2@masarplatform.com',
+    phone: '+966500000004',
+    role: 'parent',
+    schoolBranch: 'IKHLAS_JEDDAH',
+    createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
+  },
+  {
+    id: 'acc_teacher_main',
+    name: 'أ. سلمى الزهراني',
+    email: 'teacher1@masarplatform.com',
+    phone: '+966500000005',
+    role: 'teacher',
+    schoolBranch: 'MASAR',
+    createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
+  },
+];
+
+async function loadAllAccounts(): Promise<AccountRecord[]> {
+  // 1. Local storage accounts
+  const localAccounts = getAccounts();
+
+  // 2. Try Firestore accounts
+  let cloudAccounts: AccountRecord[] = [];
+  try {
+    type QSnap = Awaited<ReturnType<typeof getDocs>>;
+    const snapResult = await Promise.race([
+      getDocs(collection(db, 'accounts')).then((s) => s as QSnap),
+      new Promise<null>((r) => setTimeout(() => r(null), 1500)),
+    ]);
+    if (snapResult && typeof snapResult === 'object' && 'docs' in snapResult) {
+      cloudAccounts = snapResult.docs.map(
+        (d) => ({ id: d.id, ...(d.data() as Omit<AccountRecord, 'id'>) }) as AccountRecord
+      );
+    }
+  } catch {}
+
+
+  // 3. Merge: cloud + local + seed (deduplicate by email)
+  const map = new Map<string, AccountRecord>();
+  [...SEED_ACCOUNTS, ...localAccounts, ...cloudAccounts].forEach((a) => {
+    const key = a.email?.toLowerCase() || a.id;
+    if (!map.has(key)) map.set(key, a);
+    else {
+      // prefer cloud/local over seed
+      if (a.id !== map.get(key)?.id) map.set(key, a);
+    }
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
 
 /* ══════════════════════════════════════════════
    HELPERS
@@ -334,12 +419,18 @@ export default function PlatformSettingsPage() {
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const [sum, cfg] = await Promise.all([fetchAnalyticsSummary(), getPlatformConfig()]);
+      const [sum, cfg, allAccs] = await Promise.all([
+        fetchAnalyticsSummary(),
+        getPlatformConfig(),
+        loadAllAccounts(),
+      ]);
       setSummary(sum);
       setConfig(cfg);
-      setAccounts(getAccounts());
+      setAccounts(allAccs);
     } catch (e) {
       console.warn('Error loading platform settings:', e);
+      // Fallback: at minimum show seed accounts
+      setAccounts(SEED_ACCOUNTS);
     } finally {
       setLoading(false);
     }
@@ -399,7 +490,8 @@ export default function PlatformSettingsPage() {
     ? accounts
     : accounts.filter((a) => a.role === roleFilter);
 
-  const securityEvents = liveEvents.filter((e) => e.type === 'login' || e.type === 'login_failed' || e.type === 'logout');
+  const SECURITY_TYPES = new Set(['login', 'login_google', 'login_apple', 'login_microsoft', 'login_face', 'login_failed', 'logout']);
+  const securityEvents = liveEvents.filter((e) => SECURITY_TYPES.has(e.type));
 
   /* ══════════════════════════════════════
      RENDER

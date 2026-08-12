@@ -68,7 +68,11 @@ export default function FaceEnrollPage() {
           audio: false,
         });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
       }
       streamRef.current = stream;
       if (videoRef.current) {
@@ -78,9 +82,17 @@ export default function FaceEnrollPage() {
         animRef.current = requestAnimationFrame(runDetectionLoop);
       }
     } catch (e: any) {
-      setErrorMsg(e.name === 'NotAllowedError'
-        ? 'لم يتم السماح بالكاميرا. اسمح من إعدادات المتصفح.'
-        : 'تعذر تشغيل الكاميرا. حاول مرة أخرى.');
+      console.error('startCamera error:', e);
+      const name = e?.name || 'Error';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setErrorMsg('المتصفح يمنع الكاميرا. اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع في أعلى المتصفح، ثم اختر "السماح بالمرور للكاميرا (Allow Camera)" وأعد التحميل.');
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setErrorMsg('لم يتم العثور على كاميرا متصلة بالجهاز. تأكد من توصيل الكاميرا.');
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        setErrorMsg('الكاميرا مستخدمة في تطبيق آخر. اغلق التطبيقات الأخرى التي تستخدم الكاميرا وحاول مجدداً.');
+      } else {
+        setErrorMsg(`سبب تعذر تشغيل الكاميرا: (${name}: ${e?.message || 'خطأ غير معروف'}). تأكد من السماح للكاميرا من إعدادات المتصفح.`);
+      }
       setPhase('error');
     }
   }

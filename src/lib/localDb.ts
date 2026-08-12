@@ -150,7 +150,10 @@ function readList<T>(key: string): T[] {
 }
 
 function writeList<T>(key: string, value: T[]) {
-  localStorage.setItem(key, JSON.stringify(value));
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
 }
 
 function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {

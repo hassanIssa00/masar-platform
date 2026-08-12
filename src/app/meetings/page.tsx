@@ -22,6 +22,11 @@ export default function MeetingsPage() {
   
   // Views: 'list' | 'lobby' | 'room' | 'ended'
   const [currentView, setCurrentView] = useState<'list' | 'lobby' | 'room' | 'ended'>('list');
+
+  // Scheduled meetings (real data only – no dummy)
+  type ScheduledMeeting = { id: number; title: string; host: string; time: string; roomCode: string; };
+  const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
+  const deleteMeeting = (id: number) => setScheduledMeetings((prev) => prev.filter((m) => m.id !== id));
   
   // Lobby state
   const [userName, setUserName] = useState('');
@@ -147,45 +152,47 @@ export default function MeetingsPage() {
     setChatMessage('');
   };
 
-  // List View (Navbar + Sidebar)
+  // List View (Navbar + Sidebar) — Light theme only
   if (currentView === 'list') {
     return (
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900" dir="rtl">
+      <div className="flex h-screen bg-slate-50" dir="rtl">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Navbar />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-6xl mx-auto space-y-8">
-              
+
+              {/* Page header */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">الفصول الافتراضية</h1>
-                  <p className="text-gray-500 dark:text-gray-400 mt-1">إدارة وحضور المحاضرات المباشرة</p>
+                  <h1 className="text-3xl font-black text-slate-900">الفصول الافتراضية</h1>
+                  <p className="text-slate-500 mt-1">إدارة وحضور المحاضرات المباشرة</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
                 {/* Join Form */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center text-center">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
                     <Video className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">الانضمام لاجتماع</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">أدخل رمز الغرفة للانضمام إلى الفصل الافتراضي</p>
-                  
+                  <h3 className="text-xl font-black text-slate-900 mb-2">الانضمام لاجتماع</h3>
+                  <p className="text-slate-500 mb-6 text-sm">أدخل رمز الغرفة للانضمام إلى الفصل الافتراضي</p>
+
                   <form onSubmit={handleJoinLobby} className="w-full space-y-3">
                     <input
                       type="text"
                       placeholder="رمز الغرفة (مثال: abc-defg-hij)"
                       value={roomCodeInput}
                       onChange={(e) => setRoomCodeInput(e.target.value)}
-                      className="w-full px-4 py-3 text-center bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 dark:text-white"
+                      className="w-full px-4 py-3 text-center bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900"
                       dir="ltr"
                       required
                     />
-                    <button 
+                    <button
                       type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-medium transition-colors"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black transition-colors"
                     >
                       دخول الغرفة
                     </button>
@@ -193,36 +200,52 @@ export default function MeetingsPage() {
                 </div>
 
                 {/* Scheduled Meetings */}
-                <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">المحاضرات المجدولة</h3>
-                  
-                  <div className="space-y-4">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-4 mb-4 sm:mb-0 w-full sm:w-auto">
-                          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Clock className="w-6 h-6" />
+                <div className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                  <h3 className="text-lg font-black text-slate-900 mb-4">المحاضرات المجدولة</h3>
+
+                  {scheduledMeetings.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                        <Clock className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <p className="font-black text-slate-700">لا توجد محاضرات مجدولة حالياً</p>
+                      <p className="text-sm text-slate-400 mt-1">ستظهر المحاضرات هنا بمجرد إضافتها</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {scheduledMeetings.map((meeting) => (
+                        <div key={meeting.id} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                          <div className="flex items-center gap-4 mb-4 sm:mb-0 w-full sm:w-auto">
+                            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="font-black text-slate-900">{meeting.title}</h4>
+                              <p className="text-sm text-slate-500">{meeting.host} • {meeting.time}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white">مراجعة فيزياء - الوحدة الثالثة</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">د. إسماعيل • اليوم، ٨:٠٠ مساءً</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setRoomCodeInput(meeting.roomCode); setCurrentView('lobby'); }}
+                              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-sm transition-colors"
+                            >
+                              استعداد
+                            </button>
+                            <button
+                              onClick={() => deleteMeeting(meeting.id)}
+                              className="w-9 h-9 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                              title="حذف الاجتماع"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => {
-                            setRoomCodeInput(`phy-${Math.floor(Math.random()*1000)}`);
-                            setCurrentView('lobby');
-                          }}
-                          className="w-full sm:w-auto px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
-                        >
-                          استعداد
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
 
+              </div>
             </div>
           </main>
         </div>

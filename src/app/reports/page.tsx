@@ -407,91 +407,218 @@ function ReportsContent() {
     );
   }
 
+  // ── Report categories ─────────────────────────────────────
+  const CATEGORIES = [
+    {
+      id: 'placement',
+      label: '🎯 اختبارات تحديد المستوى',
+      description: 'نتائج اختبار القبول والتحديد (7 اختبارات)',
+      color: '#2563eb',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      badge: 'bg-blue-100 text-blue-800',
+      types: ['placement'],
+    },
+    {
+      id: 'student-assessment',
+      label: '📝 إجابات اختبار الطالب',
+      description: 'الإجابات التفصيلية من الاختبار المباشر للطالب',
+      color: '#334155',
+      bg: 'bg-slate-50',
+      border: 'border-slate-200',
+      badge: 'bg-slate-100 text-slate-700',
+      types: ['student-assessment-answers', 'student-assessment-analysis'],
+    },
+    {
+      id: 'survey',
+      label: '📋 استبيانات ولي الأمر',
+      description: 'إجابات الاستبيان الأولي من ولي الأمر',
+      color: '#0891b2',
+      bg: 'bg-cyan-50',
+      border: 'border-cyan-200',
+      badge: 'bg-cyan-100 text-cyan-800',
+      types: ['survey-answers'],
+    },
+    {
+      id: 'clinical',
+      label: '🧠 التقارير التحليلية',
+      description: 'التحليل الشامل وتوصيات المسار العلاجي',
+      color: '#7c3aed',
+      bg: 'bg-purple-50',
+      border: 'border-purple-200',
+      badge: 'bg-purple-100 text-purple-800',
+      types: ['clinical-analysis'],
+    },
+    {
+      id: 'programs',
+      label: '📚 تقارير مسارات التعلم',
+      description: 'تقارير القراءة والرياضيات والتخاطب وغيرها',
+      color: '#059669',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      badge: 'bg-emerald-100 text-emerald-800',
+      types: [], // catch-all for remaining
+    },
+  ] as const;
+
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  const knownTypes = CATEGORIES.flatMap((c) => [...c.types]);
+  const categorized = CATEGORIES.map((cat) => ({
+    ...cat,
+    reports: reports.filter((r) =>
+      cat.id === 'programs'
+        ? !knownTypes.includes(r.type as never)
+        : (cat.types as readonly string[]).includes(r.type)
+    ),
+  }));
+
+  const visibleCategories = activeCategory === 'all'
+    ? categorized
+    : categorized.filter((c) => c.id === activeCategory);
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
       <Navbar />
       <div className="flex">
         <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
+
+          {/* ── Header ─────────────────────────────── */}
           <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-black text-teal-800">التقارير الشاملة</p>
                 <h1 className="mt-2 text-3xl font-black text-slate-950">عرض وطباعة تقارير التقييم</h1>
-                <p className="mt-2 text-sm font-bold leading-7 text-slate-600">نفس فلاتر وتقارير النظام الأصلية، بتصميم أوضح للموبايل والديسكتوب.</p>
+                <p className="mt-2 text-sm font-bold leading-7 text-slate-600">
+                  مقسّمة حسب النوع — {reports.length} تقرير محفوظ إجمالاً
+                </p>
               </div>
-              <Link href="/student/new" className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800">إنشاء تقرير جديد</Link>
+              <Link href="/student/new" className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800">
+                إنشاء تقرير جديد
+              </Link>
             </div>
           </header>
 
-          <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-            {filters.map((item) => (
-              <button key={item} onClick={() => setFilter(item)} className={`shrink-0 rounded-lg border px-5 py-3 text-sm font-black transition ${filter === item ? 'border-teal-700 bg-teal-700 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
-                {item === 'all' ? 'الكل' : item}
+          {/* ── Category tabs ───────────────────────── */}
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveCategory('all')}
+              className={`shrink-0 rounded-xl border px-4 py-2.5 text-sm font-black transition ${activeCategory === 'all' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+            >
+              📂 الكل ({reports.length})
+            </button>
+            {categorized.map((cat) => cat.reports.length > 0 && (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`shrink-0 rounded-xl border px-4 py-2.5 text-sm font-black transition ${activeCategory === cat.id ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+              >
+                {cat.label.split(' ')[0]} {cat.label.split(' ').slice(1).join(' ')} ({cat.reports.length})
               </button>
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {/* ── Empty state ─────────────────────────── */}
+          {reports.length === 0 && (
             <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
               <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-slate-100 text-slate-600">
                 <FilePlus2 size={26} />
               </div>
               <h2 className="mt-4 text-2xl font-black text-slate-950">لا توجد تقارير محفوظة بعد</h2>
               <p className="mx-auto mt-2 max-w-xl text-sm font-bold leading-7 text-slate-600">
-                لن تظهر أي أسماء أو نتائج وهمية هنا. أنشئ طالبًا أو استبيانًا، وبعد الحفظ سيظهر التقرير الحقيقي في هذه القائمة.
+                أنشئ طالباً أو استبياناً أو اختباراً وسيظهر التقرير هنا تلقائياً.
               </p>
               <Link href="/student/new" className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">
                 إضافة طالب وتقرير
               </Link>
             </section>
-          ) : (
-            <section className="grid gap-4 md:grid-cols-2">
-              {filtered.map((report) => {
-              const decision = getDecisionFromScore(report.score);
-
-              return (
-                <article key={report.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div className="h-2" style={{ backgroundColor: report.programColor }} />
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-black text-slate-950">{report.studentName}</h2>
-                        <p className="mt-1 text-sm font-bold text-slate-500">{report.grade} · {report.date}</p>
-                      </div>
-                      <p className="text-3xl font-black" style={{ color: getScoreColor(report.score) }}>{report.score}%</p>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="inline-block rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: report.programColor }}>{cleanReportText(report.program)}</span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{decision.label}</span>
-                    </div>
-                    <p className="mt-4 line-clamp-2 text-sm font-bold leading-7 text-slate-600">{cleanReportText(report.summary)}</p>
-                    <div className="mt-5 flex gap-3">
-                      <button onClick={() => setSelectedId(report.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">عرض التقرير الكامل</button>
-                      <button onClick={() => setPrintReport(report)} className="no-print rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-100 transition cursor-pointer" title="طباعة التقرير / PDF"><Printer size={17} /></button>
-                      <button
-                        onClick={() => {
-                          deleteReport(report.id);
-                          setReports(getReports());
-                        }}
-                        className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700"
-                        title="حذف التقرير"
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-              })}
-            </section>
           )}
+
+          {/* ── Sections ─────────────────────────────── */}
+          <div className="space-y-8">
+            {visibleCategories.map((cat) => cat.reports.length === 0 ? null : (
+              <section key={cat.id}>
+                {/* Section header */}
+                <div className={`mb-4 flex items-center justify-between rounded-xl border ${cat.border} ${cat.bg} px-5 py-3`}>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900">{cat.label}</h2>
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">{cat.description}</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${cat.badge}`}>
+                    {cat.reports.length} تقرير
+                  </span>
+                </div>
+
+                {/* Cards grid */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {cat.reports.map((report) => {
+                    const decision = getDecisionFromScore(report.score);
+                    return (
+                      <article key={report.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div className="h-1.5 w-full" style={{ backgroundColor: cat.color }} />
+                        <div className="p-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <h3 className="text-lg font-black text-slate-950 truncate">{report.studentName}</h3>
+                              <p className="mt-0.5 text-sm font-bold text-slate-500">{report.grade} · {report.date}</p>
+                            </div>
+                            <p className="shrink-0 text-2xl font-black" style={{ color: getScoreColor(report.score) }}>
+                              {report.score}%
+                            </p>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className={`inline-block rounded-full px-3 py-1 text-xs font-black ${cat.badge}`}>
+                              {cleanReportText(report.program)}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                              {decision.label}
+                            </span>
+                          </div>
+
+                          <p className="mt-3 line-clamp-2 text-sm font-bold leading-6 text-slate-600">
+                            {cleanReportText(report.summary)}
+                          </p>
+
+                          <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                            <button
+                              onClick={() => setSelectedId(report.id)}
+                              className="flex-1 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-800 transition"
+                            >
+                              عرض التقرير الكامل
+                            </button>
+                            <button
+                              onClick={() => setPrintReport(report)}
+                              className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition"
+                              title="طباعة PDF"
+                            >
+                              <Printer size={16} />
+                            </button>
+                            <button
+                              onClick={() => { deleteReport(report.id); setReports(getReports()); }}
+                              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-black text-rose-700 hover:bg-rose-100 transition"
+                              title="حذف التقرير"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
         </main>
       </div>
       {printReport && <PrintableReportModal report={printReport} onClose={() => setPrintReport(null)} />}
     </div>
   );
 }
+
 
 function ReportSection({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
   return (

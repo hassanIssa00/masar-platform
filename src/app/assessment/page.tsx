@@ -33,6 +33,8 @@ function PlacementAssessmentContent() {
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [studentName, setStudentName] = useState('');
   const [studentAge, setStudentAge] = useState('');
+  const [allStudents, setAllStudents] = useState<StudentRecord[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [finished, setFinished] = useState(false);
@@ -88,8 +90,10 @@ function PlacementAssessmentContent() {
       if (next) {
         setGradeKey(next);
       }
-    }, 0);
 
+      // Load all registered students for the picker
+      setAllStudents(getStudents());
+    }, 0);
   }, [searchParams, router]);
 
   const isStudentFlow = Boolean(studentIdParam || (typeof window !== 'undefined' && localStorage.getItem('masar.current-student-id')));
@@ -289,6 +293,59 @@ function PlacementAssessmentContent() {
 
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            {/* ── Student Picker (Doctor mode only) ─────────── */}
+            {!isStudentFlow && (
+              <div className="mb-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
+                <p className="mb-3 text-sm font-black text-blue-800">📋 اختر الطالب أولاً</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {/* Dropdown: pick from registered students */}
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-black text-slate-600">اختر من قائمة الطلاب المسجلين</span>
+                    <select
+                      value={selectedStudentId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedStudentId(id);
+                        if (id) {
+                          const s = allStudents.find((st) => st.id === id);
+                          if (s) {
+                            setStudent(s);
+                            setStudentName(s.fullName);
+                            const gk = getGradeKeyFromStudentGrade(s.grade);
+                            resetForGrade(gk);
+                          }
+                        } else {
+                          setStudent(null);
+                          setStudentName('');
+                        }
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-blue-700 cursor-pointer"
+                    >
+                      <option value="">— أو أدخل اسم طالب جديد —</option>
+                      {allStudents.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.fullName} {s.grade ? `— ${s.grade}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {/* Grade picker */}
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-black text-slate-600">الاختبار / الصف</span>
+                    <select
+                      value={gradeKey}
+                      onChange={(e) => resetForGrade(e.target.value as PlacementGradeKey)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-blue-700 cursor-pointer"
+                    >
+                      {placementAssessments.map((item) => (
+                        <option key={item.key} value={item.key}>{item.shortTitle}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            )}
+
             <div className="mb-5 grid gap-4 md:grid-cols-3">
               <label className="block">
                 <span className="mb-2 block text-sm font-black text-slate-700">اسم الطالب</span>

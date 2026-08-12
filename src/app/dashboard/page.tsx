@@ -9,16 +9,39 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
-import { getStudents, getReports, StudentRecord, ReportRecord } from '@/lib/localDb';
+import { getStudents, getReports, getSession, StudentRecord, ReportRecord } from '@/lib/localDb';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    setStudents(getStudents());
-    setReports(getReports());
-  }, []);
+    queueMicrotask(() => {
+      const session = getSession();
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+      if (session.role === 'parent') {
+        router.replace('/parent');
+        return;
+      }
+      if (session.role === 'student') {
+        router.replace('/school-student');
+        return;
+      }
+      setAuthorized(true);
+      setStudents(getStudents());
+      setReports(getReports());
+    });
+  }, [router]);
+
+  if (!authorized) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-bold">جاري التحقق من الصلاحيات...</div>;
+  }
 
   const stats = [
     { label: 'طلاب محفوظون', value: students.length, note: 'ابدأ بإضافة أول طالب', icon: Users },
@@ -93,9 +116,6 @@ export default function Dashboard() {
               </Link>
               <Link href="/iep" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 📋 خطط IEP
-              </Link>
-              <Link href="/meetings" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                📹 غرف الحصص
               </Link>
             </div>
 
