@@ -647,7 +647,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
               <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
               <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
               <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
-              <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply" />
+              <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'multiply' }} />
               <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
               <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{form.date}</text>
               <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
