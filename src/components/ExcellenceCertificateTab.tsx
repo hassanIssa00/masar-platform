@@ -500,7 +500,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <BrandMark size="md" showText={true} />
+          <BrandMark size="md" showText={true} hideNexus={true} />
         </div>
 
         {/* Certified Badge Box */}

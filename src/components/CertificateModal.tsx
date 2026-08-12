@@ -414,7 +414,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* FIRST (RTL→RIGHT / LTR→LEFT): Logo */}
               <div style={{ display:'flex', alignItems:'center' }}>
-                <BrandMark size="md" showText={true} isEn={!isAr}/>
+                <BrandMark size="md" showText={true} isEn={!isAr} hideNexus={true}/>
               </div>
 
               {/* CENTER: Badge — temporarily hidden */}

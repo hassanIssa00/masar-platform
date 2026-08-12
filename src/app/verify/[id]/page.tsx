@@ -26,7 +26,7 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
 
         {/* Top Header */}
         <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <BrandMark size="md" />
+          <BrandMark size="md" hideNexus={true} />
           <Link href="/students" className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition">
             <ArrowRight size={14} /> العودة للمنصة
           </Link>
