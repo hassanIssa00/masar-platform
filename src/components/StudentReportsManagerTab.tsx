@@ -158,11 +158,12 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
           <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">وثيقة إشرافية معتمدة ✓</div>
         </div>
         <!-- RIGHT: Dr. Ismail Signature Block -->
-        <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:#f0fdf4;text-align:center;min-width:180px;">
-          <div style="font-size:9px;color:#047857;font-weight:900;font-family:'Cairo',sans-serif;">التوقيع والختم المعتمد ✍️</div>
-          <div style="height:36px;margin:2px 0;">
-            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;" />
+        <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:white;text-align:center;min-width:180px;">
+          <div style="height:50px;margin:0 auto 2px auto;background:white;">
+            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;display:block;" />
           </div>
+          <div style="border-bottom:1.5px solid #06392c;width:100%;margin:4px 0;"></div>
+          <div style="font-size:9px;color:#047857;font-weight:900;font-family:'Cairo',sans-serif;">التوقيع والختم المعتمد ✍️</div>
           <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
           <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
         </div>

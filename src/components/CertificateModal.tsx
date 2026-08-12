@@ -301,9 +301,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
   // Load Dr. Ismail's transparent signature
   useEffect(() => {
-    loadTransparentSignature('/dr-ismail-signature.jpg').then((b64) => {
+    loadTransparentSignature('/dr-ismail-signature.png').then((b64) => {
       if (b64) { setSigB64(b64); }
-      else { loadTransparentSignature('/dr-ismail-signature.png').then(setSigB64); }
     });
   }, []);
 
@@ -552,24 +551,24 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
                 {/* Handwritten Signature Image & Line */}
                 <div style={{ position: 'relative', width: 220, marginTop: 14 }}>
-                  <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', paddingBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {/* Signature image sits above the line, no background box */}
+                  <div style={{ position: 'absolute', bottom: 6, right: isAr ? 0 : 'auto', left: isAr ? 'auto' : 0, pointerEvents: 'none', background: 'white' }}>
+                    <img
+                      src="/dr-ismail-signature.png"
+                      alt="التوقيع المعتمد"
+                      style={{
+                        height: 52,
+                        objectFit: 'contain',
+                        mixBlendMode: 'multiply',
+                        display: 'block',
+                      }}
+                    />
+                  </div>
+                  <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', paddingBottom: 2, marginTop: 54, display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>
                       {isAr ? 'التوقيع المعتمد ✍️' : 'Authorized Signature ✍️'}
                     </span>
                   </div>
-                  <img
-                    src="/dr-ismail-signature.png"
-                    alt="التوقيع المعتمد"
-                    style={{
-                      position: 'absolute',
-                      bottom: 2,
-                      right: isAr ? 0 : 'auto',
-                      left: isAr ? 'auto' : 0,
-                      height: 48,
-                      objectFit: 'contain',
-                      pointerEvents: 'none'
-                    }}
-                  />
                 </div>
               </div>
 

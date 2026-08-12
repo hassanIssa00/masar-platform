@@ -299,14 +299,14 @@ export default function PrintableReportModal({
     /* Sig block */
     .sig-block {
       border: 1.5px solid #06392c;
-      background: #f0fdf4;
+      background: white;
       border-radius: 14px;
       padding: 10px 16px;
       display: flex; flex-direction: column; align-items: center; gap: 3px;
       min-width: 165px; text-align: center;
     }
     .sig-lbl   { font-size: 9px; font-weight: 900; color: #047857; }
-    .sig-img   { height: 50px; width: 155px; object-fit: contain; mix-blend-mode: multiply; }
+    .sig-img   { height: 50px; width: 155px; object-fit: contain; mix-blend-mode: multiply; background: white; }
     .sig-line  { border-bottom: 1.5px solid #06392c; width: 100%; margin: 3px 0; }
     .sig-name  { font-size: 13px; font-weight: 900; color: #06392c; }
     .sig-title { font-size: 9px; color: #047857; }
@@ -456,9 +456,9 @@ export default function PrintableReportModal({
 
         <!-- Doctor signature block -->
         <div class="sig-block">
-          <div class="sig-lbl">التوقيع والختم المعتمد ✍️</div>
           <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
           <div class="sig-line"></div>
+          <div class="sig-lbl">التوقيع والختم المعتمد ✍️</div>
           <div class="sig-name">د. إسماعيل عيسى</div>
           <div class="sig-title">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
           <div class="sig-date">${hijriDate}</div>
