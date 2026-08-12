@@ -24,7 +24,7 @@ import { deleteDocFromCloud } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-/* ── Seed accounts (always shown even if localStorage empty) ── */
+/* ── Seed accounts (only doctor admin account) ── */
 const SEED_ACCOUNTS: AccountRecord[] = [
   {
     id: 'acc_doc_main',
@@ -33,43 +33,7 @@ const SEED_ACCOUNTS: AccountRecord[] = [
     phone: '+966500000001',
     role: 'doctor',
     schoolBranch: 'MASAR',
-    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-  },
-  {
-    id: 'acc_parent_main',
-    name: 'أ. ارطغرل محمد كرم',
-    email: 'parent1@masarplatform.com',
-    phone: '+966500000002',
-    role: 'parent',
-    schoolBranch: 'IKHLAS_JEDDAH',
-    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-  },
-  {
-    id: 'acc_spec_main',
-    name: 'أ. نورة الأحمدي',
-    email: 'specialist1@masarplatform.com',
-    phone: '+966500000003',
-    role: 'specialist',
-    schoolBranch: 'MASAR',
-    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-  },
-  {
-    id: 'acc_parent_2',
-    name: 'أ. محمد العمري',
-    email: 'parent2@masarplatform.com',
-    phone: '+966500000004',
-    role: 'parent',
-    schoolBranch: 'IKHLAS_JEDDAH',
-    createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
-  },
-  {
-    id: 'acc_teacher_main',
-    name: 'أ. سلمى الزهراني',
-    email: 'teacher1@masarplatform.com',
-    phone: '+966500000005',
-    role: 'teacher',
-    schoolBranch: 'MASAR',
-    createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
+    createdAt: new Date().toISOString(),
   },
 ];
 
