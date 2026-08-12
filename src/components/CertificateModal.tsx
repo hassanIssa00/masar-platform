@@ -54,14 +54,13 @@ function ringDots(cx: number, cy: number, r: number, count: number, ink: string)
 
 // ── Compact Dr. Ismail Stamp (matches signature page design) ─────────────────
 function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolean; dateStr: string }) {
-  const SZ = 100;
-  const CX = SZ / 2;
-  const CY = SZ / 2;
+  const CX = 80;
+  const CY = 80;
   const INK = '#0f172a';
-  const RO = 47;
-  const RI = 42;
+  const RO = 76;
+  const RI = 68;
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
+    <svg xmlns="http://www.w3.org/2000/svg" width={110} height={110} viewBox="0 0 160 160">
       <circle cx={CX} cy={CY} r={RO} fill="none" stroke={INK} strokeWidth="2.5" />
       {ringDots(CX, CY, (RO + RI) / 2, 60, INK)}
       <circle cx={CX} cy={CY} r={RI} fill="white" stroke={INK} strokeWidth="1.2" />
@@ -559,9 +558,6 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                     style={{ height: 44, objectFit: 'contain', mixBlendMode: 'multiply', display: 'block' }}
                   />
                   <div style={{ borderBottom: '1.5px solid #94a3b8', paddingTop: 2 }} />
-                  <span style={{ fontSize: 9, fontWeight: 900, color: '#64748b' }}>
-                    {isAr ? 'التوقيع المعتمد 🔥' : 'Authorized Signature ✍️'}
-                  </span>
                 </div>
               </div>
 

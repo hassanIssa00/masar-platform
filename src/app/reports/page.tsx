@@ -391,9 +391,7 @@ function ReportsContent() {
                     <h3 className="text-xl font-black text-slate-950 margin-0">د. إسماعيل عيسى</h3>
                     <p className="text-xs font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
                     <div className="relative w-56 mt-4">
-                      <div className="border-b-2 border-slate-400 w-full pb-1 flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500">التوقيع المعتمد ✍️</span>
-                      </div>
+                      <div className="border-b-2 border-slate-400 w-full min-h-[2px]" />
                       <img
                         src="/dr-ismail-signature.png"
                         alt="التوقيع المعتمد"

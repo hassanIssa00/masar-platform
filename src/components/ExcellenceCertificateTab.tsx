@@ -625,9 +625,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
                 style={{ height: 52, objectFit: 'contain', mixBlendMode: 'multiply', display: 'block' }}
               />
             </div>
-            <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', marginTop: 54, display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 9.5, fontWeight: 900, color: '#64748b' }}>التوقيع المعتمد ✍️</span>
-            </div>
+            <div style={{ borderBottom: '1.5px solid #64748b', width: '100%', marginTop: 54, minHeight: 1 }} />
           </div>
         </div>
 

@@ -362,7 +362,6 @@ export default function PrintableReportModal({
 
           <!-- SIGNATURE -->
           <div class="sig-box">
-            <div style="font-size: 9px; font-weight: 900; color: #047857;">التوقيع والختم المعتمد ✍️</div>
             <div style="height: 48px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
               <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
             </div>
