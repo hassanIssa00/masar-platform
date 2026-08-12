@@ -362,12 +362,13 @@ export default function PrintableReportModal({
 
           <!-- SIGNATURE -->
           <div class="sig-box">
-            <div style="height: 48px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
+            <div style="font-size: 9px; font-weight: 700; color: #64748b;">يعتمد هذا التقرير رسمياً من:</div>
+            <div style="font-size: 13px; font-weight: 900; color: #06392c; margin-top: 2px;">د. إسماعيل عيسى</div>
+            <div style="font-size: 8px; color: #047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+            <div style="height: 44px; display: flex; align-items: center; justify-content: center; margin: 4px 0 2px 0;">
               <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
             </div>
-            <div style="border-bottom: 1.5px solid #06392c; margin: 3px 0;"></div>
-            <div style="font-size: 12px; font-weight: 900; color: #06392c;">د. إسماعيل عيسى</div>
-            <div style="font-size: 8px; color: #047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+            <div style="border-bottom: 1.5px solid #06392c; margin: 2px 0 4px 0;"></div>
             <div style="font-size: 9px; font-weight: 900; color: #64748b; font-family: monospace;">${hijriDate}</div>
           </div>
         </div>

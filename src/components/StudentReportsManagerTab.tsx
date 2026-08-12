@@ -159,12 +159,13 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         </div>
         <!-- RIGHT: Dr. Ismail Signature Block -->
         <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:white;text-align:center;min-width:180px;">
-          <div style="height:50px;margin:0 auto 2px auto;background:white;">
+          <div style="font-size:9px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">يعتمد هذا التقرير رسمياً من:</div>
+          <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;margin-top:2px;">د. إسماعيل عيسى</div>
+          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+          <div style="height:44px;margin:4px auto 2px auto;background:white;">
             <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;display:block;" />
           </div>
-          <div style="border-bottom:1.5px solid #06392c;width:100%;margin:4px 0;"></div>
-          <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">د. إسماعيل عيسى</div>
-          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+          <div style="border-bottom:1.5px solid #06392c;width:100%;margin:2px 0 4px 0;"></div>
         </div>
       </div>`;
 
