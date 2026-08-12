@@ -10,6 +10,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
 import { getStudents, getReports, getSession, StudentRecord, ReportRecord } from '@/lib/localDb';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
@@ -36,6 +37,13 @@ export default function Dashboard() {
       setAuthorized(true);
       setStudents(getStudents());
       setReports(getReports());
+      // Pull latest from cloud and refresh counters
+      pullCloudDataToLocal()
+        .then(() => {
+          setStudents(getStudents());
+          setReports(getReports());
+        })
+        .catch(() => {});
     });
   }, [router]);
 

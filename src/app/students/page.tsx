@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { getCredentialByEmailOrPhone } from '@/lib/auth';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
@@ -49,8 +50,13 @@ export default function StudentsControlPage() {
   useEffect(() => {
     const session = getSession();
     if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-    const timeout = window.setTimeout(refresh, 0);
-    return () => window.clearTimeout(timeout);
+    // Initial load from local cache
+    refresh();
+    // Then pull latest from Firestore cloud and refresh again
+    pullCloudDataToLocal()
+      .then(() => refresh())
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedStudent = students.find((student) => student.id === selectedId) ?? students[0] ?? null;
