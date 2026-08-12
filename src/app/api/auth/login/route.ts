@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     // if (!rateLimit.allowed) { return NextResponse.json({ ok: false, reason: 'rate_limited', error: '...' }, { status: 429 }); }
 
     const body = await req.json();
-    const { identifier: userIdentifier, password } = body;
+    const { identifier: userIdentifier, password, rememberMe } = body;
 
     if (!userIdentifier || !password) {
       return NextResponse.json(
@@ -43,13 +43,13 @@ export async function POST(req: NextRequest) {
       account,
     });
 
-    // Set HttpOnly + Secure + SameSite=Lax cookie
+    // Set HttpOnly + SameSite=Lax cookie (Session cookie when rememberMe is false)
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: false, // Allow on HTTP too for testing
       sameSite: 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 } : {}),
     });
 
     return response;

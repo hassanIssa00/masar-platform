@@ -71,7 +71,7 @@ export default function LoginPage() {
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [faceLoginOpen, setFaceLoginOpen] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
@@ -82,18 +82,17 @@ export default function LoginPage() {
     // Check if coming back from Google redirect
     handleGoogleRedirectResult('parent').then((result) => {
       if (result && result.ok) {
-        setSession(result.account);
+        setSession(result.account, false);
         redirectAfterLogin(result.account);
       }
     });
 
     if (typeof window !== 'undefined') {
       const savedEmail = localStorage.getItem('masar_remember_email');
-      const savedPass = localStorage.getItem('masar_remember_pass');
       if (savedEmail) {
         setEmail(savedEmail);
-        if (savedPass) setPassword(savedPass);
       }
+      localStorage.removeItem('masar_remember_pass');
     }
   }, []);
 
@@ -163,7 +162,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ identifier: email, password }),
+        body: JSON.stringify({ identifier: email, password, rememberMe }),
       });
 
       if (res.status === 429) {
@@ -181,7 +180,7 @@ export default function LoginPage() {
         }
         localStorage.removeItem('masar_remember_pass');
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
-        setSession(data.account);
+        setSession(data.account, rememberMe);
         setTimeout(() => {
           redirectAfterLogin(data.account);
         }, 600);
@@ -206,7 +205,7 @@ export default function LoginPage() {
       }
       localStorage.removeItem('masar_remember_pass');
       setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
-      setSession(result.account);
+      setSession(result.account, rememberMe);
       setTimeout(() => {
         redirectAfterLogin(result.account);
       }, 600);

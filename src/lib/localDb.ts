@@ -204,25 +204,48 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
   return next;
 }
 
-export function setSession(account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>) {
-  localStorage.setItem(KEYS.session, JSON.stringify(account));
-  localStorage.setItem('masar-user', JSON.stringify(account));
-  localStorage.setItem('masar_logged_in', 'true');
-  localStorage.setItem('user_role', account.role);
-  localStorage.setItem('user_name', account.name);
+export function setSession(
+  account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>,
+  rememberMe: boolean = false
+) {
+  const targetStorage = rememberMe ? localStorage : sessionStorage;
+
+  // Clear session from both storages to avoid conflicting states
+  localStorage.removeItem(KEYS.session);
+  localStorage.removeItem('masar-user');
+  localStorage.removeItem('masar_logged_in');
+  localStorage.removeItem('user_role');
+  localStorage.removeItem('user_name');
+  sessionStorage.removeItem(KEYS.session);
+  sessionStorage.removeItem('masar-user');
+  sessionStorage.removeItem('masar_logged_in');
+  sessionStorage.removeItem('user_role');
+  sessionStorage.removeItem('user_name');
+
+  targetStorage.setItem(KEYS.session, JSON.stringify(account));
+  targetStorage.setItem('masar-user', JSON.stringify(account));
+  targetStorage.setItem('masar_logged_in', 'true');
+  targetStorage.setItem('user_role', account.role);
+  targetStorage.setItem('user_name', account.name);
   if (account.schoolBranch) {
-    localStorage.setItem('masar_school_branch', account.schoolBranch);
+    targetStorage.setItem('masar_school_branch', account.schoolBranch);
   }
 
   if (typeof document !== 'undefined') {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const payload = { ...account, iat: now, exp: now + 7 * 86400, v: 1 };
-      // Use encodeURIComponent to safely handle Arabic/non-ASCII chars before btoa
+      const exp = rememberMe ? now + 7 * 86400 : now + 86400;
+      const payload = { ...account, iat: now, exp, v: 1 };
       const headerB64 = btoa(unescape(encodeURIComponent(JSON.stringify({ alg: 'HS256', typ: 'JWT' })))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
       const payloadB64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
       const token = `${headerB64}.${payloadB64}.client_session`;
-      document.cookie = `masar_session=${token}; path=/; max-age=604800; SameSite=Lax`;
+
+      if (rememberMe) {
+        document.cookie = `masar_session=${token}; path=/; max-age=604800; SameSite=Lax`;
+      } else {
+        // Session Cookie — automatically deleted when the browser is closed!
+        document.cookie = `masar_session=${token}; path=/; SameSite=Lax`;
+      }
     } catch {}
   }
 }
@@ -231,7 +254,7 @@ export function getSession() {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = localStorage.getItem(KEYS.session);
+    const raw = sessionStorage.getItem(KEYS.session) || localStorage.getItem(KEYS.session);
     return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>) : null;
   } catch {
     return null;
@@ -239,11 +262,19 @@ export function getSession() {
 }
 
 export function clearSession() {
-  localStorage.removeItem(KEYS.session);
-  localStorage.removeItem('masar-user');
-  localStorage.removeItem('masar_logged_in');
-  localStorage.removeItem('user_role');
-  localStorage.removeItem('user_name');
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(KEYS.session);
+    localStorage.removeItem('masar-user');
+    localStorage.removeItem('masar_logged_in');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_name');
+    sessionStorage.removeItem(KEYS.session);
+    sessionStorage.removeItem('masar-user');
+    sessionStorage.removeItem('masar_logged_in');
+    sessionStorage.removeItem('user_role');
+    sessionStorage.removeItem('user_name');
+    document.cookie = `masar_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  }
 }
 
 export function getStudents() {
