@@ -42,9 +42,23 @@ import {
 //   masarplatform.org/*, *.masarplatform.org/*
 // and limit to the APIs actually used:
 //   Identity Toolkit, Cloud Firestore, Firebase Installations, reCAPTCHA Enterprise
+function getFirebaseAuthDomain() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'masarplatform.org' || host === 'www.masarplatform.org') {
+      return host;
+    }
+  }
+
+  const configured = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  if (configured) return configured;
+
+  return "masar-platform-8e642.firebaseapp.com";
+}
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAP2z3lctzFGPQfRKNEKc_Sv-JOG-m0_Vk",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "masar-platform-8e642.firebaseapp.com",
+  authDomain: getFirebaseAuthDomain(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "masar-platform-8e642",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "masar-platform-8e642.firebasestorage.app",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "813912614592",
