@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ClipboardCheck, Download, FileText, Gauge, Layers3, Route, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import SimpleSpellingWorkbook from '@/components/SimpleSpellingWorkbook';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
 import { getSession } from '@/lib/localDb';
 
@@ -93,13 +94,7 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
                     </a>
                   </div>
                 </div>
-                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <iframe
-                    title="مذكرة التهجي البسيط"
-                    src="/resources/simple-spelling-iop.pdf#view=FitH"
-                    className="h-[78svh] min-h-[620px] w-full"
-                  />
-                </div>
+                <SimpleSpellingWorkbook />
               </div>
             </section>
           )}
