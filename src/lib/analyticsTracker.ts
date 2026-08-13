@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import {
   collection,
   addDoc,
@@ -88,6 +88,10 @@ export interface AnalyticsSummary {
 }
 
 const LOCAL_ANALYTICS_KEY = 'masar.analytics.v1';
+
+function hasCloudAuthSession() {
+  return typeof window !== 'undefined' && Boolean(auth.currentUser);
+}
 
 /* ────────────────────────────────────────────────
    HELPERS & SEED EVENTS
@@ -187,6 +191,7 @@ export async function trackEvent(
     };
 
     saveLocalEvent(event);
+    if (!hasCloudAuthSession()) return;
     await addDoc(collection(db, 'platform_analytics'), event);
   } catch (e) {
     console.warn('Analytics track failed:', e);
@@ -228,6 +233,12 @@ export function subscribeToRecentEvents(
   // Cloud listener
   let unsubCloud = () => {};
   try {
+    if (!hasCloudAuthSession()) return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('masar_analytics_event', handleLocalUpdate);
+      }
+    };
+
     const q = query(
       collection(db, 'platform_analytics'),
       orderBy('createdAt', 'desc'),
@@ -266,6 +277,7 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
 
   let cloudEvents: AnalyticsEvent[] = [];
   try {
+    if (!hasCloudAuthSession()) throw new Error('cloud analytics unavailable before Firebase Auth');
     const fetchPromise = getDocs(
       query(collection(db, 'platform_analytics'), orderBy('createdAt', 'desc'), limit(1000))
     );
@@ -348,6 +360,7 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
 ──────────────────────────────────────────────── */
 export async function getPlatformConfig(): Promise<PlatformConfig> {
   try {
+    if (!hasCloudAuthSession()) return DEFAULT_CONFIG;
     const snap = await getDoc(doc(db, 'platform_config', 'main'));
     if (snap.exists()) return snap.data() as PlatformConfig;
     return DEFAULT_CONFIG;
@@ -357,6 +370,7 @@ export async function getPlatformConfig(): Promise<PlatformConfig> {
 }
 
 export async function savePlatformConfig(config: Partial<PlatformConfig>) {
+  if (!hasCloudAuthSession()) return;
   await setDoc(doc(db, 'platform_config', 'main'), {
     ...DEFAULT_CONFIG,
     ...config,
@@ -365,6 +379,11 @@ export async function savePlatformConfig(config: Partial<PlatformConfig>) {
 }
 
 export function subscribeToPlatformConfig(cb: (cfg: PlatformConfig) => void): () => void {
+  if (!hasCloudAuthSession()) {
+    cb(DEFAULT_CONFIG);
+    return () => {};
+  }
+
   return onSnapshot(doc(db, 'platform_config', 'main'), (snap) => {
     if (snap.exists()) cb(snap.data() as PlatformConfig);
     else cb(DEFAULT_CONFIG);

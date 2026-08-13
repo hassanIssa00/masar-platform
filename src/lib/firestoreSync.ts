@@ -8,7 +8,7 @@ import {
   deleteDoc,
   onSnapshot,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import { isDataCleared } from './localDb';
 import type {
   AccountRecord,
@@ -32,18 +32,8 @@ const KEYS = {
   calendarSessions: 'masar.calendar_sessions.v1',
 };
 
-function hasLocalSession() {
-  if (typeof window === 'undefined') return false;
-  try {
-    return Boolean(
-      sessionStorage.getItem('masar.session.v1') ||
-        localStorage.getItem('masar.session.v1') ||
-        sessionStorage.getItem('masar_logged_in') ||
-        localStorage.getItem('masar_logged_in'),
-    );
-  } catch {
-    return false;
-  }
+function hasCloudAuthSession() {
+  return typeof window !== 'undefined' && Boolean(auth.currentUser);
 }
 
 function writeLocal<T>(key: string, data: T[]) {
@@ -57,6 +47,7 @@ function writeLocal<T>(key: string, data: T[]) {
 
 // Write helper to Firestore
 export async function syncDocToCloud(collectionName: string, docId: string, data: any) {
+  if (!hasCloudAuthSession()) return;
   try {
     await setDoc(doc(db, collectionName, docId), data, { merge: true });
   } catch (err) {
@@ -66,6 +57,7 @@ export async function syncDocToCloud(collectionName: string, docId: string, data
 
 // Delete helper from Firestore
 export async function deleteDocFromCloud(collectionName: string, docId: string) {
+  if (!hasCloudAuthSession()) return;
   try {
     await deleteDoc(doc(db, collectionName, docId));
   } catch (err) {
@@ -76,7 +68,7 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
 // Initial full sync from Firestore Cloud to LocalStorage
 export async function pullCloudDataToLocal() {
   if (typeof window === 'undefined') return;
-  if (!hasLocalSession()) return;
+  if (!hasCloudAuthSession()) return;
 
   // If the admin cleared data, NEVER push stale local records back to cloud.
   const dataWasCleared = isDataCleared();
@@ -136,7 +128,7 @@ export async function pullCloudDataToLocal() {
 // Realtime listeners — always mirrors cloud state into localStorage
 export function subscribeToCloudUpdates(onUpdate?: () => void) {
   if (typeof window === 'undefined') return () => {};
-  if (!hasLocalSession()) return () => {};
+  if (!hasCloudAuthSession()) return () => {};
 
   const unsubscribes: (() => void)[] = [];
 
