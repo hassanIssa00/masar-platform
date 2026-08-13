@@ -98,7 +98,7 @@ const CSP_DIRECTIVES = [
   ].join(" "),
 
   // Frames: reCAPTCHA v3 uses google.com iframe; Firebase Auth popup uses firebaseapp.com iframe
-  "frame-src https://www.google.com https://*.firebaseapp.com https://accounts.google.com",
+  "frame-src 'self' https://www.google.com https://*.firebaseapp.com https://accounts.google.com",
 
   // Disallow embedding this app in any external frame
   "frame-ancestors 'none'",

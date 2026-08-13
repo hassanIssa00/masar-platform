@@ -4,6 +4,12 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "regions": ["fra1"],
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://masar-platform-8e642.firebaseapp.com/__/auth/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
