@@ -32,6 +32,20 @@ const KEYS = {
   calendarSessions: 'masar.calendar_sessions.v1',
 };
 
+function hasLocalSession() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return Boolean(
+      sessionStorage.getItem('masar.session.v1') ||
+        localStorage.getItem('masar.session.v1') ||
+        sessionStorage.getItem('masar_logged_in') ||
+        localStorage.getItem('masar_logged_in'),
+    );
+  } catch {
+    return false;
+  }
+}
+
 function writeLocal<T>(key: string, data: T[]) {
   if (typeof window === 'undefined') return;
   try {
@@ -62,6 +76,7 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
 // Initial full sync from Firestore Cloud to LocalStorage
 export async function pullCloudDataToLocal() {
   if (typeof window === 'undefined') return;
+  if (!hasLocalSession()) return;
 
   // If the admin cleared data, NEVER push stale local records back to cloud.
   const dataWasCleared = isDataCleared();
@@ -121,6 +136,7 @@ export async function pullCloudDataToLocal() {
 // Realtime listeners — always mirrors cloud state into localStorage
 export function subscribeToCloudUpdates(onUpdate?: () => void) {
   if (typeof window === 'undefined') return () => {};
+  if (!hasLocalSession()) return () => {};
 
   const unsubscribes: (() => void)[] = [];
 

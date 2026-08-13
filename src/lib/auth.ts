@@ -77,6 +77,7 @@ export async function handleGoogleRedirectResult(
     console.error('Google Redirect Result Error:', err);
     const authErr = err as AuthError;
     const pending = consumeOAuthPending(preferredRole, schoolBranch);
+    if (!pending.provider) return null;
     const providerLabel = pending.provider === 'apple' ? 'Apple' : pending.provider === 'microsoft' ? 'Microsoft' : 'Google';
     return { ok: false, reason: oauthErrorMessage(authErr, providerLabel) };
   }
@@ -88,6 +89,12 @@ export async function signInWithGoogle(
   schoolBranch?: string,
 ): Promise<GoogleSignInResult> {
   try {
+    if (shouldUseRedirectFirst()) {
+      saveOAuthPending('google', preferredRole, schoolBranch);
+      await signInWithRedirect(auth, googleProvider);
+      return { ok: false, reason: '' };
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
 
     const user = result.user;
@@ -216,6 +223,12 @@ function currentHostLabel() {
   return window.location.hostname || 'الدومين الحالي';
 }
 
+function shouldUseRedirectFirst() {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'masarplatform.org' || host === 'www.masarplatform.org';
+}
+
 function shouldUseRedirectFallback(code?: string) {
   return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported' || code === 'auth/internal-error';
 }
@@ -295,6 +308,10 @@ function oauthErrorMessage(authErr: AuthError, providerLabel: string) {
   }
 
   if (authErr.code === 'auth/internal-error') {
+    if (providerLabel === 'Apple') {
+      return 'تسجيل الدخول بحساب Apple يحتاج استكمال إعداد Apple Developer داخل Firebase: Services ID و Apple Team ID و Key ID و Private key، ثم إضافة Callback URL في Apple Developer Console.';
+    }
+
     return `Firebase رفض تسجيل الدخول عبر ${providerLabel}. راجع تفعيل المزود وإضافة الدومين (${currentHostLabel()}) في Authorized domains.`;
   }
 
@@ -526,6 +543,10 @@ export async function signInWithApple(
     return { ok: true, account, isNew: true };
   } catch (err) {
     const authErr = err as AuthError;
+    if (authErr.code === 'auth/internal-error') {
+      return { ok: false, reason: oauthErrorMessage(authErr, 'Apple') };
+    }
+
     if (shouldUseRedirectFallback(authErr.code)) {
       const { appleProvider } = await import('@/lib/firebase');
       saveOAuthPending('apple', preferredRole, schoolBranch);
