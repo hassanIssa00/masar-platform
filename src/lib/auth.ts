@@ -224,13 +224,11 @@ function currentHostLabel() {
 }
 
 function shouldUseRedirectFirst() {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return host === 'masarplatform.org' || host === 'www.masarplatform.org';
+  return false;
 }
 
 function shouldUseRedirectFallback(code?: string) {
-  return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported' || code === 'auth/internal-error';
+  return code === 'auth/popup-blocked' || code === 'auth/web-storage-unsupported';
 }
 
 function saveOAuthPending(
