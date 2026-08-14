@@ -804,6 +804,8 @@ export default function IkhlasJeddahPage() {
         {activeTab === 'attendance' && (
           <AttendanceTabManager
             students={CLASS_STUDENTS}
+            schedule={schedule}
+            currentPeriod={currentPeriod}
             onSaveAttendance={async (attMap) => {
               try {
                 await fetch(`${API}/school/attendance`, {
@@ -812,11 +814,14 @@ export default function IkhlasJeddahPage() {
                   body: JSON.stringify({
                     branch: BRANCH,
                     date: new Date().toISOString().split('T')[0],
-                    records: Object.entries(attMap).map(([sid, rec]) => ({
-                      studentId: sid,
-                      status: (rec as any).status,
-                      score: (rec as any).score,
-                    }))
+                    records: Object.entries(attMap).flatMap(([sid, periods]) =>
+                      Object.entries(periods as Record<number, any>).map(([pNum, rec]) => ({
+                        studentId: sid,
+                        periodNumber: Number(pNum),
+                        status: rec.status,
+                        score: rec.score,
+                      }))
+                    ),
                   })
                 });
               } catch (e) {
