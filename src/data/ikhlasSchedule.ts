@@ -69,6 +69,60 @@ export const SUBJECT_COLORS: Record<string, string> = {
   'فسحة 🌤️':         'bg-yellow-300/30 text-yellow-700 border-yellow-300',
 };
 
+export const DAY_MAP_AR_TO_NUM: Record<string, number> = {
+  'الأحد': 0,
+  'الاثنين': 1,
+  'الإثنين': 1,
+  'الثلاثاء': 2,
+  'الأربعاء': 3,
+  'الخميس': 4,
+};
+
+export const DAY_MAP_NUM_TO_AR: Record<number, string> = {
+  0: 'الأحد',
+  1: 'الاثنين',
+  2: 'الثلاثاء',
+  3: 'الأربعاء',
+  4: 'الخميس',
+};
+
+export function parseSlotsToPeriods(slots: any[]): Period[] {
+  if (!Array.isArray(slots) || slots.length === 0) return DEFAULT_SCHEDULE;
+  
+  return slots.map((s) => {
+    let dayNum = 0;
+    if (typeof s.dayOfWeek === 'number') {
+      dayNum = s.dayOfWeek;
+    } else if (typeof s.day === 'string' && DAY_MAP_AR_TO_NUM[s.day.trim()] !== undefined) {
+      dayNum = DAY_MAP_AR_TO_NUM[s.day.trim()];
+    }
+
+    return {
+      dayOfWeek: dayNum,
+      periodNumber: Number(s.period || s.periodNumber || 1),
+      subjectName: String(s.subject || s.subjectName || 'حصة دراسية').trim(),
+      startTime: String(s.startTime || '07:30').trim(),
+      endTime: String(s.endTime || '08:10').trim(),
+      teacherName: s.teacher || s.teacherName,
+    };
+  });
+}
+
+export function getSavedSchedule(): Period[] {
+  if (typeof window === 'undefined') return DEFAULT_SCHEDULE;
+  try {
+    const raw = localStorage.getItem('masar_smart_schedule_v1');
+    if (!raw) return DEFAULT_SCHEDULE;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
+      return parseSlotsToPeriods(parsed.slots);
+    }
+    return DEFAULT_SCHEDULE;
+  } catch {
+    return DEFAULT_SCHEDULE;
+  }
+}
+
 export function getTodayPeriods(schedule: Period[]): Period[] {
   const jsDay = new Date().getDay(); // 0=Sun…6=Sat
   if (jsDay === 5 || jsDay === 6) return []; // جمعة وسبت إجازة

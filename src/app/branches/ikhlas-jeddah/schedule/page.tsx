@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
-  type Period, getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal
+  getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal,
+  getSavedSchedule, parseSlotsToPeriods,
+  type Period,
 } from '@/data/ikhlasSchedule';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -29,14 +31,15 @@ const DEFAULT_SUBJECTS = [
 
 export default function IkhlasScheduleManagerPage() {
   const [selectedDay, setSelectedDay] = useState<number>(0); // 0=Sunday
-  const [schedule, setSchedule] = useState<Period[]>(DEFAULT_SCHEDULE);
+  const [schedule, setSchedule] = useState<Period[]>(() => getSavedSchedule());
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activePeriod, setActivePeriod] = useState<Period | null>(null);
   const [minsDismissal, setMinsDismissal] = useState<number>(-1);
 
-  // Fetch custom schedule from API if exists
+  // Fetch custom schedule from API or local storage if exists
   useEffect(() => {
+    setSchedule(getSavedSchedule());
     async function loadSchedule() {
       try {
         const r = await fetch(`${API}/school/schedule?branch=${BRANCH}`, { headers: authHeaders() });
@@ -47,7 +50,7 @@ export default function IkhlasScheduleManagerPage() {
           }
         }
       } catch {
-        // Fallback to default schedule
+        // Fallback to saved schedule
       }
     }
     loadSchedule();

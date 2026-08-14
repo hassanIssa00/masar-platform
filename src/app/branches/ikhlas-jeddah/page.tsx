@@ -13,9 +13,12 @@ import {
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
   getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal,
+  getSavedSchedule, parseSlotsToPeriods,
   type Period,
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/localDb';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import MasarAIAgent from '@/components/MasarAIAgent';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
@@ -53,10 +56,46 @@ export default function IkhlasJeddahPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [schedule] = useState<Period[]>(DEFAULT_SCHEDULE);
+  const [schedule, setSchedule] = useState<Period[]>(() => getSavedSchedule());
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
   const [todayPeriods, setTodayPeriods] = useState<Period[]>([]);
+
+  // ── Sync Schedule from Local Storage, Custom Events, & Firestore Cloud ──
+  useEffect(() => {
+    const refreshSchedule = () => {
+      setSchedule(getSavedSchedule());
+    };
+
+    refreshSchedule();
+    window.addEventListener('masar_schedule_updated', refreshSchedule);
+    window.addEventListener('storage', refreshSchedule);
+
+    let unsub = () => {};
+    try {
+      unsub = onSnapshot(collection(db, 'smart_schedules'), (snap) => {
+        const docSnap = snap.docs.find(d => d.id === 'IKHLAS_JEDDAH_SCHEDULE');
+        if (docSnap) {
+          const data = docSnap.data() as any;
+          if (data && Array.isArray(data.slots) && data.slots.length > 0) {
+            const periods = parseSlotsToPeriods(data.slots);
+            setSchedule(periods);
+            try {
+              localStorage.setItem('masar_smart_schedule_v1', JSON.stringify(data));
+            } catch { /* noop */ }
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Firestore schedule sync note:', e);
+    }
+
+    return () => {
+      window.removeEventListener('masar_schedule_updated', refreshSchedule);
+      window.removeEventListener('storage', refreshSchedule);
+      unsub();
+    };
+  }, []);
 
   /* ── Homework ── */
   const [homeworkList, setHomeworkList] = useState<any[]>([]);

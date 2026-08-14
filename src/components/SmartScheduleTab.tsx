@@ -74,6 +74,9 @@ function loadSchedule(): ParsedSchedule | null {
 
 function saveScheduleStore(s: ParsedSchedule) {
   try { localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(s)); } catch { /* noop */ }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('masar_schedule_updated'));
+  }
   // ☁️ Sync schedule to Server DB Cloud
   syncDocToCloud(CLOUD_SCHEDULE_COLLECTION, 'IKHLAS_JEDDAH_SCHEDULE', s);
 

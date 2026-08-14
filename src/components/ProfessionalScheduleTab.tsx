@@ -93,25 +93,68 @@ const DEFAULT_SUBJECT_CONFIG = {
   badge: 'bg-slate-200 text-slate-700',
 };
 
-const PERIOD_TIMES = [
-  { num: 1, start: '07:30', end: '08:10', label: 'الحصة الأولى' },
-  { num: 2, start: '08:10', end: '08:50', label: 'الحصة الثانية' },
-  { num: 3, start: '08:50', end: '09:30', label: 'الحصة الثالثة' },
-  { num: 4, start: '09:30', end: '09:50', label: 'الفسحة المدرسية 🌤️', isBreak: true },
-  { num: 5, start: '09:50', end: '10:30', label: 'الحصة الرابعة' },
-  { num: 6, start: '10:30', end: '11:10', label: 'الحصة الخامسة' },
-  { num: 7, start: '11:10', end: '11:50', label: 'الحصة السادسة' },
-];
+const PERIOD_LABELS: Record<number, string> = {
+  1: 'الحصة الأولى',
+  2: 'الحصة الثانية',
+  3: 'الحصة الثالثة',
+  4: 'الحصة الرابعة',
+  5: 'الحصة الخامسة',
+  6: 'الحصة السادسة',
+  7: 'الحصة السابعة',
+  8: 'الحصة الثامنة',
+};
 
 export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsUntilDismissal, jsDay }: Props) {
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'all'>('all');
 
+  // Dynamically extract period slots & timings from the active schedule
+  const dynamicPeriodSlots = (function() {
+    const numSet = new Set<number>();
+    schedule.forEach((p) => numSet.add(p.periodNumber));
+    const sortedNums = Array.from(numSet).sort((a, b) => a - b);
+    const nums = sortedNums.length > 0 ? sortedNums : [1, 2, 3, 4, 5, 6, 7];
+
+    const hasExplicitBreak = schedule.some((p) => p.subjectName.includes('فسحة') || p.subjectName.includes('استراحة'));
+    const slots: { num: number; start: string; end: string; label: string; isBreak?: boolean }[] = [];
+
+    nums.forEach((num, idx) => {
+      const sample = schedule.find((p) => p.periodNumber === num);
+      const isBreak = sample?.subjectName.includes('فسحة') || sample?.subjectName.includes('استراحة');
+
+      // If no explicit break exists in schedule and we have 6+ periods, add recess row after period 3
+      if (!hasExplicitBreak && idx === 3 && nums.length >= 6) {
+        slots.push({
+          num: 999,
+          start: '09:30',
+          end: '09:50',
+          label: 'الفسحة المدرسية 🌤️',
+          isBreak: true,
+        });
+      }
+
+      slots.push({
+        num,
+        start: sample?.startTime || (num === 1 ? '07:30' : '08:10'),
+        end: sample?.endTime || (num === 1 ? '08:10' : '08:50'),
+        label: isBreak ? 'الفسحة المدرسية 🌤️' : (PERIOD_LABELS[num] || `الحصة ${num}`),
+        isBreak,
+      });
+    });
+
+    return slots;
+  })();
+
+  const totalPeriodsCount = schedule.length || 30;
+  const dailyPeriodsCount = Math.round(totalPeriodsCount / 5) || 6;
+
   const handlePrintSchedule = () => {
     const win = window.open('', '_blank', 'width=1200,height=900');
     if (!win) return;
 
-    const tableRowsHtml = PERIOD_TIMES.map(slot => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+    const tableRowsHtml = dynamicPeriodSlots.map(slot => {
       if (slot.isBreak) {
         return `
           <tr style="background:#fef3c7;border-top:2px solid #f59e0b;border-bottom:2px solid #f59e0b;">
@@ -207,9 +250,11 @@ export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsU
     </div>
 
     <div class="stamp-box">
-      <div style="font-size:10px;color:#047857;font-weight:900;">التوقيع والختم المعتمد ✍️</div>
-      <div style="font-size:13px;font-weight:900;color:#06392c;margin-top:2px;">د. إسماعيل عيسى</div>
+      <div style="font-size:13px;font-weight:900;color:#06392c;">د. إسماعيل عيسى</div>
       <div style="font-size:9.5px;color:#047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+      <div style="margin-top:4px;">
+        <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:38px;object-fit:contain;mix-blend-mode:multiply;margin:0 auto;display:block;"/>
+      </div>
     </div>
   </div>
 
@@ -290,8 +335,8 @@ export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsU
                 <BookOpen size={12} className="text-amber-400" /> إجمالي الحصص
               </span>
               <div className="mt-1.5">
-                <span className="text-sm font-black text-white font-mono">35 حصة / أسبوع</span>
-                <span className="text-[10px] font-bold text-emerald-300 block">5 حصص يومياً + الفسحة</span>
+                <span className="text-sm font-black text-white font-mono">{totalPeriodsCount} حصة / أسبوع</span>
+                <span className="text-[10px] font-bold text-emerald-300 block">{dailyPeriodsCount} حصص يومياً</span>
               </div>
             </div>
 
@@ -408,7 +453,7 @@ export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsU
 
               {/* TABLE BODY: PERIOD ROWS */}
               <tbody className="divide-y divide-slate-200 text-xs">
-                {PERIOD_TIMES.map((periodSlot) => {
+                {dynamicPeriodSlots.map((periodSlot) => {
 
                   {/* SPECIAL ROW: RECESS / BREAK TIME */}
                   if (periodSlot.isBreak) {
