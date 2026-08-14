@@ -10,6 +10,8 @@ interface Student {
   id: string;
   name: string;
   phone?: string;
+  photoUrl?: string;
+  grade?: string;
 }
 
 interface Props {
@@ -35,6 +37,15 @@ const MOCK_STUDENT_METRICS: Record<string, {
     recommendation: 'يُنصح بمواصلة تشجيعه على القراءة الإثرائية اليومية لمدة 15 دقيقة في المنزل للحفاظ على التميز اللغوي.',
   }
 };
+
+function stableReportNumber(studentId: string) {
+  const seed = `${studentId}-${new Date().toISOString().slice(0, 10)}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 90000;
+  }
+  return `REF-REP-2026-${String(hash + 10000).slice(0, 5)}`;
+}
 
 export default function StudentReportsManagerTab({ students, homeworkCount, photosCount }: Props) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -85,9 +96,14 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
   const handlePrintStudentReport = (student: Student) => {
     const metrics = getStudentMetrics(student.id);
-    const refNum = `REF-REP-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const refNum = stableReportNumber(student.id);
     const issuedDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const studentPhoto = student.photoUrl?.trim();
+    const studentGrade = student.grade || 'الصف الأول / الفصل 1';
+    const studentAvatarHTML = studentPhoto
+      ? `<img src="${studentPhoto}" alt="صورة الطالب ${student.name}" style="width:96px;height:96px;border-radius:24px;object-fit:cover;border:3px solid rgba(255,255,255,0.78);box-shadow:0 16px 32px rgba(2,6,23,0.18);" />`
+      : `<div style="width:96px;height:96px;border-radius:24px;background:#f8fafc;border:3px solid rgba(255,255,255,0.78);display:flex;align-items:center;justify-content:center;color:#06392c;font-size:38px;font-weight:900;box-shadow:0 16px 32px rgba(2,6,23,0.18);">${student.name.slice(0, 1)}</div>`;
     const win = window.open('', '_blank', 'width=1100,height=900');
     if (!win) return;
 
@@ -97,7 +113,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
         <!-- RIGHT: Logos -->
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:50px;height:50px;border-radius:50%;border:2px solid #1e3a5f;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f0fdf4;flex-shrink:0;">
+          <div style="width:50px;height:50px;border-radius:16px;border:2px solid #06392c;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f7faf8;flex-shrink:0;">
             <img src="${origin}/brand/masar-logo.webp" alt="مسار"
               style="width:42px;height:42px;object-fit:contain;"
               onerror="this.outerHTML='<span style=\'font-size:16px;font-weight:900;color:#06392c;\'>مـ</span>';" />
@@ -115,22 +131,22 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         </div>
 
         <!-- LEFT: Ref Badge -->
-        <div style="background:#1e3a5f;color:#fff;padding:7px 14px;border-radius:10px;text-align:center;flex-shrink:0;">
-          <div style="font-size:7.5px;font-weight:700;color:#93c5fd;font-family:'Cairo',sans-serif;">رقم الملف</div>
+        <div style="background:#06392c;color:#fff;padding:7px 14px;border-radius:10px;text-align:center;flex-shrink:0;border:1px solid #d6a83f;">
+          <div style="font-size:7.5px;font-weight:700;color:#d9eadf;font-family:'Cairo',sans-serif;">رقم الملف</div>
           <div style="font-size:11px;font-weight:900;font-family:monospace;margin:1px 0;">${refNum.replace('REF-REP-2026-', 'MASAR-')}</div>
-          <div style="font-size:7px;color:#93c5fd;font-family:'Cairo',sans-serif;">${issuedDate}</div>
+          <div style="font-size:7px;color:#d9eadf;font-family:'Cairo',sans-serif;">${issuedDate}</div>
         </div>
       </div>
 
       <!-- ══ DARK NAVY BANNER ══ -->
-      <div style="background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:14px;border-radius:8px;">
+      <div style="background:linear-gradient(135deg,#06392c 0%,#0a4a39 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:14px;border-radius:8px;border:1px solid rgba(214,168,63,.55);">
         <div>
-          <div style="font-size:7.5px;color:#93c5fd;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL ACADEMIC REPORT • وثيقة أكاديمية رسمية معتمدة</div>
+          <div style="font-size:7.5px;color:#d9eadf;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL MASAR REPORT • وثيقة تعليمية علاجية معتمدة</div>
           <div style="font-size:14px;font-weight:900;color:#fff;font-family:'Cairo',sans-serif;margin-top:2px;">التقرير الأكاديمي والنمائي الشامل</div>
         </div>
-        <div style="text-align:left;color:#93c5fd;font-family:'Cairo',sans-serif;">
+        <div style="text-align:left;color:#d9eadf;font-family:'Cairo',sans-serif;">
           <div style="font-size:9px;font-weight:700;">صفحة ${pageNum} من ${total}</div>
-          <div style="font-size:7.5px;font-family:monospace;margin-top:1px;color:#bfdbfe;">${refNum}</div>
+          <div style="font-size:7.5px;font-family:monospace;margin-top:1px;color:#f3dc9b;">${refNum}</div>
         </div>
       </div>`;
 
@@ -177,25 +193,56 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:#fff;font-family:'Cairo',Arial,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  @page{size:A4 portrait;margin:10mm 12mm;}
-  .page{width:100%;padding:6mm 8mm;page-break-after:always;break-after:page;}
+  body{background:#d7dee7;font-family:'Cairo',Arial,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  @page{size:A4 portrait;margin:0;}
+  .page{
+    width:210mm;
+    min-height:297mm;
+    margin:0 auto 18px auto;
+    padding:18mm 18mm 16mm;
+    position:relative;
+    overflow:hidden;
+    background:#fff;
+    page-break-after:always;
+    break-after:page;
+    box-shadow:0 18px 45px rgba(15,23,42,0.18);
+  }
   .page:last-child{page-break-after:auto;break-after:auto;}
+  .page::before{
+    content:"";
+    position:absolute;
+    inset:8mm;
+    border:1.25mm double #06392c;
+    border-radius:5mm;
+    pointer-events:none;
+  }
+  .page::after{
+    content:"";
+    position:absolute;
+    inset:10.6mm;
+    border:.45mm solid #d6a83f;
+    border-radius:3.5mm;
+    box-shadow:inset 0 0 0 .35mm rgba(6,57,44,.18), inset 0 0 22mm rgba(214,168,63,.055);
+    pointer-events:none;
+  }
+  .page>*{position:relative;z-index:1;}
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+    html,body{margin:0!important;padding:0!important;background:#fff!important;}
+    .page{width:210mm!important;min-height:297mm!important;margin:0!important;box-shadow:none!important;}
     .card{page-break-inside:avoid;break-inside:avoid;}
     table{page-break-inside:avoid;break-inside:avoid;}
   }
-  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 13px;margin-bottom:10px;}
-  .card-green{background:#f0fdf4;border-color:#bbf7d0;}
-  .card-blue{background:#eff6ff;border-color:#bfdbfe;}
-  .card-amber{background:#fffbeb;border-color:#fde68a;}
-  .card-purple{background:#faf5ff;border-color:#e9d5ff;}
+  .card{background:#fff;border:1px solid #dbe3df;border-radius:10px;padding:10px 13px;margin-bottom:10px;}
+  .card-green{background:#f4fbf7;border-color:#bfd6ca;}
+  .card-blue{background:#f7fafc;border-color:#d6e0ea;}
+  .card-amber{background:#fffcf3;border-color:#ead8a6;}
+  .card-purple{background:#fafaf9;border-color:#dfded8;}
   .card-slate{background:#f8fafc;border-color:#e2e8f0;}
   .section-title{font-size:11.5px;font-weight:900;margin-bottom:6px;}
   .row-label{font-size:9.5px;color:#64748b;font-weight:700;margin-bottom:2px;}
   .row-value{font-size:12px;font-weight:900;color:#0f172a;}
-  .badge-green{background:#d1fae5;color:#065f46;font-size:9.5px;font-weight:900;padding:2px 9px;border-radius:20px;display:inline-block;}
+  .badge-green{background:#e7f3ec;color:#06392c;font-size:9.5px;font-weight:900;padding:2px 9px;border-radius:20px;display:inline-block;border:1px solid #bfd6ca;}
   .metric-big{font-size:22px;font-weight:900;font-family:monospace;}
   .metric-label{font-size:9.5px;font-weight:800;margin-top:2px;}
   table{width:100%;border-collapse:collapse;font-size:9.5px;}
@@ -203,7 +250,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   td{padding:5px 9px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#334155;}
   tr:nth-child(even) td{background:#f8fafc;}
   .progress-bar-bg{background:#e2e8f0;border-radius:999px;height:7px;width:100%;overflow:hidden;}
-  .progress-bar-fill{height:7px;border-radius:999px;}
+  .progress-bar-fill{height:7px;border-radius:999px;background:#06392c!important;}
   .divider{height:1px;background:linear-gradient(to left,transparent,#06392c,transparent);margin:10px 0;}
 </style>
 </head>
@@ -214,42 +261,45 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   ${headerHTML(1, 3)}
 
   <!-- Student Identity Banner -->
-  <div style="background:linear-gradient(135deg,#06392c,#0a5c42,#06392c);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;color:#fff;">
-    <div>
-      <div style="font-size:11px;color:#86efac;font-weight:700;">الملف الشخصي والأكاديمي الشامل</div>
+  <div style="background:linear-gradient(135deg,#06392c,#0a4a39,#06392c);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:18px;color:#fff;border:1px solid rgba(214,168,63,.55);">
+    <div style="display:flex;align-items:center;gap:16px;">
+      ${studentAvatarHTML}
+      <div>
+      <div style="font-size:11px;color:#d9eadf;font-weight:700;">الملف الشخصي والأكاديمي الشامل</div>
       <div style="font-size:22px;font-weight:900;margin:4px 0;">${student.name}</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;">
-        <span style="background:rgba(255,255,255,0.15);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">الصف الأول / الفصل 1</span>
+        <span style="background:rgba(255,255,255,0.14);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">${studentGrade}</span>
         <span style="background:rgba(255,255,255,0.15);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">الفصل الدراسي الأول</span>
-        <span style="background:rgba(251,191,36,0.25);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:900;color:#fde68a;">${metrics.overallGrade}</span>
+        <span style="background:rgba(214,168,63,0.22);padding:2px 10px;border-radius:20px;font-size:10px;font-weight:900;color:#f3dc9b;border:1px solid rgba(214,168,63,.35);">${metrics.overallGrade}</span>
+      </div>
       </div>
     </div>
-    <div style="text-align:center;background:rgba(255,255,255,0.1);border-radius:14px;padding:12px 18px;">
-      <div style="font-size:9px;color:#86efac;font-weight:700;">تاريخ الإصدار</div>
+    <div style="text-align:center;background:rgba(255,255,255,0.1);border-radius:14px;padding:12px 18px;border:1px solid rgba(255,255,255,.18);">
+      <div style="font-size:9px;color:#d9eadf;font-weight:700;">تاريخ الإصدار</div>
       <div style="font-size:12px;font-weight:900;">${issuedDate}</div>
-      <div style="font-size:8px;color:#86efac;margin-top:2px;font-family:monospace;">${refNum}</div>
+      <div style="font-size:8px;color:#f3dc9b;margin-top:2px;font-family:monospace;">${refNum}</div>
     </div>
   </div>
 
   <!-- 3 Key Metrics -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
     <div class="card card-green" style="text-align:center;">
-      <div class="metric-big" style="color:#065f46;">${metrics.attendanceRate}%</div>
-      <div class="metric-label" style="color:#047857;">نسبة الحضور والانضباط</div>
+      <div class="metric-big" style="color:#06392c;">${metrics.attendanceRate}%</div>
+      <div class="metric-label" style="color:#315244;">نسبة الحضور والانضباط</div>
       <div class="progress-bar-bg" style="margin-top:8px;">
         <div class="progress-bar-fill" style="width:${metrics.attendanceRate}%;background:#10b981;"></div>
       </div>
     </div>
     <div class="card card-blue" style="text-align:center;">
-      <div class="metric-big" style="color:#1e40af;">${metrics.homeworkRate}%</div>
-      <div class="metric-label" style="color:#1d4ed8;">إنجاز الواجبات الإلكترونية</div>
+      <div class="metric-big" style="color:#06392c;">${metrics.homeworkRate}%</div>
+      <div class="metric-label" style="color:#315244;">إنجاز الواجبات الإلكترونية</div>
       <div class="progress-bar-bg" style="margin-top:8px;">
         <div class="progress-bar-fill" style="width:${metrics.homeworkRate}%;background:#3b82f6;"></div>
       </div>
     </div>
     <div class="card card-purple" style="text-align:center;">
-      <div class="metric-big" style="color:#6d28d9;">${metrics.behaviorScore}%</div>
-      <div class="metric-label" style="color:#7e22ce;">الأداء والسلوك الصفي</div>
+      <div class="metric-big" style="color:#06392c;">${metrics.behaviorScore}%</div>
+      <div class="metric-label" style="color:#315244;">الأداء والسلوك الصفي</div>
       <div class="progress-bar-bg" style="margin-top:8px;">
         <div class="progress-bar-fill" style="width:${metrics.behaviorScore}%;background:#8b5cf6;"></div>
       </div>

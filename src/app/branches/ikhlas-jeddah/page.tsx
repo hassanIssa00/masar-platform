@@ -79,13 +79,13 @@ export default function IkhlasJeddahPage() {
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
   const [todayPeriods, setTodayPeriods] = useState<Period[]>([]);
-  const [classStudents, setClassStudents] = useState<{ id: string; name: string; phone?: string }[]>(() => {
-    return getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone }));
+  const [classStudents, setClassStudents] = useState<{ id: string; name: string; phone?: string; photoUrl?: string; grade?: string }[]>(() => {
+    return getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone, photoUrl: s.photoUrl, grade: s.grade }));
   });
 
   useEffect(() => {
     const syncStudents = () => {
-      setClassStudents(getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone })));
+      setClassStudents(getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone, photoUrl: s.photoUrl, grade: s.grade })));
     };
     window.addEventListener('storage', syncStudents);
     return () => window.removeEventListener('storage', syncStudents);

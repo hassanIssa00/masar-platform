@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## MASAR Platform Notes
+
+Production domain: `https://masarplatform.org`
+
+Important operational docs:
+
+- [Firebase Social Auth Setup](./FIREBASE_SOCIAL_AUTH_SETUP.md): Google/Apple sign-in troubleshooting, the deployed CSP fix, and the required Apple Developer setup steps.
+
 ## Getting Started
 
 First, run the development server:

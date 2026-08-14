@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { Printer, X, Award, FileCheck } from 'lucide-react';
-import type { ReportRecord } from '@/lib/localDb';
+import { getStudents, type ReportRecord } from '@/lib/localDb';
 
 function getTodayHijri(): string {
   try {
@@ -33,11 +33,16 @@ export default function PrintableReportModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePrint = () => {
+  function handlePrint() {
     const reportScore = typeof report.score === 'number' ? report.score : 0;
     const domainsList = Array.isArray(report.domains) ? report.domains : [];
     const recommendationsList = Array.isArray(report.recommendations) ? report.recommendations : [];
     const answersList = Array.isArray(report.answers) ? report.answers : [];
+    const student = getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName);
+    const studentPhoto = student?.photoUrl?.trim();
+    const studentPhotoHTML = studentPhoto
+      ? `<img src="${studentPhoto}" alt="صورة الطالب ${report.studentName || ''}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:2px solid #d6a83f;box-shadow:0 10px 24px rgba(15,23,42,.14);" />`
+      : `<div style="width:74px;height:74px;border-radius:18px;background:#f8fafc;border:2px solid #d6a83f;display:flex;align-items:center;justify-content:center;color:#06392c;font-size:28px;font-weight:900;">${(report.studentName || 'م').slice(0, 1)}</div>`;
 
     const homeRecommendations = recommendationsList.slice(0, 3);
     const schoolRecommendations =
@@ -234,9 +239,12 @@ export default function PrintableReportModal({
           <div class="serial">${fileNumber}</div>
         </div>
 
-        <div class="banner">
-          <h1>تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
-          <p>مدرسة الإخلاص بجدة · قسم التربية الخاصة والتأهيل النمائي</p>
+        <div class="banner" style="display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:right;">
+          <div style="flex:1;">
+            <h1>تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
+            <p>مدرسة الإخلاص بجدة · قسم التربية الخاصة والتأهيل النمائي</p>
+          </div>
+          ${studentPhotoHTML}
         </div>
 
         <div class="info-grid">
@@ -261,7 +269,7 @@ export default function PrintableReportModal({
         </div>
 
         <div style="background: #ffffff; border: 1.5px solid #06392c; border-radius: 10px; padding: 10px 14px; margin-top: 10px;">
-          <div style="font-size: 11px; font-weight: 900; color: #06392c; margin-bottom: 4px;">القرار الإكلينيكي المعتمد:</div>
+          <div style="font-size: 11px; font-weight: 900; color: #06392c; margin-bottom: 4px;">قرار التأهيل التعليمي المعتمد:</div>
           <div style="font-size: 10.5px; font-weight: 700; color: #1e293b; line-height: 1.6;">
             بدء تطبيق خطة التدخل العلاجي الخاصة بـ <strong>${report.program || 'برنامج التأهيل الشامل'}</strong> وتوثيق نسبة التطور بشكل شهري.
           </div>
@@ -417,7 +425,7 @@ export default function PrintableReportModal({
     if (!win) return;
     win.document.write(html);
     win.document.close();
-  };
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" dir="rtl">

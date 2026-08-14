@@ -5,6 +5,15 @@ import { useState, useRef, useEffect } from 'react';
 import { Printer, X, ShieldCheck, Pencil, Check } from 'lucide-react';
 import BrandMark from './BrandMark';
 
+function stableCertificateSuffix(...parts: string[]) {
+  const seed = parts.filter(Boolean).join('|') || 'masar-certificate';
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 33 + seed.charCodeAt(i)) % 90000;
+  }
+  return String(hash + 10000).slice(0, 5);
+}
+
 // ── Load signature image as transparent PNG ─────────────────────────────────
 async function loadTransparentSignature(src: string): Promise<string> {
   return new Promise((resolve) => {
@@ -296,7 +305,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   const [sigB64, setSigB64] = useState('');
 
   const isAr = lang === 'ar';
-  const certNo = data.certNumber || `NSR-CERT-2026-${Math.random().toString().slice(2, 7)}`;
+  const certNo = data.certNumber || `NSR-CERT-2026-${stableCertificateSuffix(data.studentName, data.programTitle, data.completionDate)}`;
   const displayName = isAr ? data.studentName : (nameEn || data.studentName);
 
   const certRef = useRef<HTMLDivElement>(null);
@@ -311,7 +320,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   useEffect(() => {
     const style = document.createElement('style');
     style.id = 'masar-certificate-print-page';
-    style.textContent = '@media print { @page { size: A4 landscape; margin: 0; } }';
+    style.textContent = '@media print { @page { size: 297mm 210mm; margin: 0; } }';
     document.head.appendChild(style);
     return () => style.remove();
   }, []);
@@ -351,7 +360,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
   <title>${isAr ? 'طباعة الشهادة الرسمية' : 'Print Certificate'}</title>
   ${styles}
   <style>
-    @page { size: A4 landscape; margin: 0; }
+    @page { size: 297mm 210mm; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
       width: 297mm;
@@ -365,16 +374,16 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     .certificate-print-shell {
       width: 297mm;
       height: 210mm;
-      padding: 8mm;
+      padding: 6mm;
       background: #ffffff;
     }
     #printable-certificate {
-      width: 281mm !important;
-      height: 194mm !important;
+      width: 285mm !important;
+      height: 198mm !important;
       min-height: 0 !important;
       margin: 0 !important;
       border: 1.2mm double #06392c !important;
-      border-radius: 4mm !important;
+      border-radius: 3.5mm !important;
       box-shadow:
         inset 0 0 0 0.45mm #d6a83f,
         inset 0 0 0 1.25mm rgba(6, 57, 44, 0.16) !important;
@@ -460,6 +469,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
+              justifyContent: 'space-between',
             }}
           >
             {/* Corner decor */}
@@ -507,10 +517,10 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             </div>
 
             {/* ── BODY ── */}
-            <div style={{ padding:'12px 28px 8px', textAlign:'center', display:'flex',
-              flexDirection:'column', alignItems:'center', gap:6, position:'relative', zIndex:1 }}>
+            <div style={{ padding:'8px 28px 6px', textAlign:'center', display:'flex',
+              flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, position:'relative', zIndex:1, flex: 1 }}>
 
-              <h1 style={{ fontSize:32, fontWeight:900, color:'#06392c', margin:0,
+              <h1 style={{ fontSize:30, fontWeight:900, color:'#06392c', margin:0,
                 fontFamily:'Georgia, serif', lineHeight:1.2 }}>
                 {isAr ? 'شهادة إنجاز واجتياز برنامج علاجي' : 'CERTIFICATE OF COMPLETION'}
               </h1>
@@ -545,7 +555,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                     </div>
                   ) : (
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <h2 style={{ fontSize:40, fontWeight:900, color:'#06392c', margin:0,
+                      <h2 style={{ fontSize:38, fontWeight:900, color:'#06392c', margin:0,
                         fontFamily:'Georgia, serif', lineHeight:1 }}>
                         {displayName}
                       </h2>
@@ -608,7 +618,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             </div>
 
             {/* ── OFFICIAL REPORT FOOTER ── */}
-            <div style={{ padding: '10px 28px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1, borderTop: '1px solid #e8edf0' }} dir={isAr ? 'rtl' : 'ltr'}>
+            <div style={{ padding: '8px 28px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1, borderTop: '1px solid #e8edf0' }} dir={isAr ? 'rtl' : 'ltr'}>
 
               {/* RIGHT (RTL): Doctor name + inline signature */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 260 }}>
@@ -648,7 +658,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
             {/* ── BOTTOM BAR ──
                 dir=rtl → 1st child shows RIGHT (medal+text), last shows LEFT (QR)
             ── */}
-            <div style={{ background:'#06392c', padding:'10px 22px', display:'flex', alignItems:'center',
+            <div style={{ background:'#06392c', padding:'8px 22px', display:'flex', alignItems:'center',
               justifyContent:'space-between', borderRadius:'0 0 16px 16px', position:'relative', zIndex:1 }}
               dir="rtl">
 

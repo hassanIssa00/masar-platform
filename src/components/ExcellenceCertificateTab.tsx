@@ -52,6 +52,14 @@ interface CertData {
   certNumber: string;
 }
 
+function stableExcellenceCertSuffix(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 33 + seed.charCodeAt(i)) % 90000;
+  }
+  return String(hash + 10000).slice(0, 5);
+}
+
 export default function ExcellenceCertificateTab({ students }: Props) {
   const parentsList: Parent[] = students && students.length > 0
     ? students.map((s, idx) => ({ id: s.id, parentName: s.name, phone: s.phone || `96650${1234567 + idx}` }))
@@ -75,7 +83,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     ratingText: 'ممتاز مع مرتبة الشرف 🌟',
     date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
     note: 'طالب متميز ومتفوق أظهر التزاماً استثنائياً ومهارات عالية.',
-    certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+    certNumber: `NSR-CERT-2026-${stableExcellenceCertSuffix('default-excellence-certificate')}`,
   });
 
   const [preview, setPreview] = useState(false);
@@ -85,7 +93,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     if (!preview) return;
     const style = document.createElement('style');
     style.id = 'masar-excellence-certificate-print-page';
-    style.textContent = '@media print { @page { size: A4 landscape; margin: 0; } }';
+    style.textContent = '@media print { @page { size: 297mm 210mm; margin: 0; } }';
     document.head.appendChild(style);
     return () => style.remove();
   }, [preview]);
@@ -146,7 +154,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
   <title>طباعة شهادة التفوق الرسمية</title>
   ${styles}
   <style>
-    @page { size: A4 landscape; margin: 0; }
+    @page { size: 297mm 210mm; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
       width: 297mm;
@@ -160,16 +168,16 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     .certificate-print-shell {
       width: 297mm;
       height: 210mm;
-      padding: 8mm;
+      padding: 6mm;
       background: #ffffff;
     }
     #printable-certificate {
-      width: 281mm !important;
-      height: 194mm !important;
+      width: 285mm !important;
+      height: 198mm !important;
       min-height: 0 !important;
       margin: 0 !important;
       border: 1.2mm double #06392c !important;
-      border-radius: 4mm !important;
+      border-radius: 3.5mm !important;
       box-shadow:
         inset 0 0 0 0.45mm #d6a83f,
         inset 0 0 0 1.25mm rgba(6, 57, 44, 0.16) !important;
@@ -547,6 +555,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'space-between',
         fontFamily: "'Cairo', Arial, sans-serif",
       }}
     >
@@ -597,12 +606,12 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
 
       {/* ── BODY ── */}
       <div style={{
-        padding: '16px 28px 12px', textAlign: 'center', display: 'flex',
-        flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative', zIndex: 1
+        padding: '8px 28px 6px', textAlign: 'center', display: 'flex',
+        flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, position: 'relative', zIndex: 1, flex: 1
       }}>
 
         <h1 style={{
-          fontSize: 32, fontWeight: 900, color: '#06392c', margin: 0,
+          fontSize: 30, fontWeight: 900, color: '#06392c', margin: 0,
           fontFamily: 'Georgia, serif', lineHeight: 1.2
         }}>
           {form.certTitle}
@@ -675,7 +684,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
       </div>
 
       {/* ── FOOTER: DOCTOR SIGNATURE & DIGITAL SEAL ── */}
-      <div style={{ padding: '14px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
+      <div style={{ padding: '8px 28px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafafa', position: 'relative', zIndex: 1 }} dir="rtl">
 
         {/* Doctor Signature */}
         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -745,7 +754,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
 
       {/* ── BOTTOM EMERALD BAR ── */}
       <div style={{
-        background: '#06392c', padding: '10px 22px', display: 'flex', alignItems: 'center',
+        background: '#06392c', padding: '8px 22px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
