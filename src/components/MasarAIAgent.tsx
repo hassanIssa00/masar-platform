@@ -57,6 +57,16 @@ function tryExecutePlatformAction(prompt: string): { actionTaken?: string } | nu
   return null;
 }
 
+function authJsonHeaders() {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
+    : '';
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,12 +120,17 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
     try {
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authJsonHeaders(),
         body: JSON.stringify({ prompt: inputPrompt, branch, history }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        if (Array.isArray(data.actions) && typeof window !== 'undefined') {
+          for (const action of data.actions) {
+            window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, prompt: inputPrompt } }));
+          }
+        }
         if (data.reply) {
           replyText = data.reply;
           gateway = data.gateway || '';

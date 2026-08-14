@@ -1,14 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callGeminiApi } from '@/lib/gemini';
-import { DEFAULT_SCHEDULE, DAY_MAP_NUM_TO_AR } from '@/data/ikhlasSchedule';
+import { callGeminiApi, type GeminiMessage } from '@/lib/gemini';
+import { authenticateRequest } from '@/lib/auth/authorization';
+import { checkRateLimit, getClientIdentifier, getIpIdentifier } from '@/lib/rateLimit';
+
+type ScheduleSlotInput = {
+  day?: string;
+  period?: number | string;
+  periodNumber?: number | string;
+  subject?: string;
+  subjectName?: string;
+  teacher?: string;
+  teacherName?: string;
+  startTime?: string;
+  endTime?: string;
+};
+
+type ScheduleSlot = {
+  day: string;
+  period: number;
+  subject: string;
+  teacher: string;
+  startTime: string;
+  endTime: string;
+};
+
+function extractScheduleJson(text: string) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const source = fenced || text;
+  const arrayMatch = source.match(/\[[\s\S]*\]/);
+  if (arrayMatch) return arrayMatch[0];
+  const objectMatch = source.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      const parsed = JSON.parse(objectMatch[0]);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed);
+      if (Array.isArray(parsed.slots)) return JSON.stringify(parsed.slots);
+      if (Array.isArray(parsed.schedule)) return JSON.stringify(parsed.schedule);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await authenticateRequest(req);
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: 'Unauthorized schedule parse request' }, { status: 401 });
+    }
+
+    const limit = await checkRateLimit(
+      'schedule_parse',
+      getClientIdentifier(req, auth.user?.id),
+      { windowMs: 60 * 1000, maxRequests: 12, failClosed: false },
+      { identifier: getIpIdentifier(req), maxRequests: 36 },
+    );
+    if (!limit.allowed) {
+      return NextResponse.json({ success: false, error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
     const body = await req.json();
-    const { imageBase64, imageMime = 'image/png', manualText = '' } = body;
+    const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+    const imageMime = typeof body.imageMime === 'string' ? body.imageMime : 'image/png';
+    const manualText = typeof body.manualText === 'string' ? body.manualText : '';
 
     if (!imageBase64 && !manualText.trim()) {
       return NextResponse.json({ success: false, error: 'No image or text provided' }, { status: 400 });
+    }
+    if (imageBase64 && String(imageBase64).length > 7_000_000) {
+      return NextResponse.json({ success: false, error: 'Image is too large' }, { status: 413 });
     }
 
     const systemPrompt = `أنت خبير متخصص في قراءة جداول الحصص المدرسية بدقة 100%.
@@ -51,7 +112,7 @@ export async function POST(req: NextRequest) {
       userPrompt = `استخرج بيانات الجدول الدراسي الآتي وأرجع JSON فقط:\n${manualText.trim()}`;
     }
 
-    const messages: any[] = [
+    const messages: GeminiMessage[] = [
       {
         role: 'user',
         content: userPrompt,
@@ -65,16 +126,13 @@ export async function POST(req: NextRequest) {
       temperature: 0.1,
     });
 
-    console.log('[Schedule Parse] Gemini raw response:', result?.text?.slice(0, 500));
-
     if (result?.text) {
-      // Try to extract JSON array from response
-      const jsonMatch = result.text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
+      const jsonText = extractScheduleJson(result.text);
+      if (jsonText) {
         try {
-          const slots = JSON.parse(jsonMatch[0]);
+          const slots = JSON.parse(jsonText);
           if (Array.isArray(slots) && slots.length > 0) {
-            const cleanedSlots = slots.map((s: any) => ({
+            const cleanedSlots: ScheduleSlot[] = (slots as ScheduleSlotInput[]).map((s) => ({
               day: String(s.day || 'الأحد').trim(),
               period: Number(s.period || s.periodNumber || 1),
               subject: String(s.subject || s.subjectName || '').trim(),
@@ -88,6 +146,7 @@ export async function POST(req: NextRequest) {
                 success: true,
                 slots: cleanedSlots,
                 model: result.model,
+                parsedCount: cleanedSlots.length,
               });
             }
           }
@@ -97,24 +156,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback to DEFAULT_SCHEDULE
-    const fallbackSlots = DEFAULT_SCHEDULE.map(p => ({
-      day: DAY_MAP_NUM_TO_AR[p.dayOfWeek] || 'الأحد',
-      period: p.periodNumber,
-      subject: p.subjectName,
-      teacher: p.teacherName || '',
-      startTime: p.startTime,
-      endTime: p.endTime,
-    }));
-
     return NextResponse.json({
-      success: true,
-      slots: fallbackSlots,
-      isFallback: true,
-    });
+      success: false,
+      error: 'لم أستطع قراءة الجدول من الصورة بدقة. ارفع صورة أوضح أو اكتب الجدول يدوياً في المربع المجاور.',
+    }, { status: 422 });
 
-  } catch (err: any) {
-    console.error('[Schedule Parse API Error]:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Schedule parser failed';
+    console.error('[Schedule Parse API Error]:', message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

@@ -86,6 +86,16 @@ function ts() {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 }
 
+function authJsonHeaders() {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
+    : '';
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,7 +192,7 @@ export default function AIAssistantPage() {
     try {
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
           prompt: text,
           image: img,
@@ -192,8 +202,15 @@ export default function AIAssistantPage() {
       });
 
       const data = await res.json();
+      if (Array.isArray(data.actions) && typeof window !== 'undefined') {
+        for (const action of data.actions) {
+          window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, prompt: text } }));
+        }
+      }
       const replyText = data.reply?.trim()
-        || 'أهلاً بيك د. إسماعيل عيسى 👋\n\nتم تنفيذ طلبك بنجاح.';
+        || (res.ok
+          ? 'أهلاً بيك د. إسماعيل عيسى\n\nتم استلام طلبك.'
+          : 'أهلاً بيك د. إسماعيل عيسى\n\nلم يتم تنفيذ الطلب لأن جلسة الدخول أو محرك الذكاء الاصطناعي يحتاجان مراجعة.');
 
       const agentMsg: Message = {
         id: 'a-' + Date.now(),

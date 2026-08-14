@@ -60,6 +60,62 @@ export default function PrintableReportModal({
       ? `<img src="${studentPhoto}" alt="صورة الطالب ${report.studentName || ''}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:2px solid #d6a83f;box-shadow:0 10px 24px rgba(15,23,42,.14);" />`
       : `<div style="width:74px;height:74px;border-radius:18px;background:#f8fafc;border:2px solid #d6a83f;display:flex;align-items:center;justify-content:center;color:#06392c;font-size:28px;font-weight:900;">${(report.studentName || 'م').slice(0, 1)}</div>`;
 
+    const sortedDomains = [...domainsList].sort((first, second) => (first.score ?? 0) - (second.score ?? 0));
+    const weakestDomains = sortedDomains.slice(0, 3);
+    const strongestDomains = [...domainsList].sort((first, second) => (second.score ?? 0) - (first.score ?? 0)).slice(0, 2);
+    const averageDomainScore = domainsList.length
+      ? Math.round(domainsList.reduce((sum, domain) => sum + Number(domain.score || 0), 0) / domainsList.length)
+      : reportScore;
+    const supportLevel = averageDomainScore < 50
+      ? 'دعم مكثف متعدد الحواس'
+      : averageDomainScore < 70
+        ? 'دعم موجه قصير ومتكرر'
+        : averageDomainScore < 85
+          ? 'تدريب تثبيت ومراجعة'
+          : 'إثراء وانتقال تدريجي';
+    const analysisDepthRows = (weakestDomains.length ? weakestDomains : domainsList.slice(0, 3)).map((domain, index) => {
+      const score = Number(domain.score || 0);
+      const priority = score < 50 ? 'أولوية عالية' : score < 70 ? 'أولوية متوسطة' : 'متابعة تثبيت';
+      const method = domain.name?.includes('رياض')
+        ? 'محسوسات عددية، رسم تمثيلي، ثم رمز رياضي'
+        : domain.name?.includes('عرب') || domain.name?.includes('قراءة')
+          ? 'وعي صوتي، تهجئة موجهة، قراءة كلمات قصيرة'
+          : domain.name?.includes('رسم') || domain.name?.includes('بصري')
+            ? 'تتبع بصري، نسخ نماذج، وتدريب تآزر يد-عين'
+            : 'تعليم صريح بخطوات صغيرة مع تعزيز فوري';
+      return `
+        <tr style="background:${index % 2 === 0 ? '#ffffff' : '#f8fafc'}">
+          <td style="padding:8px 10px;font-weight:900;color:#0f172a;border-bottom:1px solid #e2e8f0">${domain.name}</td>
+          <td style="padding:8px 10px;font-weight:900;color:${score < 50 ? '#b91c1c' : score < 70 ? '#b45309' : '#047857'};text-align:center;border-bottom:1px solid #e2e8f0">${priority}</td>
+          <td style="padding:8px 10px;font-weight:700;color:#334155;border-bottom:1px solid #e2e8f0">${method}</td>
+          <td style="padding:8px 10px;font-weight:800;color:#475569;border-bottom:1px solid #e2e8f0">إعادة قياس بعد ${score < 50 ? '3' : '5'} جلسات</td>
+        </tr>`;
+    }).join('');
+    const strengthsText = strongestDomains.length
+      ? strongestDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ')
+      : 'لا توجد مجالات قوة كافية بعد، ويحتاج الطالب إلى جمع بيانات إضافية.';
+    const needsText = weakestDomains.length
+      ? weakestDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ')
+      : 'يتم تحديد الاحتياجات بعد اكتمال التقييم.';
+    const headerHtml = (label: string) => `
+        <div class="header">
+          <div class="brand-side">
+            <img src="${origin}/brand/masar-logo.png" alt="شعار منصة مسار" />
+            <span>وثيقة رقمية</span>
+          </div>
+          <div class="brand-center">
+            <div class="brand-title">MASAR · مَسَار</div>
+            <div class="brand-subtitle">منصة التأهيل والتعليم الذكي لصعوبات التعلم</div>
+            <div class="brand-owner">مؤسس المنصة: د. إسماعيل عيسى — تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
+            <div class="brand-label">${label}</div>
+          </div>
+          <div class="serial-card">
+            <span>رقم الملف</span>
+            <strong>${fileNumber}</strong>
+            <small>${report.date || hijriDate}</small>
+          </div>
+        </div>`;
+
     const homeRecommendations = recommendationsList.slice(0, 3);
     const schoolRecommendations =
       recommendationsList.slice(3, 6).length > 0
@@ -190,12 +246,93 @@ export default function PrintableReportModal({
       }
     }
     .header {
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 2px solid #06392c; padding-bottom: 8px; margin-bottom: 12px;
+      min-height: 88px;
+      display: grid;
+      grid-template-columns: 100px 1fr 128px;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 2px solid #06392c;
+      padding: 0 0 10px 0;
+      margin-bottom: 12px;
     }
-    .logo { font-size: 18px; font-weight: 900; color: #06392c; }
-    .sublogo { font-size: 9.5px; font-weight: 700; color: #475569; }
-    .serial { font-size: 10px; font-weight: 900; font-family: monospace; color: #0f172a; }
+    .brand-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: #1e1b4b;
+      font-size: 8px;
+      font-weight: 900;
+    }
+    .brand-side img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      border: 1px solid #d6a83f;
+      border-radius: 12px;
+      padding: 3px;
+      background: #fff;
+    }
+    .brand-center {
+      text-align: center;
+      line-height: 1.45;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #1e1b4b;
+      letter-spacing: .2px;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      font-weight: 900;
+      color: #1d4ed8;
+    }
+    .brand-owner {
+      font-size: 8.8px;
+      font-weight: 800;
+      color: #64748b;
+    }
+    .brand-label {
+      display: inline-block;
+      margin-top: 3px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #06392c;
+      border: 1px solid #d6a83f;
+      font-size: 8px;
+      font-weight: 900;
+    }
+    .serial-card {
+      background: #1e1b4b;
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 10px;
+      text-align: center;
+      line-height: 1.35;
+    }
+    .serial-card span {
+      display: block;
+      color: #d6a83f;
+      font-size: 7px;
+      font-weight: 900;
+    }
+    .serial-card strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 900;
+      font-family: monospace;
+      direction: ltr;
+    }
+    .serial-card small {
+      display: block;
+      color: #dbeafe;
+      font-size: 7px;
+      font-weight: 700;
+      direction: ltr;
+    }
     .banner {
       background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px;
       padding: 10px 16px; text-align: center; margin-bottom: 12px;
@@ -247,13 +384,7 @@ export default function PrintableReportModal({
     <!-- PAGE 1: COVER & IDENTITY -->
     <section class="print-page">
       <div>
-        <div class="header">
-          <div>
-            <span class="logo">مَسَار</span>
-            <span class="sublogo">منصة التأهيل الذكي والتعليم التفاعلي</span>
-          </div>
-          <div class="serial">${fileNumber}</div>
-        </div>
+        ${headerHtml(reportTitle)}
 
         <div class="banner" style="display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:right;">
           <div style="flex:1;">
@@ -301,7 +432,7 @@ export default function PrintableReportModal({
       </div>
 
       <div class="footer">
-        <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+        <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
         <span>صفحة 1 من 3</span>
       </div>
     </section>
@@ -309,10 +440,7 @@ export default function PrintableReportModal({
     <!-- PAGE 2: DOMAINS & IEP -->
     <section class="print-page">
       <div>
-        <div class="header">
-          <div><span class="logo">مَسَار</span> <span class="sublogo">تحليل المجالات والخطط الفردية</span></div>
-          <div class="serial">${fileNumber}</div>
-        </div>
+        ${headerHtml('تحليل المجالات والخطط الفردية')}
 
         ${
           isSurveyAnswersReport
@@ -348,6 +476,43 @@ export default function PrintableReportModal({
         }
 
         ${!isAnswersReport ? `
+        <div class="sec-head" style="margin-top: 14px;">2. قراءة تحليلية موسعة للملف</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;">
+            <div style="font-size:8.5px;font-weight:900;color:#64748b;">متوسط المجالات</div>
+            <div style="font-size:20px;font-weight:900;color:#06392c;font-family:monospace;">${averageDomainScore}%</div>
+          </div>
+          <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:8px;padding:9px;">
+            <div style="font-size:8.5px;font-weight:900;color:#047857;">نقاط القوة الحالية</div>
+            <div style="font-size:9.5px;font-weight:800;color:#064e3b;line-height:1.7;">${strengthsText}</div>
+          </div>
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:9px;">
+            <div style="font-size:8.5px;font-weight:900;color:#c2410c;">مجالات تحتاج متابعة</div>
+            <div style="font-size:9.5px;font-weight:800;color:#7c2d12;line-height:1.7;">${needsText}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 24%;">المجال</th>
+              <th style="width: 20%; text-align:center;">الأولوية</th>
+              <th style="width: 36%;">طريقة التدخل المقترحة</th>
+              <th style="width: 20%;">إعادة القياس</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${analysisDepthRows || `<tr><td colspan="4" style="text-align:center;padding:10px;color:#94a3b8;">لا توجد مجالات كافية للتحليل الموسع</td></tr>`}
+          </tbody>
+        </table>
+
+        <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px;margin-bottom:12px;">
+          <div style="font-size:10.5px;font-weight:900;color:#0f766e;margin-bottom:4px;">مستوى الدعم المقترح</div>
+          <div style="font-size:10px;font-weight:800;color:#134e4a;line-height:1.8;">
+            ${supportLevel}: تبدأ الجلسة بنمذجة قصيرة، ثم تدريب موجه، ثم قياس إتقان مستقل. يتم تسجيل نوع المساعدة المطلوبة في كل نشاط حتى لا يعتمد القرار على الدرجة فقط.
+          </div>
+        </div>
+
         <div class="sec-head" style="margin-top: 14px;">2. أهداف خطة التربية الفردية التفصيلية (IEP)</div>
         <table>
           <thead>
@@ -364,7 +529,7 @@ export default function PrintableReportModal({
         ` : ''}
 
         ${!isAnswersReport ? `
-        <div class="sec-head" style="margin-top: 14px;">3. توصيات المنزل والمدرسة</div>
+        <div class="sec-head" style="margin-top: 14px;">4. توصيات المنزل والمدرسة</div>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
           <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px;">
             <div style="font-size: 10.5px; font-weight: 900; color: #92400e; margin-bottom: 6px;">🏡 توصيات المنزل:</div>
@@ -383,7 +548,7 @@ export default function PrintableReportModal({
       </div>
 
       <div class="footer">
-        <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+        <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
         <span>صفحة 2 من 3</span>
       </div>
     </section>
@@ -391,10 +556,7 @@ export default function PrintableReportModal({
     <!-- PAGE 3: DETAILED ANSWERS & SIGNATURE -->
     <section class="print-page">
       <div>
-        <div class="header">
-          <div><span class="logo">مَسَار</span> <span class="sublogo">التوقيع والختم الرقمي</span></div>
-          <div class="serial">${fileNumber}</div>
-        </div>
+        ${headerHtml('التوقيع والختم الرقمي')}
 
         ${
           isStudentAnswersReport && answersRows.length > 0
@@ -459,7 +621,7 @@ export default function PrintableReportModal({
         </div>
 
         <div class="footer">
-          <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+          <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
           <span>صفحة 3 من 3</span>
         </div>
       </div>

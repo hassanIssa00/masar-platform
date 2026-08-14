@@ -72,6 +72,12 @@ const CSP_DIRECTIVES = [
   // Workers: blob: required for face-api.js/TensorFlow.js Web Workers
   "worker-src 'self' blob:",
 
+  // Block legacy plugin/embed vectors
+  "object-src 'none'",
+
+  // Restrict web app manifest loading
+  "manifest-src 'self'",
+
   // Fetch/XHR connections — all external services used by browser-side code:
   [
     "connect-src 'self'",
@@ -147,6 +153,8 @@ const nextConfig: NextConfig = {
           // ── Referrer ───────────────────────────────────────────────────────
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          { key: 'X-DNS-Prefetch-Control', value: 'off' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
 
           // ── Legacy XSS filter (IE/old Edge) ───────────────────────────────
           { key: 'X-XSS-Protection', value: '1; mode=block' },

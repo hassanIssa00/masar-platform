@@ -25113,8 +25113,8 @@ continue
 1️⃣ API Keys مكشوفة داخل التطبيق 🔥 (الأخطر على الإطلاق)
 لقيت مفتاحين Google API مكتوبين hardcoded داخل libapp.so:
 
-CopyAIzaSyCYNpzJL7kQYqhzeiZ6VD2h3ppO_xWDAqU  ← YouTube API ✅ شغال حالياً!
-AIzaSyD7eQgK3FcA7NxQf7FE6M2M8j8cW1bS3ksA  ← مفتاح تاني
+Copy[REDACTED_GOOGLE_API_KEY] ← YouTube API ✅ شغال حالياً!
+[REDACTED_GOOGLE_API_KEY] ← مفتاح تاني
 اختبرتهم فعلياً وطلعوا شغالين. أي حد يفك APK بتاعك في دقيقتين يقدر:
 
 يستنزف quota الـ YouTube API بتاعتك
@@ -27295,4 +27295,3 @@ ismail edu
 ```
 
 ---
-

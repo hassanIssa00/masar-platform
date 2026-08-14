@@ -2,14 +2,18 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAP2z31ctzFGPQTRKNEKc_Sv-JOG-m0_Vk",
-  authDomain: "masar-platform-8e642.firebaseapp.com",
-  projectId: "masar-platform-8e642",
-  storageBucket: "masar-platform-8e642.firebasestorage.app",
-  messagingSenderId: "813912614592",
-  appId: "1:813912614592:web:ceec71da4e3a6141eaef25",
-  measurementId: "G-JV7WERZER8"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+  throw new Error('Missing Firebase environment variables. Refusing to run destructive clear script.');
+}
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);

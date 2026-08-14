@@ -250,6 +250,7 @@ export default function IkhlasJeddahPage() {
     const handleAIAction = (e: any) => {
       const { action, prompt } = e.detail || {};
       const p = (prompt || action || '').toLowerCase();
+      const actionType = String(action || '').toLowerCase();
 
       // Attendance AI Execution: Update state live on screen!
       if (p.includes('حضر') || p.includes('تحضير') || p.includes('حاضر') || p.includes('حضور') || p.includes('غياب') || p.includes('attendance')) {
@@ -288,11 +289,16 @@ export default function IkhlasJeddahPage() {
         fetchPosts();
         setActiveTab('overview');
       }
+
+      if (actionType === 'schedule') setActiveTab('smart-schedule');
+      if (actionType === 'report' || actionType === 'iep') setActiveTab('reports');
+      if (actionType === 'message') setActiveTab('parents-chat');
+      if (actionType === 'research') setActiveTab('ai-chat');
     };
 
     window.addEventListener('masar_action_executed', handleAIAction);
     return () => window.removeEventListener('masar_action_executed', handleAIAction);
-  }, [fetchHomework, fetchMeetings, fetchPosts]);
+  }, [classStudents, fetchHomework, fetchMeetings, fetchPosts]);
 
   /* ── Logout ── */
   const handleLogout = () => {

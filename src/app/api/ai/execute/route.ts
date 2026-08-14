@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiApi, GeminiMessage } from '@/lib/gemini';
 import { authenticateRequest } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIdentifier, getIpIdentifier } from '@/lib/rateLimit';
+import { recognize } from 'tesseract.js';
+
+type OcrResult = {
+  data?: {
+    text?: string;
+  };
+};
 
 // ── MASAR AGENT SYSTEM PROMPT ─────────────────────────────────────────────────
 const MASAR_SYSTEM_PROMPT = `أنت "مساعد مسار" — الذكاء الاصطناعي الشخصي لمنصة مسار التعليمية الخاصة بـ د. إسماعيل عيسى، المتخصص في تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم بجدة.
@@ -26,20 +33,52 @@ const MASAR_SYSTEM_PROMPT = `أنت "مساعد مسار" — الذكاء ال�
 - صعوبات التعلم، طيف التوحد، فرط الحركة وتشتت الانتباه (ADHD)، التخاطب والتأهيل السلوكي
 - خطط IEP، التقارير التحليلية، واستراتيجيات التعليم الحديث
 - إدارة المنصة: ملفات الطلاب، الحضور والغياب، الواجبات التفاعلية، الحصص المباشرة
-- جميع المعارف والعلوم العامة والتربوية`;
+- جميع المعارف والعلوم العامة والتربوية
+
+## أوامر المنصة:
+عندما يطلب المستخدم إجراء تنفيذياً، اشرح ما سيتم عمله بدقة، واستخدم لغة حاسمة مختصرة. النظام سيحوّل الأمر إلى action داخل الواجهة عند الإمكان: attendance، iep، homework، meeting، schedule، report، research.`;
+
+type AiActionType = 'attendance' | 'iep' | 'homework' | 'meeting' | 'schedule' | 'report' | 'research' | 'message';
+
+function inferPlatformActions(prompt: string, hasImage: boolean): Array<{ type: AiActionType; label: string }> {
+  const p = prompt.toLowerCase();
+  const actions: Array<{ type: AiActionType; label: string }> = [];
+  const add = (type: AiActionType, label: string) => {
+    if (!actions.some((action) => action.type === type)) actions.push({ type, label });
+  };
+
+  if (hasImage && (p.includes('جدول') || p.includes('حصص'))) add('schedule', 'تحليل صورة الجدول وتثبيتها');
+  if (hasImage && (p.includes('حضور') || p.includes('حضر') || p.includes('غياب'))) add('attendance', 'قراءة صورة الحضور وتحديث الكشف');
+  if (p.includes('حضور') || p.includes('تحضير') || p.includes('غياب') || p.includes('حضر')) add('attendance', 'تحديث كشف الحضور');
+  if (p.includes('iep') || p.includes('خطة') || p.includes('خطه')) add('iep', 'إنشاء أو تحديث خطة IEP');
+  if (p.includes('واجب') || p.includes('تمرين') || p.includes('تصحيح')) add('homework', 'إنشاء أو تصحيح واجب');
+  if (p.includes('لايف') || p.includes('حصة') || p.includes('اجتماع') || p.includes('زووم') || p.includes('غرفة')) add('meeting', 'فتح غرفة أو اجتماع');
+  if (p.includes('جدول') || p.includes('حصص')) add('schedule', 'فتح نظام الجدول الذكي');
+  if (p.includes('تقرير') || p.includes('تحليل') || p.includes('تقييم')) add('report', 'فتح التقارير والتحليل');
+  if (p.includes('بحث') || p.includes('دراسة') || p.includes('أبحاث') || p.includes('استراتيجية')) add('research', 'إعداد ملخص علمي');
+  if (p.includes('رسالة') || p.includes('اولياء') || p.includes('أولياء') || p.includes('واتساب')) add('message', 'تجهيز رسالة لأولياء الأمور');
+
+  return actions.slice(0, 4);
+}
 
 export async function POST(req: NextRequest) {
   try {
     // ── 1. Auth ──────────────────────────────────────────────────────────────
     const authResult = await authenticateRequest(req);
+    if (!authResult.authorized) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized AI request.' },
+        { status: 401 }
+      );
+    }
     const userId = authResult.user?.id || 'dr_ismail_session';
 
     // ── 2. Rate Limiting ─────────────────────────────────────────────────────
     const rateLimit = await checkRateLimit(
       'ai_execute',
       getClientIdentifier(req, userId),
-      { windowMs: 60 * 1000, maxRequests: 1000, failClosed: false },
-      { identifier: getIpIdentifier(req), maxRequests: 1000 }
+      { windowMs: 60 * 1000, maxRequests: 30, failClosed: false },
+      { identifier: getIpIdentifier(req), maxRequests: 90 }
     );
 
     if (!rateLimit.allowed) {
@@ -53,7 +92,7 @@ export async function POST(req: NextRequest) {
     // ── 3. Input ─────────────────────────────────────────────────────────────
     const body = await req.json();
     const { prompt, history, image } = body;
-    const inputPrompt = typeof prompt === 'string' ? prompt.trim() : '';
+    const inputPrompt = typeof prompt === 'string' ? prompt.trim().slice(0, 6000) : '';
 
     if (!inputPrompt && !image) {
       return NextResponse.json({ success: false, error: 'Empty prompt' }, { status: 400 });
@@ -65,13 +104,22 @@ export async function POST(req: NextRequest) {
     let parsedImage: { mimeType: string; data: string } | undefined;
     if (image) {
       if (typeof image === 'object' && image.data) {
-        parsedImage = { mimeType: image.mimeType || 'image/png', data: image.data };
+        const imageData = String(image.data);
+        if (imageData.length > 7_000_000) {
+          return NextResponse.json({ success: false, error: 'Image is too large.' }, { status: 413 });
+        }
+        parsedImage = { mimeType: image.mimeType || 'image/png', data: imageData };
       } else if (typeof image === 'string' && image.includes('base64,')) {
         const [meta, b64] = image.split('base64,');
+        if (b64.length > 7_000_000) {
+          return NextResponse.json({ success: false, error: 'Image is too large.' }, { status: 413 });
+        }
         const mime = meta.match(/data:(.*?);/)?.[1] || 'image/png';
         parsedImage = { mimeType: mime, data: b64 };
       }
     }
+
+    const actions = inferPlatformActions(effectivePrompt, !!parsedImage);
 
     // ── 4. Build conversation history ─────────────────────────────────────────
     const geminiMessages: GeminiMessage[] = [];
@@ -109,6 +157,7 @@ export async function POST(req: NextRequest) {
         success: true,
         reply,
         gateway: `Gemini Multimodal (${geminiResult.model})`,
+        actions,
       });
     }
 
@@ -116,9 +165,8 @@ export async function POST(req: NextRequest) {
     let ocrText = '';
     if (parsedImage?.data) {
       try {
-        const Tesseract = require('tesseract.js');
         const buffer = Buffer.from(parsedImage.data, 'base64');
-        const ocrPromise = Tesseract.recognize(buffer, 'ara+eng').then((r: any) => r?.data?.text || '');
+        const ocrPromise = recognize(buffer, 'ara+eng').then((r: OcrResult) => r?.data?.text || '');
         const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve(''), 3500));
         ocrText = await Promise.race([ocrPromise, timeoutPromise]);
       } catch (e) {
@@ -132,14 +180,17 @@ export async function POST(req: NextRequest) {
       success: true,
       reply: smartReply,
       gateway: 'Masar Vision Engine 3.0 (OCR Enabled)',
+      actions,
     });
 
-  } catch (err: any) {
-    console.error('[AI Execute Error]:', err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown AI error';
+    console.error('[AI Execute Error]:', message);
     const fallbackReply = buildSmartMasarResponse('مرحبا', false);
     return NextResponse.json({
-      success: true,
+      success: false,
       reply: fallbackReply,
+      error: 'AI engine unavailable.',
       gateway: 'Masar Vision Engine 3.0',
     });
   }

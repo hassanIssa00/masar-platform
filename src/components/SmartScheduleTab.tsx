@@ -56,6 +56,16 @@ const CLOUD_SCHEDULE_COLLECTION = 'smart_schedules';
 const CLOUD_LOGS_COLLECTION = 'schedule_notification_logs';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
+function authJsonHeaders() {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
+    : '';
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 /* ── Helper: get today's day name in Arabic ───────────────────────────── */
 function getTodayDayName(): string {
   const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -195,6 +205,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
   const [manualText, setManualText] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parseSuccess, setParseSuccess] = useState(false);
+  const [parseError, setParseError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* Today's view */
@@ -206,15 +217,25 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
 
   /* ☁️ Cloud DB realtime sync for Schedule & Notification Logs ──────── */
   useEffect(() => {
-    // 1. Fetch Cloud Schedule
+    // Helper: check if schedule has real subjects (not "درس حر" dummy data)
+    const isRealSchedule = (slots: any[]) =>
+      Array.isArray(slots) && slots.length > 0 &&
+      slots.some(s => {
+        const sub = s.subject || s.subjectName;
+        return sub && sub !== 'درس حر' && sub !== 'حصة دراسية' && sub.length > 1;
+      });
+
+    // 1. Fetch Cloud Schedule (only if it has real data)
     getDocs(collection(db, CLOUD_SCHEDULE_COLLECTION)).then((snap) => {
       if (!snap.empty) {
         const cloudScheduleDoc = snap.docs.find(d => d.id === 'IKHLAS_JEDDAH_SCHEDULE');
         if (cloudScheduleDoc) {
           const data = cloudScheduleDoc.data() as ParsedSchedule;
-          setSchedule(data);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(data));
+          if (data?.slots && isRealSchedule(data.slots)) {
+            setSchedule(data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(data));
+            }
           }
         }
       }
@@ -234,12 +255,14 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
       }
     }).catch(e => console.warn('Cloud logs fetch note:', e));
 
-    // Realtime listener for schedule updates across devices
+    // Realtime listener - only accept real schedules
     const unsub = onSnapshot(collection(db, CLOUD_SCHEDULE_COLLECTION), (snap) => {
       const docSnap = snap.docs.find(d => d.id === 'IKHLAS_JEDDAH_SCHEDULE');
       if (docSnap) {
         const data = docSnap.data() as ParsedSchedule;
-        setSchedule(data);
+        if (data?.slots && isRealSchedule(data.slots)) {
+          setSchedule(data);
+        }
       }
     });
 
@@ -277,11 +300,12 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
     if (!imageBase64 && !manualText.trim()) return;
     setParsing(true);
     setParseSuccess(false);
+    setParseError('');
 
     try {
       const res = await fetch('/api/schedule/parse', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
           imageBase64,
           imageMime,
@@ -301,11 +325,16 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
           saveScheduleStore(parsed);
           setParseSuccess(true);
           setActiveSection('full-grid');
+        } else {
+          setParseError(data.error || 'لم يتم استخراج جدول صالح من الصورة. جرّب صورة أوضح أو أدخل البيانات يدوياً.');
         }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setParseError(data.error || 'تعذر تحليل الجدول. تأكد من تسجيل الدخول ومن وضوح الصورة.');
       }
     } catch (e) {
       console.warn('Schedule parse error:', e);
-      handleResetToDefaultSchedule();
+      setParseError('حدث خطأ في الاتصال أثناء تحليل الجدول. الجدول القديم سيظل ثابتاً بدون تغيير.');
     }
     setParsing(false);
   };
@@ -602,7 +631,16 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
               <div className="mt-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-emerald-700">
                 <CheckCircle2 size={16} />
                 <span className="text-xs font-black">
-                  ✅ تم تحليل الجدول بنجاح وحفظه في خادم قاعدة البيانات!
+                  تم تحليل الجدول بنجاح وحفظه في خادم قاعدة البيانات.
+                </span>
+              </div>
+            )}
+
+            {parseError && (
+              <div className="mt-3 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-rose-700">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span className="text-xs font-black leading-6">
+                  {parseError}
                 </span>
               </div>
             )}

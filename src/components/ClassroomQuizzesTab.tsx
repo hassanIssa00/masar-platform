@@ -33,6 +33,12 @@ export interface ClassQuiz {
 const STORAGE_KEY = 'masar_class_quizzes_v1';
 const CLOUD_COLLECTION = 'classroom_quizzes';
 
+function authJsonHeaders() {
+  if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('masar_token') ?? localStorage.getItem('access_token');
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+
 const SAMPLE_QUIZZES: ClassQuiz[] = [
   {
     id: 'quiz-001',
@@ -206,7 +212,7 @@ export default function ClassroomQuizzesTab() {
     try {
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
           prompt: `أنشئ كويز تفاعلي رائع من سؤالين لمادة ${newSubject} للصف الأول أو الثاني الابتدائي. أعطني العنوان والأسئلة باحترافية.`,
           branch: 'IKHLAS_JEDDAH',

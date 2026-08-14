@@ -67,6 +67,16 @@ const QUICK_PROMPTS = [
   { label: '💡 أنشطة تنشيطية صفيّة', prompt: 'اقترح لي 3 أنشطة حركية وتحفيزية سريعة تجدد طاقة الطلاب داخل الفصل' },
 ];
 
+function authJsonHeaders() {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
+    : '';
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export default function TeacherAIChatTab() {
   const [threads, setThreads] = useState<Record<string, ChatThread>>({});
   const [activeThreadId, setActiveThreadId] = useState<string>('');
@@ -258,11 +268,16 @@ export default function TeacherAIChatTab() {
       }
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authJsonHeaders(),
         body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
+        if (Array.isArray(data.actions) && typeof window !== 'undefined') {
+          for (const action of data.actions) {
+            window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, prompt: text } }));
+          }
+        }
         replyText = data.reply ?? '';
       }
     } catch { /* err */ }
