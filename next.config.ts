@@ -54,7 +54,7 @@ const CSP_DIRECTIVES = [
 
   // Scripts: same origin + Next.js inline hydration + reCAPTCHA
   // 'unsafe-eval' is required by face-api.js (TensorFlow.js backend uses eval for WASM)
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com",
 
   // Styles: same origin + inline (Next.js) + Google Fonts
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
