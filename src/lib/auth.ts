@@ -78,6 +78,7 @@ export async function handleGoogleRedirectResult(
     const authErr = err as AuthError;
     const pending = consumeOAuthPending(preferredRole, schoolBranch);
     if (!pending.provider) return null;
+    if (authErr.code === 'auth/internal-error') return null;
     const providerLabel = pending.provider === 'apple' ? 'Apple' : pending.provider === 'microsoft' ? 'Microsoft' : 'Google';
     return { ok: false, reason: oauthErrorMessage(authErr, providerLabel) };
   }
