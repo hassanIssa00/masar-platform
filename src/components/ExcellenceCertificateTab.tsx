@@ -130,7 +130,70 @@ export default function ExcellenceCertificateTab({ students }: Props) {
   };
 
   const handlePrint = () => {
-    window.print();
+    const certificate = certRef.current?.querySelector('#printable-certificate')?.outerHTML;
+    if (!certificate) return;
+
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join('\n');
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.write(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>طباعة شهادة التفوق الرسمية</title>
+  ${styles}
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body {
+      width: 297mm;
+      height: 210mm;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: Cairo, Arial, sans-serif;
+    }
+    .certificate-print-shell {
+      width: 297mm;
+      height: 210mm;
+      padding: 8mm;
+      background: #ffffff;
+    }
+    #printable-certificate {
+      width: 281mm !important;
+      height: 194mm !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      border: 1.2mm double #06392c !important;
+      border-radius: 4mm !important;
+      box-shadow:
+        inset 0 0 0 0.45mm #d6a83f,
+        inset 0 0 0 1.25mm rgba(6, 57, 44, 0.16) !important;
+      overflow: hidden !important;
+    }
+    @media print {
+      html, body, .certificate-print-shell {
+        width: 297mm !important;
+        height: 210mm !important;
+        overflow: hidden !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="certificate-print-shell">${certificate}</main>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); }, 450);
+    });
+  </script>
+</body>
+</html>`);
+    win.document.close();
   };
 
   return (

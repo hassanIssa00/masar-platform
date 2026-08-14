@@ -11,6 +11,7 @@ import { getClassParents, ClassParentRecord } from '@/lib/classDb';
 import { syncDocToCloud } from '@/lib/firestoreSync';
 import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { DEFAULT_SCHEDULE, DAY_MAP_NUM_TO_AR } from '@/data/ikhlasSchedule';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 interface ScheduleSlot {
@@ -66,10 +67,36 @@ function getCurrentTime(): string {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 }
 
+/* ── Build real default schedule ───────────────────────────────────── */
+function getDefaultParsedSchedule(): ParsedSchedule {
+  return {
+    slots: DEFAULT_SCHEDULE.map(p => ({
+      day: DAY_MAP_NUM_TO_AR[p.dayOfWeek] || 'الأحد',
+      period: p.periodNumber,
+      subject: p.subjectName,
+      startTime: p.startTime,
+      endTime: p.endTime,
+    })),
+    parsedAt: new Date().toISOString(),
+  };
+}
+
 /* ── Storage & Cloud Helpers ────────────────────────────────────────── */
-function loadSchedule(): ParsedSchedule | null {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY_SCHEDULE) || 'null'); }
-  catch { return null; }
+function loadSchedule(): ParsedSchedule {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SCHEDULE);
+    if (!raw) return getDefaultParsedSchedule();
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
+      // If all slots are "درس حر", replace with actual default schedule
+      const hasRealSubjects = parsed.slots.some((s: any) => s.subject && s.subject !== 'درس حر');
+      if (!hasRealSubjects) return getDefaultParsedSchedule();
+      return parsed;
+    }
+    return getDefaultParsedSchedule();
+  } catch {
+    return getDefaultParsedSchedule();
+  }
 }
 
 function saveScheduleStore(s: ParsedSchedule) {
@@ -245,94 +272,80 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoNotifyEnabled, checkAndNotify]);
 
-  /* ── Parse schedule from image via AI ──────────────────────────── */
+  /* ── Parse schedule from image via dedicated AI Route ─────────── */
   const parseScheduleFromAI = async () => {
     if (!imageBase64 && !manualText.trim()) return;
     setParsing(true);
     setParseSuccess(false);
 
     try {
-      const body: Record<string, unknown> = {
-        prompt: manualText.trim() || 'يرجى تحليل هذا الجدول الدراسي واستخراج جميع الحصص مع المادة والوقت واليوم لكل حصة. أعطني النتيجة كقائمة JSON منظمة بهذا الشكل: [{day: اسم اليوم بالعربي, period: رقم الحصة, subject: اسم المادة, startTime: وقت البداية بصيغة HH:MM, endTime: وقت النهاية بصيغة HH:MM}]',
-        branch: 'IKHLAS_JEDDAH',
-        history: [],
-      };
-      if (imageBase64) {
-        body.image = { data: imageBase64, mimeType: imageMime };
-      }
-
-      const res = await fetch('/api/ai/execute', {
+      const res = await fetch('/api/schedule/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          imageBase64,
+          imageMime,
+          manualText: manualText.trim(),
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const reply: string = data.reply ?? '';
-        const jsonMatch = reply.match(/\[[\s\S]*\]/);
-        let slots: ScheduleSlot[] = [];
-        if (jsonMatch) {
-          try { slots = JSON.parse(jsonMatch[0]); } catch { /* noop */ }
+        if (data.success && Array.isArray(data.slots) && data.slots.length > 0) {
+          const parsed: ParsedSchedule = {
+            slots: data.slots,
+            parsedAt: new Date().toISOString(),
+            imageBase64: imageBase64 ?? undefined,
+          };
+          setSchedule(parsed);
+          saveScheduleStore(parsed);
+          setParseSuccess(true);
+          setActiveSection('full-grid');
         }
-
-        if (slots.length === 0) {
-          // Build a smart default schedule from reply
-          slots = buildDefaultScheduleFromText(reply, manualText);
-        }
-
-        const parsed: ParsedSchedule = {
-          slots,
-          parsedAt: new Date().toISOString(),
-          imageBase64: imageBase64 ?? undefined,
-        };
-        setSchedule(parsed);
-        saveScheduleStore(parsed);
-        setParseSuccess(true);
-        setActiveSection('today');
       }
     } catch (e) {
-      console.warn('AI parse error:', e);
-      // Fallback: build a basic schedule from manual text
-      if (manualText.trim()) {
-        const slots = buildDefaultScheduleFromText('', manualText);
-        const parsed: ParsedSchedule = { slots, parsedAt: new Date().toISOString() };
-        setSchedule(parsed);
-        saveScheduleStore(parsed);
-        setParseSuccess(true);
-        setActiveSection('today');
-      }
+      console.warn('Schedule parse error:', e);
+      handleResetToDefaultSchedule();
     }
     setParsing(false);
   };
 
-  /* ── Build demo slots from text ─────────────────────────────────── */
-  function buildDefaultScheduleFromText(_aiReply: string, manual: string): ScheduleSlot[] {
-    const defaultTimes = [
-      { start: '07:30', end: '08:10' },
-      { start: '08:10', end: '08:50' },
-      { start: '08:50', end: '09:30' },
-      { start: '10:00', end: '10:40' },
-      { start: '10:40', end: '11:20' },
-      { start: '11:20', end: '12:00' },
-    ];
-    const daysAr = Object.keys(DAY_NAMES_AR);
-    const subjects = manual.split(/[\n,،]+/).map(s => s.trim()).filter(Boolean);
-    const slots: ScheduleSlot[] = [];
-    daysAr.forEach((day, di) => {
-      defaultTimes.forEach((t, pi) => {
-        const subjectIndex = (di * defaultTimes.length + pi) % Math.max(subjects.length, 1);
-        slots.push({
-          day,
-          period: pi + 1,
-          subject: subjects[subjectIndex] || 'درس حر',
-          startTime: t.start,
-          endTime: t.end,
-        });
+  /* ── Reset to Official 30-period Schedule ───────────────────────── */
+  const handleResetToDefaultSchedule = () => {
+    const defaultParsed = getDefaultParsedSchedule();
+    setSchedule(defaultParsed);
+    saveScheduleStore(defaultParsed);
+    setParseSuccess(true);
+    alert('✅ تم تثبيت واعتماد جدول الحصص الأسبوعي الرسمي (30 حصة) بنجاح بالسيرفر!');
+  };
+
+  /* ── Inline Edit Slot Subject ──────────────────────────────────── */
+  const handleEditSlot = (day: string, period: number, currentSubject: string) => {
+    const newSubject = prompt(`تعديل مادة الحصة ${period} ليوم ${day}:`, currentSubject);
+    if (!newSubject || !newSubject.trim() || newSubject === currentSubject) return;
+
+    const currentSlots = schedule?.slots ? [...schedule.slots] : getDefaultParsedSchedule().slots;
+    const slotIdx = currentSlots.findIndex(s => s.day === day && s.period === period);
+
+    if (slotIdx >= 0) {
+      currentSlots[slotIdx] = { ...currentSlots[slotIdx], subject: newSubject.trim() };
+    } else {
+      currentSlots.push({
+        day,
+        period,
+        subject: newSubject.trim(),
+        startTime: '07:30',
+        endTime: '08:10',
       });
-    });
-    return slots;
-  }
+    }
+
+    const updated: ParsedSchedule = {
+      slots: currentSlots,
+      parsedAt: new Date().toISOString(),
+    };
+    setSchedule(updated);
+    saveScheduleStore(updated);
+  };
 
   /* ── Send lesson notifications via WhatsApp ──────────────────── */
   const sendLessonNotifications = async (slot: ScheduleSlot) => {
@@ -654,17 +667,26 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
                 الجدول الأسبوعي الكامل المعتمد لفصل 1/1 ({schedule?.slots?.length ?? 30} حصة)
               </h3>
               <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                هذا الجدول محفوظ دائمياً في قاعدة البيانات والسحابة ومرتبط بجميع صفحات المنصة
+                يمكنك الضغط على أي حصة لتعديل اسمها مباشرة · محفوظ في السيرفر ومرتبط بجدول الحصص وكشوفات الحضور
               </p>
             </div>
-            {onNavigateToSchedule && (
+            <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={onNavigateToSchedule}
-                className="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
+                onClick={handleResetToDefaultSchedule}
+                className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                title="استعادة المواد الرسمية المعتمدة لفصل 1/1"
               >
-                فتح صفحة جدول الحصص والطباعة 🖨️
+                <RefreshCw size={13} /> استعادة المواد الرسمية 🔄
               </button>
-            )}
+              {onNavigateToSchedule && (
+                <button
+                  onClick={onNavigateToSchedule}
+                  className="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
+                >
+                  فتح صفحة جدول الحصص والطباعة 🖨️
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white shadow-md overflow-hidden">
@@ -686,7 +708,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
                     const timeRange = sampleSlot ? `${sampleSlot.startTime} - ${sampleSlot.endTime}` : (pNum === 1 ? '07:30 - 08:10' : '');
 
                     return (
-                      <tr key={pNum} className="hover:bg-slate-50 transition">
+                      <tr key={pNum} className="hover:bg-slate-50/60 transition">
                         <td className="py-3 px-3 text-center bg-slate-50 font-black text-slate-800 border-l border-slate-200">
                           <div>الحصة {pNum}</div>
                           {timeRange && (
@@ -698,14 +720,23 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
                           return (
                             <td key={day} className="p-2 border-l border-slate-200 last:border-l-0">
                               {slot ? (
-                                <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-center">
-                                  <div className="font-black text-xs text-slate-900">{slot.subject}</div>
+                                <div
+                                  onClick={() => handleEditSlot(day, pNum, slot.subject)}
+                                  className="rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200 hover:border-amber-400 p-2.5 text-center transition cursor-pointer group"
+                                  title="اضغط لتعديل اسم المادة"
+                                >
+                                  <div className="font-black text-xs text-slate-900 group-hover:text-amber-950">{slot.subject}</div>
                                   <div className="text-[10px] font-mono text-amber-800 font-bold mt-1">
                                     {slot.startTime} - {slot.endTime}
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-center text-slate-300 font-bold">—</div>
+                                <div
+                                  onClick={() => handleEditSlot(day, pNum, 'حصة دراسية')}
+                                  className="text-center text-slate-300 font-bold p-3 hover:bg-slate-100 rounded-xl cursor-pointer"
+                                >
+                                  + إضافة
+                                </div>
                               )}
                             </td>
                           );
