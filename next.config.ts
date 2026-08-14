@@ -146,6 +146,7 @@ const nextConfig: NextConfig = {
 
           // ── Referrer ───────────────────────────────────────────────────────
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
 
           // ── Legacy XSS filter (IE/old Edge) ───────────────────────────────
           { key: 'X-XSS-Protection', value: '1; mode=block' },
