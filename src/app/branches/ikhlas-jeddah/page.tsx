@@ -35,6 +35,7 @@ import StudentAIChatTab from '@/components/StudentAIChatTab';
 import SmartScheduleTab from '@/components/SmartScheduleTab';
 import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
+import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -43,6 +44,7 @@ type Tab =
   | 'overview'
   | 'curriculum'
   | 'correction'
+  | 'parents-chat'
   | 'students'
   | 'parents'
   | 'quizzes'
@@ -573,6 +575,7 @@ export default function IkhlasJeddahPage() {
 
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: 'overview',        label: 'نظرة عامة',              icon: BarChart3 },
+    { key: 'parents-chat',    label: 'شات أولياء الأمور 💬',   icon: MessageSquare },
     { key: 'curriculum',      label: 'المناهج الدراسية 📚',     icon: BookOpen },
     { key: 'correction',      label: 'تصحيح الواجبات 📝',      icon: CheckCircle },
     { key: 'students',        label: 'إدارة الطلاب 👨‍🎓',        icon: Users },
@@ -716,6 +719,9 @@ export default function IkhlasJeddahPage() {
             onNavigateToCurriculum={() => setActiveTab('curriculum')}
           />
         )}
+
+        {/* ════════════ شات ومجتمع أولياء الأمور ════════════ */}
+        {activeTab === 'parents-chat' && <ParentsCommunityChatTab />}
 
         {/* ════════════ الكويزات والاختبارات التفاعلية ════════════ */}
         {activeTab === 'quizzes' && <ClassroomQuizzesTab />}
