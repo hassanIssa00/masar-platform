@@ -736,7 +736,9 @@ export default function IkhlasJeddahPage() {
         {activeTab === 'ai-chat' && <StudentAIChatTab />}
 
         {/* ════════════ الجدول الذكي وإشعارات الأولياء ════════════ */}
-        {activeTab === 'smart-schedule' && <SmartScheduleTab />}
+        {activeTab === 'smart-schedule' && (
+          <SmartScheduleTab onNavigateToSchedule={() => setActiveTab('schedule')} />
+        )}
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
@@ -849,6 +851,7 @@ export default function IkhlasJeddahPage() {
             currentPeriod={currentPeriod}
             minsUntilDismissal={minsUntilDismissal}
             jsDay={jsDay}
+            onNavigateToSmartSchedule={() => setActiveTab('smart-schedule')}
           />
         )}
 

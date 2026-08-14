@@ -151,12 +151,15 @@ function buildDailySummaryMessage(
   return msg;
 }
 
-/* ─────────────────────────────────────────────────────────────────────── */
-export default function SmartScheduleTab() {
+interface Props {
+  onNavigateToSchedule?: () => void;
+}
+
+export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
   const [parents] = useState<ClassParentRecord[]>(() => getClassParents());
   const [schedule, setSchedule] = useState<ParsedSchedule | null>(() => loadSchedule());
   const [logs, setLogs] = useState<NotificationLog[]>(() => loadLogs());
-  const [activeSection, setActiveSection] = useState<'upload' | 'today' | 'logs' | 'settings'>('upload');
+  const [activeSection, setActiveSection] = useState<'upload' | 'full-grid' | 'today' | 'logs'>('upload');
 
   /* Upload & AI Parse */
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -481,14 +484,15 @@ export default function SmartScheduleTab() {
       {/* ── Section Tabs ─────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
         {[
-          { key: 'upload', label: 'رفع الجدول', icon: Upload },
+          { key: 'upload', label: 'رفع وتعديل الجدول', icon: Upload },
+          { key: 'full-grid', label: `الجدول الأسبوعي المعتمد (${schedule?.slots?.length ?? 30} حصة) 📅`, icon: Calendar },
           { key: 'today', label: `جدول اليوم (${today})`, icon: Sun },
           { key: 'logs', label: `سجل الإشعارات (${logs.length})`, icon: Bell },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setActiveSection(key as any)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black border transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
               activeSection === key
                 ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                 : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700'
@@ -566,7 +570,7 @@ export default function SmartScheduleTab() {
             <button
               onClick={parseScheduleFromAI}
               disabled={parsing || (!imageBase64 && !manualText.trim())}
-              className="w-full flex items-center justify-center gap-3 bg-gradient-to-l from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white py-4 rounded-2xl text-sm font-black shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:scale-100"
+              className="w-full flex items-center justify-center gap-3 bg-gradient-to-l from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white py-4 rounded-2xl text-sm font-black shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:scale-100 cursor-pointer"
             >
               {parsing ? (
                 <>
@@ -591,19 +595,44 @@ export default function SmartScheduleTab() {
             )}
 
             {schedule && (
-              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-xs font-black text-amber-800 mb-2 flex items-center gap-1.5">
-                  <CheckCircle2 size={13} />
-                  الجدول المحفوظ بالسيرفر ({schedule.slots.length} حصة)
-                  <span className="text-amber-500 font-bold">
-                    · تم المزامنة في {new Date(schedule.parsedAt).toLocaleDateString('ar-SA')}
-                  </span>
-                </p>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="mt-3 bg-gradient-to-r from-amber-50 to-emerald-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <CheckCircle2 size={15} className="text-emerald-600" />
+                      الجدول الحالي المعتمد بالسيرفر ({schedule.slots.length} حصة)
+                      <span className="text-emerald-700 font-bold bg-emerald-100 text-[10px] px-2 py-0.5 rounded-full">
+                        ● متصل ودائمي
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                      تم الحفظ والتحديث في {new Date(schedule.parsedAt).toLocaleDateString('ar-SA')} — معتمد تلقائياً في جدول الحصص وكشوفات الحضور.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveSection('full-grid')}
+                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs"
+                    >
+                      استعراض الجدول الأسبوعي 📅
+                    </button>
+                    {onNavigateToSchedule && (
+                      <button
+                        onClick={onNavigateToSchedule}
+                        className="bg-emerald-800 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs"
+                      >
+                        جدول الحصص 🕒
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-amber-200/60">
                   {Object.keys(DAY_NAMES_AR).map(day => {
                     const count = schedule.slots.filter(s => s.day === day).length;
                     return count > 0 ? (
-                      <span key={day} className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-lg">
+                      <span key={day} className="bg-white/80 border border-amber-200 text-amber-900 text-[11px] font-black px-3 py-1 rounded-lg shadow-2xs">
                         {day}: {count} حصص
                       </span>
                     ) : null;
@@ -611,6 +640,82 @@ export default function SmartScheduleTab() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SECTION: Full Weekly Grid View ═══ */}
+      {activeSection === 'full-grid' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                <Calendar size={16} className="text-amber-600" />
+                الجدول الأسبوعي الكامل المعتمد لفصل 1/1 ({schedule?.slots?.length ?? 30} حصة)
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                هذا الجدول محفوظ دائمياً في قاعدة البيانات والسحابة ومرتبط بجميع صفحات المنصة
+              </p>
+            </div>
+            {onNavigateToSchedule && (
+              <button
+                onClick={onNavigateToSchedule}
+                className="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
+              >
+                فتح صفحة جدول الحصص والطباعة 🖨️
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-900 text-white text-xs">
+                    <th className="py-3 px-4 font-black w-36 text-center border-l border-slate-800">الحصة / الوقت</th>
+                    {Object.keys(DAY_NAMES_AR).map(day => (
+                      <th key={day} className="py-3 px-3 text-center border-l border-slate-800 last:border-l-0">
+                        {day}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-xs">
+                  {[1, 2, 3, 4, 5, 6].map(pNum => {
+                    const sampleSlot = schedule?.slots?.find(s => s.period === pNum);
+                    const timeRange = sampleSlot ? `${sampleSlot.startTime} - ${sampleSlot.endTime}` : (pNum === 1 ? '07:30 - 08:10' : '');
+
+                    return (
+                      <tr key={pNum} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-3 text-center bg-slate-50 font-black text-slate-800 border-l border-slate-200">
+                          <div>الحصة {pNum}</div>
+                          {timeRange && (
+                            <span className="text-[10px] font-mono text-slate-400 block mt-0.5">{timeRange}</span>
+                          )}
+                        </td>
+                        {Object.keys(DAY_NAMES_AR).map(day => {
+                          const slot = schedule?.slots?.find(s => s.day === day && s.period === pNum);
+                          return (
+                            <td key={day} className="p-2 border-l border-slate-200 last:border-l-0">
+                              {slot ? (
+                                <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-center">
+                                  <div className="font-black text-xs text-slate-900">{slot.subject}</div>
+                                  <div className="text-[10px] font-mono text-amber-800 font-bold mt-1">
+                                    {slot.startTime} - {slot.endTime}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-slate-300 font-bold">—</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ interface Props {
   currentPeriod: Period | null;
   minsUntilDismissal: number;
   jsDay: number;
+  onNavigateToSmartSchedule?: () => void;
 }
 
 /* ── Subject Icon & Refined Palette Mapping ── */
@@ -104,7 +105,13 @@ const PERIOD_LABELS: Record<number, string> = {
   8: 'الحصة الثامنة',
 };
 
-export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsUntilDismissal, jsDay }: Props) {
+export default function ProfessionalScheduleTab({
+  schedule,
+  currentPeriod,
+  minsUntilDismissal,
+  jsDay,
+  onNavigateToSmartSchedule,
+}: Props) {
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'all'>('all');
 
@@ -402,13 +409,25 @@ export default function ProfessionalScheduleTab({ schedule, currentPeriod, minsU
           })}
         </div>
 
-        {/* Print Button */}
-        <button
-          onClick={handlePrintSchedule}
-          className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition shadow-sm active:scale-95"
-        >
-          <Printer size={14} /> طباعة الجدول 🖨️
-        </button>
+        {/* Actions Toolbar */}
+        <div className="flex items-center gap-2">
+          {onNavigateToSmartSchedule && (
+            <button
+              onClick={onNavigateToSmartSchedule}
+              className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl text-xs font-black transition shadow-xs cursor-pointer"
+            >
+              <Sparkles size={14} className="text-amber-600" /> تعديل أو رفع جدول 🤖
+            </button>
+          )}
+
+          {/* Print Button */}
+          <button
+            onClick={handlePrintSchedule}
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition shadow-sm active:scale-95 cursor-pointer"
+          >
+            <Printer size={14} /> طباعة الجدول 🖨️
+          </button>
+        </div>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════

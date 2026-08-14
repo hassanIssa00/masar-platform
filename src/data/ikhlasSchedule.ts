@@ -12,48 +12,48 @@ export type Period = {
 
 export const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
-// جدول افتراضي — يتم استبداله بالجدول الحقيقي من الـ API
+// جدول الحصص الأسبوعي المعتمد — مدارس الإخلاص الأهلية بجدة (فصل 1/1)
+// 6 حصص يومياً (30 حصة أسبوعياً)
 export const DEFAULT_SCHEDULE: Period[] = [
   // الأحد
-  { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 0, periodNumber: 4, subjectName: 'فسحة 🌤️', startTime: '09:30', endTime: '09:50', teacherName: 'استراحة' },
-  { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 0, periodNumber: 7, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 0, periodNumber: 1, subjectName: 'القرآن الكريم', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 0, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 0, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 0, periodNumber: 4, subjectName: 'التربية الإسلامية', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+
   // الاثنين
-  { dayOfWeek: 1, periodNumber: 1, subjectName: 'الرياضيات', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 1, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 1, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 1, periodNumber: 4, subjectName: 'فسحة 🌤️', startTime: '09:30', endTime: '09:50', teacherName: 'استراحة' },
-  { dayOfWeek: 1, periodNumber: 5, subjectName: 'التربية البدنية', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 1, periodNumber: 6, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 1, periodNumber: 7, subjectName: 'الحاسب الآلي', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 1, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 1, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 1, periodNumber: 3, subjectName: 'القرآن الكريم', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 1, periodNumber: 4, subjectName: 'التربية البدنية', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 1, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 1, periodNumber: 6, subjectName: 'الحاسب الآلي', startTime: '11:10', endTime: '11:50' },
+
   // الثلاثاء
-  { dayOfWeek: 2, periodNumber: 1, subjectName: 'القرآن الكريم', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 2, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 2, periodNumber: 3, subjectName: 'لغتي العربية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 2, periodNumber: 4, subjectName: 'فسحة 🌤️', startTime: '09:30', endTime: '09:50', teacherName: 'استراحة' },
-  { dayOfWeek: 2, periodNumber: 5, subjectName: 'التربية الإسلامية', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 2, periodNumber: 6, subjectName: 'الاجتماعيات', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 2, periodNumber: 7, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 2, periodNumber: 1, subjectName: 'الرياضيات', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 2, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 2, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 2, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 2, periodNumber: 5, subjectName: 'الاجتماعيات', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 2, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+
   // الأربعاء
   { dayOfWeek: 3, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
   { dayOfWeek: 3, periodNumber: 2, subjectName: 'العلوم', startTime: '08:10', endTime: '08:50' },
   { dayOfWeek: 3, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 3, periodNumber: 4, subjectName: 'فسحة 🌤️', startTime: '09:30', endTime: '09:50', teacherName: 'استراحة' },
-  { dayOfWeek: 3, periodNumber: 5, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 3, periodNumber: 6, subjectName: 'الحاسب الآلي', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 3, periodNumber: 7, subjectName: 'التربية البدنية', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 3, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 3, periodNumber: 5, subjectName: 'الحاسب الآلي', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 3, periodNumber: 6, subjectName: 'التربية البدنية', startTime: '11:10', endTime: '11:50' },
+
   // الخميس
   { dayOfWeek: 4, periodNumber: 1, subjectName: 'التربية الإسلامية', startTime: '07:30', endTime: '08:10' },
   { dayOfWeek: 4, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
   { dayOfWeek: 4, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 4, periodNumber: 4, subjectName: 'فسحة 🌤️', startTime: '09:30', endTime: '09:50', teacherName: 'استراحة' },
-  { dayOfWeek: 4, periodNumber: 5, subjectName: 'الاجتماعيات', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 4, periodNumber: 6, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 4, periodNumber: 7, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 4, periodNumber: 4, subjectName: 'الاجتماعيات', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 4, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 4, periodNumber: 6, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
 ];
 
 export const SUBJECT_COLORS: Record<string, string> = {
@@ -68,6 +68,18 @@ export const SUBJECT_COLORS: Record<string, string> = {
   'الاجتماعيات':     'bg-rose-500/20 text-rose-700 border-rose-300',
   'فسحة 🌤️':         'bg-yellow-300/30 text-yellow-700 border-yellow-300',
 };
+
+export function normalizeArabicDay(dayStr: any): number {
+  if (typeof dayStr === 'number') return dayStr >= 0 && dayStr <= 4 ? dayStr : 0;
+  if (!dayStr || typeof dayStr !== 'string') return 0;
+  const clean = dayStr.replace(/يوم\s*/g, '').replace(/[:\-]/g, '').trim();
+  if (clean.includes('أحد') || clean.includes('احد')) return 0;
+  if (clean.includes('اثنين') || clean.includes('إثنين') || clean.includes('ثنين')) return 1;
+  if (clean.includes('ثلاثاء') || clean.includes('ثلاثا')) return 2;
+  if (clean.includes('أربعاء') || clean.includes('اربعاء')) return 3;
+  if (clean.includes('خميس')) return 4;
+  return 0;
+}
 
 export const DAY_MAP_AR_TO_NUM: Record<string, number> = {
   'الأحد': 0,
@@ -93,8 +105,8 @@ export function parseSlotsToPeriods(slots: any[]): Period[] {
     let dayNum = 0;
     if (typeof s.dayOfWeek === 'number') {
       dayNum = s.dayOfWeek;
-    } else if (typeof s.day === 'string' && DAY_MAP_AR_TO_NUM[s.day.trim()] !== undefined) {
-      dayNum = DAY_MAP_AR_TO_NUM[s.day.trim()];
+    } else if (s.day) {
+      dayNum = normalizeArabicDay(s.day);
     }
 
     return {
