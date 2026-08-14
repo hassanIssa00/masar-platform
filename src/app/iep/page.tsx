@@ -11,7 +11,7 @@ import {
   getLocalIEPs, createIEP, updateIEP, deleteIEP, type IEPRecord, type IEPGoal,
   type IEPDomain, DOMAIN_LABELS, DOMAIN_COLORS, type IEPGoalStatus
 } from '@/lib/iep';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getReports, getStudents, type StudentRecord } from '@/lib/localDb';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function IEPPage() {
@@ -89,6 +89,46 @@ export default function IEPPage() {
     setView('detail');
   };
 
+  const handleGenerateSmartPlan = () => {
+    const st = students.find((s) => s.id === studentId);
+    const studentReports = getReports()
+      .filter((report) => st && (report.studentId === st.id || report.studentName === st.fullName))
+      .filter((report) => report.type === 'clinical-analysis' || report.type === 'student-assessment-analysis' || report.type === 'placement')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const latest = studentReports[0];
+    const domains = latest?.domains?.length ? [...latest.domains].sort((a, b) => a.score - b.score).slice(0, 4) : [];
+    const domainToIep = (name: string): IEPDomain => {
+      if (name.includes('نطق') || name.includes('لغة') || name.includes('سمع')) return 'speech';
+      if (name.includes('سلوك') || name.includes('انتباه') || name.includes('حسي')) return 'behavioral';
+      if (name.includes('تواصل') || name.includes('اجتماعي') || name.includes('توحد')) return 'social';
+      if (name.includes('حرك') || name.includes('كتابة')) return 'motor';
+      if (name.includes('ذكاء') || name.includes('معرف') || name.includes('ذاكرة')) return 'cognitive';
+      return 'academic';
+    };
+
+    setStrengths(
+      latest
+        ? `يعتمد على تحليل التقرير الأخير: ${latest.summary}`
+        : 'يستجيب للتعزيز الفوري، ويحتاج خطة قصيرة واضحة مع قياس أسبوعي.',
+    );
+    setChallenges(
+      domains.length
+        ? `أولويات التدخل الحالية: ${domains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ')}.`
+        : 'لم يتم العثور على تقرير تحليلي؛ أضف أهدافاً مبدئية ثم عدلها بعد التقييم.',
+    );
+    setGoals(
+      (domains.length ? domains : [{ name: 'القراءة والكتابة', score: 45, note: '' }, { name: 'الانتباه والسلوك', score: 50, note: '' }]).map((domain, index) => ({
+        domain: domainToIep(domain.name),
+        objective: `يرفع الطالب أداء مجال ${domain.name} من ${domain.score}% إلى 80% من خلال نشاط قصير، نمذجة، وتدريب موجه في قياسين متتاليين.`,
+        targetDate: new Date(Date.now() + (45 + index * 15) * 86400000).toISOString().slice(0, 10),
+        progressNotes: domain.note || 'هدف مولد من بيانات التقرير ويحتاج متابعة أسبوعية.',
+        status: 'in-progress',
+        baselineScore: Math.max(0, Math.min(100, domain.score)),
+        currentScore: Math.max(0, Math.min(100, domain.score)),
+      })),
+    );
+  };
+
   const handleToggleGoalStatus = (iepId: string, goalId: string) => {
     const target = ieps.find((i) => i.id === iepId);
     if (!target) return;
@@ -119,6 +159,8 @@ export default function IEPPage() {
       }
     }
   };
+
+  const selectedIepStudent = selectedIep ? students.find((student) => student.id === selectedIep.studentId) : null;
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
@@ -313,21 +355,30 @@ export default function IEPPage() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-black text-slate-900 text-sm">أهداف الخطة المقيسة ({goals.length})</h3>
-                  <button
-                    type="button"
-                    onClick={() => setGoals([...goals, {
-                      domain: 'academic',
-                      objective: 'هدف تعليمي جديد...',
-                      targetDate: reviewDate,
-                      progressNotes: '',
-                      status: 'in-progress',
-                      baselineScore: 20,
-                      currentScore: 50,
-                    }])}
-                    className="text-xs font-black text-teal-700 hover:underline"
-                  >
-                    + إضافة هدف جديد
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleGenerateSmartPlan}
+                      className="rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white"
+                    >
+                      توليد خطة من تقارير الطالب
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGoals([...goals, {
+                        domain: 'academic',
+                        objective: 'هدف تعليمي جديد...',
+                        targetDate: reviewDate,
+                        progressNotes: '',
+                        status: 'in-progress',
+                        baselineScore: 20,
+                        currentScore: 50,
+                      }])}
+                      className="text-xs font-black text-teal-700 hover:underline"
+                    >
+                      + إضافة هدف جديد
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -402,7 +453,16 @@ export default function IEPPage() {
 
               {/* Printable Body */}
               <div className="space-y-6" id="iep-print">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 rounded-2xl bg-slate-50 p-4 border text-xs font-bold">
+                <div className="grid gap-4 rounded-2xl bg-slate-50 p-4 border text-xs font-bold sm:grid-cols-[90px_repeat(4,1fr)]">
+                  <div className="row-span-2 grid place-items-center">
+                    {selectedIepStudent?.photoUrl ? (
+                      <img src={selectedIepStudent.photoUrl} alt={selectedIep.studentName} className="h-20 w-20 rounded-2xl object-cover ring-2 ring-teal-100" />
+                    ) : (
+                      <div className="grid h-20 w-20 place-items-center rounded-2xl bg-white text-slate-400 ring-1 ring-slate-200">
+                        <User size={30} />
+                      </div>
+                    )}
+                  </div>
                   <div><p className="text-slate-400">الطالب</p><p className="font-black text-slate-900">{selectedIep.studentName}</p></div>
                   <div><p className="text-slate-400">الصف</p><p className="font-black text-slate-900">{selectedIep.grade}</p></div>
                   <div><p className="text-slate-400">المدرسة</p><p className="font-black text-slate-900">{selectedIep.schoolName}</p></div>

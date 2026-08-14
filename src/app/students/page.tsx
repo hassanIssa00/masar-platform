@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -195,7 +195,7 @@ export default function StudentsControlPage() {
                 <p className="text-xs font-black text-teal-800 uppercase tracking-wider">إدارة وإسناد المسارات</p>
                 <h1 className="mt-1 text-3xl font-black text-slate-950 md:text-4xl">إمكانية تحديد مسار أو أكثر لكل طالب يدوياً</h1>
                 <p className="mt-2 max-w-3xl text-xs sm:text-sm font-bold text-slate-600">
-                  يمكنك اختيار مسار واحد أو دمج عدة مسارات معاً للطالب بناءً على رؤيتك التشخيصية، ثم اعتمادها رسمياً.
+                  يمكنك اختيار مسار واحد أو دمج عدة مسارات معاً للطالب بناءً على رؤيتك التشخيصية، ثم اعتمادها رقمياً.
                 </p>
               </div>
               <Link href="/student/new" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 transition">
@@ -381,7 +381,7 @@ export default function StudentsControlPage() {
                           <p className="text-xs font-black text-teal-700">إسناد متعدد المسارات</p>
                           <h2 className="text-xl font-black text-slate-950">
                             {assignedPrograms.length > 0
-                              ? `المسارات المعتمدة (${assignedPrograms.length}): ${assignedPrograms.map((p) => p.shortTitle).join(' + ')}`
+                              ? `المسارات الموثقة (${assignedPrograms.length}): ${assignedPrograms.map((p) => p.shortTitle).join(' + ')}`
                               : 'لم يتم اعتماد مسارات بعد'}
                           </h2>
                         </div>
@@ -529,7 +529,7 @@ export default function StudentsControlPage() {
 
                     <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center space-y-2">
                       <p className="text-xs font-black text-slate-700">إضافة مستند طبّي / تقرير خارجي لملف الطالب</p>
-                      <p className="text-[11px] font-bold text-slate-400">يدعم ملفات PDF، صور الفحوصات، أو التقارير الطبية المعتمدة</p>
+                      <p className="text-[11px] font-bold text-slate-400">يدعم ملفات PDF، صور الفحوصات، أو التقارير الطبية الموثقة</p>
                       <input
                         type="file"
                         id="vault-upload"
@@ -719,6 +719,16 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
   // Get password from credentials store
   const credential = getCredentialByEmailOrPhone(linkedAccount.email);
   const password = credential?.password ?? 'محفوظة بشكل مشفر';
+  const providerLabel =
+    linkedAccount.createdVia === 'google'
+      ? 'Google'
+      : linkedAccount.createdVia === 'apple'
+        ? 'Apple'
+        : linkedAccount.createdVia === 'microsoft'
+          ? 'Microsoft'
+          : linkedAccount.createdVia === 'face'
+            ? 'Face ID'
+            : 'بريد وكلمة مرور';
 
   return (
     <div className="mt-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50/60 via-slate-50 to-white p-4 space-y-3">
@@ -731,7 +741,7 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
           <p className="text-xs font-bold text-slate-500">الحساب المرتبط بملف هذا الطالب</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">اسم ولي الأمر</p>
           <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{linkedAccount.name}</p>
@@ -747,6 +757,10 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">رقم الهاتف</p>
           <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.phone || student.parentPhone || 'غير مسجل'}</p>
+        </div>
+        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+          <p className="text-[10px] font-black text-slate-400">طريقة التسجيل</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900">{providerLabel}</p>
         </div>
       </div>
     </div>

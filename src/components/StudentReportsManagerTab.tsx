@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -141,7 +141,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       <!-- ══ DARK NAVY BANNER ══ -->
       <div style="background:linear-gradient(135deg,#06392c 0%,#0a4a39 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:14px;border-radius:8px;border:1px solid rgba(214,168,63,.55);">
         <div>
-          <div style="font-size:7.5px;color:#d9eadf;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL MASAR REPORT • وثيقة تعليمية علاجية معتمدة</div>
+          <div style="font-size:7.5px;color:#d9eadf;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL MASAR REPORT • وثيقة تعليمية حديثة</div>
           <div style="font-size:14px;font-weight:900;color:#fff;font-family:'Cairo',sans-serif;margin-top:2px;">التقرير الأكاديمي والنمائي الشامل</div>
         </div>
         <div style="text-align:left;color:#d9eadf;font-family:'Cairo',sans-serif;">
@@ -163,21 +163,21 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
           <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 160 160">
             <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
             <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
-            <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+            <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرقمي</text>
             <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
             <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
             <image href="${origin}/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply" />
             <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
             <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">${issuedDate}</text>
-            <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+            <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
           </svg>
-          <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">وثيقة إشرافية معتمدة ✓</div>
+          <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">وثيقة إشرافية موثقة ✓</div>
         </div>
         <!-- RIGHT: Dr. Ismail Signature Block -->
         <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:white;text-align:center;min-width:180px;">
-          <div style="font-size:9px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">يعتمد هذا التقرير رسمياً من:</div>
+          <div style="font-size:9px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">يعتمد:</div>
           <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;margin-top:2px;">د. إسماعيل عيسى</div>
-          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
           <div style="height:44px;margin:4px auto 2px auto;background:white;">
             <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;display:block;" />
           </div>
@@ -382,7 +382,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       "${metrics.teacherNotes}"
     </p>
     <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;font-size:10px;color:#94a3b8;font-weight:700;">
-      — د. إسماعيل عيسى · استشاري التربية الخاصة وتأهيل صعوبات التعلم · ${issuedDate}
+      — د. إسماعيل عيسى · تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم · ${issuedDate}
     </div>
   </div>
 
@@ -460,7 +460,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
   <!-- Summary & Official Certification -->
   <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #06392c;">
-    <div class="section-title" style="color:#06392c;font-size:13px;">📋 سابعاً: الخلاصة والتقييم الرسمي النهائي</div>
+    <div class="section-title" style="color:#06392c;font-size:13px;">📋 سابعاً: الخلاصة والتقييم الرقمي النهائي</div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div style="flex:1;">
         <p style="font-size:11.5px;color:#065f46;line-height:1.8;font-weight:700;">
@@ -472,7 +472,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       </div>
       <div style="width:90px;height:90px;border-radius:50%;border:4px double #06392c;background:linear-gradient(135deg,#f0fdf4,#dcfce7);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
         <span style="font-size:20px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;">مَسَار</span>
-        <span style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;">✓ معتمد</span>
+        <span style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;">✓ موثق</span>
       </div>
     </div>
   </div>
@@ -639,7 +639,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
               className={`text-xs px-4 py-1.5 rounded-xl font-bold border transition-all ${
                 postType === t ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600'
               }`}>
-              {t === 'ANNOUNCEMENT' ? '📢 إعلان رسمي' : '💬 منشور عام'}
+              {t === 'ANNOUNCEMENT' ? '📢 إعلان رقمي' : '💬 منشور عام'}
             </button>
           ))}
         </div>
@@ -659,7 +659,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
             <div key={p.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-2.5 py-0.5 rounded-full">
-                  {p.type === 'ANNOUNCEMENT' ? '📢 إعلان رسمي' : '💬 منشور عام'}
+                  {p.type === 'ANNOUNCEMENT' ? '📢 إعلان رقمي' : '💬 منشور عام'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
                   {new Date(p.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -734,7 +734,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
               </a>
               <button onClick={() => handlePrintStudentReport(selectedStudent)}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-xl text-xs font-black transition shadow-sm">
-                <Printer size={16} /> طباعة PDF التقرير الرسمي بتوقيع د. إسماعيل 🖨️
+                <Printer size={16} /> طباعة PDF التقرير الرقمي بتوقيع د. إسماعيل 🖨️
               </button>
             </div>
           </div>

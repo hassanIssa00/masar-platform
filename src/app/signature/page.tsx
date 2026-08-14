@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -123,7 +123,7 @@ export default function SignaturePage() {
           <div className="flex items-center gap-4">
             <Link href="/"><BrandMark size="sm" /></Link>
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-              <Stamp size={13} /> بوابة الختم الإلكتروني الرسمي (عربي / English)
+              <Stamp size={13} /> بوابة الختم الإلكتروني الرقمي (عربي / English)
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -145,9 +145,9 @@ export default function SignaturePage() {
         {/* Page header */}
         <div className="text-center mb-8 space-y-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-50 px-4 py-1.5 text-xs font-black text-teal-700">
-            <ShieldCheck size={14} /> منظومة الاعتماد الرقمي الرسمي
+            <ShieldCheck size={14} /> منظومة الاعتماد الرقمي الرقمي
           </span>
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900">الختم الإلكتروني الرسمي المعتمد</h1>
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-900">الختم الإلكتروني الرقمي الموثق</h1>
           <p className="text-sm font-bold text-gray-500">
             التاريخ الهجري يتحدث تلقائياً كل يوم داخل الختم — متاح باللغتين العربية والإنجليزية
           </p>
@@ -202,7 +202,7 @@ export default function SignaturePage() {
                 <circle cx={CX} cy={CY} r={RI} fill="white" stroke={INK} strokeWidth="3" />
 
                 <text x={CX} y={CY - 124} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="14" fontWeight="bold" fill={INK} direction="rtl">
-                  الختم الرسمي المعتمد
+                  الختم الرقمي
                 </text>
                 <text x={CX} y={CY - 94} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="22" fontWeight="900" fill={INK} direction="rtl">
                   د. إسماعيل عيسى
@@ -225,7 +225,7 @@ export default function SignaturePage() {
                   {dateStrAr}
                 </text>
                 <text x={CX} y={CY + 122} textAnchor="middle" fontFamily="Cairo, Amiri, Arial" fontSize="11" fontWeight="bold" fill={INK} direction="rtl">
-                  منصة مسار · التعليم العلاجي · جدة
+                  منصة مسار · التعليم الحديث · جدة
                 </text>
               </svg>
 
@@ -301,7 +301,7 @@ export default function SignaturePage() {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-gray-500 font-bold">العنوان الأعلى</span>
-                  <span className="font-black text-teal-700">{activeTab === 'ar' ? 'الختم الرسمي المعتمد' : 'OFFICIAL APPROVED STAMP'}</span>
+                  <span className="font-black text-teal-700">{activeTab === 'ar' ? 'الختم الرقمي' : 'OFFICIAL APPROVED STAMP'}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-gray-500 font-bold">تاريخ اليوم الحقيقي</span>

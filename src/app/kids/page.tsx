@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -194,7 +194,7 @@ function KidsDashboardContent() {
           </div>
 
           <nav className="mt-5 grid gap-2">
-            <SideLink href="#student-program" icon={<BookOpen size={18} />} label={`المسارات المعتمدة (${assignedProgramsList.length})`} />
+            <SideLink href="#student-program" icon={<BookOpen size={18} />} label={`المسارات الموثقة (${assignedProgramsList.length})`} />
             <SideLink href="#student-games" icon={<Gamepad2 size={18} />} label="الألعاب التفاعلية" />
             <SideLink href="#student-profile" icon={<UserRound size={18} />} label="بيانات الطالب" />
             <SideLink href="#student-reports" icon={<ClipboardList size={18} />} label="حالة التقارير" />
@@ -225,7 +225,7 @@ function KidsDashboardContent() {
                   أهلا {student?.fullName ?? 'بك'}، ملفك جاهز للمراجعة
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm font-bold leading-8 text-slate-600">
-                  هنا تظهر بيانات الطالب والألعاب الآمنة وحالة المسارات المعتمدة. نتائج الاستبيان واختبار الطالب محفوظة لد. إسماعيل ولا تظهر كتشخيص داخل تجربة الطالب.
+                  هنا تظهر بيانات الطالب والألعاب الآمنة وحالة المسارات الموثقة. نتائج الاستبيان واختبار الطالب محفوظة لد. إسماعيل ولا تظهر كتشخيص داخل تجربة الطالب.
                 </p>
                 <div className={`mt-5 rounded-lg border p-4 ${status.className}`}>
                   <p className="text-sm font-black">{status.description}</p>
@@ -248,7 +248,7 @@ function KidsDashboardContent() {
                     <p className="text-sm font-black text-white">{student?.fullName || 'اسم الطالب'}</p>
                     <p className="mt-0.5 text-xs font-bold text-teal-300">{student?.grade || 'الصف الدراسي'}</p>
                     <span className="mt-2 inline-block rounded-full bg-white/10 px-3 py-1 text-[10px] font-black text-white/80 ring-1 ring-white/15">
-                      صورة الطالب المعتمدة 📸
+                      صورة الطالب الموثقة 📸
                     </span>
                   </div>
                 </div>
@@ -264,10 +264,10 @@ function KidsDashboardContent() {
                   <ShieldCheck size={24} />
                 </span>
                 <div>
-                  <p className="text-xs font-black text-slate-500">المسارات العلاجية المعتمدة من د. إسماعيل</p>
+                  <p className="text-xs font-black text-slate-500">المسارات التعليمية الموثقة من د. إسماعيل</p>
                   <h2 className="text-xl font-black text-slate-950">
                     {assignedProgramsList.length > 0
-                      ? `المسارات المعتمدة لك (${assignedProgramsList.length})`
+                      ? `المسارات الموثقة لك (${assignedProgramsList.length})`
                       : 'لم يتم اعتماد مسار بعد'}
                   </h2>
                 </div>
@@ -284,7 +284,7 @@ function KidsDashboardContent() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="rounded-full bg-teal-100 text-teal-900 px-3 py-1 text-xs font-black">
-                          مسار معتمد ✓
+                          مسار موثق ✓
                         </span>
                         <span className="text-xs font-bold text-slate-400">
                           {program.modules.length} وحدات تدريبية

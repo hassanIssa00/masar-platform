@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -87,7 +87,7 @@ export default function Dashboard() {
                     د. إسماعيل عيسى
                   </h1>
                   <p className="text-xs md:text-sm font-bold text-teal-100 opacity-90 mt-0.5">
-                    استشاري التعليم العلاجي وصعوبات التعلم
+                    استشاري التعليم الحديث وصعوبات التعلم
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">

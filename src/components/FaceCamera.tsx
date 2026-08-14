@@ -37,6 +37,7 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
   const blinkCountRef = useRef(0);
   const wasBlinkingRef = useRef(false);
   const animRef = useRef<number>(0);
+  const successCalledRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [faceDetected, setFaceDetected] = useState(false);
@@ -49,6 +50,7 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
     try {
       setPhase('loading');
       setErrorMsg('');
+      successCalledRef.current = false;
 
       // Request camera stream (must be user-triggered or immediate)
       let stream: MediaStream | null = null;
@@ -182,7 +184,8 @@ export default function FaceCamera({ mode, onSuccess, onCancel, challenge = 'bli
     if (phase === 'capturing') {
       setProgress(prev => {
         const next = prev + 25;
-        if (next >= 100) {
+        if (next >= 100 && !successCalledRef.current) {
+          successCalledRef.current = true;
           // Done — call success with descriptor
           setTimeout(() => {
             setPhase('success');

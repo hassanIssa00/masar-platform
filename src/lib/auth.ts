@@ -45,7 +45,7 @@ export async function handleGoogleRedirectResult(
     const existing = accounts.find((a) => normalize(a.email) === email);
 
     if (existing) {
-      return { ok: true, account: existing, isNew: false };
+      return { ok: true, account: touchSocialAccount(existing, createdVia, user), isNew: false };
     }
 
     const displayName = user.displayName ?? user.email?.split('@')[0] ?? 'مستخدم';
@@ -59,6 +59,10 @@ export async function handleGoogleRedirectResult(
       email,
       role: preferredRole,
       ...(validBranch ? { schoolBranch: validBranch } : {}),
+      createdVia,
+      providerId: createdVia,
+      firebaseUid: user.uid,
+      lastLoginAt: new Date().toISOString(),
     });
 
     try {
@@ -115,7 +119,7 @@ export async function signInWithGoogle(
     const existing = accounts.find((a) => normalize(a.email) === email);
 
     if (existing) {
-      return { ok: true, account: existing, isNew: false };
+      return { ok: true, account: touchSocialAccount(existing, 'google', user), isNew: false };
     }
 
     // New user — create account from Google profile
@@ -130,6 +134,10 @@ export async function signInWithGoogle(
       email,
       role: preferredRole,
       ...(validBranch ? { schoolBranch: validBranch } : {}),
+      createdVia: 'google',
+      providerId: 'google',
+      firebaseUid: user.uid,
+      lastLoginAt: new Date().toISOString(),
     });
 
     // Sync to Firestore cloud
@@ -217,6 +225,20 @@ function getValidBranch(schoolBranch?: string) {
   return schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
     ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
     : undefined;
+}
+
+function touchSocialAccount(
+  account: AccountRecord,
+  createdVia: 'google' | 'apple' | 'microsoft',
+  user?: User,
+) {
+  return saveAccount({
+    ...account,
+    createdVia: account.createdVia ?? createdVia,
+    providerId: createdVia,
+    firebaseUid: account.firebaseUid ?? user?.uid,
+    lastLoginAt: new Date().toISOString(),
+  });
 }
 
 function currentHostLabel() {
@@ -346,7 +368,7 @@ async function mapFirebaseUserToAccount(
   );
 
   if (existing) {
-    return { ok: true, account: existing, isNew: false };
+    return { ok: true, account: touchSocialAccount(existing, createdVia, user), isNew: false };
   }
 
   const validBranch = getValidBranch(schoolBranch);
@@ -355,6 +377,10 @@ async function mapFirebaseUserToAccount(
     email: resolvedEmail,
     role: preferredRole,
     ...(validBranch ? { schoolBranch: validBranch } : {}),
+    createdVia,
+    providerId: createdVia,
+    firebaseUid: user.uid,
+    lastLoginAt: new Date().toISOString(),
   });
 
   try {
@@ -501,12 +527,16 @@ export async function signInWithApple(
       const fallbackEmail = `${user.uid}@apple.masarplatform.org`;
       const accounts = getAccounts();
       const existing = accounts.find((a) => a.id === user.uid || normalize(a.email) === fallbackEmail);
-      if (existing) return { ok: true, account: existing, isNew: false };
+      if (existing) return { ok: true, account: touchSocialAccount(existing, 'apple', user), isNew: false };
 
       const account = saveAccount({
         name: user.displayName ?? 'مستخدم أبل',
         email: fallbackEmail,
         role: preferredRole,
+        createdVia: 'apple',
+        providerId: 'apple',
+        firebaseUid: user.uid,
+        lastLoginAt: new Date().toISOString(),
       });
       return { ok: true, account, isNew: true };
     }
@@ -519,7 +549,7 @@ export async function signInWithApple(
     const existing = accounts.find((a) => normalize(a.email) === email);
 
     if (existing) {
-      return { ok: true, account: existing, isNew: false };
+      return { ok: true, account: touchSocialAccount(existing, 'apple', user), isNew: false };
     }
 
     const displayName = user.displayName ?? 'مستخدم أبل';
@@ -533,6 +563,10 @@ export async function signInWithApple(
       email,
       role: preferredRole,
       ...(validBranch ? { schoolBranch: validBranch } : {}),
+      createdVia: 'apple',
+      providerId: 'apple',
+      firebaseUid: user.uid,
+      lastLoginAt: new Date().toISOString(),
     });
 
     try {
@@ -605,7 +639,7 @@ export async function signInWithMicrosoft(
     const existing = accounts.find((a) => normalize(a.email) === email);
 
     if (existing) {
-      return { ok: true, account: existing, isNew: false };
+      return { ok: true, account: touchSocialAccount(existing, 'microsoft', user), isNew: false };
     }
 
     const displayName = user.displayName ?? user.email?.split('@')[0] ?? 'مستخدم مايكروسوفت';
@@ -619,6 +653,10 @@ export async function signInWithMicrosoft(
       email,
       role: preferredRole,
       ...(validBranch ? { schoolBranch: validBranch } : {}),
+      createdVia: 'microsoft',
+      providerId: 'microsoft',
+      firebaseUid: user.uid,
+      lastLoginAt: new Date().toISOString(),
     });
 
     try {

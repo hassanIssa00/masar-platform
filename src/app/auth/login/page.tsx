@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { authenticate, signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
-import { getStudents, setSession } from '@/lib/localDb';
+import { getReports, getStudents, setSession } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
@@ -75,6 +75,7 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
+  const [socialRole, setSocialRole] = useState<'parent' | 'student'>('parent');
 
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
@@ -128,7 +129,19 @@ export default function LoginPage() {
             : true);
         targetUrl = needsSetup ? '/school-student/setup' : '/school-student';
       } else {
-        targetUrl = '/kids';
+        const linked = getStudents().find((s) => s.fullName === account.name || s.parentPhone === account.email);
+        const hasStudentTest = linked
+          ? getReports().some(
+              (report) =>
+                (report.studentId === linked.id || report.studentName === linked.fullName) &&
+                (report.type === 'student-assessment-analysis' || report.type === 'student-assessment-answers'),
+            )
+          : false;
+        if (typeof window !== 'undefined' && linked) {
+          localStorage.setItem('masar.current-student-id', linked.id);
+          localStorage.setItem('masar_active_student_id', linked.id);
+        }
+        targetUrl = linked && hasStudentTest ? `/student/${linked.id}` : '/student/new?flow=student';
       }
     } else {
       if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'parent');
@@ -136,7 +149,7 @@ export default function LoginPage() {
         targetUrl = '/school-parent';
       } else {
         const students = getStudents();
-        targetUrl = students.length > 0 ? '/parent' : '/student/new';
+        targetUrl = students.length > 0 ? '/parent' : '/student/new?flow=parent';
       }
     }
 
@@ -227,7 +240,7 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setLoginError('');
 
-    const result = await signInWithGoogle('parent');
+    const result = await signInWithGoogle(socialRole);
 
     setGoogleLoading(false);
 
@@ -245,7 +258,7 @@ export default function LoginPage() {
     setAppleLoading(true);
     setLoginError('');
 
-    const result = await signInWithApple('parent');
+    const result = await signInWithApple(socialRole);
 
     setAppleLoading(false);
 
@@ -263,7 +276,7 @@ export default function LoginPage() {
     setMsLoading(true);
     setLoginError('');
 
-    const result = await signInWithMicrosoft('parent');
+    const result = await signInWithMicrosoft(socialRole);
 
     setMsLoading(false);
 
@@ -362,7 +375,23 @@ export default function LoginPage() {
           </div>
 
           {/* ── Social Sign-In Buttons ── */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => setSocialRole('parent')}
+              className={`rounded-xl px-3 py-2.5 text-xs font-black transition ${socialRole === 'parent' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}
+            >
+              دخول ولي أمر
+            </button>
+            <button
+              type="button"
+              onClick={() => setSocialRole('student')}
+              className={`rounded-xl px-3 py-2.5 text-xs font-black transition ${socialRole === 'student' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}
+            >
+              دخول طالب
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <button
               type="button"
               id="btn-google-login"

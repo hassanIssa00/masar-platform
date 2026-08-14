@@ -58,3 +58,38 @@
 - Google لا يحتاج تعديل كود إضافي بعد التحديث الحالي، إلا إذا تغير الدومين أو مشروع Firebase.
 - Apple لن يعمل بدون حساب Apple Developer مفعل وإعداد `Services ID` و `Private Key`.
 - بعد أي تعديل في الدومينات أو OAuth credentials انتظر دقيقة إلى عدة دقائق قبل إعادة الاختبار.
+
+## تحقق Google على الإنتاج
+
+إذا ظهرت رسالة مثل: `راجع تفعيل المزود وإضافة الدومين في Authorized domains` بعد اختيار حساب Google، راجع الآتي:
+
+1. من Firebase Console افتح `Authentication`.
+2. افتح `Settings` ثم `Authorized domains`.
+3. تأكد من وجود:
+   - `masarplatform.org`
+   - `www.masarplatform.org`
+   - `masar-platform-8e642.firebaseapp.com`
+4. من `Authentication > Sign-in method` تأكد أن مزود `Google` مفعل.
+5. من Google Cloud Console تأكد أن OAuth redirect URI يحتوي:
+   - `https://masarplatform.org/__/auth/handler`
+   - `https://masar-platform-8e642.firebaseapp.com/__/auth/handler`
+
+الكود الحالي يحفظ بيانات مزود الدخول داخل سجل المستخدم المحلي:
+
+- `createdVia`: نوع الدخول مثل `google` أو `apple` أو `face`.
+- `providerId`: اسم مزود Firebase.
+- `firebaseUid`: رقم المستخدم داخل Firebase.
+- `lastLoginAt`: آخر وقت دخول.
+
+هذا يجعل لوحة المستخدمين تعرض أن الحساب تم إنشاؤه أو استخدامه عبر Google/Apple بدلاً من ظهوره كحساب بريد عادي فقط.
+
+## Face ID
+
+Face ID في المنصة ليس مزود Firebase خارجي، بل طبقة دخول محلية فوق حساب المستخدم المسجل:
+
+1. المستخدم يدخل بحساب عادي أو اجتماعي.
+2. يفتح صفحة `face-enroll`.
+3. يتم حفظ بصمة الوجه وربطها بالحساب الحالي.
+4. عند تسجيل الدخول بالوجه، النظام يبحث عن البصمة المرتبطة ثم يفتح نفس حساب المستخدم.
+
+تمت معالجة مشكلة تكرار الالتقاط أثناء التسجيل بإيقاف استدعاء النجاح أكثر من مرة أثناء جلسة الكاميرا الواحدة. ولو لم تكن هناك جلسة دخول، صفحة التسجيل بالوجه ترجع المستخدم إلى `/auth/login`.

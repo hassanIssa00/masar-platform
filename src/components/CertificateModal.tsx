@@ -1,4 +1,4 @@
-// Updated: 2026-08-12 - Real Dr. Ismail Stamp in Certificate
+﻿// Updated: 2026-08-12 - Real Dr. Ismail Stamp in Certificate
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -78,7 +78,7 @@ function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolea
       <text x={CX} y={CY - 44} textAnchor="middle"
         fontFamily="Cairo, Amiri, Arial" fontSize="6.5" fontWeight="bold" fill={INK}
         direction={isAr ? 'rtl' : 'ltr'}>
-        {isAr ? 'الختم الرسمي المعتمد' : 'OFFICIAL APPROVED STAMP'}
+        {isAr ? 'الختم الرقمي' : 'OFFICIAL APPROVED STAMP'}
       </text>
 
       {/* Name */}
@@ -118,7 +118,7 @@ function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolea
       {/* Bottom label */}
       <text x={CX} y={CY + 44} textAnchor="middle"
         fontFamily="Cairo, Amiri, Arial" fontSize="5" fontWeight="bold" fill={INK}>
-        {isAr ? 'منصة مسار · التعليم العلاجي' : 'MASAR PLATFORM · JEDDAH'}
+        {isAr ? 'منصة مسار · التعليم الحديث' : 'MASAR PLATFORM · JEDDAH'}
       </text>
     </svg>
   );
@@ -357,7 +357,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 <html lang="${isAr ? 'ar' : 'en'}" dir="${isAr ? 'rtl' : 'ltr'}">
 <head>
   <meta charset="utf-8"/>
-  <title>${isAr ? 'طباعة الشهادة الرسمية' : 'Print Certificate'}</title>
+  <title>${isAr ? 'طباعة الشهادة الرقمية' : 'Print Certificate'}</title>
   ${styles}
   <style>
     @page { size: 297mm 210mm; margin: 0; }
@@ -440,7 +440,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
         {/* TOOLBAR */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-emerald-900/50 print:hidden" dir="rtl">
-          <span className="text-sm font-black text-white">🏆 شهادة التميز والاعتماد الرسمي</span>
+          <span className="text-sm font-black text-white">🏆 شهادة التميز والاعتماد الرقمي</span>
           <div className="flex items-center gap-2.5">
             <div className="flex rounded-lg bg-slate-900 p-0.5 border border-slate-800 text-xs font-bold">
               <button onClick={() => setLang('ar')} className={`px-3 py-1.5 rounded-md transition ${isAr?'bg-[#06392c] text-white':'text-slate-400 hover:text-white'}`}>🇸🇦 عربي</button>
@@ -508,7 +508,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   <ShieldCheck size={16} color="white"/>
                 </div>
                 <div style={{ textAlign: isAr ? 'right' : 'left', lineHeight:1.3 }}>
-                  <div style={{ fontSize:11, fontWeight:900, color:'#06392c' }}>{isAr?'شهادة معتمدة':'Certified'}</div>
+                  <div style={{ fontSize:11, fontWeight:900, color:'#06392c' }}>{isAr?'شهادة موثقة':'Certified'}</div>
                   <div style={{ fontSize:9, fontFamily:'monospace', color:'#666' }}>{certNo}</div>
                   <div style={{ fontSize:9, color:'#888' }}>{isAr?'التاريخ:':'Date:'} {data.completionDate}</div>
                 </div>
@@ -522,12 +522,12 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               <h1 style={{ fontSize:30, fontWeight:900, color:'#06392c', margin:0,
                 fontFamily:'Georgia, serif', lineHeight:1.2 }}>
-                {isAr ? 'شهادة إنجاز واجتياز برنامج علاجي' : 'CERTIFICATE OF COMPLETION'}
+                {isAr ? 'شهادة إنجاز واجتياز برنامج تعليمي' : 'CERTIFICATE OF COMPLETION'}
               </h1>
 
               <p style={{ fontSize:12, fontWeight:700, color:'#555', margin:0 }}>
-                {isAr ? 'تشهد منصة مسار للتأهيل والتعليم الذكي وتحت إشراف الاستشاري'
-                       : 'This certifies under the supervision of Consultant'}
+                {isAr ? 'تشهد منصة مسار للتأهيل والتعليم الذكي وتحت إشراف'
+                       : 'This certifies under the supervision of'}
               </p>
 
               <p style={{ fontSize:20, fontWeight:900, color:'#06392c', margin:0, fontFamily:'Georgia, serif' }}>
@@ -583,8 +583,8 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               {/* Program */}
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, width:'100%', marginTop:2 }}>
                 <p style={{ fontSize:12, fontWeight:700, color:'#555', margin:0 }}>
-                  {isAr ? 'قد أتم بنجاح واقتدار لكافة متطلبات الجلسات العلاجية والتحليلية النهائية المتخصصة في:'
-                         : 'Has successfully completed all specialized therapeutic & analytical session requirements in:'}
+                  {isAr ? 'قد أتم بنجاح واقتدار متطلبات الجلسات التعليمية والتحليلية المتخصصة في:'
+                         : 'Has successfully completed all specialized educational and analytical session requirements in:'}
                 </p>
                 <div style={{ background:'#e3eae4', border:'1.5px solid #c4d4c8', borderRadius:14, padding:'8px 28px' }}>
                   <span style={{ fontSize:17, fontWeight:900, color:'#06392c' }}>
@@ -623,19 +623,19 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               {/* RIGHT (RTL): Doctor name + inline signature */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 260 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
-                  {isAr ? 'يعتمد هذا التقرير رسمياً من:' : 'Officially certified by:'}
+                  {isAr ? 'يعتمد:' : 'Officially certified by:'}
                 </span>
                 <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0, fontFamily: 'Georgia, serif', lineHeight: 1.1 }}>
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
                 <p style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
-                  {isAr ? 'استشاري التربية الخاصة وتأهيل صعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                  {isAr ? 'تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
                 </p>
                 {/* Signature image inline above underline */}
                 <div style={{ marginTop: 6, width: 180 }}>
                   <img
                     src="/dr-ismail-signature.png"
-                    alt="التوقيع المعتمد"
+                    alt="التوقيع الموثق"
                     style={{ height: 44, objectFit: 'contain', mixBlendMode: 'multiply', display: 'block' }}
                   />
                   <div style={{ borderBottom: '1.5px solid #94a3b8', paddingTop: 2 }} />
@@ -646,7 +646,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <DrIsmailStamp sigB64={sigB64} isAr={isAr} dateStr={stampDate} />
                 <span style={{ fontSize: 9, fontWeight: 900, color: '#334155', letterSpacing: '0.3px', textAlign: 'center' }}>
-                  {isAr ? 'الختم الرقمي المعتمد' : 'OFFICIAL DIGITAL STAMP'}
+                  {isAr ? 'الختم الرقمي' : 'OFFICIAL DIGITAL STAMP'}
                 </span>
                 <span style={{ fontSize: 8.5, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
                   {certNo}
@@ -666,7 +666,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ textAlign:'right' }}>
                   <div style={{ fontSize:11, fontWeight:900, color:'white', lineHeight:1.3 }}>
-                    {isAr ? 'شهادة صادرة رسمياً وموثقة' : 'Officially Issued Certificate'}
+                    {isAr ? 'شهادة صادرة رقمياً وموثقة' : 'Officially Issued Certificate'}
                   </div>
                   <div style={{ fontSize:9.5, color:'#a8d4b8', lineHeight:1.3 }}>
                     {isAr ? 'عبر منصة مسار للتأهيل والتعليم الذكي' : 'via Masar Smart Platform'}

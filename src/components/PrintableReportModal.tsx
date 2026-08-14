@@ -38,6 +38,22 @@ export default function PrintableReportModal({
     const domainsList = Array.isArray(report.domains) ? report.domains : [];
     const recommendationsList = Array.isArray(report.recommendations) ? report.recommendations : [];
     const answersList = Array.isArray(report.answers) ? report.answers : [];
+    const isSurveyAnswersReport = report.type === 'survey-answers';
+    const isStudentAnswersReport = report.type === 'student-assessment-answers';
+    const isAnswersReport = isSurveyAnswersReport || isStudentAnswersReport;
+    const reportTitle = isSurveyAnswersReport
+      ? 'تقرير إجابات ولي الأمر'
+      : isStudentAnswersReport
+        ? 'تقرير إجابات اختبار الطالب'
+        : report.type === 'student-assessment-analysis'
+          ? 'تحليل اختبار الطالب المباشر'
+          : 'التقرير التحليلي الشامل';
+    const reportSubtitle = isSurveyAnswersReport
+      ? 'سجل إجابات خام فقط، بدون تحليل أو تشخيص داخل هذا الملف'
+      : isStudentAnswersReport
+        ? 'إجابات الطالب سؤالاً بسؤال مع قراءة المجالات المرتبطة بالاختبار'
+        : 'تحليل المجالات والأولويات والخطة المقترحة دون عرض الإجابات الخام';
+    const printableAnswers = isAnswersReport ? answersList : [];
     const student = getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName);
     const studentPhoto = student?.photoUrl?.trim();
     const studentPhotoHTML = studentPhoto
@@ -73,7 +89,7 @@ export default function PrintableReportModal({
       </tr>`,
     ).join('');
 
-    const answersRows = answersList.slice(0, 12).map(
+    const answersRows = printableAnswers.slice(0, 40).map(
       (ans, i) => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
         <td style="padding:7px 10px;font-weight:900;font-family:monospace;text-align:center;border-bottom:1px solid #e2e8f0">${i + 1}</td>
@@ -86,7 +102,7 @@ export default function PrintableReportModal({
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8"/>
-  <title>تقرير ${report.studentName || 'الطالب'} — منصة مسار</title>
+          <title>${reportTitle} - ${report.studentName || 'الطالب'} - منصة مسار</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after {
@@ -241,8 +257,8 @@ export default function PrintableReportModal({
 
         <div class="banner" style="display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:right;">
           <div style="flex:1;">
-            <h1>تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
-            <p>مدرسة الإخلاص بجدة · قسم التربية الخاصة والتأهيل النمائي</p>
+            <h1>${reportTitle}</h1>
+            <p>${reportSubtitle}</p>
           </div>
           ${studentPhotoHTML}
         </div>
@@ -252,10 +268,17 @@ export default function PrintableReportModal({
           <div class="info-item"><span class="info-lbl">الصف الدراسي:</span><span class="info-val">${report.grade || 'الأول الابتدائي'}</span></div>
           <div class="info-item"><span class="info-lbl">رقم الملف:</span><span class="info-val">${fileNumber}</span></div>
           <div class="info-item"><span class="info-lbl">تاريخ التقرير:</span><span class="info-val">${report.date || hijriDate}</span></div>
-          <div class="info-item"><span class="info-lbl">البرنامج العلاجي:</span><span class="info-val">${report.program || 'برنامج التأهيل الشامل'}</span></div>
-          <div class="info-item"><span class="info-lbl">الاستشاري المشرف:</span><span class="info-val">د. إسماعيل عيسى</span></div>
+          <div class="info-item"><span class="info-lbl">البرنامج:</span><span class="info-val">${report.program || 'برنامج التأهيل الشامل'}</span></div>
+          <div class="info-item"><span class="info-lbl">إشراف:</span><span class="info-val">د. إسماعيل عيسى</span></div>
         </div>
 
+        ${
+          isAnswersReport
+            ? `<div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:900;color:#06392c;margin-bottom:4px;">طبيعة هذا التقرير</div>
+                <div style="font-size:10.5px;font-weight:800;color:#334155;line-height:1.8;">هذا الملف مخصص لعرض الإجابات الخام فقط، ويتم فصل التحليل المهني في تقرير مستقل حتى لا تختلط بيانات الإجابة بقرار د. إسماعيل.</div>
+              </div>`
+            : `
         <div class="score-card">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -269,11 +292,12 @@ export default function PrintableReportModal({
         </div>
 
         <div style="background: #ffffff; border: 1.5px solid #06392c; border-radius: 10px; padding: 10px 14px; margin-top: 10px;">
-          <div style="font-size: 11px; font-weight: 900; color: #06392c; margin-bottom: 4px;">قرار التأهيل التعليمي المعتمد:</div>
+          <div style="font-size: 11px; font-weight: 900; color: #06392c; margin-bottom: 4px;">قرار التأهيل التعليمي:</div>
           <div style="font-size: 10.5px; font-weight: 700; color: #1e293b; line-height: 1.6;">
-            بدء تطبيق خطة التدخل العلاجي الخاصة بـ <strong>${report.program || 'برنامج التأهيل الشامل'}</strong> وتوثيق نسبة التطور بشكل شهري.
+            بدء تطبيق خطة التدخل الخاصة بـ <strong>${report.program || 'برنامج التأهيل الشامل'}</strong> وتوثيق نسبة التطور بشكل شهري.
           </div>
-        </div>
+        </div>`
+        }
       </div>
 
       <div class="footer">
@@ -290,6 +314,23 @@ export default function PrintableReportModal({
           <div class="serial">${fileNumber}</div>
         </div>
 
+        ${
+          isSurveyAnswersReport
+            ? `
+        <div class="sec-head">1. إجابات ولي الأمر التفصيلية</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 8%;">#</th>
+              <th style="width: 52%;">السؤال</th>
+              <th style="width: 40%;">الإجابة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${answersRows || `<tr><td colspan="3" style="padding:12px;text-align:center;color:#94a3b8;font-size:11px">لا توجد إجابات محفوظة</td></tr>`}
+          </tbody>
+        </table>`
+            : `
         <div class="sec-head">1. نتائج تحليل المجالات النمائية والأكاديمية</div>
         <table>
           <thead>
@@ -303,7 +344,10 @@ export default function PrintableReportModal({
             ${domainsRows}
           </tbody>
         </table>
+        `
+        }
 
+        ${!isAnswersReport ? `
         <div class="sec-head" style="margin-top: 14px;">2. أهداف خطة التربية الفردية التفصيلية (IEP)</div>
         <table>
           <thead>
@@ -317,7 +361,9 @@ export default function PrintableReportModal({
             ${iepRows.length > 0 ? iepRows : `<tr><td colspan="3" style="text-align: center; padding: 10px; color: #94a3b8;">تم تحديد الأهداف الأساسية للخطة</td></tr>`}
           </tbody>
         </table>
+        ` : ''}
 
+        ${!isAnswersReport ? `
         <div class="sec-head" style="margin-top: 14px;">3. توصيات المنزل والمدرسة</div>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
           <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px;">
@@ -333,6 +379,7 @@ export default function PrintableReportModal({
             </ul>
           </div>
         </div>
+        ` : ''}
       </div>
 
       <div class="footer">
@@ -345,12 +392,12 @@ export default function PrintableReportModal({
     <section class="print-page">
       <div>
         <div class="header">
-          <div><span class="logo">مَسَار</span> <span class="sublogo">الإعتماد الرسمي والختم</span></div>
+          <div><span class="logo">مَسَار</span> <span class="sublogo">التوقيع والختم الرقمي</span></div>
           <div class="serial">${fileNumber}</div>
         </div>
 
         ${
-          answersRows.length > 0
+          isStudentAnswersReport && answersRows.length > 0
             ? `
         <div class="sec-head">4. سجل الإجابات التفصيلية المحفوظة</div>
         <table>
@@ -370,7 +417,7 @@ export default function PrintableReportModal({
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 14px;">
           <p style="font-size: 9.5px; color: #475569; font-weight: 700; line-height: 1.6; margin: 0;">
-            وثيقة إشرافية معتمدة رسمياً ومستخرجة إلكترونياً من منصة مَسَار بمدرسة الإخلاص بجدة تحت إشراف وتوقيع استشاري التربية الخاصة وتأهيل صعوبات التعلم.
+            وثيقة إشرافية مستخرجة إلكترونياً من منصة مَسَار تحت إشراف د. إسماعيل عيسى، مخصصة لمتابعة التعليم الحديث وتأسيس الصفوف الأولية والنطق والتخاطب وصعوبات التعلم.
           </p>
         </div>
       </div>
@@ -382,7 +429,7 @@ export default function PrintableReportModal({
             <svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 160 160">
               <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" stroke-width="2.5"/>
               <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" stroke-width="1.2"/>
-              <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرسمي المعتمد</text>
+              <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرقمي</text>
               <text x="80" y="49" text-anchor="middle" font-family="Cairo,Arial" font-size="10" font-weight="900" fill="#06392c">د. إسماعيل عيسى</text>
               <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" stroke-width="0.8"/>
               <defs>
@@ -393,16 +440,16 @@ export default function PrintableReportModal({
               <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-modal)" style="mix-blend-mode:multiply"/>
               <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
               <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${hijriDate}</text>
-              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
             </svg>
-            <div style="font-size: 8.5px; font-weight: 900; color: #06392c; margin-top: 2px;">الختم الرقمي المعتمد</div>
+            <div style="font-size: 8.5px; font-weight: 900; color: #06392c; margin-top: 2px;">الختم الرقمي</div>
           </div>
 
           <!-- SIGNATURE -->
           <div class="sig-box">
-            <div style="font-size: 9px; font-weight: 700; color: #64748b;">يعتمد هذا التقرير رسمياً من:</div>
+            <div style="font-size: 9px; font-weight: 700; color: #64748b;">يعتمد:</div>
             <div style="font-size: 13px; font-weight: 900; color: #06392c; margin-top: 2px;">د. إسماعيل عيسى</div>
-            <div style="font-size: 8px; color: #047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+            <div style="font-size: 8px; color: #047857;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
             <div style="height: 44px; display: flex; align-items: center; justify-content: center; margin: 4px 0 2px 0;">
               <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
             </div>

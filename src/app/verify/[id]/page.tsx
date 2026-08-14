@@ -42,10 +42,10 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
             </div>
             <div>
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-black">
-                <CheckCircle2 size={14} /> شهادة رسمية موثقة ومعتمدة 100%
+                <CheckCircle2 size={14} /> شهادة رقمية موثقة 100%
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                سجل التحقق الرقمي الرسمي
+                سجل التحقق الرقمي
               </h1>
               <p className="text-xs font-bold text-slate-500 mt-1">
                 منصة مسار للتأهيل والتعليم الذكي تحت إشراف د. إسماعيل عيسى
@@ -58,7 +58,7 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
             
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
               <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                <FileCheck size={13} className="text-teal-600" /> كود التوثيق المعتمد
+                <FileCheck size={13} className="text-teal-600" /> كود التوثيق الرقمي
               </span>
               <p className="font-mono text-sm font-black text-teal-700 tracking-wider">
                 {certId}
@@ -67,7 +67,7 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
               <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                <Calendar size={13} className="text-teal-600" /> تاريخ الإصدار والاعتماد
+                <Calendar size={13} className="text-teal-600" /> تاريخ الإصدار
               </span>
               <p className="text-sm font-black text-slate-900">
                 {date}
@@ -85,7 +85,7 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1 sm:col-span-2">
               <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                <Award size={13} className="text-teal-600" /> البرنامج العلاجي المعتمد
+                <Award size={13} className="text-teal-600" /> برنامج التعليم الحديث
               </span>
               <p className="text-base font-black text-slate-900">
                 {programTitle}
@@ -106,16 +106,16 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
               <img src="/dr-ismail.jpg" alt="د. إسماعيل عيسى" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h4 className="text-sm font-black text-slate-900">جهة الاعتماد والإشراف الطبي:</h4>
+              <h4 className="text-sm font-black text-slate-900">جهة الإشراف والمتابعة:</h4>
               <p className="text-xs font-black text-teal-700">د. إسماعيل عيسى</p>
-              <p className="text-[10px] font-bold text-slate-600">استشاري التربية الخاصة وتأهيل صعوبات التعلم</p>
+              <p className="text-[10px] font-bold text-slate-600">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</p>
             </div>
           </div>
 
           {/* Footer note */}
           <div className="text-center pt-2 border-t border-slate-100">
             <p className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1">
-              <Sparkles size={13} className="text-teal-600" /> هذه الوثيقة مسجلة دائمياً بالسجل الرقمي الرسمي لمنصة مسار التفاعلية.
+              <Sparkles size={13} className="text-teal-600" /> هذه الوثيقة مسجلة في السجل الرقمي لمنصة مسار التفاعلية.
             </p>
           </div>
 

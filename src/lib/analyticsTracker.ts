@@ -339,19 +339,19 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   const visitEvents = events.filter((e) => e.type === 'visit');
 
   return {
-    totalVisits: Math.max(visitEvents.length, 142),
-    totalLogins: Math.max(loginEvents.length, 89),
-    totalRegistrations: Math.max(regEvents.length, 24),
-    totalFailedLogins: failedEvents.length || 1,
-    todayVisits: Math.max(todayEvents.filter((e) => e.type === 'visit').length, 18),
-    todayLogins: Math.max(todayEvents.filter((e) => e.type.startsWith('login') && e.type !== 'login_failed').length, 12),
-    todayRegistrations: Math.max(todayEvents.filter((e) => e.type.startsWith('register')).length, 3),
+    totalVisits: visitEvents.length,
+    totalLogins: loginEvents.length,
+    totalRegistrations: regEvents.length,
+    totalFailedLogins: failedEvents.length,
+    todayVisits: todayEvents.filter((e) => e.type === 'visit').length,
+    todayLogins: todayEvents.filter((e) => e.type.startsWith('login') && e.type !== 'login_failed').length,
+    todayRegistrations: todayEvents.filter((e) => e.type.startsWith('register')).length,
     weeklyTrend,
-    deviceBreakdown: deviceBreakdown.mobile + deviceBreakdown.desktop > 0 ? deviceBreakdown : { mobile: 45, tablet: 15, desktop: 40 },
-    osBreakdown: Object.keys(osBreakdown).length > 0 ? osBreakdown : { Windows: 55, Android: 25, iOS: 15, macOS: 5 },
-    browserBreakdown: Object.keys(browserBreakdown).length > 0 ? browserBreakdown : { Chrome: 65, Edge: 20, Safari: 10, Firefox: 5 },
+    deviceBreakdown,
+    osBreakdown,
+    browserBreakdown,
     recentEvents: events.slice(0, 50),
-    hourlyLogins: hourlyLogins.some((x) => x > 0) ? hourlyLogins : [0, 0, 0, 0, 0, 0, 2, 5, 8, 12, 10, 8, 6, 9, 11, 7, 5, 3, 2, 1, 0, 0, 0, 0],
+    hourlyLogins,
   };
 }
 

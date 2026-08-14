@@ -11,6 +11,10 @@ export type AccountRecord = {
   phone?: string;
   role: UserRole;
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
+  createdVia?: 'email' | 'google' | 'apple' | 'microsoft' | 'face';
+  providerId?: string;
+  firebaseUid?: string;
+  lastLoginAt?: string;
   createdAt: string;
 };
 

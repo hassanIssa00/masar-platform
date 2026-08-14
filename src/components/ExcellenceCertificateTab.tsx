@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall } from 'lucide-react';
@@ -8,7 +8,7 @@ import BrandMark from './BrandMark';
 const SUGGESTED_ACHIEVEMENTS = [
   'التفوق الدراسي والأكاديمي العام',
   'التميز في القراءة والوعي الفونيجي',
-  'التقدم الملحوظ في مهارات التعلم العلاجي',
+  'التقدم الملحوظ في مهارات التعلم الحديث',
   'التفوق والتميز في الرياضيات والحساب',
   'مهارات التواصل والانضباط الصفي',
   'الالتزام والمداومة والتفوق المستمر',
@@ -71,14 +71,14 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 
   const [form, setForm] = useState<CertData>({
     certTitle: 'شهادة تفوق وتميز صفي 🏆',
-    subTitle: 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف الاستشاري',
+    subTitle: 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف',
     doctorName: 'د. إسماعيل عيسى',
-    doctorTitle: 'استشاري التربية الخاصة وتأهيل صعوبات التعلم',
+    doctorTitle: 'تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم',
     studentPrefix: 'بأن الطالب المتفوق',
     studentName: 'ربيع إسماعيل محمد كامل عيسى',
     gradeLabel: 'الصف الثالث الابتدائي',
     achievementIntro: 'قد حقق التميز والتفوق المستحق وجدارة الأداء العالي في:',
-    achievement: 'التقدم الملحوظ في مهارات التعلم العلاجي',
+    achievement: 'التقدم الملحوظ في مهارات التعلم الحديث',
     score: 100,
     ratingText: 'ممتاز مع مرتبة الشرف 🌟',
     date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -111,14 +111,14 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
     
     const text =
-      `🎖️ *إشعار شهادة تفوق وتكريم رسمية — منصة مَسَار*%0A%0A` +
+      `🎖️ *إشعار شهادة تفوق وتكريم رقمية — منصة مَسَار*%0A%0A` +
       `👨‍👦 *المكرم المحترم (ولي الأمر):* ${encodeURIComponent(parentName)}%0A` +
       `👤 *شهادة تفوق وتكريم لابنكم البطل:* ${encodeURIComponent(form.studentName)}%0A` +
       `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
       `🏆 *عنوان التكريم:* ${encodeURIComponent(form.certTitle)}%0A` +
       `🎯 *مجال التميز:* ${encodeURIComponent(form.achievement)}%0A` +
       `🌟 *التقدير المستحق:* ${encodeURIComponent(form.ratingText)} (بنسبة %${form.score})%0A` +
-      `✍️ *معتمدة برقم تسلسلي:* ${form.certNumber}%0A%0A` +
+      `✍️ *موثقة برقم تسلسلي:* ${form.certNumber}%0A%0A` +
       `💬 *ملاحظة تشجيعية:*%0A"${encodeURIComponent(form.note)}"%0A%0A` +
       `🔗 *استعراض الشهادة التفاعلية ومسح الـ QR:*%0A${encodeURIComponent(verifyUrl)}`;
 
@@ -151,7 +151,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8"/>
-  <title>طباعة شهادة التفوق الرسمية</title>
+  <title>طباعة شهادة التفوق الرقمية</title>
   ${styles}
   <style>
     @page { size: 297mm 210mm; margin: 0; }
@@ -355,7 +355,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
           {/* Doctor Name & Doctor Title */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-black text-slate-700 mb-1">اسم الاستشاري / المعلم</label>
+              <label className="block text-xs font-black text-slate-700 mb-1">اسم المشرف / المعلم</label>
               <input
                 type="text"
                 value={form.doctorName}
@@ -471,14 +471,14 @@ export default function ExcellenceCertificateTab({ students }: Props) {
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 px-5 py-3.5 text-sm font-black text-white shadow-md transition active:scale-95 disabled:opacity-40"
           >
             <Printer className="h-4 w-4" />
-            فتح الشهادة الرسمية وطباعتها 🖨️
+            فتح الشهادة الرقمية وطباعتها 🖨️
           </button>
         </div>
 
         {/* ── LIVE DESIGN PREVIEW (7 Cols) ── */}
         <div className="lg:col-span-7 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">معاينة مباشرة للشهادة الرسمية المعتمدة</span>
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">معاينة مباشرة للشهادة الرقمية الموثقة</span>
             <button
               onClick={() => setPreview(true)}
               className="text-xs font-black text-emerald-700 hover:underline flex items-center gap-1"
@@ -511,7 +511,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
                   className="flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 px-5 py-2.5 text-xs font-black text-slate-950 transition shadow-md active:scale-95"
                 >
                   <Printer className="h-4 w-4" />
-                  طباعة PDF الرسمية 🖨️
+                  طباعة PDF الرقمية 🖨️
                 </button>
                 <button
                   onClick={() => setPreview(false)}
@@ -596,7 +596,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
             <ShieldCheck size={16} color="white"/>
           </div>
           <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#06392c' }}>شهادة تفوق معتمدة</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#06392c' }}>شهادة تفوق موثقة</div>
             <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#666' }}>{form.certNumber}</div>
             <div style={{ fontSize: 9, color: '#888' }}>التاريخ: {form.date}</div>
           </div>
@@ -702,7 +702,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
             <div style={{ position: 'absolute', bottom: 6, right: 0, pointerEvents: 'none', background: 'white' }}>
               <img
                 src="/dr-ismail-signature.png"
-                alt="التوقيع المعتمد"
+                alt="التوقيع الموثق"
                 style={{ height: 52, objectFit: 'contain', mixBlendMode: 'multiply', display: 'block' }}
               />
             </div>
@@ -727,7 +727,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
             <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 160 160">
               <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
               <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
-              <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرسمي المعتمد</text>
+              <text x="80" y="36" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">الختم الرقمي</text>
               <text x="80" y="50" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">د. إسماعيل عيسى</text>
               <line x1="24" y1="63" x2="136" y2="63" stroke="#06392c" strokeWidth="0.8" />
               <defs>
@@ -738,12 +738,12 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
               <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="36" preserveAspectRatio="xMidYMid meet" clipPath="url(#sig-clip-ex)" style={{ mixBlendMode: 'multiply' } as React.CSSProperties} />
               <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
               <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{form.date}</text>
-              <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم العلاجي</text>
+              <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
             </svg>
           </div>
 
           <div>
-            <div style={{ fontSize: 10.5, fontWeight: 900, color: '#06392c' }}>الختم الرقمي المعتمد</div>
+            <div style={{ fontSize: 10.5, fontWeight: 900, color: '#06392c' }}>الختم الرقمي</div>
             <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
               {form.certNumber}
             </div>
@@ -760,7 +760,7 @@ function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form:
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BottomGoldMedal />
           <div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff' }}>وثيقة تفوق موثقة رسمياً</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff' }}>وثيقة تفوق موثقة رقمياً</div>
             <div style={{ fontSize: 9.5, color: '#a3b899' }}>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</div>
           </div>
         </div>

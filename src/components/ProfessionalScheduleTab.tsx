@@ -202,7 +202,7 @@ export default function ProfessionalScheduleTab({
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8"/>
-<title>جدول الحصص المعتمد — مدارس الإخلاص الأهلية بجدة</title>
+<title>جدول الحصص الموثق — مدارس الإخلاص الأهلية بجدة</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -224,11 +224,11 @@ export default function ProfessionalScheduleTab({
         <div style="width:42px;height:42px;background:#06392c;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;">مـ</div>
         <div>
           <h1 style="font-size:18px;font-weight:900;color:#06392c;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
-          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي المعتمد — مدارس الإخلاص الأهلية بجدة</p>
+          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي الموثق — مدارس الإخلاص الأهلية بجدة</p>
         </div>
       </div>
       <div style="text-align:left;">
-        <div style="font-size:11px;font-weight:900;color:#06392c;background:#e6f4ea;padding:4px 12px;border-radius:20px;display:inline-block;">معتمد رسميًا ✓</div>
+        <div style="font-size:11px;font-weight:900;color:#06392c;background:#e6f4ea;padding:4px 12px;border-radius:20px;display:inline-block;">موثق رقمياً</div>
         <div style="font-size:10px;color:#64748b;margin-top:3px;">الفصل الدراسي الأول 2026 / 1447 هـ</div>
       </div>
     </div>
@@ -258,7 +258,7 @@ export default function ProfessionalScheduleTab({
 
     <div class="stamp-box">
       <div style="font-size:13px;font-weight:900;color:#06392c;">د. إسماعيل عيسى</div>
-      <div style="font-size:9.5px;color:#047857;">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+      <div style="font-size:9.5px;color:#047857;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
       <div style="margin-top:4px;">
         <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:38px;object-fit:contain;mix-blend-mode:multiply;margin:0 auto;display:block;"/>
       </div>
@@ -286,11 +286,11 @@ export default function ProfessionalScheduleTab({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="rounded-lg bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-black text-emerald-200 backdrop-blur-md flex items-center gap-1.5">
-                <Sparkles size={14} className="text-amber-400" /> الجدول الدراسي الرسمي · الفصل الدراسي الأول
+                <Sparkles size={14} className="text-amber-400" /> الجدول الدراسي الرقمي · الفصل الدراسي الأول
               </span>
             </div>
             <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tight">
-              جدول الحصص الأسبوعي المعتمد 📅
+              جدول الحصص الأسبوعي الموثق
             </h2>
             <p className="mt-1 text-xs lg:text-sm font-semibold text-emerald-100/90">
               مدارس الإخلاص الأهلية بجدة · الخطة الأسبوعية الموزعة للحصص الدراسية
@@ -628,7 +628,7 @@ export default function ProfessionalScheduleTab({
                     )}
                   </div>
                   <span className="text-xs font-bold text-slate-500 bg-white/80 border border-slate-200 px-3 py-1 rounded-full">
-                    {dayPeriods.length} حصص معتمدة
+                    {dayPeriods.length} حصص موثقة
                   </span>
                 </div>
 

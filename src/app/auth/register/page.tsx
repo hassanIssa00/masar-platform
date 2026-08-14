@@ -123,7 +123,7 @@ export default function RegisterPage() {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
       }
-      trackEvent('register_google', { userId: result.account.id, isNew: result.isNew });
+      trackEvent('register_microsoft', { userId: result.account.id, userName: result.account.name, userRole: result.account.role, isNew: result.isNew });
 
       if (schoolBranch === 'IKHLAS_JEDDAH') {
         if (accountType === 'parent') router.push('/school-parent');
@@ -154,13 +154,16 @@ export default function RegisterPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  const getMasarStartPath = (type: typeof accountType) =>
+    type === 'student' ? '/student/new?flow=student' : '/student/new?flow=parent';
+
   // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
   useEffect(() => {
     pullCloudDataToLocal().catch(() => {});
     handleGoogleRedirectResult('parent', schoolBranch).then((result) => {
       if (result && result.ok) {
         setSession(result.account);
-        router.push(accountType === 'parent' ? '/parent' : '/student/new');
+        router.push(getMasarStartPath(accountType));
       } else if (result?.reason) {
         setGoogleError(result.reason);
       }
@@ -191,7 +194,7 @@ export default function RegisterPage() {
         else if (accountType === 'student') router.push('/school-student/setup');
         else router.push('/branches/ikhlas-jeddah');
       } else {
-        router.push(accountType === 'parent' ? '/parent' : '/student/new');
+        router.push(getMasarStartPath(accountType));
       }
     } else if (result.reason) {
       setGoogleError(result.reason);
@@ -221,7 +224,7 @@ export default function RegisterPage() {
         else if (accountType === 'student') router.push('/school-student/setup');
         else router.push('/branches/ikhlas-jeddah');
       } else {
-        router.push(accountType === 'parent' ? '/parent' : '/student/new');
+        router.push(getMasarStartPath(accountType));
       }
     } else if (result.reason) {
       setGoogleError(result.reason);
@@ -344,6 +347,8 @@ export default function RegisterPage() {
       phone: fullPhone,
       role: accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student',
       schoolBranch,
+      createdVia: 'email',
+      lastLoginAt: new Date().toISOString(),
     });
 
     if (typeof window !== 'undefined') {
@@ -400,9 +405,9 @@ export default function RegisterPage() {
         }
       } else {
         if (accountType === 'parent') {
-          router.push('/parent');
+          router.push('/student/new?flow=parent');
         } else {
-          router.push('/student/new');
+          router.push('/student/new?flow=student');
         }
       }
     }, 600);

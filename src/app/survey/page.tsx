@@ -1,6 +1,4 @@
 'use client';
-
-"use client";
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
@@ -16,6 +14,9 @@ const SECTIONS = [
       { id: 'q2', text: 'ما الصف الدراسي الحالي؟', type: 'select', options: ['ما قبل المدرسة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس'] },
       { id: 'q3', text: 'هل الطفل من ذوي الاحتياجات الخاصة؟', type: 'radio', options: ['نعم', 'لا', 'غير مؤكد'] },
       { id: 'q4', text: 'هل توجد إصابات أو أمراض مزمنة؟', type: 'radio', options: ['نعم', 'لا'] },
+      { id: 'q36', text: 'طريقة الولادة؟', type: 'radio', options: ['طبيعية', 'قيصرية', 'غير متأكد'] },
+      { id: 'q37', text: 'رقم الطفل في ترتيب الأسرة؟', type: 'select', options: ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس أو أكثر'] },
+      { id: 'q38', text: 'هل تعرض الطفل لصدمة نفسية أو حادث مؤثر؟', type: 'radio', options: ['نعم', 'لا', 'غير متأكد'] },
       { id: 'q21', text: 'هل ينام الطفل عدد ساعات كافياً قبل يوم الدراسة؟', type: 'radio', options: ['غالباً', 'أحياناً', 'نادراً'] },
       { id: 'q22', text: 'هل يستخدم الطفل الأجهزة لفترات طويلة يومياً؟', type: 'radio', options: ['أكثر من ساعتين', 'ساعة تقريباً', 'قليل جداً'] },
       { id: 'q23', text: 'ما اللغة الأكثر استخداماً في البيت؟', type: 'select', options: ['العربية', 'العربية والإنجليزية', 'الإنجليزية غالباً', 'لغة أخرى'] },
@@ -84,6 +85,8 @@ type Answers = Record<string, string | number>;
 const answerScores: Record<string, Record<string, number>> = {
   q3: { نعم: 40, لا: 100, 'غير مؤكد': 60 },
   q4: { نعم: 55, لا: 100 },
+  q36: { طبيعية: 100, قيصرية: 85, 'غير متأكد': 70 },
+  q38: { نعم: 45, لا: 100, 'غير متأكد': 70 },
   q5: { 'نعم دائماً': 25, أحياناً: 55, نادراً: 80, لا: 100 },
   q6: { 'نعم دائماً': 25, أحياناً: 55, نادراً: 80, لا: 100 },
   q7: { 'نعم بطلاقة': 100, 'نعم ببطء': 75, بصعوبة: 35, لا: 15 },
@@ -122,8 +125,22 @@ function getSurveyQuestionScore(questionId: string, answer: string | number | un
   return answerScores[questionId]?.[String(answer)] ?? null;
 }
 
-function getSurveyAnalysis(answers: Answers) {
-  const domains = SECTIONS.map((sectionItem) => {
+function isFirstGrade(grade: string) {
+  return grade.includes('الأول') || grade.includes('الاول') || grade.includes('سنة أولى') || grade.includes('سنه اولى');
+}
+
+function getActiveSections(grade: string) {
+  return SECTIONS.map((sectionItem) => ({
+    ...sectionItem,
+    questions:
+      sectionItem.id === 'language' && isFirstGrade(grade)
+        ? sectionItem.questions.filter((question) => question.id !== 'q6')
+        : sectionItem.questions,
+  }));
+}
+
+function getSurveyAnalysis(answers: Answers, grade: string) {
+  const domains = getActiveSections(grade).map((sectionItem) => {
     const scores = sectionItem.questions
       .map((question) => getSurveyQuestionScore(question.id, answers[question.id]))
       .filter((score): score is number => score !== null);
@@ -190,7 +207,7 @@ function getClinicalDomains(answers: Answers) {
     },
     {
       name: 'السمع والنطق واللغة',
-      score: averageQuestionScores(['q5', 'q6', 'q8', 'q25', 'q26'], answers),
+      score: averageQuestionScores(['q5', 'q8', 'q25', 'q26'], answers),
       note: 'يفحص النطق، الطلاقة، الثروة اللغوية، وحكي الأحداث بجمل واضحة.',
     },
     {
@@ -246,9 +263,10 @@ function SurveyContent() {
   const [parentPhone, setParentPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const section = SECTIONS[currentSection];
-  const totalQuestions = SECTIONS.reduce((total, item) => total + item.questions.length, 0);
-  const answeredCount = SECTIONS.flatMap((item) => item.questions).filter((question) => answers[question.id] !== undefined && answers[question.id] !== '').length;
+  const activeSections = getActiveSections(grade);
+  const section = activeSections[currentSection];
+  const totalQuestions = activeSections.reduce((total, item) => total + item.questions.length, 0);
+  const answeredCount = activeSections.flatMap((item) => item.questions).filter((question) => answers[question.id] !== undefined && answers[question.id] !== '').length;
   const sectionAnsweredCount = section.questions.filter((question) => answers[question.id] !== undefined && answers[question.id] !== '').length;
   const isCurrentSectionComplete = sectionAnsweredCount === section.questions.length;
   const progress = Math.round((answeredCount / totalQuestions) * 100);
@@ -265,12 +283,19 @@ function SurveyContent() {
     });
   }, [searchParams]);
 
+  useEffect(() => {
+    if (currentSection >= activeSections.length) {
+      setCurrentSection(Math.max(0, activeSections.length - 1));
+    }
+  }, [activeSections.length, currentSection]);
+
   const setAnswer = (qid: string, val: string | number) => {
     setAnswers(prev => ({ ...prev, [qid]: val }));
   };
 
   const handleSubmit = () => {
-    const analysis = getSurveyAnalysis(answers);
+    const activeReportSections = getActiveSections(grade);
+    const analysis = getSurveyAnalysis(answers, grade);
     const clinicalDomains = getClinicalDomains(answers);
     const priorityDomains = [...clinicalDomains].sort((first, second) => first.score - second.score).slice(0, 3);
     const priorityText = priorityDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ');
@@ -306,13 +331,13 @@ function SurveyContent() {
         'مراجعة الإجابات الخام بجانب المقابلة الإكلينيكية قبل اعتماد أي مسار.',
         'مطابقة إجابات ولي الأمر مع أداء الطالب داخل مهمة قصيرة عند أول مقابلة.',
       ],
-      answers: SECTIONS.flatMap((sectionItem) =>
+      answers: activeReportSections.flatMap((sectionItem) =>
         sectionItem.questions.map((question) => ({
           question: question.text,
           answer: String(answers[question.id] ?? 'لم يتم تسجيل إجابة'),
         })),
       ),
-      domains: analysis.domains,
+      domains: [],
     });
 
     saveReport({
@@ -326,12 +351,7 @@ function SurveyContent() {
       type: 'clinical-analysis',
       summary: `تم استقبال الاستبيان وتحليل المؤشرات الأولية. أولويات المراجعة التخصصية: ${priorityText}. لا يتم فتح أي منهج للطالب قبل اعتماد د. إسماعيل للمسار المناسب.`,
       recommendations: buildClinicalRecommendations(priorityDomains),
-      answers: SECTIONS.flatMap((sectionItem) =>
-        sectionItem.questions.map((question) => ({
-          question: question.text,
-          answer: String(answers[question.id] ?? 'لم يتم تسجيل إجابة'),
-        })),
-      ),
+      answers: [],
       domains: clinicalDomains,
     });
 
@@ -407,7 +427,7 @@ function SurveyContent() {
             <div className="h-full bg-[#1E6FBF] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between mt-3">
-            {SECTIONS.map((s, i) => (
+            {activeSections.map((s, i) => (
               <button key={s.id} onClick={() => setCurrentSection(i)}
                 className={`flex flex-col items-center gap-1 text-xs font-bold transition-all ${i === currentSection ? 'text-[#1E6FBF] scale-110' : i < currentSection ? 'text-[#2ECC71]' : 'text-gray-300'}`}>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center ${i === currentSection ? 'bg-[#1E6FBF] text-white' : i < currentSection ? 'bg-[#2ECC71] text-white' : 'bg-gray-100'}`}>
@@ -425,7 +445,7 @@ function SurveyContent() {
             <h2 className="text-2xl font-bold flex items-center gap-3">
               <span>{section.icon}</span> {section.title}
             </h2>
-            <p className="text-white/70 text-sm mt-1">القسم {currentSection + 1} من {SECTIONS.length} · تم تسجيل {sectionAnsweredCount} من {section.questions.length}</p>
+            <p className="text-white/70 text-sm mt-1">القسم {currentSection + 1} من {activeSections.length} · تم تسجيل {sectionAnsweredCount} من {section.questions.length}</p>
           </div>
 
           <div className="p-8 space-y-8">
@@ -475,8 +495,8 @@ function SurveyContent() {
             className={`px-8 py-3 rounded-xl font-bold transition ${currentSection === 0 ? 'opacity-0 cursor-default' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
             السابق
           </button>
-          <span className="text-sm font-bold text-gray-500">{currentSection + 1} / {SECTIONS.length}</span>
-          {currentSection < SECTIONS.length - 1 ? (
+          <span className="text-sm font-bold text-gray-500">{currentSection + 1} / {activeSections.length}</span>
+          {currentSection < activeSections.length - 1 ? (
             <button onClick={() => setCurrentSection(currentSection + 1)}
               disabled={!isCurrentSectionComplete}
               className="bg-[#1E6FBF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A3D7A] transition shadow-md disabled:cursor-not-allowed disabled:opacity-40">

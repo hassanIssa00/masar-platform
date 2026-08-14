@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { getStudents, saveStudent, updateStudent } from '@/lib/localDb';
+import { getSession, getStudents, saveStudent, updateStudent } from '@/lib/localDb';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
@@ -15,6 +15,7 @@ const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFull
 
 export default function NewStudentPage() {
   const router = useRouter();
+  const [nextFlow, setNextFlow] = useState<'parent-survey' | 'student-test'>('parent-survey');
   const [existingStudentId, setExistingStudentId] = useState('');
   const [student, setStudent] = useState({
     fullName: '',
@@ -33,6 +34,12 @@ export default function NewStudentPage() {
 
   // Pre-fill from registration if a student record already exists
   useEffect(() => {
+    const session = getSession();
+    const params = new URLSearchParams(window.location.search);
+    const flow = params.get('flow');
+    const isStudent = session?.role === 'student' || flow === 'student';
+    setNextFlow(isStudent ? 'student-test' : 'parent-survey');
+
     const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
     if (!savedStudentId) return;
 
@@ -74,7 +81,7 @@ export default function NewStudentPage() {
         parentPhone: student.parentPhone,
         photoUrl: student.photoUrl,
         notes: student.notes,
-        reviewStatus: 'awaiting-survey',
+        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
         source: 'student-wizard',
       });
       if (!savedStudent) {
@@ -88,7 +95,7 @@ export default function NewStudentPage() {
           parentPhone: student.parentPhone,
           photoUrl: student.photoUrl,
           notes: student.notes,
-          reviewStatus: 'awaiting-survey',
+          reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
           source: 'student-wizard',
         });
       }
@@ -102,14 +109,14 @@ export default function NewStudentPage() {
         parentPhone: student.parentPhone,
         photoUrl: student.photoUrl,
         notes: student.notes,
-        reviewStatus: 'awaiting-survey',
+        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
         source: 'student-wizard',
       });
     }
 
     localStorage.setItem('masar.current-student-id', savedStudent!.id);
     localStorage.setItem('masar_active_student_id', savedStudent!.id);
-    router.push(`/survey?student=${savedStudent!.id}`);
+    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}` : `/survey?student=${savedStudent!.id}`);
   };
 
   return (
@@ -130,9 +137,13 @@ export default function NewStudentPage() {
             </span>
             <div>
               <p className="text-sm font-black text-teal-800">بداية مسار الطالب</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">تسجيل بيانات الطفل قبل الاستبيان</h1>
+              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">
+                {nextFlow === 'student-test' ? 'تسجيل بيانات الطالب قبل الاختبار' : 'تسجيل بيانات الطفل قبل الاستبيان'}
+              </h1>
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
-                بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل. لن يظهر للطالب أي تشخيص أو نتيجة قبل مراجعة د. إسماعيل.
+                {nextFlow === 'student-test'
+                  ? 'بعد حفظ البيانات ينتقل الطالب مباشرة إلى اختبار مناسب للصف. لا تظهر أي درجة أو تشخيص داخل تجربة الطالب.'
+                  : 'بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل. لن يظهر للطالب أي تشخيص أو نتيجة قبل مراجعة د. إسماعيل.'}
               </p>
             </div>
           </div>
@@ -222,11 +233,15 @@ export default function NewStudentPage() {
             </div>
             <div className="mt-5 rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
               <ClipboardList className="mb-2 text-teal-800" size={22} />
-              الخطوة التالية هي الاستبيان الشامل لتحديد مؤشرات القراءة، الكتابة، الرياضيات، السمع والنطق، التواصل، الانتباه، والسلوك.
+              {nextFlow === 'student-test'
+                ? 'الخطوة التالية هي اختبار الطالب المباشر حسب الصف، ثم حفظ الإجابات والتحليل في لوحة د. إسماعيل.'
+                : 'الخطوة التالية هي الاستبيان الشامل لتحديد مؤشرات القراءة، الكتابة، الرياضيات، السمع والنطق، التواصل، الانتباه، والسلوك.'}
             </div>
             <button type="submit" disabled={loading} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60">
               <Save size={17} />
-              {loading ? 'جاري فتح الاستبيان...' : 'حفظ والانتقال للاستبيان'}
+              {loading
+                ? nextFlow === 'student-test' ? 'جاري فتح الاختبار...' : 'جاري فتح الاستبيان...'
+                : nextFlow === 'student-test' ? 'حفظ وفتح اختبار الطالب' : 'حفظ والانتقال للاستبيان'}
             </button>
           </aside>
         </form>
@@ -236,7 +251,9 @@ export default function NewStudentPage() {
           <div className="motion-scale-in rounded-lg border border-white/15 bg-white/10 p-7 text-center shadow-2xl">
             <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-teal-300" />
             <p className="mt-4 text-lg font-black">تم حفظ البيانات</p>
-            <p className="mt-1 text-sm font-bold text-white/70">جاري فتح استبيان ولي الأمر الشامل.</p>
+            <p className="mt-1 text-sm font-bold text-white/70">
+              {nextFlow === 'student-test' ? 'جاري فتح اختبار الطالب المناسب للصف.' : 'جاري فتح استبيان ولي الأمر الشامل.'}
+            </p>
           </div>
         </div>
       )}

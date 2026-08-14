@@ -1,12 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Eraser, PenLine, RotateCcw, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck, Download, Eraser, PenLine, RotateCcw, Save, Send, Users } from 'lucide-react';
+import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/localDb';
 
 const PAGE_COUNT = 81;
 const STORAGE_PREFIX = 'masar.simpleSpellingWorkbook.v1';
+const ASSIGNMENTS_KEY = 'masar.simpleSpellingAssignments.v1';
 
 type Tool = 'view' | 'pen' | 'eraser';
+type Assignment = {
+  studentId: string;
+  studentName: string;
+  fromPage: number;
+  toPage: number;
+  assignedAt: string;
+};
 
 function pageSrc(page: number) {
   return `/resources/simple-spelling-pages/page-${String(page).padStart(2, '0')}.jpg`;
@@ -22,8 +31,29 @@ export default function SimpleSpellingWorkbook() {
   const [color, setColor] = useState('#0f172a');
   const [brush, setBrush] = useState(5);
   const [savedAt, setSavedAt] = useState('');
+  const [sessionRole, setSessionRole] = useState('');
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [fromPage, setFromPage] = useState(1);
+  const [toPage, setToPage] = useState(2);
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [notice, setNotice] = useState('');
 
   const storageKey = `${STORAGE_PREFIX}.page.${page}`;
+
+  function readAssignments(): Assignment[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem(ASSIGNMENTS_KEY) || '[]') as Assignment[];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeAssignments(items: Assignment[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(items));
+  }
 
   function getCanvasContext() {
     const canvas = canvasRef.current;
@@ -71,11 +101,33 @@ export default function SimpleSpellingWorkbook() {
   }
 
   useEffect(() => {
+    const session = getSession();
+    const allStudents = getStudents();
+    const currentStudentId = localStorage.getItem('masar.current-student-id') ?? localStorage.getItem('masar_active_student_id') ?? '';
+    const currentAssignment = readAssignments().find((item) => item.studentId === currentStudentId) ?? null;
+
+    setSessionRole(session?.role ?? '');
+    setStudents(allStudents);
+    setSelectedStudentId(allStudents[0]?.id ?? '');
+    setAssignment(currentAssignment);
+    if (currentAssignment) {
+      setPage(currentAssignment.fromPage);
+    }
+  }, []);
+
+  useEffect(() => {
     queueMicrotask(fitCanvasToImage);
     const onResize = () => fitCanvasToImage();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [page]);
+
+  const minPage = assignment && sessionRole === 'student' ? assignment.fromPage : 1;
+  const maxPage = assignment && sessionRole === 'student' ? assignment.toPage : PAGE_COUNT;
+
+  function goToPage(nextPage: number) {
+    setPage(Math.max(minPage, Math.min(maxPage, nextPage)));
+  }
 
   function pointFromEvent(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
@@ -163,15 +215,94 @@ export default function SimpleSpellingWorkbook() {
     link.click();
   }
 
+  function saveAssignment() {
+    const student = students.find((item) => item.id === selectedStudentId);
+    if (!student) {
+      setNotice('اختر طالباً أولاً.');
+      return;
+    }
+    const orderedFrom = Math.max(1, Math.min(fromPage, toPage));
+    const orderedTo = Math.min(PAGE_COUNT, Math.max(fromPage, toPage));
+    const nextAssignment: Assignment = {
+      studentId: student.id,
+      studentName: student.fullName,
+      fromPage: orderedFrom,
+      toPage: orderedTo,
+      assignedAt: new Date().toISOString(),
+    };
+    writeAssignments([nextAssignment, ...readAssignments().filter((item) => item.studentId !== student.id)]);
+    setNotice(`تم إرسال صفحات ${orderedFrom} إلى ${orderedTo} للطالب ${student.fullName}.`);
+  }
+
+  function submitAssignedPages() {
+    persistCanvas();
+    const currentStudentId = localStorage.getItem('masar.current-student-id') ?? localStorage.getItem('masar_active_student_id') ?? '';
+    const student = getStudents().find((item) => item.id === currentStudentId);
+    if (!student || !assignment) {
+      setNotice('لا يوجد تكليف صفحات مرتبط بهذا الطالب حالياً.');
+      return;
+    }
+
+    const pages = Array.from({ length: assignment.toPage - assignment.fromPage + 1 }, (_, index) => assignment.fromPage + index);
+    saveReport({
+      studentId: student.id,
+      studentName: student.fullName,
+      grade: student.grade,
+      program: 'تسليم صفحات التهجي البسيط',
+      programColor: '#0f766e',
+      score: 100,
+      status: 'pending',
+      type: 'student-assessment-answers',
+      summary: `أرسل الطالب صفحات التهجي البسيط من ${assignment.fromPage} إلى ${assignment.toPage} للمراجعة.`,
+      recommendations: ['مراجعة الكتابة فوق الصفحات وتحديد الحروف التي تحتاج إعادة تدريب.', 'إرسال ملاحظة قصيرة لولي الأمر بعد التصحيح.'],
+      answers: pages.map((pageNumber) => ({
+        question: `صفحة ${pageNumber} من مذكرة التهجي البسيط`,
+        answer: localStorage.getItem(`${STORAGE_PREFIX}.page.${pageNumber}`) ? 'تم حل الصفحة وإرسالها للمراجعة' : 'لم يتم العثور على كتابة محفوظة على الصفحة',
+      })),
+      domains: [],
+    });
+    setNotice('تم إرسال الصفحات إلى لوحة د. إسماعيل للمراجعة.');
+  }
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-sm" dir="rtl">
+      {(sessionRole === 'doctor' || sessionRole === 'specialist' || sessionRole === 'teacher') && (
+        <div className="border-b border-teal-100 bg-teal-50/80 p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-black text-teal-900">
+                <Users size={17} />
+                تكليف صفحات التهجي البسيط
+              </p>
+              <p className="mt-1 text-xs font-bold text-teal-800">حدد الصفحات التي تظهر للطالب فقط، ثم يحلها ويرسلها للمراجعة.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_110px_110px_auto]">
+              <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} className="rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-black text-slate-900">
+                {students.map((student) => <option key={student.id} value={student.id}>{student.fullName} - {student.grade}</option>)}
+              </select>
+              <input type="number" min={1} max={PAGE_COUNT} value={fromPage} onChange={(event) => setFromPage(Number(event.target.value))} className="rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-black" />
+              <input type="number" min={1} max={PAGE_COUNT} value={toPage} onChange={(event) => setToPage(Number(event.target.value))} className="rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-black" />
+              <button type="button" onClick={saveAssignment} className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-xs font-black text-white">
+                <ClipboardCheck size={15} />
+                إرسال التكليف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-3 backdrop-blur">
+        {assignment && sessionRole === 'student' && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-950">
+            الصفحات المكلف بها: من صفحة {assignment.fromPage} إلى صفحة {assignment.toPage}. بعد الانتهاء اضغط إرسال الصفحات للدكتور.
+          </div>
+        )}
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              disabled={page === 1}
+              onClick={() => goToPage(page - 1)}
+              disabled={page === minPage}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-800 disabled:opacity-40"
             >
               <ChevronRight size={16} />
@@ -182,8 +313,8 @@ export default function SimpleSpellingWorkbook() {
             </div>
             <button
               type="button"
-              onClick={() => setPage((current) => Math.min(PAGE_COUNT, current + 1))}
-              disabled={page === PAGE_COUNT}
+              onClick={() => goToPage(page + 1)}
+              disabled={page === maxPage}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-800 disabled:opacity-40"
             >
               التالي
@@ -191,10 +322,10 @@ export default function SimpleSpellingWorkbook() {
             </button>
             <input
               type="range"
-              min={1}
-              max={PAGE_COUNT}
+              min={minPage}
+              max={maxPage}
               value={page}
-              onChange={(event) => setPage(Number(event.target.value))}
+              onChange={(event) => goToPage(Number(event.target.value))}
               className="w-40 accent-teal-700"
               aria-label="اختيار صفحة المذكرة"
             />
@@ -252,11 +383,18 @@ export default function SimpleSpellingWorkbook() {
               <Download size={15} />
               تنزيل الصفحة
             </button>
+            {assignment && sessionRole === 'student' && (
+              <button type="button" onClick={submitAssignedPages} className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3 py-2 text-xs font-black text-white">
+                <Send size={15} />
+                إرسال الصفحات للدكتور
+              </button>
+            )}
           </div>
         </div>
         <p className="mt-2 text-xs font-bold text-slate-500">
           اختر كتابة ثم اكتب بالقلم أو باللمس فوق ورقة التدريب. في وضع تصفح يمكنك تحريك الصفحة بدون رسم.
           {savedAt ? <span className="mr-2 text-emerald-700">آخر حفظ: {savedAt}</span> : null}
+          {notice ? <span className="mr-2 text-teal-700">{notice}</span> : null}
         </p>
       </div>
 

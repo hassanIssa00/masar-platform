@@ -69,7 +69,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     senderId: 'dr-ismail',
     senderName: 'د. إسماعيل عيسى',
     senderRole: 'admin',
-    text: 'تنويه هام لأولياء الأمور الكرام 📢:\nتم رفع واجب جديد في مادة (لغتي العربية) من الصفحة 15 إلى 20، يرجى تشجيع الأبطال على حل الواجب وإرساله للتصحيح التلقائي المعتمد.',
+    text: 'تنويه هام لأولياء الأمور الكرام:\nتم رفع واجب جديد في مادة (لغتي العربية) من الصفحة 15 إلى 20، يرجى تشجيع الطلاب على حل الواجب وإرساله للتصحيح التلقائي.',
     createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
     isAnnouncement: true,
     reactions: { '👍': 5, '🌟': 2 },
@@ -235,7 +235,7 @@ export default function ParentsCommunityChatTab() {
       senderName: 'النظام',
       senderRole: 'system',
       text: newLockState
-        ? '🔒 قام د. إسماعيل عيسى بإغلاق الشات — المشاركات مقتصرة على المشرف فقط للتعاميم الرسمية.'
+        ? 'قام د. إسماعيل عيسى بإغلاق الشات — المشاركات مقتصرة على المشرف فقط للتعاميم الموثقة.'
         : '🔓 قام د. إسماعيل عيسى بفتح الشات — نرحب بمشاركات واستفسارات أولياء الأمور الكرام.',
       createdAt: new Date().toISOString(),
     };
@@ -328,7 +328,7 @@ export default function ParentsCommunityChatTab() {
               شات ومجتمع أولياء الأمور 💬
             </h2>
             <p className="mt-1 text-xs sm:text-sm font-semibold text-emerald-100/90">
-              قناة التواصل الرسمية المباشرة بين د. إسماعيل عيسى وأولياء أمور طلاب الفصل.
+              قناة التواصل الموثقة المباشرة بين د. إسماعيل عيسى وأولياء أمور طلاب الفصل.
             </p>
           </div>
 
@@ -544,7 +544,7 @@ export default function ParentsCommunityChatTab() {
                       {msg.isAnnouncement && (
                         <div className="bg-amber-400/20 border border-amber-400/30 text-amber-200 text-[11px] font-black px-2.5 py-1 rounded-xl mb-2 flex items-center gap-1.5">
                           <Flame size={13} className="text-amber-400 animate-pulse" />
-                          <span>تعميم رسمي معتمد من إدارة الفصل 📢</span>
+                          <span>تعميم موثق من إدارة الفصل</span>
                         </div>
                       )}
 
@@ -682,7 +682,7 @@ export default function ParentsCommunityChatTab() {
                         onChange={e => setIsAnnouncementMode(e.target.checked)}
                         className="accent-emerald-700 rounded w-4 h-4"
                       />
-                      <span>📢 إرسال كتعميم رسمي مميز ومثبت</span>
+                      <span>إرسال كتعميم مميز ومثبت</span>
                     </label>
 
                     {settings.isLocked && (
@@ -780,14 +780,14 @@ export default function ParentsCommunityChatTab() {
               </div>
             </div>
             <p className="text-[10px] text-emerald-200 font-bold pt-1">
-              استشاري التربية الخاصة وتأهيل صعوبات التعلم
+              تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم
             </p>
           </div>
 
           {/* Parents List */}
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-              أولياء الأمور المعتمدون:
+              أولياء الأمور المسجلون:
             </p>
             {parents.map((p) => {
               const cleanPhone = (p.phone || '').replace(/\D/g, '');

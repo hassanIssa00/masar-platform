@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import type { ReportRecord, StudentRecord } from '@/lib/localDb';
@@ -59,7 +59,7 @@ export default function ReportPrintDocument({
             <span className="brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
           </div>
           <div className="doc-meta">
-            <span className="doc-type">تقرير تشخيص وتقييم إكلينيكي رسمياً</span>
+            <span className="doc-type">تقرير تشخيص وتقييم إكلينيكي رقمياً</span>
             <span className="doc-serial">{fileNumber}</span>
           </div>
         </header>
@@ -95,7 +95,7 @@ export default function ReportPrintDocument({
               <span className="info-val">{student?.parentName || 'مسجل بالنظام'}</span>
             </div>
             <div className="info-box">
-              <span className="info-label">الاستشاري المشرف:</span>
+              <span className="info-label">إشراف ومتابعة:</span>
               <span className="info-val font-black text-emerald-900">د. إسماعيل عيسى</span>
             </div>
           </div>
@@ -112,14 +112,14 @@ export default function ReportPrintDocument({
               <div className="big-number" style={{ color: badgeInfo.color }}>{reportScore}%</div>
               <div className="score-desc">
                 {report.summary ||
-                  'تم إعداد هذا التقرير بناءً على التقييم المباشر للقدرات النمائية والأكاديمية، بهدف تحديد جوانب القوة والاحتياجات الأساسية لبناء خطة التدخل العلاجي المناسبة.'}
+                  'تم إعداد هذا التقرير بناءً على التقييم المباشر للقدرات النمائية والأكاديمية، بهدف تحديد جوانب القوة والاحتياجات الأساسية لبناء خطة تعليم حديث مناسبة.'}
               </div>
             </div>
           </div>
 
           {/* Summary Clinical Decision */}
           <div className="clinical-decision-box">
-            <h3 className="section-title-sm">القرار الإكلينيكي والتأهيلي المعتمد:</h3>
+            <h3 className="section-title-sm">القرار الإكلينيكي والتأهيلي الموثق:</h3>
             <p className="decision-text">
               بناءً على نتائج الملاحظة المباشرة وتحليل المهارات، يوصى ببدء تطبيق <strong>{report.program || 'برنامج التأهيل الشامل وصعوبات التعلم'}</strong> بمعدل جلسات منتظمة مع متابعة المؤشرات شهرياً.
             </p>
@@ -302,7 +302,7 @@ export default function ReportPrintDocument({
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">الإعتماد الرسمي والختم الإكلينيكي</span>
+            <span className="brand-sub">الإعتماد الرقمي والختم الإكلينيكي</span>
           </div>
           <div className="doc-meta">
             <span className="doc-serial">{fileNumber}</span>
@@ -338,15 +338,15 @@ export default function ReportPrintDocument({
               </div>
             )}
 
-            {/* Official Verification Statement */}
+            {/* Verification Statement */}
             <div className="verification-statement mt-4">
               <p className="statement-text">
-                نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الذكي بمدرسة الإخلاص بجدة بأن كافة البيانات والمعلومات الواردة بهذا التقرير صحيحة ومستخرجة إلكترونياً وبإشراف استشاري التربية الخاصة، وهي معتمدة رسمياً وموثقة بالختم والتوقيع أدناه.
+                نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى في تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم، وهي موثقة بالختم الرقمي والتوقيع أدناه.
               </p>
             </div>
           </div>
 
-          {/* Official Doctor Signature & Circular Stamp Block */}
+          {/* Doctor Signature & Circular Stamp Block */}
           <div className="sign-stamp-wrapper">
             {/* Stamp Box */}
             <div className="stamp-container">
@@ -354,7 +354,7 @@ export default function ReportPrintDocument({
                 <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
                 <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
                 <text x="80" y="34" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">
-                  الختم الرسمي المعتمد
+                  الختم الرقمي
                 </text>
                 <text x="80" y="49" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">
                   د. إسماعيل عيسى
@@ -380,10 +380,10 @@ export default function ReportPrintDocument({
                   {report.date || hijriDate}
                 </text>
                 <text x="80" y="125" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">
-                  منصة مسار · التعليم العلاجي
+                  منصة مسار · التعليم الحديث
                 </text>
               </svg>
-              <div className="stamp-label">الختم الرقمي المعتمد</div>
+              <div className="stamp-label">الختم الرقمي</div>
             </div>
 
             {/* Doctor Signature Block */}
@@ -398,7 +398,7 @@ export default function ReportPrintDocument({
               </div>
               <div className="sig-divider" />
               <div className="doc-name font-black">د. إسماعيل عيسى</div>
-              <div className="doc-title">استشاري التربية الخاصة وتأهيل صعوبات التعلم</div>
+              <div className="doc-title">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
               <div className="doc-date font-mono">{report.date || hijriDate}</div>
             </div>
           </div>

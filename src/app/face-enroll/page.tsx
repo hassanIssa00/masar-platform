@@ -32,7 +32,7 @@ export default function FaceEnrollPage() {
   // Check session on mount
   useEffect(() => {
     const session = getSession();
-    if (!session) { router.replace('/login'); return; }
+    if (!session) { router.replace('/auth/login'); return; }
     setUserId(session.id);
     setUserName(session.name);
     setUserRole(session.role);
