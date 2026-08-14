@@ -17,6 +17,7 @@ import {
   type Period,
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/localDb';
+import { getClassStudents } from '@/lib/classDb';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import MasarAIAgent from '@/components/MasarAIAgent';
@@ -32,13 +33,29 @@ import ClassroomParentsTab from '@/components/ClassroomParentsTab';
 import ClassroomQuizzesTab from '@/components/ClassroomQuizzesTab';
 import StudentAIChatTab from '@/components/StudentAIChatTab';
 import SmartScheduleTab from '@/components/SmartScheduleTab';
+import CurriculumManagerTab from '@/components/CurriculumManagerTab';
+import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
-const CLASS_STUDENTS: { id: string; name: string; phone?: string }[] = [];
-
-type Tab = 'overview' | 'students' | 'parents' | 'quizzes' | 'ai-chat' | 'smart-schedule' | 'live' | 'certificates' | 'schedule' | 'attendance' | 'homework' | 'meetings' | 'photos' | 'reports';
+type Tab =
+  | 'overview'
+  | 'curriculum'
+  | 'correction'
+  | 'students'
+  | 'parents'
+  | 'quizzes'
+  | 'ai-chat'
+  | 'smart-schedule'
+  | 'live'
+  | 'certificates'
+  | 'schedule'
+  | 'attendance'
+  | 'homework'
+  | 'meetings'
+  | 'photos'
+  | 'reports';
 
 function getToken() {
   if (typeof window === 'undefined') return null;
@@ -60,6 +77,17 @@ export default function IkhlasJeddahPage() {
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
   const [todayPeriods, setTodayPeriods] = useState<Period[]>([]);
+  const [classStudents, setClassStudents] = useState<{ id: string; name: string; phone?: string }[]>(() => {
+    return getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone }));
+  });
+
+  useEffect(() => {
+    const syncStudents = () => {
+      setClassStudents(getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone })));
+    };
+    window.addEventListener('storage', syncStudents);
+    return () => window.removeEventListener('storage', syncStudents);
+  }, []);
 
   // ── Sync Schedule from Local Storage, Custom Events, & Firestore Cloud ──
   useEffect(() => {
@@ -223,7 +251,7 @@ export default function IkhlasJeddahPage() {
         }
 
         const newAtt: Record<string, { status: string; score: number }> = {};
-        CLASS_STUDENTS.forEach((s) => {
+        classStudents.forEach((s) => {
           const isAbsent = absentName && s.name.includes(absentName);
           newAtt[s.id] = {
             status: isAbsent ? 'absent' : 'present',
@@ -313,7 +341,7 @@ export default function IkhlasJeddahPage() {
     const today = new Date().toISOString().slice(0, 10);
     try {
       await Promise.all(
-        CLASS_STUDENTS.map((s) => {
+        classStudents.map((s) => {
           const att = attendance[s.id] ?? { status: 'present', score: 90 };
           return fetch(`${API}/school/attendance`, {
             method: 'POST', headers: authHeaders(),
@@ -339,13 +367,13 @@ export default function IkhlasJeddahPage() {
     await new Promise(r => setTimeout(r, 2000));
     // Simulated result: randomly mark 5-7 students as present
     const detected: Record<string, boolean> = {};
-    CLASS_STUDENTS.forEach((s, i) => {
+    classStudents.forEach((s, i) => {
       detected[s.id] = Math.random() > 0.2; // 80% chance present
     });
     setPhotoAttResult(detected);
     // Auto-apply to attendance state
     const newAtt: Record<string, { status: string; score: number }> = {};
-    CLASS_STUDENTS.forEach(s => {
+    classStudents.forEach(s => {
       newAtt[s.id] = {
         status: detected[s.id] ? 'present' : 'absent',
         score: detected[s.id] ? 90 : 0,
@@ -521,7 +549,7 @@ export default function IkhlasJeddahPage() {
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 4);
     try {
       await Promise.all(
-        CLASS_STUDENTS.map(s =>
+        classStudents.map(s =>
           fetch(`${API}/school/weekly-reports`, {
             method: 'POST', headers: authHeaders(),
             body: JSON.stringify({
@@ -545,6 +573,8 @@ export default function IkhlasJeddahPage() {
 
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: 'overview',        label: 'نظرة عامة',              icon: BarChart3 },
+    { key: 'curriculum',      label: 'المناهج الدراسية 📚',     icon: BookOpen },
+    { key: 'correction',      label: 'تصحيح الواجبات 📝',      icon: CheckCircle },
     { key: 'students',        label: 'إدارة الطلاب 👨‍🎓',        icon: Users },
     { key: 'parents',         label: 'أولياء الأمور 👨‍👩‍👧',     icon: UserCheck },
     { key: 'ai-chat',         label: 'مساعد المعلم الذكي 🤖',   icon: MessageSquare },
@@ -671,6 +701,22 @@ export default function IkhlasJeddahPage() {
         <main className="flex-1 p-4 md:p-6 min-w-0">
           <div className="max-w-7xl mx-auto space-y-6">
 
+        {/* ════════════ إدارة المناهج الدراسية وتوليد الواجبات الذكي ════════════ */}
+        {activeTab === 'curriculum' && (
+          <CurriculumManagerTab
+            students={classStudents}
+            onNavigateToCorrection={() => setActiveTab('correction')}
+          />
+        )}
+
+        {/* ════════════ تصحيح الواجبات التلقائي بالذكاء الاصطناعي ════════════ */}
+        {activeTab === 'correction' && (
+          <HomeworkCorrectionTab
+            students={classStudents}
+            onNavigateToCurriculum={() => setActiveTab('curriculum')}
+          />
+        )}
+
         {/* ════════════ الكويزات والاختبارات التفاعلية ════════════ */}
         {activeTab === 'quizzes' && <ClassroomQuizzesTab />}
 
@@ -690,7 +736,7 @@ export default function IkhlasJeddahPage() {
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
 
         {/* ════════════ شهادات التفوق ════════════ */}
-        {activeTab === 'certificates' && <ExcellenceCertificateTab students={CLASS_STUDENTS} />}
+        {activeTab === 'certificates' && <ExcellenceCertificateTab students={classStudents} />}
 
         {/* ════════════ نظرة عامة ════════════ */}
         {activeTab === 'overview' && (
@@ -698,7 +744,7 @@ export default function IkhlasJeddahPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'طلاب الفصل',     value: CLASS_STUDENTS.length,    icon: Users,    color: 'blue',   bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
+                { label: 'طلاب الفصل',     value: classStudents.length,    icon: Users,    color: 'blue',   bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
                 { label: 'واجبات مفتوحة',  value: homeworkList.filter(h => h.status === 'OPEN').length, icon: BookOpen, color: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
                 { label: 'اجتماعات اليوم', value: meetings.length,          icon: Video,    color: 'violet', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
                 { label: 'صور الفصل',      value: photos.length,            icon: Camera,   color: 'pink',   bg: 'bg-pink-50',   border: 'border-pink-200',   text: 'text-pink-700' },
@@ -775,7 +821,7 @@ export default function IkhlasJeddahPage() {
                         <p className="text-xs text-slate-500">التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">{hw.submissions?.length ?? 0}/{CLASS_STUDENTS.length} إجابة</span>
+                        <span className="text-xs text-slate-500">{hw.submissions?.length ?? 0}/{classStudents.length} إجابة</span>
                         <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
                           hw.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
                         }`}>
@@ -803,7 +849,7 @@ export default function IkhlasJeddahPage() {
         {/* ════════════ الحضور والانصراف ════════════ */}
         {activeTab === 'attendance' && (
           <AttendanceTabManager
-            students={CLASS_STUDENTS}
+            students={classStudents}
             schedule={schedule}
             currentPeriod={currentPeriod}
             onSaveAttendance={async (attMap) => {
@@ -835,7 +881,7 @@ export default function IkhlasJeddahPage() {
         {/* ════════════ الواجبات الإلكترونية ════════════ */}
         {activeTab === 'homework' && (
           <HomeworkTabManager
-            students={CLASS_STUDENTS}
+            students={classStudents}
             homeworkList={homeworkList}
             onCreateHomework={handleCreateHomeworkFromManager}
             onFetchSubmissions={fetchSubmissions}
@@ -986,7 +1032,7 @@ export default function IkhlasJeddahPage() {
         {/* ════════════ التقارير والملف الأكاديمي للطلاب ════════════ */}
         {activeTab === 'reports' && (
           <StudentReportsManagerTab
-            students={CLASS_STUDENTS}
+            students={classStudents}
             homeworkCount={homeworkList.length}
             photosCount={photos.length}
           />

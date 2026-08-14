@@ -308,6 +308,14 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
     });
   }, []);
 
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'masar-certificate-print-page';
+    style.textContent = '@media print { @page { size: A4 landscape; margin: 0; } }';
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
   // Build today's date string for stamp
   const stampDate = (() => {
     try {

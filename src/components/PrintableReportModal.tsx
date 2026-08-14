@@ -112,30 +112,60 @@ export default function PrintableReportModal({
     .print-page {
       width: 210mm;
       min-height: 297mm;
-      height: 297mm;
       margin: 0 auto 20px auto;
       background: #ffffff;
-      padding: 12mm 15mm 12mm 15mm;
+      padding: 18mm 20mm 17mm 20mm;
       box-sizing: border-box;
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      border: 3px double #06392c;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      border: none;
+      box-shadow: 0 18px 45px rgba(15,23,42,0.18);
       page-break-after: always;
       break-after: page;
-      page-break-inside: avoid;
-      break-inside: avoid;
+      overflow: hidden;
+    }
+    .print-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .print-page::before {
+      content: "";
+      position: absolute;
+      inset: 8mm;
+      border: 1.25mm double #06392c;
+      border-radius: 5mm;
+      pointer-events: none;
+    }
+    .print-page::after {
+      content: "";
+      position: absolute;
+      inset: 10.6mm;
+      border: 0.45mm solid #d6a83f;
+      border-radius: 3.5mm;
+      box-shadow:
+        inset 0 0 0 0.35mm rgba(6,57,44,0.18),
+        inset 0 0 22mm rgba(214,168,63,0.06);
+      pointer-events: none;
+    }
+    .print-page > * {
+      position: relative;
+      z-index: 1;
     }
     @media print {
       .print-page {
         margin: 0 !important;
         box-shadow: none !important;
-        border: 3px double #06392c !important;
-        height: 297mm !important;
+        width: 210mm !important;
+        min-height: 297mm !important;
+        border: none !important;
         page-break-after: always !important;
         break-after: page !important;
+      }
+      .print-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
       }
     }
     .header {

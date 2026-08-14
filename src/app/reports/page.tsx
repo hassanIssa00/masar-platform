@@ -421,7 +421,7 @@ function ReportsContent() {
                 </footer>
 
                 <div className="no-print mt-6 flex flex-col gap-3 sm:flex-row">
-                  <button onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-950 px-5 py-3 text-sm font-black text-white">
+                  <button onClick={() => setPrintReport(selected)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-950 px-5 py-3 text-sm font-black text-white">
                     <Printer size={17} />
                     طباعة PDF
                   </button>

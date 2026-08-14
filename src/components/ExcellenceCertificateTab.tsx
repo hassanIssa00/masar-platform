@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall } from 'lucide-react';
 import BrandMark from './BrandMark';
 
@@ -80,6 +80,15 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 
   const [preview, setPreview] = useState(false);
   const certRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!preview) return;
+    const style = document.createElement('style');
+    style.id = 'masar-excellence-certificate-print-page';
+    style.textContent = '@media print { @page { size: A4 landscape; margin: 0; } }';
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [preview]);
 
   const generateNewCertNo = () => {
     setForm(p => ({ ...p, certNumber: `NSR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}` }));
