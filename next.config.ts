@@ -100,8 +100,8 @@ const CSP_DIRECTIVES = [
   // Frames: reCAPTCHA v3 uses google.com iframe; Firebase Auth popup uses firebaseapp.com iframe
   "frame-src 'self' https://www.google.com https://*.firebaseapp.com https://accounts.google.com",
 
-  // Disallow embedding this app in any external frame
-  "frame-ancestors 'none'",
+  // Allow same-origin Firebase Auth helper frames while blocking external embedding
+  "frame-ancestors 'self'",
 
   // Restrict <base> tag hijacking
   "base-uri 'self'",
@@ -141,11 +141,6 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          // ── Clickjacking / framing ────────────────────────────────────────
-          // frame-ancestors 'none' in CSP is the modern equivalent; X-Frame-Options
-          // is kept for legacy browser compatibility (pre-CSP2 browsers).
-          { key: 'X-Frame-Options', value: 'DENY' },
-
           // ── MIME sniffing ──────────────────────────────────────────────────
           { key: 'X-Content-Type-Options', value: 'nosniff' },
 
