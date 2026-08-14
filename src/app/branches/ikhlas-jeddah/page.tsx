@@ -108,11 +108,18 @@ export default function IkhlasJeddahPage() {
         if (docSnap) {
           const data = docSnap.data() as any;
           if (data && Array.isArray(data.slots) && data.slots.length > 0) {
-            const periods = parseSlotsToPeriods(data.slots);
-            setSchedule(periods);
-            try {
-              localStorage.setItem('masar_smart_schedule_v1', JSON.stringify(data));
-            } catch { /* noop */ }
+            // Only accept the cloud schedule if it has real subject names
+            const hasRealSubjects = data.slots.some((s: any) => {
+              const sub = s.subject || s.subjectName;
+              return sub && sub !== 'درس حر' && sub !== 'حصة دراسية';
+            });
+            if (hasRealSubjects) {
+              const periods = parseSlotsToPeriods(data.slots);
+              setSchedule(periods);
+              try {
+                localStorage.setItem('masar_smart_schedule_v1', JSON.stringify(data));
+              } catch { /* noop */ }
+            }
           }
         }
       });

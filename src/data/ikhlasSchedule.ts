@@ -13,29 +13,29 @@ export type Period = {
 export const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
 // جدول الحصص الأسبوعي المعتمد — مدارس الإخلاص الأهلية بجدة (فصل 1/1)
-// 6 حصص يومياً (30 حصة أسبوعياً)
+// 6 حصص يومياً (30 حصة أسبوعياً) مع الفسحة المدرسية
 export const DEFAULT_SCHEDULE: Period[] = [
   // الأحد
-  { dayOfWeek: 0, periodNumber: 1, subjectName: 'القرآن الكريم', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 0, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 0, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 0, periodNumber: 4, subjectName: 'التربية الإسلامية', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+  { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 0, periodNumber: 4, subjectName: 'العلوم', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 0, periodNumber: 5, subjectName: 'التربية الفنية', startTime: '10:30', endTime: '11:10' },
+  { dayOfWeek: 0, periodNumber: 6, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
 
   // الاثنين
-  { dayOfWeek: 1, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 1, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 1, periodNumber: 3, subjectName: 'القرآن الكريم', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 1, periodNumber: 1, subjectName: 'الرياضيات', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 1, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 1, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
   { dayOfWeek: 1, periodNumber: 4, subjectName: 'التربية البدنية', startTime: '09:50', endTime: '10:30' },
   { dayOfWeek: 1, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
   { dayOfWeek: 1, periodNumber: 6, subjectName: 'الحاسب الآلي', startTime: '11:10', endTime: '11:50' },
 
   // الثلاثاء
-  { dayOfWeek: 2, periodNumber: 1, subjectName: 'الرياضيات', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 2, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 2, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 2, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
+  { dayOfWeek: 2, periodNumber: 1, subjectName: 'القرآن الكريم', startTime: '07:30', endTime: '08:10' },
+  { dayOfWeek: 2, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
+  { dayOfWeek: 2, periodNumber: 3, subjectName: 'لغتي العربية', startTime: '08:50', endTime: '09:30' },
+  { dayOfWeek: 2, periodNumber: 4, subjectName: 'التربية الإسلامية', startTime: '09:50', endTime: '10:30' },
   { dayOfWeek: 2, periodNumber: 5, subjectName: 'الاجتماعيات', startTime: '10:30', endTime: '11:10' },
   { dayOfWeek: 2, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
 
@@ -127,6 +127,11 @@ export function getSavedSchedule(): Period[] {
     if (!raw) return DEFAULT_SCHEDULE;
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
+      const hasRealSubjects = parsed.slots.some((s: any) => {
+        const sub = s.subject || s.subjectName;
+        return sub && sub !== 'درس حر' && sub !== 'حصة دراسية';
+      });
+      if (!hasRealSubjects) return DEFAULT_SCHEDULE;
       return parseSlotsToPeriods(parsed.slots);
     }
     return DEFAULT_SCHEDULE;
