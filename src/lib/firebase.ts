@@ -113,6 +113,14 @@ export function initAppCheck(): void {
   if (typeof window === 'undefined') return;
   if (appCheckInitialized) return;
 
+  const appCheckEnabled = process.env.NEXT_PUBLIC_ENABLE_APP_CHECK === 'true';
+  if (!appCheckEnabled) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[AppCheck] Disabled. Set NEXT_PUBLIC_ENABLE_APP_CHECK=true to enable it.');
+    }
+    return;
+  }
+
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   if (!siteKey) {

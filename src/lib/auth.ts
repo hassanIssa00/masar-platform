@@ -485,6 +485,13 @@ export async function signInWithApple(
 ): Promise<GoogleSignInResult> {
   try {
     const { appleProvider } = await import('@/lib/firebase');
+
+    if (shouldUseRedirectFirst()) {
+      saveOAuthPending('apple', preferredRole, schoolBranch);
+      await signInWithRedirect(auth, appleProvider);
+      return { ok: false, reason: '' };
+    }
+
     const result = await signInWithPopup(auth, appleProvider);
 
     const user = result.user;
