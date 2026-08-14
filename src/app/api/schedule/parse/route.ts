@@ -11,45 +11,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'No image or text provided' }, { status: 400 });
     }
 
-    const systemPrompt = `أنت خبير في قراءة واستخراج جداول الحصص المدرسية بدقة متناهية.
-المهمة: قراءة صورة جدول الحصص واستخراج أسماء المواد لكل يوم ولكل حصة (من الحصة 1 إلى الحصة 6 أو 7) للأيام من الأحد إلى الخميس.
+    const systemPrompt = `أنت خبير متخصص في قراءة جداول الحصص المدرسية بدقة 100%.
 
-المواد الدراسية الشائعة:
-- لغتي العربية
-- الرياضيات
-- القرآن الكريم
-- التربية الإسلامية (أو دراسات إسلامية / فقه / توحيد)
-- العلوم
-- التربية البدنية (بدنية)
-- التربية الفنية (فنية)
-- الحاسب الآلي (حاسب / مهارات رقمية)
-- الاجتماعيات (دراسات اجتماعية)
-- الفسحة (فسحة)
+المهمة: اقرأ صورة جدول الحصص الأسبوعي واستخرج كل بيانات الجدول بدقة تامة:
+- اسم المادة الدراسية
+- اسم المعلم/المعلمة (إن وُجد في الجدول)
+- رقم الحصة
+- اليوم
+- وقت البداية ووقت النهاية
+
+الأيام الدراسية: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس
 
 قواعد صارمة:
-1. استخرج اسم المادة الفعلي الظاهر في الجدول (لا تكتب 'درس حر' أبداً).
-2. رتب الحصص حسب رقم الحصة (1، 2، 3، 4، 5، 6).
-3. حدد الأوقات القياسية:
+1. اقرأ النص الموجود في الجدول بالضبط، لا تخترع أو تخمن.
+2. إذا كان هناك اسم معلم في الخلية، استخرجه في حقل "teacher".
+3. لا تكتب "درس حر" أو "حصة دراسية" أبداً - اقرأ ما هو مكتوب فعلاً.
+4. الأوقات الافتراضية إن لم تكن واضحة في الصورة:
    - الحصة 1: 07:30 - 08:10
    - الحصة 2: 08:10 - 08:50
    - الحصة 3: 08:50 - 09:30
-   - الحصة 4: 09:50 - 10:30
+   - الحصة 4: 09:50 - 10:30 (بعد الفسحة)
    - الحصة 5: 10:30 - 11:10
    - الحصة 6: 11:10 - 11:50
-4. أرجع JSON فقط كقائمة من الكائنات دون أي نص إضافي:
+5. أرجع JSON فقط بدون أي نص إضافي قبله أو بعده، بالشكل الآتي:
+
 [
   {
     "day": "الأحد",
     "period": 1,
-    "subject": "القرآن الكريم",
+    "subject": "اسم المادة كما في الجدول",
+    "teacher": "اسم المعلم إن وُجد أو اتركه فارغاً",
     "startTime": "07:30",
     "endTime": "08:10"
   }
 ]`;
 
-    let userPrompt = 'اقرأ صورة الجدول المرفقة واستخرج جميع الحصص والمواد بدقة وأرجع JSON فقط.';
+    let userPrompt = 'اقرأ الجدول في هذه الصورة بالكامل واستخرج جميع الحصص لكل يوم مع أسماء المواد والمعلمين. أرجع JSON فقط.';
     if (manualText.trim()) {
-      userPrompt += `\nنص إضافي أو بديل:\n${manualText.trim()}`;
+      userPrompt = `استخرج بيانات الجدول الدراسي الآتي وأرجع JSON فقط:\n${manualText.trim()}`;
     }
 
     const messages: any[] = [
@@ -63,41 +62,47 @@ export async function POST(req: NextRequest) {
     const result = await callGeminiApi({
       systemPrompt,
       messages,
-      temperature: 0.2,
+      temperature: 0.1,
     });
 
+    console.log('[Schedule Parse] Gemini raw response:', result?.text?.slice(0, 500));
+
     if (result?.text) {
+      // Try to extract JSON array from response
       const jsonMatch = result.text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         try {
           const slots = JSON.parse(jsonMatch[0]);
           if (Array.isArray(slots) && slots.length > 0) {
-            // Clean and validate slots
             const cleanedSlots = slots.map((s: any) => ({
               day: String(s.day || 'الأحد').trim(),
               period: Number(s.period || s.periodNumber || 1),
-              subject: String(s.subject || s.subjectName || 'حصة دراسية').trim(),
+              subject: String(s.subject || s.subjectName || '').trim(),
+              teacher: String(s.teacher || s.teacherName || '').trim(),
               startTime: String(s.startTime || '07:30').trim(),
               endTime: String(s.endTime || '08:10').trim(),
-            }));
+            })).filter(s => s.subject && s.subject !== 'درس حر' && s.subject !== 'حصة دراسية');
 
-            return NextResponse.json({
-              success: true,
-              slots: cleanedSlots,
-              model: result.model,
-            });
+            if (cleanedSlots.length > 0) {
+              return NextResponse.json({
+                success: true,
+                slots: cleanedSlots,
+                model: result.model,
+              });
+            }
           }
         } catch (e) {
-          console.warn('JSON parse error from Gemini:', e);
+          console.warn('[Schedule Parse] JSON parse error:', e);
         }
       }
     }
 
-    // Fallback to DEFAULT_SCHEDULE converted to slot format
+    // Fallback to DEFAULT_SCHEDULE
     const fallbackSlots = DEFAULT_SCHEDULE.map(p => ({
       day: DAY_MAP_NUM_TO_AR[p.dayOfWeek] || 'الأحد',
       period: p.periodNumber,
       subject: p.subjectName,
+      teacher: p.teacherName || '',
       startTime: p.startTime,
       endTime: p.endTime,
     }));

@@ -523,7 +523,8 @@ export default function ProfessionalScheduleTab({
                         );
 
                         const isLiveNow = isToday && currentPeriod?.periodNumber === periodSlot.num;
-                        const subjectName = periodItem?.subjectName || 'حصّة دراسية';
+                        const subjectName = periodItem?.subjectName || '';
+                        const teacherName = periodItem?.teacherName || '';
                         const cfg = SUBJECT_CONFIG[subjectName] || DEFAULT_SUBJECT_CONFIG;
 
                         return (
@@ -541,25 +542,33 @@ export default function ProfessionalScheduleTab({
                                     : 'hover:shadow-sm'
                                 }`}
                               >
-                                {/* Subject Title & Icon */}
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <span className="font-black text-xs text-slate-900 truncate">
+                                {/* Subject Title & Live Badge */}
+                                <div className="flex items-start justify-between gap-1 mb-1">
+                                  <span className="font-black text-xs text-slate-900 leading-tight">
                                     {cfg.icon} {subjectName}
                                   </span>
                                   {isLiveNow && (
-                                    <span className="flex items-center gap-1 text-[9px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-pulse shadow-sm">
-                                      جارية الآن 🟢
+                                    <span className="flex items-center gap-1 text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.5 rounded-full animate-pulse shadow-sm shrink-0">
+                                      🟢
                                     </span>
                                   )}
                                 </div>
 
+                                {/* Teacher Name */}
+                                {teacherName && (
+                                  <div className="text-[10px] font-bold text-slate-600 mb-1.5 flex items-center gap-1">
+                                    <span className="opacity-60">👤</span>
+                                    <span className="truncate">{teacherName}</span>
+                                  </div>
+                                )}
+
                                 {/* Period Time & Badge */}
-                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 mt-2">
+                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 mt-auto">
                                   <span className="font-mono text-slate-600 bg-white/70 px-1.5 py-0.5 rounded border border-slate-200">
                                     {periodItem.startTime} - {periodItem.endTime}
                                   </span>
                                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cfg.badge}`}>
-                                    الحصة {periodItem.periodNumber}
+                                    {periodItem.periodNumber}
                                   </span>
                                 </div>
                               </div>

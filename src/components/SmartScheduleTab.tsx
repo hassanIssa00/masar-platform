@@ -725,7 +725,12 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
                                   className="rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200 hover:border-amber-400 p-2.5 text-center transition cursor-pointer group"
                                   title="اضغط لتعديل اسم المادة"
                                 >
-                                  <div className="font-black text-xs text-slate-900 group-hover:text-amber-950">{slot.subject}</div>
+                                <div className="font-black text-xs text-slate-900 group-hover:text-amber-950 leading-tight">{slot.subject}</div>
+                                  {slot.teacher && (
+                                    <div className="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-1 justify-center">
+                                      <span>👤</span>{slot.teacher}
+                                    </div>
+                                  )}
                                   <div className="text-[10px] font-mono text-amber-800 font-bold mt-1">
                                     {slot.startTime} - {slot.endTime}
                                   </div>
