@@ -29,8 +29,8 @@ export default function AttendancePage() {
   /* ── Sync with AI Real-Time Execution ── */
   useEffect(() => {
     const handleAIAction = (e: any) => {
-      const { action, prompt } = e.detail || {};
-      const p = (prompt || action || '').toLowerCase();
+      const { action, type, prompt } = e.detail || {};
+      const p = (prompt || action || type || '').toLowerCase();
       if (p.includes('حضر') || p.includes('تحضير') || p.includes('حاضر') || p.includes('حضور') || p.includes('غياب') || p.includes('attendance')) {
         const timeNow = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         const allStudents = getStudents();

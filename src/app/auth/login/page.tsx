@@ -66,6 +66,7 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState('');
+  const [forgotTempPassword, setForgotTempPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
@@ -100,7 +101,7 @@ export default function LoginPage() {
   }, []);
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
-  function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string }) {
+  function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
     const branch =
       account.schoolBranch ??
       (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
@@ -149,7 +150,7 @@ export default function LoginPage() {
         targetUrl = '/school-parent';
       } else {
         const students = getStudents();
-        targetUrl = students.length > 0 ? '/parent' : '/student/new?flow=parent';
+        targetUrl = account.providerId === 'generated' || students.length === 0 ? '/student/new?flow=parent' : '/parent';
       }
     }
 
@@ -299,6 +300,7 @@ export default function LoginPage() {
     setForgotLoading(false);
 
     if (result.ok) {
+      setForgotTempPassword(result.temporaryPassword || '');
       setForgotSent(true);
     } else {
       setForgotError(result.reason);
@@ -310,6 +312,7 @@ export default function LoginPage() {
     setForgotEmail('');
     setForgotError('');
     setForgotSent(false);
+    setForgotTempPassword('');
     setForgotLoading(false);
   };
 
@@ -572,26 +575,39 @@ export default function LoginPage() {
                   <Mail size={32} className="text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-lg font-black text-slate-900">تم إرسال الرابط! ✅</p>
+                  <p className="text-lg font-black text-slate-900">
+                    {forgotTempPassword ? 'تم إنشاء كلمة مرور مؤقتة' : 'تم إرسال الرابط'}
+                  </p>
                   <p className="mt-2 text-sm font-bold text-slate-500 leading-relaxed">
-                    تحقق من بريدك الإلكتروني{' '}
-                    <span className="font-black text-teal-700">{forgotEmail}</span>
-                    {' '}وستجد رسالة فيها رابط لإعادة تعيين كلمة المرور.
-                    <br />
-                    <span className="text-xs text-slate-400 mt-1 block">
-                      الرابط صالح لمدة ساعة واحدة فقط.
-                    </span>
+                    {forgotTempPassword ? (
+                      <>
+                        هذا الحساب مولد داخل منصة مسار. استخدم كلمة المرور المؤقتة التالية ثم غيّرها بعد الدخول:
+                        <span className="mt-3 block rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 font-mono text-base font-black text-teal-800" dir="ltr">
+                          {forgotTempPassword}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        تحقق من بريدك الإلكتروني{' '}
+                        <span className="font-black text-teal-700">{forgotEmail}</span>
+                        {' '}وستجد رسالة فيها رابط لإعادة تعيين كلمة المرور.
+                        <br />
+                        <span className="text-xs text-slate-400 mt-1 block">
+                          الرابط صالح لمدة ساعة واحدة فقط.
+                        </span>
+                      </>
+                    )}
                   </p>
                 </div>
                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs font-bold text-amber-800 text-right">
-                  💡 لم تجد الرسالة؟ تحقق من مجلد Spam أو Junk
+                  {forgotTempPassword ? 'هذه الكلمة تظهر هنا مرة واحدة فقط.' : 'لم تجد الرسالة؟ تحقق من مجلد Spam أو Junk'}
                 </div>
                 <button
                   type="button"
                   onClick={closeForgot}
                   className="w-full mt-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition"
                 >
-                  حسناً، سأتحقق من بريدي
+                  {forgotTempPassword ? 'حسناً، سأدخل بالكلمة المؤقتة' : 'حسناً، سأتحقق من بريدي'}
                 </button>
               </div>
             ) : (

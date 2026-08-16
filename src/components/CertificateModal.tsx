@@ -14,6 +14,43 @@ function stableCertificateSuffix(...parts: string[]) {
   return String(hash + 10000).slice(0, 5);
 }
 
+function toEnglishCertificateName(name: string) {
+  const normalized = name.trim().replace(/\s+/g, ' ');
+  if (!normalized) return 'Student Name';
+
+  const words: Record<string, string> = {
+    'أحمد': 'Ahmed',
+    'احمد': 'Ahmed',
+    'محمد': 'Mohamed',
+    'محمود': 'Mahmoud',
+    'إبراهيم': 'Ibrahim',
+    'ابراهيم': 'Ibrahim',
+    'علي': 'Ali',
+    'على': 'Ali',
+    'إسماعيل': 'Ismail',
+    'اسماعيل': 'Ismail',
+    'أنس': 'Anas',
+    'انس': 'Anas',
+    'حسن': 'Hassan',
+    'حسين': 'Hussein',
+    'ربيع': 'Rabie',
+    'عيسى': 'Issa',
+    'يوسف': 'Youssef',
+    'عمر': 'Omar',
+    'خالد': 'Khaled',
+    'عبدالله': 'Abdullah',
+    'عبد': 'Abdel',
+  };
+
+  const converted = normalized
+    .split(' ')
+    .map((part) => words[part] ?? '')
+    .filter(Boolean)
+    .join(' ');
+
+  return converted || 'Student Name';
+}
+
 // ── Load signature image as transparent PNG ─────────────────────────────────
 async function loadTransparentSignature(src: string): Promise<string> {
   return new Promise((resolve) => {
@@ -306,7 +343,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
   const isAr = lang === 'ar';
   const certNo = data.certNumber || `NSR-CERT-2026-${stableCertificateSuffix(data.studentName, data.programTitle, data.completionDate)}`;
-  const displayName = isAr ? data.studentName : (nameEn || data.studentName);
+  const displayName = isAr ? data.studentName : (nameEn.trim() || toEnglishCertificateName(data.studentName));
 
   const certRef = useRef<HTMLDivElement>(null);
 

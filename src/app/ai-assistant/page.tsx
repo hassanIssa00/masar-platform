@@ -204,7 +204,7 @@ export default function AIAssistantPage() {
       const data = await res.json();
       if (Array.isArray(data.actions) && typeof window !== 'undefined') {
         for (const action of data.actions) {
-          window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, prompt: text } }));
+          window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, action: action.type, prompt: text } }));
         }
       }
       const replyText = data.reply?.trim()

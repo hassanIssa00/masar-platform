@@ -248,9 +248,9 @@ export default function IkhlasJeddahPage() {
   /* ── Listen to Real-Time AI Actions ── */
   useEffect(() => {
     const handleAIAction = (e: any) => {
-      const { action, prompt } = e.detail || {};
-      const p = (prompt || action || '').toLowerCase();
-      const actionType = String(action || '').toLowerCase();
+      const { action, type, prompt } = e.detail || {};
+      const actionType = String(action || type || '').toLowerCase();
+      const p = (prompt || actionType || '').toLowerCase();
 
       // Attendance AI Execution: Update state live on screen!
       if (p.includes('حضر') || p.includes('تحضير') || p.includes('حاضر') || p.includes('حضور') || p.includes('غياب') || p.includes('attendance')) {

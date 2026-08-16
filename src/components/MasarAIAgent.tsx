@@ -128,7 +128,7 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
         const data = await res.json();
         if (Array.isArray(data.actions) && typeof window !== 'undefined') {
           for (const action of data.actions) {
-            window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, prompt: inputPrompt } }));
+            window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, action: action.type, prompt: inputPrompt } }));
           }
         }
         if (data.reply) {

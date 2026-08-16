@@ -116,6 +116,18 @@ export default function PrintableReportModal({
           </div>
         </div>`;
 
+    const compactHeaderHtml = (label: string) => `
+        <div class="compact-header">
+          <div class="compact-brand">
+            <img src="${origin}/brand/masar-logo.png" alt="شعار منصة مسار" />
+            <div>
+              <strong>مَسَار</strong>
+              <span>${label}</span>
+            </div>
+          </div>
+          <div class="compact-file">${fileNumber}</div>
+        </div>`;
+
     const homeRecommendations = recommendationsList.slice(0, 3);
     const schoolRecommendations =
       recommendationsList.slice(3, 6).length > 0
@@ -333,6 +345,50 @@ export default function PrintableReportModal({
       font-weight: 700;
       direction: ltr;
     }
+    .compact-header {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1.3px solid #06392c;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+    .compact-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #06392c;
+      line-height: 1.3;
+    }
+    .compact-brand img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+    .compact-brand strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .compact-brand span {
+      display: block;
+      font-size: 8px;
+      font-weight: 800;
+      color: #64748b;
+    }
+    .compact-file {
+      font-family: monospace;
+      direction: ltr;
+      color: #1e1b4b;
+      font-size: 8.5px;
+      font-weight: 900;
+      border: 1px solid #d6a83f;
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #fffdf5;
+    }
     .banner {
       background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px;
       padding: 10px 16px; text-align: center; margin-bottom: 12px;
@@ -440,7 +496,7 @@ export default function PrintableReportModal({
     <!-- PAGE 2: DOMAINS & IEP -->
     <section class="print-page">
       <div>
-        ${headerHtml('تحليل المجالات والخطط الفردية')}
+        ${compactHeaderHtml('تحليل المجالات والخطط الفردية')}
 
         ${
           isSurveyAnswersReport
@@ -556,7 +612,7 @@ export default function PrintableReportModal({
     <!-- PAGE 3: DETAILED ANSWERS & SIGNATURE -->
     <section class="print-page">
       <div>
-        ${headerHtml('التوقيع والختم الرقمي')}
+        ${compactHeaderHtml('التوقيع والختم الرقمي')}
 
         ${
           isStudentAnswersReport && answersRows.length > 0

@@ -9,7 +9,7 @@ import {
   Settings2, Shield, ShieldAlert, Smartphone, Tablet,
   Trash2, TrendingUp, Upload, UserCheck, UserMinus,
   UserPlus, Users, Wifi, XCircle, ToggleLeft, ToggleRight,
-  Calendar, Clock, Activity as ActivityIcon,
+  Calendar, Clock, Activity as ActivityIcon, Copy,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -19,7 +19,9 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, getStudents, getReports, getSurveys, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, type AccountRecord } from '@/lib/localDb';
+import { saveCredential } from '@/lib/auth';
+import { saveClassStudent } from '@/lib/classDb';
 import { deleteDocFromCloud } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -349,10 +351,30 @@ function Toggle({ checked, onChange, label, description }: {
   );
 }
 
+function createTempPassword(prefix: string) {
+  const partA = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const partB = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}-${partA}-${partB}`;
+}
+
+function createPlatformEmail(kind: 'student' | 'parent', branch: 'MASAR' | 'IKHLAS_JEDDAH') {
+  const branchSlug = branch === 'MASAR' ? 'masar' : 'ikhlas';
+  return `${kind}.${branchSlug}.${Date.now().toString(36)}${Math.floor(10 + Math.random() * 90)}@masarplatform.org`;
+}
+
 /* ══════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════ */
 type Tab = 'overview' | 'users' | 'config' | 'security' | 'data';
+
+type GeneratedAccountBundle = {
+  studentEmail: string;
+  studentPassword: string;
+  parentEmail: string;
+  parentPassword: string;
+  branch: 'MASAR' | 'IKHLAS_JEDDAH';
+  studentName: string;
+};
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'نظرة عامة', icon: BarChart3 },
@@ -377,6 +399,12 @@ export default function PlatformSettingsPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [clearStatus, setClearStatus] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
   const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [generatorBranch, setGeneratorBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
+  const [generatorStudentName, setGeneratorStudentName] = useState('');
+  const [generatorGrade, setGeneratorGrade] = useState('الصف الأول');
+  const [generatorParentName, setGeneratorParentName] = useState('');
+  const [generatorParentPhone, setGeneratorParentPhone] = useState('');
+  const [generatedBundle, setGeneratedBundle] = useState<GeneratedAccountBundle | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
   /* ── Load data ─────────────────────────── */
@@ -448,6 +476,88 @@ export default function PlatformSettingsPage() {
     setClearStatus((s) => ({ ...s, [colName]: 'done' }));
     setTimeout(() => setClearStatus((s) => ({ ...s, [colName]: 'idle' })), 3000);
     await loadSummary();
+  };
+
+  const handleGenerateAccounts = async () => {
+    const studentName = generatorStudentName.trim();
+    const parentName = generatorParentName.trim();
+    if (!studentName || !parentName) {
+      alert('اكتب اسم الطالب واسم ولي الأمر أولاً.');
+      return;
+    }
+
+    const studentEmail = createPlatformEmail('student', generatorBranch);
+    const parentEmail = createPlatformEmail('parent', generatorBranch);
+    const studentPassword = createTempPassword('STU');
+    const parentPassword = createTempPassword('PAR');
+    const phone = generatorParentPhone.trim();
+
+    const studentAccount = saveAccount({
+      name: studentName,
+      email: studentEmail,
+      phone,
+      role: 'student',
+      schoolBranch: generatorBranch,
+      createdVia: 'email',
+      providerId: 'generated',
+    });
+    const parentAccount = saveAccount({
+      name: parentName,
+      email: parentEmail,
+      phone,
+      role: 'parent',
+      schoolBranch: generatorBranch,
+      createdVia: 'email',
+      providerId: 'generated',
+    });
+    saveCredential(studentAccount, studentPassword);
+    saveCredential(parentAccount, parentPassword);
+
+    if (generatorBranch === 'MASAR') {
+      saveStudent({
+        fullName: studentName,
+        grade: generatorGrade,
+        parentName,
+        parentPhone: phone || parentEmail,
+        notes: 'حساب مولد من لوحة إعدادات المنصة. يحتاج استكمال بيانات الطالب والاستبيان/اختبار الطالب عند أول دخول.',
+        reviewStatus: 'awaiting-survey',
+        source: 'import',
+      });
+    } else {
+      saveClassStudent({
+        fullName: studentName,
+        grade: generatorGrade || 'الأول الابتدائي — فصل الإخلاص بجدة',
+        parentName,
+        parentPhone: phone,
+        notes: 'حساب مولد من لوحة إعدادات المنصة. يحتاج استكمال بيانات الطالب عند أول دخول.',
+      });
+    }
+
+    setGeneratedBundle({
+      studentName,
+      branch: generatorBranch,
+      studentEmail,
+      studentPassword,
+      parentEmail,
+      parentPassword,
+    });
+    setGeneratorStudentName('');
+    setGeneratorParentName('');
+    setGeneratorParentPhone('');
+    await loadSummary();
+  };
+
+  const copyGeneratedBundle = async () => {
+    if (!generatedBundle) return;
+    const text = [
+      `بيانات دخول ${generatedBundle.studentName}`,
+      `النظام: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار' : 'مدارس الإخلاص بجدة'}`,
+      `حساب الطالب: ${generatedBundle.studentEmail}`,
+      `كلمة مرور الطالب: ${generatedBundle.studentPassword}`,
+      `حساب ولي الأمر: ${generatedBundle.parentEmail}`,
+      `كلمة مرور ولي الأمر: ${generatedBundle.parentPassword}`,
+    ].join('\n');
+    await navigator.clipboard.writeText(text);
   };
 
   const filteredAccounts = roleFilter === 'all'
@@ -644,6 +754,105 @@ export default function PlatformSettingsPage() {
             ════════════════════════════════ */}
             {!loading && tab === 'users' && (
               <div className="space-y-4">
+                <div className="rounded-2xl border border-teal-200 bg-white p-5 shadow-xs">
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-slate-900 flex items-center gap-2">
+                        <UserCheck size={18} className="text-teal-600" />
+                        مولد حسابات الطالب وولي الأمر
+                      </p>
+                      <p className="mt-1 text-xs font-bold text-slate-500">
+                        ينشئ حساب طالب وحساب ولي أمر بكلمات مرور مؤقتة، ويضيف الطالب للفرع الصحيح.
+                      </p>
+                    </div>
+                    {generatedBundle && (
+                      <button
+                        onClick={copyGeneratedBundle}
+                        className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-black text-teal-800 hover:bg-teal-100 transition"
+                      >
+                        <Copy size={14} /> نسخ بيانات آخر حساب
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-5">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-black text-slate-500">النظام</span>
+                      <select
+                        value={generatorBranch}
+                        onChange={(e) => setGeneratorBranch(e.target.value as 'MASAR' | 'IKHLAS_JEDDAH')}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-500"
+                      >
+                        <option value="MASAR">منصة مسار</option>
+                        <option value="IKHLAS_JEDDAH">فصل الإخلاص بجدة</option>
+                      </select>
+                    </label>
+                    <label className="block md:col-span-1">
+                      <span className="mb-1 block text-[11px] font-black text-slate-500">اسم الطالب</span>
+                      <input
+                        value={generatorStudentName}
+                        onChange={(e) => setGeneratorStudentName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
+                        placeholder="مثال: أحمد إبراهيم"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-black text-slate-500">الصف</span>
+                      <input
+                        value={generatorGrade}
+                        onChange={(e) => setGeneratorGrade(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
+                        placeholder="الصف الأول"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-black text-slate-500">اسم ولي الأمر</span>
+                      <input
+                        value={generatorParentName}
+                        onChange={(e) => setGeneratorParentName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
+                        placeholder="اسم ولي الأمر"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-black text-slate-500">هاتف ولي الأمر</span>
+                      <input
+                        value={generatorParentPhone}
+                        onChange={(e) => setGeneratorParentPhone(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
+                        placeholder="05xxxxxxxx"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={handleGenerateAccounts}
+                      className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-700 transition"
+                    >
+                      <UserPlus size={16} /> توليد حسابين وربطهما
+                    </button>
+                    <p className="text-xs font-bold text-slate-500">
+                      أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات والاستبيان/الاختبار حسب نوع الحساب.
+                    </p>
+                  </div>
+
+                  {generatedBundle && (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+                        <p className="text-xs font-black text-sky-800">حساب الطالب</p>
+                        <p className="mt-2 font-mono text-sm font-black text-slate-900" dir="ltr">{generatedBundle.studentEmail}</p>
+                        <p className="mt-1 font-mono text-sm font-black text-sky-800" dir="ltr">{generatedBundle.studentPassword}</p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-xs font-black text-emerald-800">حساب ولي الأمر</p>
+                        <p className="mt-2 font-mono text-sm font-black text-slate-900" dir="ltr">{generatedBundle.parentEmail}</p>
+                        <p className="mt-1 font-mono text-sm font-black text-emerald-800" dir="ltr">{generatedBundle.parentPassword}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2">
                   {['all', 'doctor', 'parent', 'specialist', 'student', 'teacher'].map((r) => (

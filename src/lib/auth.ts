@@ -203,7 +203,7 @@ export type GoogleSignInResult =
   | { ok: false; reason: string };
 
 export type PasswordResetResult =
-  | { ok: true }
+  | { ok: true; temporaryPassword?: string; mode?: 'firebase' | 'local' }
   | { ok: false; reason: string };
 
 const KEY = 'masar.credentials.v1';
@@ -702,12 +702,23 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
       url: 'https://masarplatform.org/auth/login',
       handleCodeInApp: false,
     });
-    return { ok: true };
+    return { ok: true, mode: 'firebase' };
   } catch (err) {
     const authErr = err as AuthError;
+    const localAccount = getAccounts().find((account) => normalize(account.email) === clean);
+    if (
+      localAccount &&
+      (authErr.code === 'auth/user-not-found' ||
+        authErr.code === 'auth/network-request-failed' ||
+        authErr.code === 'auth/operation-not-allowed' ||
+        authErr.code === 'auth/internal-error')
+    ) {
+      const temporaryPassword = `Masar-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      saveCredential(localAccount, temporaryPassword);
+      return { ok: true, mode: 'local', temporaryPassword };
+    }
     if (authErr.code === 'auth/user-not-found') {
-      // Don't reveal whether the email exists (security best practice)
-      return { ok: true }; // Return success to prevent email enumeration
+      return { ok: true, mode: 'firebase' };
     }
     if (authErr.code === 'auth/invalid-email') {
       return { ok: false, reason: 'صيغة البريد الإلكتروني غير صحيحة.' };
