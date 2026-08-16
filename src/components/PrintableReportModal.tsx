@@ -157,14 +157,16 @@ export default function PrintableReportModal({
       </tr>`,
     ).join('');
 
-    const answersRows = printableAnswers.slice(0, 40).map(
-      (ans, i) => `
+    const answerRow = (ans: { question: string; answer: string }, i: number) => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
         <td style="padding:7px 10px;font-weight:900;font-family:monospace;text-align:center;border-bottom:1px solid #e2e8f0">${i + 1}</td>
         <td style="padding:7px 10px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">${ans.question}</td>
         <td style="padding:7px 10px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${ans.answer}</td>
-      </tr>`,
-    ).join('');
+      </tr>`;
+    const firstAnswerChunk = printableAnswers.slice(0, 18);
+    const secondAnswerChunk = printableAnswers.slice(18, 40);
+    const answersRows = firstAnswerChunk.map((ans, i) => answerRow(ans, i)).join('');
+    const answersRowsContinuation = secondAnswerChunk.map((ans, i) => answerRow(ans, i + firstAnswerChunk.length)).join('');
 
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -414,8 +416,10 @@ export default function PrintableReportModal({
       border-right: 4px solid #d97706; padding-right: 8px; margin-bottom: 8px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
+    table, thead, tbody, tr, td, th { page-break-inside: avoid; break-inside: avoid; }
     th { background: #06392c; color: #ffffff; padding: 6px 10px; text-align: right; font-weight: 900; }
     td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
+    .answers-table td { padding: 6px 9px !important; line-height: 1.55; }
     .footer {
       display: flex; justify-content: space-between; align-items: center;
       border-top: 1.5px solid #06392c; padding-top: 6px; margin-top: auto;
@@ -501,8 +505,8 @@ export default function PrintableReportModal({
         ${
           isSurveyAnswersReport
             ? `
-        <div class="sec-head">1. إجابات ولي الأمر التفصيلية</div>
-        <table>
+        <div class="sec-head">1. إجابات ولي الأمر التفصيلية - الجزء الأول</div>
+        <table class="answers-table">
           <thead>
             <tr>
               <th style="width: 8%;">#</th>
@@ -615,19 +619,19 @@ export default function PrintableReportModal({
         ${compactHeaderHtml('التوقيع والختم الرقمي')}
 
         ${
-          isStudentAnswersReport && answersRows.length > 0
+          isAnswersReport && answersRowsContinuation.length > 0
             ? `
-        <div class="sec-head">4. سجل الإجابات التفصيلية المحفوظة</div>
-        <table>
+        <div class="sec-head">2. تكملة سجل الإجابات التفصيلية المحفوظة</div>
+        <table class="answers-table">
           <thead>
             <tr>
               <th style="width: 8%;">#</th>
               <th style="width: 52%;">السؤال المستهدف</th>
-              <th style="width: 40%;">استجابة الطالب المحفوظة</th>
+              <th style="width: 40%;">الإجابة المحفوظة</th>
             </tr>
           </thead>
           <tbody>
-            ${answersRows}
+            ${answersRowsContinuation}
           </tbody>
         </table>`
             : ''

@@ -41,7 +41,22 @@ export default function NewStudentPage() {
     setNextFlow(isStudent ? 'student-test' : 'parent-survey');
 
     const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
-    if (!savedStudentId) return;
+    if (!savedStudentId) {
+      if (session?.role === 'student') {
+        setStudent((prev) => ({
+          ...prev,
+          fullName: session.name || prev.fullName,
+          parentPhone: session.phone || prev.parentPhone,
+        }));
+      } else if (session?.role === 'parent') {
+        setStudent((prev) => ({
+          ...prev,
+          parentName: session.name || prev.parentName,
+          parentPhone: session.phone || prev.parentPhone,
+        }));
+      }
+      return;
+    }
 
     const allStudents = getStudents();
     const found = allStudents.find((s) => s.id === savedStudentId);
@@ -116,7 +131,8 @@ export default function NewStudentPage() {
 
     localStorage.setItem('masar.current-student-id', savedStudent!.id);
     localStorage.setItem('masar_active_student_id', savedStudent!.id);
-    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}` : `/survey?student=${savedStudent!.id}`);
+    localStorage.setItem('masar_active_mode', nextFlow === 'student-test' ? 'student' : 'parent');
+    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}&flow=student` : `/survey?student=${savedStudent!.id}&flow=parent`);
   };
 
   return (

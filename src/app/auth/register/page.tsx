@@ -112,7 +112,7 @@ export default function RegisterPage() {
     setMsLoading(true);
     setGoogleError('');
 
-    const role = accountType === 'teacher' ? 'teacher' : accountType === 'student' ? 'student' : 'parent';
+    const role = getSelectedRole();
     const result = await signInWithMicrosoft(role as import('@/lib/localDb').UserRole, schoolBranch);
 
     setMsLoading(false);
@@ -122,16 +122,11 @@ export default function RegisterPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
+        localStorage.setItem('masar_registered_email', result.account.email);
       }
       trackEvent('register_microsoft', { userId: result.account.id, userName: result.account.name, userRole: result.account.role, isNew: result.isNew });
 
-      if (schoolBranch === 'IKHLAS_JEDDAH') {
-        if (accountType === 'parent') router.push('/school-parent');
-        else if (accountType === 'student') router.push('/school-student/setup');
-        else router.push('/branches/ikhlas-jeddah');
-      } else {
-        router.push(accountType === 'parent' ? '/parent' : '/student/new');
-      }
+      routeRegisteredAccount(accountType, schoolBranch);
     } else if (result.reason) {
       setGoogleError(result.reason);
     }
@@ -154,16 +149,38 @@ export default function RegisterPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  const getSelectedRole = () =>
+    accountType === 'teacher' ? 'teacher' : accountType === 'student' ? 'student' : 'parent';
+
   const getMasarStartPath = (type: typeof accountType) =>
-    type === 'student' ? '/student/new?flow=student' : '/student/new?flow=parent';
+    type === 'student' ? '/student/new?flow=student' : type === 'parent' ? '/student/new?flow=parent' : '/dashboard';
+
+  const routeRegisteredAccount = (type: typeof accountType, branch: typeof schoolBranch) => {
+    if (branch === 'IKHLAS_JEDDAH') {
+      if (type === 'parent') router.push('/school-parent');
+      else if (type === 'student') router.push('/school-student/setup');
+      else router.push('/branches/ikhlas-jeddah');
+      return;
+    }
+    router.push(getMasarStartPath(type));
+  };
 
   // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
   useEffect(() => {
     pullCloudDataToLocal().catch(() => {});
-    handleGoogleRedirectResult('parent', schoolBranch).then((result) => {
+    handleGoogleRedirectResult(getSelectedRole() as import('@/lib/localDb').UserRole, schoolBranch).then((result) => {
       if (result && result.ok) {
         setSession(result.account);
-        router.push(getMasarStartPath(accountType));
+        const resolvedType =
+          result.account.role === 'student' ? 'student'
+          : result.account.role === 'parent' ? 'parent'
+          : 'teacher';
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('masar_school_branch', result.account.schoolBranch || schoolBranch);
+          localStorage.setItem('masar_active_mode', resolvedType);
+          localStorage.setItem('masar_registered_email', result.account.email);
+        }
+        routeRegisteredAccount(resolvedType, (result.account.schoolBranch as typeof schoolBranch) || schoolBranch);
       } else if (result?.reason) {
         setGoogleError(result.reason);
       }
@@ -175,7 +192,7 @@ export default function RegisterPage() {
     setGoogleLoading(true);
     setGoogleError('');
 
-    const role = accountType === 'teacher' ? 'teacher' : accountType === 'student' ? 'student' : 'parent';
+    const role = getSelectedRole();
     const result = await signInWithGoogle(role as import('@/lib/localDb').UserRole, schoolBranch);
 
     setGoogleLoading(false);
@@ -185,17 +202,11 @@ export default function RegisterPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
+        localStorage.setItem('masar_registered_email', result.account.email);
       }
       trackEvent('register_google', { userId: result.account.id, isNew: result.isNew });
 
-      // Route based on branch + role
-      if (schoolBranch === 'IKHLAS_JEDDAH') {
-        if (accountType === 'parent') router.push('/school-parent');
-        else if (accountType === 'student') router.push('/school-student/setup');
-        else router.push('/branches/ikhlas-jeddah');
-      } else {
-        router.push(getMasarStartPath(accountType));
-      }
+      routeRegisteredAccount(accountType, schoolBranch);
     } else if (result.reason) {
       setGoogleError(result.reason);
     }
@@ -206,7 +217,7 @@ export default function RegisterPage() {
     setAppleLoading(true);
     setGoogleError('');
 
-    const role = accountType === 'teacher' ? 'teacher' : accountType === 'student' ? 'student' : 'parent';
+    const role = getSelectedRole();
     const result = await signInWithApple(role as import('@/lib/localDb').UserRole, schoolBranch);
 
     setAppleLoading(false);
@@ -216,16 +227,11 @@ export default function RegisterPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
+        localStorage.setItem('masar_registered_email', result.account.email);
       }
       trackEvent('register_apple', { userId: result.account.id, isNew: result.isNew });
 
-      if (schoolBranch === 'IKHLAS_JEDDAH') {
-        if (accountType === 'parent') router.push('/school-parent');
-        else if (accountType === 'student') router.push('/school-student/setup');
-        else router.push('/branches/ikhlas-jeddah');
-      } else {
-        router.push(getMasarStartPath(accountType));
-      }
+      routeRegisteredAccount(accountType, schoolBranch);
     } else if (result.reason) {
       setGoogleError(result.reason);
     }

@@ -7,7 +7,7 @@ import {
   BarChart3, CalendarClock, ChevronLeft, ChevronRight, ClipboardCheck,
   CreditCard, BookOpen, FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X,
-  ClipboardList, Users, Building2, Bot, Trophy, BookMarked, ShieldCheck, ClipboardPen, Stamp
+  ClipboardList, Users, Building2, Bot, Trophy, BookMarked, ShieldCheck, ClipboardPen, Stamp, KeyRound
 } from 'lucide-react';
 import { clearSession, getSession } from '@/lib/localDb';
 
@@ -22,6 +22,7 @@ const adminLinks = [
   { name: 'إدارة الحضور والغياب', path: '/attendance', icon: ClipboardCheck },
   { name: 'قائمة الانتظار CRM', path: '/waitlist', icon: Users },
   { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
+  { name: 'توليد الحسابات', path: '/account-generator', icon: KeyRound },
   { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
   { name: 'فصل 1/1 الإخلاص بجدة 🏫', path: '/branches/ikhlas-jeddah', icon: Building2 },
   { name: 'التلعيب والمكافآت', path: '/gamification', icon: Trophy },

@@ -429,6 +429,8 @@ export default function PlatformSettingsPage() {
   }, []);
 
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (requestedTab === 'users') setTab('users');
     loadSummary();
     // Track this visit
     trackEvent('visit', { page: '/platform-settings' });
@@ -833,7 +835,7 @@ export default function PlatformSettingsPage() {
                       <UserPlus size={16} /> توليد حسابين وربطهما
                     </button>
                     <p className="text-xs font-bold text-slate-500">
-                      أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات والاستبيان/الاختبار حسب نوع الحساب.
+                      أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات. استخدم البريد المولد نفسه في صفحة "نسيت كلمة المرور" عند الحاجة.
                     </p>
                   </div>
 

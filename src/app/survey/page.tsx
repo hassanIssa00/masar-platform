@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
-import { getStudents, saveReport, saveStudent, saveSurvey, updateStudent } from '@/lib/localDb';
+import { getSession, getStudents, saveReport, saveStudent, saveSurvey, updateStudent } from '@/lib/localDb';
 
 const SECTIONS = [
   {
@@ -357,8 +357,14 @@ function SurveyContent() {
 
     updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
     localStorage.setItem('masar.current-student-id', savedStudent.id);
+    localStorage.setItem('masar_active_student_id', savedStudent.id);
     setSubmitted(true);
-    router.push(`/assessment?student=${savedStudent.id}`);
+    const flow = searchParams.get('flow') ?? localStorage.getItem('masar_active_mode') ?? getSession()?.role ?? 'parent';
+    if (flow === 'student') {
+      router.push(`/assessment?student=${savedStudent.id}&flow=student`);
+    } else {
+      router.push(`/parent?student=${savedStudent.id}`);
+    }
   };
 
   if (submitted) {
@@ -368,7 +374,7 @@ function SurveyContent() {
           <div className="bg-white rounded-3xl shadow-xl p-10 max-w-xl w-full text-center animate-slide-up">
             <div className="mx-auto mb-6 h-12 w-12 rounded-full border-4 border-blue-100 border-t-[#1E6FBF] animate-spin" />
             <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">تم حفظ استبيان ولي الأمر</h1>
-            <p className="text-gray-600 leading-8">جاري فتح اختبار الطالب المناسب للصف الآن. لن تظهر أي نتيجة للطالب، وسيتم حفظ تقرير الإجابات والتحليل داخل لوحة د. إسماعيل.</p>
+            <p className="text-gray-600 leading-8">جاري فتح بوابة ولي الأمر. اختبار الطالب يظهر فقط عند دخول الطالب أو عند فتحه من لوحة د. إسماعيل.</p>
           </div>
         </div>
       </div>
@@ -390,7 +396,7 @@ function SurveyContent() {
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-[#1E6FBF] mb-2">استبيان ولي الأمر عن الطالب</h1>
-          <p className="text-gray-500">هذه الأسئلة يجيب عنها ولي الأمر، وبعدها يبدأ الطالب اختباراً مباشراً مناسباً للصف.</p>
+          <p className="text-gray-500">هذه الأسئلة يجيب عنها ولي الأمر فقط، وتُحفظ للدكتور في تقرير منفصل عن اختبار الطالب.</p>
         </div>
 
         <div className="mb-8 grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:grid-cols-3">

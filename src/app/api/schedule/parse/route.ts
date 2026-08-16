@@ -24,21 +24,6 @@ type ScheduleSlot = {
   endTime: string;
 };
 
-const DEFAULT_IKHLAS_SLOTS: ScheduleSlot[] = [
-  ['الأحد', 1, 'لغتي العربية', '07:30', '08:10'], ['الأحد', 2, 'الرياضيات', '08:10', '08:50'], ['الأحد', 3, 'التربية الإسلامية', '08:50', '09:30'], ['الأحد', 4, 'العلوم', '09:50', '10:30'], ['الأحد', 5, 'التربية الفنية', '10:30', '11:10'], ['الأحد', 6, 'القرآن الكريم', '11:10', '11:50'],
-  ['الاثنين', 1, 'الرياضيات', '07:30', '08:10'], ['الاثنين', 2, 'لغتي العربية', '08:10', '08:50'], ['الاثنين', 3, 'التربية الإسلامية', '08:50', '09:30'], ['الاثنين', 4, 'التربية البدنية', '09:50', '10:30'], ['الاثنين', 5, 'العلوم', '10:30', '11:10'], ['الاثنين', 6, 'الحاسب الآلي', '11:10', '11:50'],
-  ['الثلاثاء', 1, 'القرآن الكريم', '07:30', '08:10'], ['الثلاثاء', 2, 'الرياضيات', '08:10', '08:50'], ['الثلاثاء', 3, 'لغتي العربية', '08:50', '09:30'], ['الثلاثاء', 4, 'التربية الإسلامية', '09:50', '10:30'], ['الثلاثاء', 5, 'الاجتماعيات', '10:30', '11:10'], ['الثلاثاء', 6, 'التربية الفنية', '11:10', '11:50'],
-  ['الأربعاء', 1, 'لغتي العربية', '07:30', '08:10'], ['الأربعاء', 2, 'العلوم', '08:10', '08:50'], ['الأربعاء', 3, 'الرياضيات', '08:50', '09:30'], ['الأربعاء', 4, 'القرآن الكريم', '09:50', '10:30'], ['الأربعاء', 5, 'الحاسب الآلي', '10:30', '11:10'], ['الأربعاء', 6, 'التربية البدنية', '11:10', '11:50'],
-  ['الخميس', 1, 'التربية الإسلامية', '07:30', '08:10'], ['الخميس', 2, 'لغتي العربية', '08:10', '08:50'], ['الخميس', 3, 'الرياضيات', '08:50', '09:30'], ['الخميس', 4, 'الاجتماعيات', '09:50', '10:30'], ['الخميس', 5, 'العلوم', '10:30', '11:10'], ['الخميس', 6, 'القرآن الكريم', '11:10', '11:50'],
-].map(([day, period, subject, startTime, endTime]) => ({
-  day: String(day),
-  period: Number(period),
-  subject: String(subject),
-  teacher: '',
-  startTime: String(startTime),
-  endTime: String(endTime),
-}));
-
 function parseManualScheduleText(text: string): ScheduleSlot[] {
   const periodTimes: Record<number, [string, string]> = {
     1: ['07:30', '08:10'],
@@ -47,6 +32,7 @@ function parseManualScheduleText(text: string): ScheduleSlot[] {
     4: ['09:50', '10:30'],
     5: ['10:30', '11:10'],
     6: ['11:10', '11:50'],
+    7: ['14:00', '14:45'],
   };
   const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
   const rows = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
@@ -57,13 +43,13 @@ function parseManualScheduleText(text: string): ScheduleSlot[] {
     const detectedDay = days.find((day) => row.includes(day) || row.includes(day.replace('أ', 'ا')));
     if (detectedDay) currentDay = detectedDay;
 
-    const periodMatch = row.match(/(?:الحصة\s*)?([1-6١-٦])\s*[:\-،]/);
-    const period = periodMatch ? Number(periodMatch[1].replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6')) : 0;
+    const periodMatch = row.match(/(?:الحصة\s*)?([1-7١-٧])\s*[:\-،]/);
+    const period = periodMatch ? Number(periodMatch[1].replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4').replace('٥', '5').replace('٦', '6').replace('٧', '7')) : 0;
     if (!currentDay || !period) continue;
 
     const subject = row
       .replace(/الأحد|الاحد|الاثنين|الإثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس/g, '')
-      .replace(/الحصة\s*[1-6١-٦]\s*[:\-،]?/g, '')
+      .replace(/الحصة\s*[1-7١-٧]\s*[:\-،]?/g, '')
       .replace(/[0-9٠-٩]{1,2}:[0-9٠-٩]{2}\s*[-–]\s*[0-9٠-٩]{1,2}:[0-9٠-٩]{2}/g, '')
       .trim();
     if (!subject) continue;
@@ -153,7 +139,8 @@ export async function POST(req: NextRequest) {
    - الحصة 3: 08:50 - 09:30
    - الحصة 4: 09:50 - 10:30 (بعد الفسحة)
    - الحصة 5: 10:30 - 11:10
-   - الحصة 6: 11:10 - 11:50
+   - الحصة 6: 13:00 - 13:45
+   - الحصة 7: 14:00 - 14:45
 5. أرجع JSON فقط بدون أي نص إضافي قبله أو بعده، بالشكل الآتي:
 
 [
@@ -199,14 +186,21 @@ export async function POST(req: NextRequest) {
               teacher: String(s.teacher || s.teacherName || '').trim(),
               startTime: String(s.startTime || '07:30').trim(),
               endTime: String(s.endTime || '08:10').trim(),
-            })).filter(s => s.subject && s.subject !== 'درس حر' && s.subject !== 'حصة دراسية');
+            })).filter(s => s.subject && s.period >= 1 && s.period <= 7 && s.subject !== 'درس حر' && s.subject !== 'حصة دراسية');
 
-            if (cleanedSlots.length > 0) {
+            const uniqueSlots = Array.from(
+              new Map(cleanedSlots.map((slot) => [`${slot.day}-${slot.period}`, slot])).values(),
+            ).sort((a, b) => {
+              const dayOrder = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+              return (dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)) || a.period - b.period;
+            });
+
+            if (uniqueSlots.length >= (imageBase64 ? 20 : 1)) {
               return NextResponse.json({
                 success: true,
-                slots: cleanedSlots,
+                slots: uniqueSlots,
                 model: result.model,
-                parsedCount: cleanedSlots.length,
+                parsedCount: uniqueSlots.length,
               });
             }
           }
@@ -218,12 +212,9 @@ export async function POST(req: NextRequest) {
 
     if (imageBase64) {
       return NextResponse.json({
-        success: true,
-        slots: DEFAULT_IKHLAS_SLOTS,
-        model: 'ikhlas-official-fallback',
-        parsedCount: DEFAULT_IKHLAS_SLOTS.length,
-        warning: 'تعذر استخراج الجدول من الصورة بدقة، فتم تثبيت جدول الإخلاص الرسمي الحالي حتى لا تتعطل صفحة جدول الحصص.',
-      });
+        success: false,
+        error: 'لم أستطع قراءة الجدول من الصورة بدقة كافية، لذلك لم يتم حفظ أي جدول بديل. ارفع صورة أوضح للجدول كاملاً أو استخدم الإدخال اليدوي.',
+      }, { status: 422 });
     }
 
     return NextResponse.json({

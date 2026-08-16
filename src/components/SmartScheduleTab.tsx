@@ -474,6 +474,11 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
     summary: '📋 ملخص',
   };
 
+  const periodNumbers = Array.from(new Set((schedule?.slots ?? []).map((slot) => slot.period)))
+    .filter((period) => Number.isFinite(period) && period > 0)
+    .sort((a, b) => a - b);
+  const visiblePeriods = periodNumbers.length > 0 ? periodNumbers : [1, 2, 3, 4, 5, 6, 7];
+
   /* ═══════════════════════ RENDER ═══════════════════════ */
   return (
     <div className="space-y-5" dir="rtl">
@@ -741,7 +746,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
-                  {[1, 2, 3, 4, 5, 6].map(pNum => {
+                  {visiblePeriods.map(pNum => {
                     const sampleSlot = schedule?.slots?.find(s => s.period === pNum);
                     const timeRange = sampleSlot ? `${sampleSlot.startTime} - ${sampleSlot.endTime}` : (pNum === 1 ? '07:30 - 08:10' : '');
 
