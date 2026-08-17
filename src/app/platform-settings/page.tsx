@@ -19,9 +19,8 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, saveAccount, type AccountRecord } from '@/lib/localDb';
 import { saveCredential } from '@/lib/auth';
-import { saveClassStudent } from '@/lib/classDb';
 import { deleteDocFromCloud } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -413,10 +412,7 @@ export default function PlatformSettingsPage() {
   const [clearStatus, setClearStatus] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
   const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [generatorBranch, setGeneratorBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
-  const [generatorStudentName, setGeneratorStudentName] = useState('');
   const [generatorGrade, setGeneratorGrade] = useState(GENERATOR_GRADE_OPTIONS[0]);
-  const [generatorParentName, setGeneratorParentName] = useState('');
-  const [generatorParentPhone, setGeneratorParentPhone] = useState('');
   const [generatedBundle, setGeneratedBundle] = useState<GeneratedAccountBundle | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
@@ -494,23 +490,34 @@ export default function PlatformSettingsPage() {
   };
 
   const handleGenerateAccounts = async () => {
-    const studentName = generatorStudentName.trim();
-    const parentName = generatorParentName.trim();
-    if (!studentName || !parentName) {
-      alert('اكتب اسم الطالب واسم ولي الأمر أولاً.');
-      return;
-    }
+    let studentEmail = createPlatformEmail('student', generatorBranch);
+    let parentEmail = createPlatformEmail('parent', generatorBranch);
+    let studentPassword = createTempPassword('STU');
+    let parentPassword = createTempPassword('PAR');
+    const studentName = 'طالب جديد';
+    const parentName = 'ولي أمر جديد';
 
-    const studentEmail = createPlatformEmail('student', generatorBranch);
-    const parentEmail = createPlatformEmail('parent', generatorBranch);
-    const studentPassword = createTempPassword('STU');
-    const parentPassword = createTempPassword('PAR');
-    const phone = generatorParentPhone.trim();
+    try {
+      const res = await fetch('/api/accounts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ branch: generatorBranch, grade: generatorGrade }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        studentEmail = data.studentAccount.email;
+        parentEmail = data.parentAccount.email;
+        studentPassword = data.studentPassword;
+        parentPassword = data.parentPassword;
+      }
+    } catch {
+      // Local fallback remains available for offline development.
+    }
 
     const studentAccount = saveAccount({
       name: studentName,
       email: studentEmail,
-      phone,
       role: 'student',
       schoolBranch: generatorBranch,
       createdVia: 'email',
@@ -519,7 +526,6 @@ export default function PlatformSettingsPage() {
     const parentAccount = saveAccount({
       name: parentName,
       email: parentEmail,
-      phone,
       role: 'parent',
       schoolBranch: generatorBranch,
       createdVia: 'email',
@@ -527,26 +533,6 @@ export default function PlatformSettingsPage() {
     });
     saveCredential(studentAccount, studentPassword);
     saveCredential(parentAccount, parentPassword);
-
-    if (generatorBranch === 'MASAR') {
-      saveStudent({
-        fullName: studentName,
-        grade: generatorGrade,
-        parentName,
-        parentPhone: phone || parentEmail,
-        notes: 'حساب مولد من لوحة إعدادات المنصة. يحتاج استكمال بيانات الطالب والاستبيان/اختبار الطالب عند أول دخول.',
-        reviewStatus: 'awaiting-survey',
-        source: 'import',
-      });
-    } else {
-      saveClassStudent({
-        fullName: studentName,
-        grade: generatorGrade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        parentName,
-        parentPhone: phone,
-        notes: 'حساب مولد من لوحة إعدادات المنصة. يحتاج استكمال بيانات الطالب عند أول دخول.',
-      });
-    }
 
     setGeneratedBundle({
       studentName,
@@ -556,9 +542,6 @@ export default function PlatformSettingsPage() {
       parentEmail,
       parentPassword,
     });
-    setGeneratorStudentName('');
-    setGeneratorParentName('');
-    setGeneratorParentPhone('');
     await loadSummary();
   };
 
@@ -790,7 +773,7 @@ export default function PlatformSettingsPage() {
                     )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-5">
+                  <div className="grid gap-3 md:grid-cols-3">
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-black text-slate-500">النظام</span>
                       <select
@@ -801,15 +784,6 @@ export default function PlatformSettingsPage() {
                         <option value="MASAR">منصة مسار</option>
                         <option value="IKHLAS_JEDDAH">فصل د. إسماعيل عيسى</option>
                       </select>
-                    </label>
-                    <label className="block md:col-span-1">
-                      <span className="mb-1 block text-[11px] font-black text-slate-500">اسم الطالب</span>
-                      <input
-                        value={generatorStudentName}
-                        onChange={(e) => setGeneratorStudentName(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
-                        placeholder="مثال: أحمد إبراهيم"
-                      />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-black text-slate-500">الصف</span>
@@ -823,24 +797,9 @@ export default function PlatformSettingsPage() {
                         ))}
                       </select>
                     </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-black text-slate-500">اسم ولي الأمر</span>
-                      <input
-                        value={generatorParentName}
-                        onChange={(e) => setGeneratorParentName(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
-                        placeholder="اسم ولي الأمر"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-black text-slate-500">هاتف ولي الأمر</span>
-                      <input
-                        value={generatorParentPhone}
-                        onChange={(e) => setGeneratorParentPhone(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
-                        placeholder="05xxxxxxxx"
-                      />
-                    </label>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold leading-6 text-slate-600">
+                      سيتم توليد حساب طالب وحساب ولي أمر بدون أسماء. عند أول دخول يملأ كل مستخدم بياناته بنفسه.
+                    </div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">

@@ -202,8 +202,10 @@ export default function LoginPage() {
         return;
       }
 
-      // API returned error
-      if (data.error) {
+      // Only stop on validation/server messages that should not fall through.
+      // A 401 can simply mean this is a generated/local platform account, so
+      // we continue to the local credential fallback below.
+      if (data.error && res.status !== 401) {
         setLoginError(data.error);
         return;
       }
@@ -230,7 +232,7 @@ export default function LoginPage() {
     setLoginError(
       result.reason === 'missing'
         ? 'الحساب غير موجود. يُرجى التحقق من البريد الإلكتروني أو التواصل مع الإدارة.'
-        : 'كلمة المرور غير صحيحة. يُرجى المحاولة مجدداً أو استعادة كلمة المرور.',
+        : 'بيانات الدخول غير صحيحة. جرّب نسيت كلمة المرور أو راجع بيانات الحساب المولدة.',
     );
     trackEvent('login_failed', { userName: email });
   };

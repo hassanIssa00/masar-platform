@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart3, CalendarClock, ChevronDown, ClipboardCheck,
   BookOpen, FileText, Gamepad2, LogOut, MessageSquareText,
-  PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X,
+  PanelRightClose, PanelRightOpen, Settings2, UsersRound, X,
   ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban
 } from 'lucide-react';
 import { clearSession, getSession } from '@/lib/localDb';
@@ -237,8 +237,8 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
               return (
                 <section
                   key={group.id}
-                  className={`rounded-2xl border transition-colors duration-200 ${
-                    groupActive ? 'border-teal-100 bg-teal-50/60' : 'border-slate-100 bg-white'
+                  className={`rounded-2xl border shadow-xs transition-colors duration-200 ${
+                    groupActive ? 'border-teal-200 bg-teal-50/80' : 'border-slate-200 bg-white'
                   }`}
                 >
                   <button
@@ -251,14 +251,19 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
                     className={`
                       flex w-full items-center rounded-2xl font-black text-slate-800 transition duration-200
                       ${collapsed && !isMobileShow ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-3 text-sm'}
-                      ${groupActive ? 'text-teal-900' : 'hover:bg-slate-50'}
+                      ${groupActive ? 'text-teal-950' : 'hover:bg-slate-50'}
                     `}
                   >
                     <GroupIcon className={`shrink-0 ${collapsed && !isMobileShow ? 'h-6 w-6' : 'h-5 w-5'} ${groupActive ? 'text-teal-700' : 'text-slate-500'}`} />
                     {(!collapsed || isMobileShow) && (
                       <>
                         <span className="min-w-0 flex-1 truncate text-right leading-5">{group.title}</span>
-                        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${groupOpen ? 'rotate-180' : ''}`} />
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                          groupActive ? 'bg-white text-teal-700' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          قائمة
+                        </span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${groupOpen ? 'rotate-180' : ''}`} />
                       </>
                     )}
                   </button>
