@@ -76,7 +76,6 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
-  const [socialRole, setSocialRole] = useState<'parent' | 'student'>('parent');
 
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
@@ -241,7 +240,7 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setLoginError('');
 
-    const result = await signInWithGoogle(socialRole);
+    const result = await signInWithGoogle('parent');
 
     setGoogleLoading(false);
 
@@ -259,7 +258,7 @@ export default function LoginPage() {
     setAppleLoading(true);
     setLoginError('');
 
-    const result = await signInWithApple(socialRole);
+    const result = await signInWithApple('parent');
 
     setAppleLoading(false);
 
@@ -277,7 +276,7 @@ export default function LoginPage() {
     setMsLoading(true);
     setLoginError('');
 
-    const result = await signInWithMicrosoft(socialRole);
+    const result = await signInWithMicrosoft('parent');
 
     setMsLoading(false);
 
@@ -378,23 +377,7 @@ export default function LoginPage() {
           </div>
 
           {/* ── Social Sign-In Buttons ── */}
-          <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
-            <button
-              type="button"
-              onClick={() => setSocialRole('parent')}
-              className={`rounded-xl px-3 py-2.5 text-xs font-black transition ${socialRole === 'parent' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}
-            >
-              دخول ولي أمر
-            </button>
-            <button
-              type="button"
-              onClick={() => setSocialRole('student')}
-              className={`rounded-xl px-3 py-2.5 text-xs font-black transition ${socialRole === 'student' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}
-            >
-              دخول طالب
-            </button>
-          </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <button
               type="button"
               id="btn-google-login"

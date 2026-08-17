@@ -1,43 +1,88 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { ElementType } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  BarChart3, CalendarClock, ChevronLeft, ChevronRight, ClipboardCheck,
-  CreditCard, BookOpen, FileText, Gamepad2, Layers3, LogOut, MessageSquareText,
+  BarChart3, CalendarClock, ChevronDown, ClipboardCheck,
+  BookOpen, FileText, Gamepad2, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, Stethoscope, UserRoundPlus, UsersRound, X,
-  ClipboardList, Users, Building2, Bot, Trophy, BookMarked, ShieldCheck, ClipboardPen, Stamp, KeyRound
+  ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban
 } from 'lucide-react';
 import { clearSession, getSession } from '@/lib/localDb';
 
-const adminLinks = [
-  { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
-  { name: 'التوقيع والختم الإلكتروني ✒️', path: '/signature', icon: Stamp },
-  { name: 'مساعد الذكاء الاصطناعي 🤖', path: '/ai-assistant', icon: Bot },
-  { name: 'لوحة ذكاء الأعمال BI', path: '/bi-dashboard', icon: BarChart3 },
-  { name: 'خطط IEP الفردية', path: '/iep', icon: ClipboardList },
-  { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
-  { name: 'سجلات الجلسات الطبية', path: '/session-records', icon: ClipboardPen },
-  { name: 'إدارة الحضور والغياب', path: '/attendance', icon: ClipboardCheck },
-  { name: 'قائمة الانتظار CRM', path: '/waitlist', icon: Users },
-  { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
-  { name: 'توليد الحسابات', path: '/account-generator', icon: KeyRound },
-  { name: 'أولياء الأمور', path: '/parents', icon: UsersRound },
-  { name: 'فصل د. إسماعيل عيسى', path: '/branches/ikhlas-jeddah', icon: Building2 },
-  { name: 'التلعيب والمكافآت', path: '/gamification', icon: Trophy },
-  { name: 'الموافقات الرقمية', path: '/consents', icon: ShieldCheck },
-  { name: 'مكتبة الموارد العلاجية', path: '/resources', icon: BookMarked },
-  { name: 'الفواتير والمالية', path: '/invoices', icon: CreditCard },
-  { name: 'الأنشطة والواجبات', path: '/homework', icon: BookOpen },
-  { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
-  { name: 'التقارير', path: '/reports', icon: FileText },
-  { name: 'لوحة الأخصائي', path: '/specialist', icon: Stethoscope },
-  { name: 'الرسائل', path: '/messages', icon: MessageSquareText },
-  { name: 'اجتماعات Zoom', path: '/meetings', icon: CalendarClock },
-  { name: 'طالب جديد', path: '/student/new', icon: UserRoundPlus },
-  { name: 'ألعاب الطالب', path: '/kids', icon: Gamepad2 },
-  { name: 'إعدادات المنصة', path: '/platform-settings', icon: Settings2 },
+type NavLink = {
+  name: string;
+  path: string;
+  icon: ElementType;
+};
+
+type NavGroup = {
+  id: string;
+  title: string;
+  icon: ElementType;
+  links: NavLink[];
+};
+
+const adminGroups: NavGroup[] = [
+  {
+    id: 'operation',
+    title: 'التشغيل',
+    icon: BarChart3,
+    links: [
+      { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
+      { name: 'مساعد الذكاء الاصطناعي', path: '/ai-assistant', icon: Bot },
+    ],
+  },
+  {
+    id: 'students',
+    title: 'الطلاب والحسابات',
+    icon: UsersRound,
+    links: [
+      { name: 'إدارة الطلاب', path: '/students', icon: UsersRound },
+      { name: 'توليد الحسابات', path: '/account-generator', icon: KeyRound },
+      { name: 'أولياء الأمور', path: '/parents', icon: Users },
+      { name: 'الرسائل', path: '/messages', icon: MessageSquareText },
+    ],
+  },
+  {
+    id: 'clinical',
+    title: 'التقييم والتقارير',
+    icon: ClipboardCheck,
+    links: [
+      { name: 'اختبارات تحديد المستوى', path: '/assessment', icon: ClipboardCheck },
+      { name: 'التقارير', path: '/reports', icon: FileText },
+    ],
+  },
+  {
+    id: 'programs',
+    title: 'المسارات والخطط',
+    icon: Route,
+    links: [
+      { name: 'المسارات العلاجية', path: '/programs', icon: Route },
+      { name: 'خطط IEP الفردية', path: '/iep', icon: ClipboardList },
+      { name: 'مكتبة الموارد', path: '/resources', icon: BookOpen },
+    ],
+  },
+  {
+    id: 'sessions',
+    title: 'الجلسات والتواصل',
+    icon: CalendarClock,
+    links: [
+      { name: 'جدول الجلسات', path: '/calendar', icon: CalendarClock },
+      { name: 'اجتماعات Zoom', path: '/meetings', icon: CalendarClock },
+    ],
+  },
+  {
+    id: 'classroom',
+    title: 'الفصل والإعدادات',
+    icon: FolderKanban,
+    links: [
+      { name: 'فصل د. إسماعيل عيسى', path: '/branches/ikhlas-jeddah', icon: Building2 },
+      { name: 'إعدادات المنصة', path: '/platform-settings', icon: Settings2 },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -51,6 +96,14 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    operation: true,
+    students: true,
+    clinical: true,
+    programs: true,
+    sessions: false,
+    classroom: true,
+  });
   const [userRole, setUserRole] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const session = getSession();
@@ -89,17 +142,26 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
 
   const parentLinks = [
-    { name: 'بوابة ولي الأمر 🏠', path: '/parent', icon: Building2 },
-    { name: 'استبيان طفل جديد 📋', path: '/survey', icon: ClipboardList },
-    { name: 'أولادي 👦', path: '/parent', icon: Users },
+    { name: 'بوابة ولي الأمر', path: '/parent', icon: Building2 },
+    { name: 'استبيان طفل جديد', path: '/survey', icon: ClipboardList },
+    { name: 'أولادي', path: '/parent', icon: Users },
   ];
 
   const studentLinks = [
-    { name: 'فصلي المباشر 🏫', path: '/school-student', icon: Building2 },
-    { name: 'ألعابي 🎮', path: '/kids', icon: Gamepad2 },
+    { name: 'فصلي المباشر', path: '/school-student', icon: Building2 },
+    { name: 'ألعابي', path: '/kids', icon: Gamepad2 },
   ];
 
-  const activeNavLinks = isStaff ? adminLinks : userRole === 'student' ? studentLinks : parentLinks;
+  const activeNavGroups = isStaff
+    ? adminGroups
+    : [
+        {
+          id: userRole === 'student' ? 'student' : 'parent',
+          title: userRole === 'student' ? 'بوابة الطالب' : 'بوابة ولي الأمر',
+          icon: userRole === 'student' ? Gamepad2 : Building2,
+          links: userRole === 'student' ? studentLinks : parentLinks,
+        },
+      ];
 
   const toggleCollapse = () => {
     const nextState = !collapsed;
@@ -113,6 +175,8 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   };
 
   const isMobileShow = mobileOpen || externalOpen;
+
+  const isPathActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(`${path}/`));
 
   return (
     <>
@@ -165,36 +229,74 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
 
         {/* Links List */}
         <div className="flex-1 overflow-y-auto p-2.5">
-          <div className="grid gap-1.5">
-            {activeNavLinks.map(({ name, path, icon: Icon }) => {
-              const isActive = pathname === path;
+          <div className="grid gap-2">
+            {activeNavGroups.map((group) => {
+              const GroupIcon = group.icon;
+              const groupActive = group.links.some((link) => isPathActive(link.path));
+              const groupOpen = collapsed && !isMobileShow ? false : Boolean(openGroups[group.id]);
               return (
-                <Link
-                  key={path}
-                  href={path}
-                  onClick={() => { setMobileOpen(false); onClose?.(); }}
-                  title={collapsed && !isMobileShow ? name : undefined}
-                  className={`
-                    focus-ring flex items-center rounded-2xl transition group border font-black
-                    ${collapsed && !isMobileShow ? 'justify-center px-0 py-3' : 'gap-3.5 px-4 py-3 text-sm md:text-[15px]'}
-                    ${
-                      isActive
-                        ? 'bg-teal-700 text-white border-teal-700 shadow-md shadow-teal-700/20'
-                        : 'border-transparent text-slate-800 hover:bg-teal-50/80 hover:text-teal-800 hover:border-teal-100'
-                    }
-                  `}
+                <section
+                  key={group.id}
+                  className={`rounded-2xl border transition-colors duration-200 ${
+                    groupActive ? 'border-teal-100 bg-teal-50/60' : 'border-slate-100 bg-white'
+                  }`}
                 >
-                  <Icon
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (collapsed && !isMobileShow) return;
+                      setOpenGroups((current) => ({ ...current, [group.id]: !current[group.id] }));
+                    }}
+                    title={collapsed && !isMobileShow ? group.title : undefined}
                     className={`
-                      shrink-0 transition-transform group-hover:scale-110
-                      ${collapsed && !isMobileShow ? 'h-6 w-6' : 'h-5 w-5'}
-                      ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-teal-700'}
+                      flex w-full items-center rounded-2xl font-black text-slate-800 transition duration-200
+                      ${collapsed && !isMobileShow ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-3 text-sm'}
+                      ${groupActive ? 'text-teal-900' : 'hover:bg-slate-50'}
                     `}
-                  />
+                  >
+                    <GroupIcon className={`shrink-0 ${collapsed && !isMobileShow ? 'h-6 w-6' : 'h-5 w-5'} ${groupActive ? 'text-teal-700' : 'text-slate-500'}`} />
+                    {(!collapsed || isMobileShow) && (
+                      <>
+                        <span className="min-w-0 flex-1 truncate text-right leading-5">{group.title}</span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${groupOpen ? 'rotate-180' : ''}`} />
+                      </>
+                    )}
+                  </button>
+
                   {(!collapsed || isMobileShow) && (
-                    <span className="truncate leading-tight font-black">{name}</span>
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                        groupOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="grid gap-1 px-2 pb-2">
+                          {group.links.map(({ name, path, icon: Icon }) => {
+                            const isActive = isPathActive(path);
+                            return (
+                              <Link
+                                key={path}
+                                href={path}
+                                onClick={() => { setMobileOpen(false); onClose?.(); }}
+                                className={`
+                                  focus-ring group flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-black leading-5 transition duration-200
+                                  ${
+                                    isActive
+                                      ? 'border-teal-700 bg-teal-700 text-white shadow-sm shadow-teal-700/20'
+                                      : 'border-transparent text-slate-700 hover:border-teal-100 hover:bg-white hover:text-teal-800'
+                                  }
+                                `}
+                              >
+                                <Icon className={`h-[18px] w-[18px] shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-teal-700'}`} />
+                                <span className="truncate">{name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </Link>
+                </section>
               );
             })}
           </div>
