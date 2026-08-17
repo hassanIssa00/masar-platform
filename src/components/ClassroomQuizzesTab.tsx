@@ -39,6 +39,90 @@ function authJsonHeaders() {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
+function buildLocalQuizQuestions(subject: string): QuizQuestion[] {
+  const common = {
+    'لغتي العربية': [
+      ['اختر الكلمة التي تبدأ بحرف اللام:', ['قلم', 'لعبة', 'بيت', 'شمس'], 1],
+      ['أي الجمل التالية جملة مفيدة؟', ['الطالب يقرأ الدرس.', 'في إلى من', 'كتاب فوق', 'أحمر سريع'], 0],
+      ['الكلمة التي تحتوي على مد بالألف هي:', ['باب', 'كتب', 'درس', 'قلم'], 0],
+    ],
+    'الرياضيات': [
+      ['كم ناتج 5 + 3؟', ['6', '7', '8', '9'], 2],
+      ['أي عدد أكبر من 12؟', ['9', '10', '13', '11'], 2],
+      ['اختر الشكل الذي له ثلاثة أضلاع.', ['الدائرة', 'المربع', 'المثلث', 'المستطيل'], 2],
+    ],
+    'القرآن الكريم': [
+      ['ما التصرف المناسب عند قراءة القرآن؟', ['الإنصات والاحترام', 'اللعب', 'رفع الصوت بلا حاجة', 'ترك المصحف مفتوحاً'], 0],
+      ['تبدأ البسملة بقول:', ['الحمد لله', 'بسم الله الرحمن الرحيم', 'الله أكبر', 'سبحان الله'], 1],
+      ['قراءة القرآن تحتاج إلى:', ['تأن ووضوح', 'عجلة', 'إهمال', 'انشغال'], 0],
+    ],
+    'العلوم': [
+      ['أي مما يلي يحتاجه النبات لينمو؟', ['الضوء والماء', 'الظلام فقط', 'الحجارة فقط', 'الصوت'], 0],
+      ['الحواس تساعدنا على:', ['معرفة الأشياء حولنا', 'النوم فقط', 'الكتابة فقط', 'الجري فقط'], 0],
+      ['الماء يكون في الحالة السائلة غالباً عند:', ['درجة حرارة عادية', 'تجمد شديد', 'غليان دائم', 'بدون وعاء'], 0],
+    ],
+    'التربية الإسلامية': [
+      ['من آداب المسلم:', ['الصدق', 'الكذب', 'إيذاء الآخرين', 'إهمال الصلاة'], 0],
+      ['نقول قبل الأكل:', ['بسم الله', 'تصبح على خير', 'مع السلامة', 'لا شيء'], 0],
+      ['التعاون يعني:', ['مساعدة الآخرين في الخير', 'ترك الفريق', 'إخفاء الأدوات', 'رفض المشاركة'], 0],
+    ],
+  } as Record<string, Array<[string, string[], number]>>;
+
+  const source = common[subject] ?? common['لغتي العربية'];
+  return source.map(([questionText, options, correctAnswer], index) => ({
+    id: `bq-${Date.now()}-${index + 1}`,
+    questionText,
+    type: 'multiple-choice',
+    options,
+    correctAnswer,
+    points: 5,
+  }));
+}
+
+function parseQuizFromAi(reply: string, subject: string): { title: string; questions: QuizQuestion[] } | null {
+  const jsonMatch = reply.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      title?: string;
+      questions?: Array<{
+        questionText?: string;
+        text?: string;
+        options?: string[];
+        correctAnswer?: number | string;
+        type?: 'multiple-choice' | 'true-false';
+        points?: number;
+      }>;
+    };
+
+    const questions = parsed.questions
+      ?.filter((q) => (q.questionText || q.text) && Array.isArray(q.options) && q.options.length >= 2)
+      .slice(0, 8)
+      .map((q, index) => {
+        const correctIndex = typeof q.correctAnswer === 'number'
+          ? q.correctAnswer
+          : Math.max(0, q.options!.findIndex((option) => option === q.correctAnswer));
+        return {
+          id: `bq-${Date.now()}-${index + 1}`,
+          questionText: String(q.questionText || q.text),
+          type: q.type === 'true-false' ? 'true-false' : 'multiple-choice',
+          options: q.options!.slice(0, 4),
+          correctAnswer: correctIndex >= 0 ? correctIndex : 0,
+          points: Number(q.points) || 5,
+        } satisfies QuizQuestion;
+      }) ?? [];
+
+    if (!questions.length) return null;
+    return {
+      title: parsed.title || `كويز ${subject} التفاعلي`,
+      questions,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const SAMPLE_QUIZZES: ClassQuiz[] = [
   {
     id: 'quiz-001',
@@ -214,36 +298,26 @@ export default function ClassroomQuizzesTab() {
         method: 'POST',
         headers: authJsonHeaders(),
         body: JSON.stringify({
-          prompt: `أنشئ كويز تفاعلي رائع من سؤالين لمادة ${newSubject} للصف الأول أو الثاني الابتدائي. أعطني العنوان والأسئلة باحترافية.`,
+          prompt: `أنشئ كويز تفاعلي قصير لمادة ${newSubject} للصف الأول أو الثاني الابتدائي. أرجع JSON فقط بهذا الشكل:
+{"title":"عنوان الكويز","questions":[{"questionText":"نص السؤال","type":"multiple-choice","options":["اختيار 1","اختيار 2","اختيار 3","اختيار 4"],"correctAnswer":0,"points":5}]}`,
           branch: 'IKHLAS_JEDDAH',
           history: [],
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        setNewTitle(`كويز ${newSubject} التفاعلي المولد بالذكاء الاصطناعي 🪄`);
+        const parsedQuiz = parseQuizFromAi(String(data.reply ?? ''), newSubject);
+        if (parsedQuiz) {
+          setNewTitle(parsedQuiz.title);
+          setBuilderQuestions(parsedQuiz.questions);
+          setIsGeneratingAI(false);
+          return;
+        }
       }
     } catch { /* fallback */ }
 
-    setNewTitle(`كويز ${newSubject} التفاعلي المولد بالذكاء الاصطناعي 🪄`);
-    setBuilderQuestions([
-      {
-        id: `bq-${Date.now()}-1`,
-        questionText: `سؤال ذكي في مادة ${newSubject}: اختر الإجابة الأكثر دقة مما يلي:`,
-        type: 'multiple-choice',
-        options: ['الإجابة النموذجية الصحيحة ✓', 'خيار منافس 1', 'خيار منافس 2', 'خيار منافس 3'],
-        correctAnswer: 0,
-        points: 5,
-      },
-      {
-        id: `bq-${Date.now()}-2`,
-        questionText: `هل المعلومات المذكورة في درس ${newSubject} تعتمد على الفهم والتطبيق المباشر؟`,
-        type: 'true-false',
-        options: ['صح', 'خطأ'],
-        correctAnswer: 0,
-        points: 5,
-      },
-    ]);
+    setNewTitle(`كويز ${newSubject} التفاعلي`);
+    setBuilderQuestions(buildLocalQuizQuestions(newSubject));
     setIsGeneratingAI(false);
   };
 

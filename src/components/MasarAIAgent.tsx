@@ -87,9 +87,9 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
     let assistant: Message = {
       id: 'a-' + Date.now(),
       sender: 'agent',
-      text: 'تعذر الاتصال بالمساعد الآن. تأكد من تسجيل الدخول وإعداد مفاتيح Gemini ثم حاول مرة أخرى.',
+      text: 'تعذر تنفيذ الطلب الآن. جرب صياغة الطلب مرة أخرى، أو افتح القسم المناسب من القائمة وأكمل الإجراء يدوياً.',
       timestamp: timeLabel(),
-      gateway: 'offline',
+      gateway: '',
     };
 
     try {
@@ -105,7 +105,7 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
         assistant = {
           id: 'a-' + Date.now(),
           sender: 'agent',
-          text: data.reply || 'تم استلام الطلب، لكن لم يصل نص رد واضح من المحرك.',
+          text: data.reply || 'تم استلام الطلب، لكن لم يصل رد واضح. اكتب التفاصيل الناقصة وسأحاول مرة أخرى.',
           actions: Array.isArray(data.actions) ? data.actions : [],
           gateway: data.gateway,
           timestamp: timeLabel(),

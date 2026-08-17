@@ -133,7 +133,6 @@ function inferActions(prompt: string, hasImage: boolean): AiAction[] {
     add({ type: 'schedule_review', label: 'مراجعة الجدول أو الصورة', target: '/branches/ikhlas-jeddah' });
   }
   if (wantsMessage(p)) add({ type: 'message_draft', label: 'تجهيز رسالة', target: '/messages' });
-  if (wantsResearch(p)) add({ type: 'research_note', label: 'إعداد ملخص علمي' });
 
   return actions.slice(0, 5);
 }
@@ -159,7 +158,9 @@ function isGreeting(prompt: string) {
 
 function extractTopic(prompt: string) {
   return prompt
-    .replace(/^(اعمل|اكتب|جهز|حضّر|حضر|ابحث عن|ابحث|بحث عن|ملخص علمي عن)\s+/i, '')
+    .replace(/^(اعمل|اكتب|جهز|حضّر|حضر)\s+(بحث|مقال|ملخص علمي|دراسة)\s+(عن|حول)\s+/i, '')
+    .replace(/^(ابحث عن|ابحث|بحث عن|ملخص علمي عن|دراسة عن|مقال عن)\s+/i, '')
+    .replace(/^(اعمل|اكتب|جهز|حضّر|حضر)\s+/i, '')
     .replace(/^(عن|حول)\s+/i, '')
     .trim()
     .replace(/[؟?]+$/g, '') || 'الموضوع المطلوب';
@@ -365,7 +366,7 @@ export async function POST(req: NextRequest) {
   const direct = prompt ? directAnswer(prompt) : null;
 
   if (direct) {
-    return NextResponse.json({ success: true, reply: direct, gateway: 'Masar Direct', actions });
+    return NextResponse.json({ success: true, reply: direct, gateway: '', actions });
   }
 
   const messages: GeminiMessage[] = [];
