@@ -25,11 +25,12 @@ const SYSTEM_PROMPT = `
 دورك:
 1. تجيب على الأسئلة العامة مباشرة وباختصار مفيد.
 2. في المهام الإدارية داخل المنصة، ترجع خطة تنفيذ واضحة بخطوات قليلة.
-3. لا تستخدم عبارات فارغة مثل "تم تحليل استفسارك" أو "يمكننا دمج الطلب".
-4. لا تضع رموز زخرفية أو إيموجي في الرد.
-5. عندما تكون الصورة مرفقة، اقرأ محتواها بجدية واشرح ما يمكن استخراجه منها.
-6. لو ينقصك اسم طالب أو تاريخ أو مادة، اطلب المعلومة الناقصة فقط.
-7. أسلوبك عربي مهني، مباشر، ومناسب لإدارة منصة تعليمية علاجية.
+3. لا تكتفي بزر أو رابط إذا كان المستخدم طلب محتوى معرفي أو بحث أو صياغة.
+4. لا تستخدم عبارات فارغة مثل "تم تحليل استفسارك" أو "يمكننا دمج الطلب".
+5. لا تضع رموز زخرفية أو إيموجي في الرد.
+6. عندما تكون الصورة مرفقة، اقرأ محتواها بجدية واشرح ما يمكن استخراجه منها.
+7. لو ينقصك اسم طالب أو تاريخ أو مادة، اطلب المعلومة الناقصة فقط.
+8. أسلوبك عربي مهني، مباشر، ومناسب لإدارة منصة تعليمية حديثة.
 
 مناطق المنصة:
 - الطلاب: /students
@@ -42,6 +43,62 @@ const SYSTEM_PROMPT = `
 - الاجتماعات: /meetings
 - فصل د. إسماعيل: /branches/ikhlas-jeddah
 `;
+
+const ADMIN_WORDS = [
+  'افتح', 'فتح', 'روح', 'اذهب', 'ادخل', 'إدارة', 'ادارة', 'بيانات',
+  'ملف', 'سجل', 'أضف', 'اضف', 'احذف', 'حذف', 'عدل', 'عدّل', 'اعتمد',
+  'ارسل', 'إرسال', 'ابعث', 'اعمل حساب', 'انشئ حساب', 'أنشئ حساب',
+];
+
+const RESEARCH_WORDS = [
+  'بحث', 'ابحث', 'دراسة', 'دراسات', 'مقال', 'ملخص علمي', 'اهمية',
+  'أهمية', 'فوائد', 'اثر', 'أثر', 'استراتيجيات', 'طرق تدريس',
+];
+
+function includesAny(text: string, words: string[]) {
+  return words.some((word) => text.includes(word.toLowerCase()));
+}
+
+function wantsStudentAdmin(p: string) {
+  return includesAny(p, ADMIN_WORDS) && (p.includes('طالب') || p.includes('طلاب'));
+}
+
+function wantsParentAdmin(p: string) {
+  return includesAny(p, ADMIN_WORDS) && (p.includes('ولي') || p.includes('أولياء') || p.includes('اولياء'));
+}
+
+function wantsReports(p: string) {
+  return p.includes('تقرير') || p.includes('تقارير') || p.includes('ريبورت');
+}
+
+function wantsResearch(p: string) {
+  return includesAny(p, RESEARCH_WORDS) && !includesAny(p, ['افتح', 'روح', 'اذهب', 'ادخل']);
+}
+
+function wantsMessage(p: string) {
+  return p.includes('رسالة') || p.includes('واتساب') || p.includes('ملاحظة لولي') || p.includes('ملاحظه لولي') || p.includes('ابعت') || p.includes('ابعث');
+}
+
+function wantsStudentNote(p: string) {
+  return (p.includes('ملاحظة') || p.includes('ملاحظه') || p.includes('ملحوظة') || p.includes('ملحوظه'))
+    && (p.includes('طالب') || p.includes('الطالب') || p.includes('ملفه') || p.includes('ملف الطالب'));
+}
+
+function wantsIep(p: string) {
+  return p.includes('iep') || p.includes('خطة فردية') || p.includes('خطة علاج') || p.includes('خطه علاج') || p.includes('خطة تربوية');
+}
+
+function wantsHomework(p: string) {
+  return p.includes('واجب') || p.includes('تمرين') || p.includes('تصحيح') || p.includes('ورقة عمل');
+}
+
+function wantsSchedule(p: string) {
+  return p.includes('جدول') || p.includes('حصص') || p.includes('حصة');
+}
+
+function wantsAttendance(p: string) {
+  return p.includes('حضور') || p.includes('غياب') || p.includes('حضر') || p.includes('التحضير');
+}
 
 function parseImage(image: unknown): { mimeType: string; data: string } | undefined {
   if (!image) return undefined;
@@ -65,16 +122,18 @@ function inferActions(prompt: string, hasImage: boolean): AiAction[] {
     if (!actions.some((item) => item.type === action.type && item.target === action.target)) actions.push(action);
   };
 
-  if (p.includes('طالب') || p.includes('طلاب')) add({ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' });
-  if (p.includes('ولي') || p.includes('أولياء') || p.includes('اولياء')) add({ type: 'navigate', label: 'فتح أولياء الأمور', target: '/parents' });
-  if (p.includes('تقرير') || p.includes('تحليل')) add({ type: 'report_review', label: 'فتح التقارير', target: '/reports' });
+  if (wantsStudentAdmin(p)) add({ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' });
+  if (wantsParentAdmin(p)) add({ type: 'navigate', label: 'فتح أولياء الأمور', target: '/parents' });
+  if (wantsReports(p)) add({ type: 'report_review', label: 'فتح التقارير', target: '/reports' });
   if (p.includes('اختبار') || p.includes('تقييم')) add({ type: 'navigate', label: 'فتح اختبارات تحديد المستوى', target: '/assessment' });
-  if (p.includes('iep') || p.includes('خطة') || p.includes('خطه')) add({ type: 'draft_iep', label: 'تجهيز مسودة خطة IEP', target: '/iep' });
-  if (p.includes('واجب') || p.includes('تمرين') || p.includes('تصحيح')) add({ type: 'draft_homework', label: 'تجهيز واجب أو تصحيح', target: '/homework' });
-  if (p.includes('حضور') || p.includes('غياب') || p.includes('حضر')) add({ type: 'attendance_review', label: 'مراجعة الحضور', target: '/attendance' });
-  if (p.includes('جدول') || p.includes('حصص') || hasImage) add({ type: 'schedule_review', label: 'مراجعة جدول أو صورة مرفقة', target: '/branches/ikhlas-jeddah' });
-  if (p.includes('رسالة') || p.includes('واتساب')) add({ type: 'message_draft', label: 'تجهيز رسالة', target: '/messages' });
-  if (p.includes('بحث') || p.includes('دراسة') || p.includes('استراتيجية')) add({ type: 'research_note', label: 'إعداد ملخص علمي' });
+  if (wantsIep(p)) add({ type: 'draft_iep', label: 'تجهيز مسودة خطة IEP', target: '/iep' });
+  if (wantsHomework(p)) add({ type: 'draft_homework', label: 'تجهيز واجب أو تصحيح', target: '/homework' });
+  if (wantsAttendance(p)) add({ type: 'attendance_review', label: 'مراجعة الحضور', target: '/attendance' });
+  if (wantsSchedule(p) || (hasImage && (p.includes('جدول') || p.includes('حضور') || p.includes('واجب')))) {
+    add({ type: 'schedule_review', label: 'مراجعة الجدول أو الصورة', target: '/branches/ikhlas-jeddah' });
+  }
+  if (wantsMessage(p)) add({ type: 'message_draft', label: 'تجهيز رسالة', target: '/messages' });
+  if (wantsResearch(p)) add({ type: 'research_note', label: 'إعداد ملخص علمي' });
 
   return actions.slice(0, 5);
 }
@@ -93,27 +152,187 @@ function directAnswer(prompt: string): string | null {
   return null;
 }
 
+function isGreeting(prompt: string) {
+  const p = prompt.trim().toLowerCase();
+  return /^(hi|hello|hallo|hey|السلام عليكم|سلام|اهلا|أهلا|هلا|صباح الخير|مساء الخير)$/.test(p);
+}
+
+function extractTopic(prompt: string) {
+  return prompt
+    .replace(/^(اعمل|اكتب|جهز|حضّر|حضر|ابحث عن|ابحث|بحث عن|ملخص علمي عن)\s+/i, '')
+    .replace(/^(عن|حول)\s+/i, '')
+    .trim()
+    .replace(/[؟?]+$/g, '') || 'الموضوع المطلوب';
+}
+
+function buildResearchFallback(prompt: string) {
+  const topic = extractTopic(prompt);
+  return [
+    `ملخص علمي مختصر: ${topic}`,
+    '',
+    'الفكرة الأساسية:',
+    'المنصات التعليمية الحديثة لا تقتصر على عرض المحتوى، بل تبني بيئة تعلم منظمة تساعد الطالب على تكوين الثقة، الاستقلالية، والانضباط الذاتي من خلال متابعة مستمرة وتغذية راجعة واضحة.',
+    '',
+    'أثرها في بناء شخصية الطالب:',
+    '1. تنمية الاستقلالية: الطالب يتعلم أن يبدأ نشاطاً، يتابع تقدمه، ويكمل مهمة داخل مسار واضح.',
+    '2. رفع الدافعية: الألعاب والأنشطة القصيرة تعطي الطالب شعوراً بالإنجاز دون ضغط الدرجات المباشر.',
+    '3. تحسين التنظيم الذاتي: تقسيم المحتوى إلى خطوات صغيرة يساعد الطالب على معرفة ما المطلوب منه الآن وما الخطوة التالية.',
+    '4. دعم الثقة بالنفس: إخفاء التشخيص عن الطالب وعرض رسائل تشجيعية يقلل الوصمة ويزيد الاستعداد للمحاولة.',
+    '5. تقوية العلاقة بين الأسرة والمختص: ولي الأمر يشارك بالملاحظة، والمختص يراجع التقرير، والطالب يتدرب في بيئة آمنة.',
+    '',
+    'تطبيق عملي داخل منصة مسار:',
+    'تبدأ التجربة بتسجيل ولي الأمر وبيانات الطالب، ثم استبيان واختبار مناسب للصف، ثم تقرير للدكتور، وبعد الاعتماد يظهر للطالب مسار تدريبي أو ألعاب مناسبة بدون عرض تشخيص أو نتيجة جارحة.',
+    '',
+    'صياغة مناسبة للاستخدام في الموقع:',
+    'منصة مسار تساعد الطفل على التعلم بثقة من خلال تقييم هادئ، خطة يراجعها المختص، وأنشطة تفاعلية تناسب احتياجه الحقيقي.',
+  ].join('\n');
+}
+
+function buildIepFallback(prompt: string) {
+  return [
+    'مسودة خطة IEP قابلة للتعديل:',
+    '',
+    'بيانات أولية:',
+    '- الطالب: يحتاج تحديد الاسم والصف من ملف الطالب.',
+    '- مجال الاحتياج: يستخرج من التقرير أو يكتب يدوياً إذا كان معروفاً.',
+    '',
+    'هدف قصير المدى:',
+    'أن ينجز الطالب مهارة واحدة محددة خلال 4 أسابيع بنسبة إتقان لا تقل عن 80% في قياسين متتاليين.',
+    '',
+    'أهداف تعليمية مقترحة:',
+    '1. يميز الطالب المهارة المستهدفة من بين مشتتات بسيطة.',
+    '2. يطبق المهارة داخل نشاط قصير متعدد الحواس.',
+    '3. ينقل المهارة إلى واجب منزلي أو لعبة تدريبية.',
+    '',
+    'آلية المتابعة:',
+    '- قياس أسبوعي قصير.',
+    '- ملاحظة سلوكية مختصرة.',
+    '- رسالة لولي الأمر عند وجود تقدم أو تعثر واضح.',
+    '',
+    `الطلب الأصلي: ${prompt}`,
+  ].join('\n');
+}
+
+function buildMessageFallback(prompt: string) {
+  const studentMatch = prompt.match(/الطالب\s+([^،,.]+)/);
+  const studentName = studentMatch?.[1]?.trim() || 'ابنكم';
+  return [
+    'مسودة رسالة لولي الأمر:',
+    '',
+    `السلام عليكم ورحمة الله وبركاته، ولي أمر ${studentName}.`,
+    'نود إبلاغكم بوجود ملاحظة تعليمية تحتاج متابعة هادئة خلال الفترة القادمة. سيتم التعامل معها داخل المنصة من خلال أنشطة قصيرة وتوجيه مناسب دون ضغط على الطالب.',
+    'نرجو منكم متابعة الواجبات البسيطة عند إرسالها، وإبلاغنا بأي ملاحظات تظهر في المنزل حتى تكون الخطة أدق.',
+    '',
+    'مع خالص التقدير،',
+    'منصة مسار',
+  ].join('\n');
+}
+
+function buildStudentNoteFallback(prompt: string) {
+  const studentMatch = prompt.match(/الطالب\s+([^،,.]+)/);
+  const studentName = studentMatch?.[1]?.trim() || 'الطالب المحدد';
+  const note = prompt
+    .replace(/.*?(ملاحظة|ملاحظه|ملحوظة|ملحوظه)\s*(في ملفه|في ملف الطالب|عن)?/i, '')
+    .trim()
+    .replace(/[.،]+$/g, '');
+
+  return [
+    'ملاحظة جاهزة للإضافة في ملف الطالب:',
+    '',
+    `الطالب: ${studentName}`,
+    `نص الملاحظة: ${note || 'تحتاج الحالة إلى متابعة ومراجعة من د. إسماعيل قبل اعتماد أي وصف نهائي.'}`,
+    '',
+    'صياغة مهنية مقترحة داخل الملف:',
+    'تم تسجيل ملاحظة أولية تحتاج مراجعة مختص. لا يتم عرض أي تشخيص للطالب أو ولي الأمر قبل مراجعة د. إسماعيل واعتماد التوصية المناسبة.',
+    '',
+    'الإجراء التالي:',
+    'افتح ملف الطالب، أضف الملاحظة في السجل الداخلي، ثم اربطها بالتقرير أو خطة المتابعة إذا لزم الأمر.',
+  ].join('\n');
+}
+
+function buildReportFallback(prompt: string) {
+  return [
+    'هيكل تقرير تحليلي مقترح:',
+    '',
+    '1. بيانات الطالب:',
+    'الاسم، الصف، تاريخ التقييم، مصدر البيانات، واسم ولي الأمر.',
+    '',
+    '2. ملخص تنفيذي:',
+    'وصف مختصر للحالة بدون كلمات جارحة، مع تحديد المجالات التي تحتاج مراجعة.',
+    '',
+    '3. تحليل المجالات:',
+    '- القراءة والوعي الصوتي.',
+    '- الكتابة والتآزر البصري الحركي.',
+    '- الرياضيات ومفهوم العدد.',
+    '- الانتباه والذاكرة العاملة.',
+    '- اللغة والنطق والتواصل.',
+    '',
+    '4. توصيات عملية:',
+    'أهداف أسبوعية، أنشطة منزلية قصيرة، ومؤشر قياس واضح.',
+    '',
+    '5. قرار المختص:',
+    'يعتمد المسار المناسب بعد مراجعة الإجابات الخام وتحليل الطالب.',
+    '',
+    `الطلب الأصلي: ${prompt}`,
+  ].join('\n');
+}
+
+function buildHomeworkFallback(prompt: string) {
+  return [
+    'نموذج واجب تفاعلي قصير:',
+    '',
+    'المدة: 10 إلى 12 دقيقة.',
+    'طريقة التنفيذ: نشاط واحد واضح، ثم تدريب صوتي/بصري، ثم سؤال تحقق.',
+    '',
+    'الخطوات:',
+    '1. قراءة المثال أمام الطالب مرة واحدة.',
+    '2. يكرر الطالب المهارة بصوت واضح.',
+    '3. يختار الإجابة من صورتين أو ثلاث صور.',
+    '4. يسجل ولي الأمر ملاحظة واحدة: سهل، متوسط، يحتاج إعادة.',
+    '',
+    'معيار الإتقان: 4 إجابات صحيحة من 5 بدون مساعدة مباشرة.',
+    '',
+    `الطلب الأصلي: ${prompt}`,
+  ].join('\n');
+}
+
 function buildFallback(prompt: string, actions: AiAction[], hasImage: boolean) {
   const direct = directAnswer(prompt);
   if (direct) return direct;
 
+  const p = prompt.toLowerCase();
+
+  if (isGreeting(prompt)) {
+    return 'أهلاً د. إسماعيل. اكتب المطلوب مباشرة: بحث، خطة طالب، رسالة لولي أمر، تحليل تقرير، أو مراجعة صورة، وسأرد بمحتوى واضح أو أفتح لك الإجراء المناسب.';
+  }
+
+  if (wantsResearch(p)) return buildResearchFallback(prompt);
+  if (wantsStudentNote(p)) return buildStudentNoteFallback(prompt);
+  if (wantsIep(p)) return buildIepFallback(prompt);
+  if (wantsMessage(p)) return buildMessageFallback(prompt);
+  if (wantsReports(p)) return buildReportFallback(prompt);
+  if (wantsHomework(p)) return buildHomeworkFallback(prompt);
+
   if (hasImage) {
     return [
       'استلمت الصورة.',
-      'سأتعامل معها كملف يحتاج مراجعة داخل المنصة، ولو كانت جدولاً أو حضوراً افتح لك شاشة المراجعة المناسبة قبل الحفظ.',
-      actions.length ? `الإجراء المقترح: ${actions.map((a) => a.label).join('، ')}.` : '',
+      'أحتاج أن يقرأها محرك الرؤية أو أن تحدد نوعها: جدول حصص، حضور، واجب، أو تقرير. بعد التحديد أجهز لك البيانات بصيغة قابلة للمراجعة قبل الحفظ.',
+      actions.length ? `الإجراء المناسب الآن: ${actions.map((a) => a.label).join('، ')}.` : 'اكتب نوع الصورة في رسالة قصيرة لأتعامل معها بدقة.',
     ].filter(Boolean).join('\n');
   }
 
   if (actions.length) {
     return [
-      'فهمت المطلوب.',
-      `الإجراء المقترح داخل المنصة: ${actions.map((a) => a.label).join('، ')}.`,
-      'اضغط على الإجراء المناسب أو أكمل التفاصيل الناقصة في رسالتك التالية.',
+      'فهمت المطلوب كإجراء داخل المنصة.',
+      `الإجراء المقترح: ${actions.map((a) => a.label).join('، ')}.`,
+      'لو تريد مني صياغة محتوى قبل فتح الصفحة، اكتب التفاصيل: اسم الطالب، الصف، ونوع المطلوب.',
     ].join('\n');
   }
 
-  return 'اكتب طلبك بتفاصيل أكثر: اسم الطالب، الصف، نوع المهمة، وهل تريد تقريراً أو خطة أو واجباً أو رسالة.';
+  return [
+    'فهمت رسالتك، لكن المطلوب يحتاج تحديد بسيط حتى أنفذه بشكل مفيد.',
+    'اكتب المطلوب بصيغة مباشرة مثل: اكتب بحث عن كذا، جهز خطة لطالب صف كذا، اكتب رسالة لولي الأمر، أو حلل صورة الجدول.',
+  ].join('\n');
 }
 
 export async function POST(req: NextRequest) {
@@ -175,7 +394,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: true,
     reply: result?.text?.trim() || buildFallback(prompt, actions, !!image),
-    gateway: result ? `Gemini ${result.model}` : 'Masar Fallback',
+    gateway: result ? `Gemini ${result.model}` : '',
     actions,
     needsKeys: !result,
   });

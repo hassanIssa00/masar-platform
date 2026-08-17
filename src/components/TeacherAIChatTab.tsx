@@ -481,7 +481,7 @@ export default function TeacherAIChatTab() {
                       </div>
                     )}
                     <div className={`text-[9px] font-mono ${m.role === 'user' ? 'text-slate-400' : 'text-slate-400'} text-left`}>
-                      {m.timestamp}{m.gateway ? ` · ${m.gateway}` : ''}
+                      {m.timestamp}
                     </div>
                   </div>
                 </div>

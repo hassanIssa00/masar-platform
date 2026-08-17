@@ -337,7 +337,6 @@ export default function AIAssistantPage() {
                       </div>
                       <div className="mt-1 flex items-center gap-2 px-2 text-[10px] font-bold text-slate-400">
                         <span>{message.timestamp}</span>
-                        {message.gateway && <span dir="ltr">{message.gateway}</span>}
                         {message.sender === 'agent' && (
                           <button onClick={() => copyMessage(message)} className="flex items-center gap-1 text-slate-500 hover:text-teal-700">
                             {copiedId === message.id ? <Check size={12} /> : <Copy size={12} />}
