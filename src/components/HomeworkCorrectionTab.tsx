@@ -94,9 +94,9 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
     const student = students.find(s => s.id === sub.studentId || s.name === sub.studentName);
 
     const scoreText = sub.score !== undefined ? `${sub.score}%` : 'قيد المراجعة';
-    const noteText = sub.correctionNote ? `\n💬 *ملاحظات د. إسماعيل:* ${sub.correctionNote}` : '';
+    const noteText = sub.correctionNote ? `\n*ملاحظات د. إسماعيل:* ${sub.correctionNote}` : '';
 
-    const text = `🏫 *مدارس الإخلاص الأهلية بجدة*\n\nالسلام عليكم ورحمة الله 👋\n\nنحيطكم علماً بنتيجة تصحيح الواجب المدرسي:\n👤 *الطالب:* ${sub.studentName}\n📖 *المادة:* ${subject?.name || 'الواجب المدرسي'}\n📝 *عنوان الواجب:* ${quiz?.title || 'واجب تفاعلي'}\n🎯 *الدرجة المستحقة:* ${scoreText}${noteText}\n\nشكراً لاهتمامكم ومتابعتكم المستمرة 🌟\n_د. إسماعيل عيسى — منصة مسار_`;
+    const text = `*فصل د. إسماعيل عيسى*\n\nالسلام عليكم ورحمة الله\n\nنحيطكم علماً بنتيجة تصحيح الواجب المدرسي:\n*الطالب:* ${sub.studentName}\n*المادة:* ${subject?.name || 'الواجب المدرسي'}\n*عنوان الواجب:* ${quiz?.title || 'واجب تفاعلي'}\n*الدرجة المستحقة:* ${scoreText}${noteText}\n\nشكراً لاهتمامكم ومتابعتكم المستمرة\n_د. إسماعيل عيسى — منصة مسار_`;
 
     const phone = (student?.phone || '').replace(/\D/g, '');
     const waUrl = phone

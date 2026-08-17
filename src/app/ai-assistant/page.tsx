@@ -337,7 +337,7 @@ export default function AIAssistantPage() {
                     ● متصل
                   </span>
                 </h1>
-                <p className="text-[11px] text-slate-500">د. إسماعيل عيسى — مركز الإخلاص بجدة</p>
+                <p className="text-[11px] text-slate-500">د. إسماعيل عيسى — فصل د. إسماعيل عيسى</p>
               </div>
               <div className="mr-auto flex items-center gap-1.5 text-[11px] text-slate-500">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />

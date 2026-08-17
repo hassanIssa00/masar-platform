@@ -251,7 +251,7 @@ export default function AttendanceTabManager({
   const handleSendWhatsAppAlert = (s: Student, period: Period) => {
     const record = attendanceMatrix[s.id]?.[period.periodNumber] ?? { status: 'present' };
     const statusText = record.status === 'absent' ? 'غائب عن الحصة' : 'متأخر عن موعد الحصة';
-    const text = `🏫 *مدارس الإخلاص الأهلية بجدة*\n\nالسلام عليكم ورحمة الله 👋\n\nنحيطكم علماً بأن الطالب: *${s.name}*\nتم رصده كـ: *(${statusText})*\n📖 *الحصة ${period.periodNumber}:* ${period.subjectName}\n⏰ *الوقت:* ${period.startTime} - ${period.endTime}\n\nنرجو التواصل مع إدارة المدرسة أو المعلم للإفادة.\n_منصة مسار للتعليم الذكي_`;
+    const text = `*فصل د. إسماعيل عيسى*\n\nالسلام عليكم ورحمة الله\n\nنحيطكم علماً بأن الطالب: *${s.name}*\nتم رصده كـ: *(${statusText})*\n*الحصة ${period.periodNumber}:* ${period.subjectName}\n*الوقت:* ${period.startTime} - ${period.endTime}\n\nنرجو التواصل مع إدارة الفصل أو المعلم للإفادة.\n_منصة مسار للتعليم الذكي_`;
     
     const phone = (s.phone || '').replace(/\D/g, '');
     const waUrl = phone

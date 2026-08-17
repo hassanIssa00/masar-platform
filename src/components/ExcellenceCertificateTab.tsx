@@ -114,7 +114,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
       `🎖️ *إشعار شهادة تفوق وتكريم رقمية — منصة مَسَار*%0A%0A` +
       `👨‍👦 *المكرم المحترم (ولي الأمر):* ${encodeURIComponent(parentName)}%0A` +
       `👤 *شهادة تفوق وتكريم لابنكم البطل:* ${encodeURIComponent(form.studentName)}%0A` +
-      `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
+      `*الفصل:* فصل د. إسماعيل عيسى%0A` +
       `🏆 *عنوان التكريم:* ${encodeURIComponent(form.certTitle)}%0A` +
       `🎯 *مجال التميز:* ${encodeURIComponent(form.achievement)}%0A` +
       `🌟 *التقدير المستحق:* ${encodeURIComponent(form.ratingText)} (بنسبة %${form.score})%0A` +

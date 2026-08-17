@@ -114,6 +114,19 @@ const DEVICE_LABEL: Record<string, string> = {
   mobile: 'موبايل', tablet: 'تابلت', desktop: 'كمبيوتر',
 };
 
+const GENERATOR_GRADE_OPTIONS = [
+  'الصف الأول الابتدائي',
+  'الصف الثاني الابتدائي',
+  'الصف الثالث الابتدائي',
+  'الصف الرابع الابتدائي',
+  'الصف الخامس الابتدائي',
+  'الصف السادس الابتدائي',
+  'الروضة / التمهيدي',
+  'صعوبات التعلم',
+  'برنامج التهجي البسيط',
+  'فصل د. إسماعيل عيسى',
+];
+
 /* ══════════════════════════════════════════════
    COUNTING ANIMATION
 ══════════════════════════════════════════════ */
@@ -401,7 +414,7 @@ export default function PlatformSettingsPage() {
   const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [generatorBranch, setGeneratorBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
   const [generatorStudentName, setGeneratorStudentName] = useState('');
-  const [generatorGrade, setGeneratorGrade] = useState('الصف الأول');
+  const [generatorGrade, setGeneratorGrade] = useState(GENERATOR_GRADE_OPTIONS[0]);
   const [generatorParentName, setGeneratorParentName] = useState('');
   const [generatorParentPhone, setGeneratorParentPhone] = useState('');
   const [generatedBundle, setGeneratedBundle] = useState<GeneratedAccountBundle | null>(null);
@@ -528,7 +541,7 @@ export default function PlatformSettingsPage() {
     } else {
       saveClassStudent({
         fullName: studentName,
-        grade: generatorGrade || 'الأول الابتدائي — فصل الإخلاص بجدة',
+        grade: generatorGrade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
         parentName,
         parentPhone: phone,
         notes: 'حساب مولد من لوحة إعدادات المنصة. يحتاج استكمال بيانات الطالب عند أول دخول.',
@@ -553,7 +566,7 @@ export default function PlatformSettingsPage() {
     if (!generatedBundle) return;
     const text = [
       `بيانات دخول ${generatedBundle.studentName}`,
-      `النظام: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار' : 'مدارس الإخلاص بجدة'}`,
+      `النظام: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار' : 'فصل د. إسماعيل عيسى'}`,
       `حساب الطالب: ${generatedBundle.studentEmail}`,
       `كلمة مرور الطالب: ${generatedBundle.studentPassword}`,
       `حساب ولي الأمر: ${generatedBundle.parentEmail}`,
@@ -786,7 +799,7 @@ export default function PlatformSettingsPage() {
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-500"
                       >
                         <option value="MASAR">منصة مسار</option>
-                        <option value="IKHLAS_JEDDAH">فصل الإخلاص بجدة</option>
+                        <option value="IKHLAS_JEDDAH">فصل د. إسماعيل عيسى</option>
                       </select>
                     </label>
                     <label className="block md:col-span-1">
@@ -800,12 +813,15 @@ export default function PlatformSettingsPage() {
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-black text-slate-500">الصف</span>
-                      <input
+                      <select
                         value={generatorGrade}
                         onChange={(e) => setGeneratorGrade(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-teal-500"
-                        placeholder="الصف الأول"
-                      />
+                      >
+                        {GENERATOR_GRADE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-black text-slate-500">اسم ولي الأمر</span>

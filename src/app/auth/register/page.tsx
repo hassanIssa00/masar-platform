@@ -88,6 +88,8 @@ const ALL_COUNTRIES: Country[] = [
   { code: '+61', flag: '🇦🇺', name: 'أستراليا', example: '0412345678' },
 ];
 
+const DEFAULT_COUNTRY = ALL_COUNTRIES.find((country) => country.code === '+966') ?? ALL_COUNTRIES[0];
+
 const grades = [
   'الصف الأول الابتدائي',
   'الصف الثاني الابتدائي',
@@ -138,7 +140,7 @@ export default function RegisterPage() {
   const [childName, setChildName] = useState('');
   const [grade, setGrade] = useState(grades[0]);
   const [email, setEmail] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<Country>(ALL_COUNTRIES[0]);
+  const [selectedCountry, setSelectedCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
   const [phone, setPhone] = useState('');
@@ -495,7 +497,7 @@ export default function RegisterPage() {
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              🇸🇦 مدارس الإخلاص بجدة
+              فصل د. إسماعيل عيسى
             </button>
           </div>
         </div>

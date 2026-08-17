@@ -158,7 +158,7 @@ function buildLessonMessage(
   homework?: string,
 ): string {
   const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' });
-  let msg = `🏫 *مدرسة الإخلاص الأهلية | فصل مسار*\n\n`;
+  let msg = `*فصل د. إسماعيل عيسى | فصل مسار*\n\n`;
   msg += `السلام عليكم ${parentName} 👋\n\n`;
   msg += `📚 *إشعار حصة ابنكم: ${studentName}*\n`;
   msg += `📅 *اليوم:* ${today}\n`;
@@ -178,7 +178,7 @@ function buildDailySummaryMessage(
   subjects: string[],
 ): string {
   const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' });
-  let msg = `🏫 *مدرسة الإخلاص الأهلية | ملخص اليوم*\n\n`;
+  let msg = `*فصل د. إسماعيل عيسى | ملخص اليوم*\n\n`;
   msg += `السلام عليكم ${parentName} 👋\n\n`;
   msg += `📋 *ملخص يوم ${today} لابنكم: ${studentName}*\n\n`;
   msg += `📚 *المواد التي درسها اليوم:*\n`;

@@ -82,7 +82,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     const text =
       `📋 *التقرير الأكاديمي الشامل لولي الأمر — منصة مَسَار*%0A%0A` +
       `👤 *الطالب:* ${encodeURIComponent(s.name)}%0A` +
-      `🏫 *المدرسة:* مدارس الإخلاص الأهلية بجدة%0A` +
+      `*الفصل:* فصل د. إسماعيل عيسى%0A` +
       `🏆 *التقدير العام:* ${encodeURIComponent(metrics.overallGrade)}%0A%0A` +
       `📊 *مؤشرات الأداء الأسبوعي:*%0A` +
       `• نسبة الحضور والانضباط: ${metrics.attendanceRate}%%0A` +
@@ -682,7 +682,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
                 </div>
                 <div>
                   <h3 className="font-black text-slate-900 text-base">التقرير التقييمي الشامل — {selectedStudent.name}</h3>
-                  <p className="text-xs text-slate-500 font-bold">مدارس الإخلاص الأهلية بجدة · الفصل الدراسي الأول</p>
+                  <p className="text-xs text-slate-500 font-bold">فصل د. إسماعيل عيسى · الفصل الدراسي الأول</p>
                 </div>
               </div>
               <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-700 font-black text-lg">✕</button>

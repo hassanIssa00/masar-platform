@@ -24,7 +24,7 @@ export default function ClassroomStudentsTab() {
   // New Student Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFullName, setNewFullName] = useState('');
-  const [newGrade, setNewGrade] = useState('الأول الابتدائي — فصل الإخلاص بجدة');
+  const [newGrade, setNewGrade] = useState('الصف الأول الابتدائي — فصل د. إسماعيل عيسى');
   const [newParentName, setNewParentName] = useState('');
   const [newParentPhone, setNewParentPhone] = useState('');
 
@@ -135,7 +135,7 @@ export default function ClassroomStudentsTab() {
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               إدارة طلاب الفصل الذكي
               <span className="rounded-full bg-teal-100 px-3 py-0.5 text-xs font-black text-teal-800">
-                فصل الإخلاص بجدة
+                فصل د. إسماعيل عيسى
               </span>
             </h1>
             <p className="text-xs font-bold text-slate-500 mt-1">
@@ -363,7 +363,7 @@ export default function ClassroomStudentsTab() {
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-5 border border-slate-200">
             <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
               <Plus size={18} className="text-teal-600" />
-              تسجيل طالب جديد بـ فصل الإخلاص
+              تسجيل طالب جديد في فصل د. إسماعيل عيسى
             </h2>
 
             <form onSubmit={handleAddStudent} className="space-y-4 text-xs font-bold">

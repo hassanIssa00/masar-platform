@@ -78,7 +78,7 @@ export default function ClassroomParentsTab() {
     const wap   = phone.startsWith('966') ? phone : '966' + phone.replace(/^0/, '');
     const day   = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    let m = `🏫 *مدرسة الإخلاص الأهلية — مسار التعليمي*\n`;
+    let m = `*فصل د. إسماعيل عيسى — مسار التعليمي*\n`;
     m += `📋 *تقرير شامل للطالب: ${selectedParent.studentName}*\n`;
     m += `📅 *التاريخ:* ${day}\n`;
     m += `👨\u200d👩\u200d👦 *ولي الأمر:* ${selectedParent.name}\n\n`;
@@ -123,7 +123,7 @@ export default function ClassroomParentsTab() {
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               إدارة أولياء أمور الفصل
               <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-black text-indigo-800">
-                فصل الإخلاص بجدة
+                فصل د. إسماعيل عيسى
               </span>
             </h1>
             <p className="text-xs font-bold text-slate-500 mt-1">

@@ -46,7 +46,7 @@ function LiveViewer() {
           </div>
           <div>
             <h1 className="font-black text-lg text-white">بث مباشر — مَسَار</h1>
-            <p className="text-xs font-bold text-teal-400">منصة التأهيل والتعليم الذكي · مدرسة الإخلاص جدة</p>
+            <p className="text-xs font-bold text-teal-400">منصة التأهيل والتعليم الذكي · فصل د. إسماعيل عيسى</p>
           </div>
         </div>
         {token && (

@@ -50,7 +50,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
   const [token, setToken] = useState<string>('');
   const [wsUrl, setWsUrl] = useState<string>('');
   const [loadingToken, setLoadingToken] = useState(false);
-  const [streamTitle, setStreamTitle] = useState('البث المباشر — الصف الأول الابتدائي (مدرسة الإخلاص)');
+  const [streamTitle, setStreamTitle] = useState('البث المباشر — الصف الأول الابتدائي (فصل د. إسماعيل عيسى)');
   const [streamDesc, setStreamDesc] = useState('حصّة علاجية وتفاعلية مباشرة لمتابعة أبطال الصف الأول مع د. إسماعيل عيسى');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
@@ -205,7 +205,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black text-emerald-300 border border-emerald-500/30">
                 <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-400" />
-                غرفة البث المباشر والتسجيلات — مدرسة الإخلاص
+                غرفة البث المباشر والتسجيلات — فصل د. إسماعيل عيسى
               </span>
               <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-300 border border-amber-500/30">
                 الصف الأول الابتدائي

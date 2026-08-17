@@ -202,7 +202,7 @@ export default function ProfessionalScheduleTab({
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8"/>
-<title>جدول الحصص الموثق — مدارس الإخلاص الأهلية بجدة</title>
+<title>جدول الحصص الموثق — فصل د. إسماعيل عيسى</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -224,7 +224,7 @@ export default function ProfessionalScheduleTab({
         <div style="width:42px;height:42px;background:#06392c;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;">مـ</div>
         <div>
           <h1 style="font-size:18px;font-weight:900;color:#06392c;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
-          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي الموثق — مدارس الإخلاص الأهلية بجدة</p>
+          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي الموثق — فصل د. إسماعيل عيسى</p>
         </div>
       </div>
       <div style="text-align:left;">
@@ -253,7 +253,7 @@ export default function ProfessionalScheduleTab({
   <div class="footer-sig">
     <div>
       <div style="font-size:11px;color:#64748b;font-weight:700;">المملكة العربية السعودية · جدة</div>
-      <div style="font-size:11px;color:#06392c;font-weight:900;">مدارس الإخلاص الأهلية · القسم الابتدائي</div>
+      <div style="font-size:11px;color:#06392c;font-weight:900;">فصل د. إسماعيل عيسى · القسم الابتدائي</div>
     </div>
 
     <div class="stamp-box">
@@ -293,7 +293,7 @@ export default function ProfessionalScheduleTab({
               جدول الحصص الأسبوعي الموثق
             </h2>
             <p className="mt-1 text-xs lg:text-sm font-semibold text-emerald-100/90">
-              مدارس الإخلاص الأهلية بجدة · الخطة الأسبوعية الموزعة للحصص الدراسية
+              فصل د. إسماعيل عيسى · الخطة الأسبوعية الموزعة للحصص الدراسية
             </p>
           </div>
 

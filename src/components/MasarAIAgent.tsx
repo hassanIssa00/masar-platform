@@ -30,7 +30,7 @@ function tryExecutePlatformAction(prompt: string): { actionTaken?: string } | nu
           studentId: student.id,
           studentName: student.fullName,
           grade: student.grade || 'الصف الأول',
-          schoolName: 'مدرسة الإخلاص الأهلية بجدة',
+          schoolName: 'فصل د. إسماعيل عيسى',
           doctorName: 'د. إسماعيل عيسى',
           startDate: new Date().toISOString().slice(0, 10),
           reviewDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),

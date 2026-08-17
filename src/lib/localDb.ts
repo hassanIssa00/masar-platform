@@ -488,7 +488,7 @@ export function saveIkhlasPost(post: Omit<IkhlasCommunityPost, 'id' | 'createdAt
   syncDocToCloud('ikhlasPosts', next.id, next);
   saveActivity({
     type: 'account',
-    title: `واجب/منشور جديد - فصل الإخلاص: ${next.title}`,
+    title: `واجب/منشور جديد - فصل د. إسماعيل عيسى: ${next.title}`,
     detail: next.content.slice(0, 80),
   });
   return next;

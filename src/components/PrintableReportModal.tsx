@@ -164,7 +164,7 @@ export default function PrintableReportModal({
         <td style="padding:7px 10px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${ans.answer}</td>
       </tr>`;
     const firstAnswerChunk = printableAnswers.slice(0, 18);
-    const secondAnswerChunk = printableAnswers.slice(18, 40);
+    const secondAnswerChunk = printableAnswers.slice(18);
     const answersRows = firstAnswerChunk.map((ans, i) => answerRow(ans, i)).join('');
     const answersRowsContinuation = secondAnswerChunk.map((ans, i) => answerRow(ans, i + firstAnswerChunk.length)).join('');
 
@@ -503,9 +503,9 @@ export default function PrintableReportModal({
         ${compactHeaderHtml('تحليل المجالات والخطط الفردية')}
 
         ${
-          isSurveyAnswersReport
+          isAnswersReport
             ? `
-        <div class="sec-head">1. إجابات ولي الأمر التفصيلية - الجزء الأول</div>
+        <div class="sec-head">1. ${isStudentAnswersReport ? 'إجابات اختبار الطالب التفصيلية' : 'إجابات ولي الأمر التفصيلية'} - الجزء الأول</div>
         <table class="answers-table">
           <thead>
             <tr>

@@ -79,7 +79,7 @@ export default function StudentProfileModal({ student, onClose }: Props) {
     const ph = (student.parentPhone || '').replace(/\D/g, '');
     const wap = ph.startsWith('966') ? ph : '966' + ph.replace(/^0/, '');
     const day = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
-    let m = `مدرسة الإخلاص الأهلية — مسار التعليمي\nتقرير الطالب: ${student.fullName}\nالتاريخ: ${day}\nولي الأمر: ${student.parentName ?? '—'}\n\n`;
+    let m = `فصل د. إسماعيل عيسى — مسار التعليمي\nتقرير الطالب: ${student.fullName}\nالتاريخ: ${day}\nولي الأمر: ${student.parentName ?? '—'}\n\n`;
     if (hwLogs.length) {
       m += `الواجبات (${hwLogs.length}):\n`;
       hwLogs.slice(0, 5).forEach(h => {

@@ -162,7 +162,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
 
     // Send WhatsApp notifications to parents
     if (students.length > 0) {
-      const whatsappText = `📚 *مدارس الإخلاص الأهلية بجدة*\n\nمساء الخير 👋\n\nتم إرسال واجب جديد لنجلكم:\n📖 *المادة:* ${subject?.name}\n📄 *الصفحات:* ${builderPageFrom} - ${builderPageTo}\n❓ *عدد الأسئلة:* ${generatedQuestions.length} سؤال\n\n_منصة مسار التعليمية_`;
+      const whatsappText = `*فصل د. إسماعيل عيسى*\n\nمساء الخير\n\nتم إرسال واجب جديد لنجلكم:\n*المادة:* ${subject?.name}\n*الصفحات:* ${builderPageFrom} - ${builderPageTo}\n*عدد الأسئلة:* ${generatedQuestions.length} سؤال\n\n_منصة مسار التعليمية_`;
 
       students.forEach(s => {
         if (s.phone) {

@@ -69,7 +69,7 @@ export default function ReportPrintDocument({
           {/* Main Document Title Box */}
           <div className="title-banner">
             <h1 className="main-title">تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
-            <p className="subtitle">صادر من قسم التربية الخاصة والتأهيل النمائي بمدرسة الإخلاص بجدة</p>
+            <p className="subtitle">صادر من فصل د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>
           </div>
 
           {/* Student & Report Metadata Grid */}

@@ -346,7 +346,7 @@ export default function IkhlasJeddahPage() {
       console.warn('Backend API offline (late alert):', e);
     }
     const msg = encodeURIComponent(
-      `🚨 تنبيه عاجل من مدارس الإخلاص الأهلية بجدة 🇸🇦\nالسيد ولي أمر الطالب (${studentName}) المحترم، نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة المدرسة.`
+      `تنبيه عاجل من فصل د. إسماعيل عيسى\nالسيد ولي أمر الطالب (${studentName}) المحترم، نود تذكيركم بأن اليوم الدراسي قد انتهى، يرجى الحضور فوراً لاستلام الطفل من بوابة الفصل.`
     );
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
@@ -634,7 +634,7 @@ export default function IkhlasJeddahPage() {
               <span className="text-xl">🏫</span>
             </div>
             <div>
-              <h1 className="text-sm font-black text-slate-900 leading-tight">فصل 1/1 — مدارس الإخلاص الأهلية بجدة</h1>
+              <h1 className="text-sm font-black text-slate-900 leading-tight">فصل د. إسماعيل عيسى</h1>
               <p className="text-[11px] text-slate-500 font-medium">لوحة المعلم | أ. إسماعيل عيسى</p>
             </div>
           </div>

@@ -114,7 +114,7 @@ export default function Dashboard() {
                 <Stamp size={14} /> التوقيع والختم الإلكتروني ✒️
               </Link>
               <Link href="/branches/ikhlas-jeddah" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                🏫 فصل الإخلاص (جدة)
+                فصل د. إسماعيل عيسى
               </Link>
               <Link href="/ai-assistant" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 🤖 مساعد مسار الذكي

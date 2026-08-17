@@ -142,7 +142,7 @@ export default function SchoolParentPage() {
             </h1>
             <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              مدارس الإخلاص الأهلية بجدة — متابعة فصل 1/1
+              فصل د. إسماعيل عيسى — متابعة الطالب
             </p>
           </div>
           
@@ -596,7 +596,7 @@ export default function SchoolParentPage() {
               <div>
                 <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-200">
                   <GraduationCap size={14} className="text-emerald-600" />
-                  <span>طالب مقيّد — مدارس الإخلاص الأهلية 🏫</span>
+                  <span>طالب مقيّد — فصل د. إسماعيل عيسى</span>
                 </span>
                 <h2 className="text-xl font-black text-slate-900 mt-2">
                   {studentRecord?.fullName || 'الطالب المسجل'}
