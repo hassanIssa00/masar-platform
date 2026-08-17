@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Bot, Send, Sparkles, Trash2, Image as ImageIcon, X,
+  ArrowLeft, Bot, Send, Trash2, Image as ImageIcon, X,
   MessageSquare, Loader2, Plus, Clock, CloudSync, Lightbulb,
 } from 'lucide-react';
 import { syncDocToCloud, deleteDocFromCloud } from '@/lib/firestoreSync';
@@ -15,8 +15,17 @@ interface ChatMessage {
   text: string;
   imageBase64?: string;
   imageMime?: string;
+  actions?: AiAction[];
+  gateway?: string;
   timestamp: string;
 }
+
+type AiAction = {
+  type: string;
+  label: string;
+  target?: string;
+  payload?: Record<string, unknown>;
+};
 
 interface ChatThread {
   id: string;
@@ -59,12 +68,12 @@ function removeThread(id: string) {
 }
 
 const QUICK_PROMPTS = [
-  { label: '📝 إنشاء كويز سريع', prompt: 'انشئ لي كويز سريع من 5 أسئلة مع الخيارات والإجابات النموذجية في موضوع:' },
-  { label: '📚 تحضير درس تفاعلي', prompt: 'ساعدني في تحضير درس شامل وتفاعلي مع صياغة الأهداف والأنشطة الصفية لموضوع:' },
-  { label: '✉️ رسالة لولي الأمر', prompt: 'اكتب رسالة تربوية رسمية ولطيفة لولي أمر طالب لمتابعة مستواه الدراسي وتأخره' },
-  { label: '📊 خطة علاجية مخصصة', prompt: 'اقترح خطة علاجية مخصصة واستراتيجيات تدريس لطالب يعاني من ضعف القراءة والتركيز' },
-  { label: '🖼️ تحليل صورة الدرس', prompt: 'يرجى تحليل صورة الدرس المرفقة وتلخيص أهم النقاط والتمارين الموجودة فيها' },
-  { label: '💡 أنشطة تنشيطية صفيّة', prompt: 'اقترح لي 3 أنشطة حركية وتحفيزية سريعة تجدد طاقة الطلاب داخل الفصل' },
+  { label: 'إنشاء كويز سريع', prompt: 'أنشئ كويز سريع من 5 أسئلة مع الخيارات والإجابات النموذجية في موضوع:' },
+  { label: 'تحضير درس تفاعلي', prompt: 'ساعدني في تحضير درس شامل وتفاعلي مع صياغة الأهداف والأنشطة الصفية لموضوع:' },
+  { label: 'رسالة لولي الأمر', prompt: 'اكتب رسالة تربوية رسمية ولطيفة لولي أمر طالب لمتابعة مستواه الدراسي وتأخره' },
+  { label: 'خطة علاجية مخصصة', prompt: 'اقترح خطة علاجية مخصصة واستراتيجيات تدريس لطالب يعاني من ضعف القراءة والتركيز' },
+  { label: 'تحليل صورة الدرس', prompt: 'حلل صورة الدرس المرفقة ولخص أهم النقاط والتمارين الموجودة فيها' },
+  { label: 'أنشطة صفية قصيرة', prompt: 'اقترح 3 أنشطة حركية وتحفيزية قصيرة تجدد طاقة الطلاب داخل الفصل' },
 ];
 
 function authJsonHeaders() {
@@ -216,6 +225,12 @@ export default function TeacherAIChatTab() {
     setImagePreview(null);
   };
 
+  const runAction = (action: AiAction) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: action }));
+    if (action.target) window.location.href = action.target;
+  };
+
   const sendMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? inputText).trim();
     if ((!text && !imageBase64) || loading || !activeThreadId) return;
@@ -223,7 +238,7 @@ export default function TeacherAIChatTab() {
     const userMsg: ChatMessage = {
       id: 'u-' + Date.now(),
       role: 'user',
-      text: text || '📷 صورة مرفقة للتحليل',
+      text: text || 'صورة مرفقة للتحليل',
       imageBase64: imageBase64 ?? undefined,
       imageMime: imageMime,
       timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
@@ -257,6 +272,8 @@ export default function TeacherAIChatTab() {
     }));
 
     let replyText = '';
+    let actions: AiAction[] = [];
+    let gateway = '';
     try {
       const body: Record<string, unknown> = {
         prompt: text || 'يرجى تحليل هذه الصورة المرفقة وإفادتي كمساعد تربوي للمعلم بالفصل',
@@ -274,22 +291,26 @@ export default function TeacherAIChatTab() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.actions) && typeof window !== 'undefined') {
+          actions = data.actions;
           for (const action of data.actions) {
             window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, action: action.type, prompt: text } }));
           }
         }
         replyText = data.reply ?? '';
+        gateway = data.gateway ?? '';
       }
     } catch { /* err */ }
 
     if (!replyText) {
-      replyText = 'أهلاً بيك د. إسماعيل عيسى 👋\nعذراً، حدث خطأ مؤقت في الاتصال، يرجى المحاولة مرة أخرى.';
+      replyText = 'تعذر الاتصال بالمساعد الآن. تأكد من تسجيل الدخول وإعداد مفاتيح Gemini ثم حاول مرة أخرى.';
     }
 
     const assistantMsg: ChatMessage = {
       id: 'a-' + Date.now(),
       role: 'assistant',
       text: replyText,
+      actions,
+      gateway,
       timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -316,20 +337,20 @@ export default function TeacherAIChatTab() {
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
-              المساعد الذكي للمعلم بالفصل (Copilot)
+              المساعد الذكي للمعلم بالفصل
               <span className="rounded-full bg-teal-100 px-3 py-0.5 text-xs font-black text-teal-800 flex items-center gap-1">
-                <Sparkles size={12} /> حفظ سحابي دائم
+                حفظ سحابي دائم
               </span>
             </h1>
             <p className="text-xs font-bold text-slate-500 mt-1">
-              مساعدك الشخصي الذكي لإعداد الدروس، الكويزات، صياغة الملاحظات، وتحليل صور التمارين والكتب 🤖
+              مساعدك الشخصي لإعداد الدروس، الكويزات، صياغة الملاحظات، وتحليل صور التمارين والكتب.
             </p>
           </div>
         </div>
 
         {cloudSynced && (
           <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 text-xs font-black text-emerald-800">
-            <CloudSync size={14} className="text-emerald-600" /> المحادثات محمية ومحفوظة سحابياً ☁️
+            <CloudSync size={14} className="text-emerald-600" /> المحادثات محفوظة سحابياً
           </div>
         )}
       </div>
@@ -415,9 +436,9 @@ export default function TeacherAIChatTab() {
                     <Bot size={36} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-800">أهلاً بيك د. إسماعيل عيسى 👋</h3>
+                    <h3 className="text-sm font-black text-slate-800">أهلاً د. إسماعيل عيسى</h3>
                     <p className="text-xs font-bold text-slate-500 max-w-md mt-1 leading-relaxed">
-                      أنا مساعدك الذكي بالفصل. اطلب مني أي شيء: إعداد اختبار، كتابة تحضير، صياغة تقرير أو إرسال صورة درس لتحليلها!
+                      اطلب إعداد اختبار، كتابة تحضير، صياغة تقرير أو إرسال صورة درس لتحليلها.
                     </p>
                   </div>
                 </div>
@@ -445,8 +466,22 @@ export default function TeacherAIChatTab() {
                       </div>
                     )}
                     <div className="whitespace-pre-wrap">{m.text}</div>
+                    {!!m.actions?.length && (
+                      <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+                        {m.actions.map((action, index) => (
+                          <button
+                            key={`${action.type}-${index}`}
+                            onClick={() => runAction(action)}
+                            className="flex items-center justify-between gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-[11px] font-black text-teal-800 transition hover:bg-teal-100"
+                          >
+                            <span>{action.label}</span>
+                            <ArrowLeft size={14} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className={`text-[9px] font-mono ${m.role === 'user' ? 'text-slate-400' : 'text-slate-400'} text-left`}>
-                      {m.timestamp}
+                      {m.timestamp}{m.gateway ? ` · ${m.gateway}` : ''}
                     </div>
                   </div>
                 </div>
@@ -471,7 +506,7 @@ export default function TeacherAIChatTab() {
               <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <img src={imagePreview} alt="معاينة" className="w-10 h-10 rounded-lg object-cover border border-slate-300" />
-                  <span className="text-xs font-bold text-slate-700">صورة مرفقة جاهزة للإرسال والتحليل 📷</span>
+                  <span className="text-xs font-bold text-slate-700">صورة مرفقة جاهزة للإرسال والتحليل</span>
                 </div>
                 <button onClick={clearImage} className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50">
                   <X size={16} />

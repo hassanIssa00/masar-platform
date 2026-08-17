@@ -104,26 +104,26 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 🔗 Quick Access Switcher for Dr. Ismail */}
+            {/* Quick Access Switcher for Dr. Ismail */}
             <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
               <span className="text-xs font-black text-amber-300 ml-2">تنقل سريع للدكتور:</span>
               <Link href="/dashboard" className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                🏥 اللوحة الرئيسية
+                اللوحة الرئيسية
               </Link>
               <Link href="/signature" className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-md hover:scale-105">
-                <Stamp size={14} /> التوقيع والختم الإلكتروني ✒️
+                <Stamp size={14} /> التوقيع والختم الإلكتروني
               </Link>
               <Link href="/branches/ikhlas-jeddah" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 فصل د. إسماعيل عيسى
               </Link>
               <Link href="/ai-assistant" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                🤖 مساعد مسار الذكي
+                مساعد مسار الذكي
               </Link>
               <Link href="/bi-dashboard" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                📊 التحليلات BI
+                التحليلات BI
               </Link>
               <Link href="/iep" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                📋 خطط IEP
+                خطط IEP
               </Link>
             </div>
 

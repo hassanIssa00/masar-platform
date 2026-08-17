@@ -1,61 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Sparkles, X, Loader2, CheckCircle2, Trash2, ChevronDown } from 'lucide-react';
-import { createIEP } from '@/lib/iep';
-import { getStudents } from '@/lib/localDb';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Bot, Loader2, Send, Trash2, X } from 'lucide-react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface Message {
+type AiAction = {
+  type: string;
+  label: string;
+  target?: string;
+  payload?: Record<string, unknown>;
+};
+
+type Message = {
   id: string;
   sender: 'user' | 'agent';
   text: string;
-  actionTaken?: string;
   timestamp: string;
   gateway?: string;
-}
-
-// ── Real Platform Actions (client-side DB) ────────────────────────────────────
-// These actually touch localStorage / IEP DB — no fake responses
-function tryExecutePlatformAction(prompt: string): { actionTaken?: string } | null {
-  const p = prompt.toLowerCase();
-
-  // IEP creation — needs a student
-  if ((p.includes('خطة') || p.includes('iep')) && (p.includes('أنشئ') || p.includes('اعمل') || p.includes('ضيف') || p.includes('أضف'))) {
-    try {
-      const students = getStudents();
-      const student = students[0];
-      if (student) {
-        createIEP({
-          studentId: student.id,
-          studentName: student.fullName,
-          grade: student.grade || 'الصف الأول',
-          schoolName: 'فصل د. إسماعيل عيسى',
-          doctorName: 'د. إسماعيل عيسى',
-          startDate: new Date().toISOString().slice(0, 10),
-          reviewDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-          strengths: 'الذاكرة البصرية، الاستجابة للتعزيز الفوري',
-          challenges: 'صعوبات التعلم النمائية والأكاديمية',
-          accommodations: ['وقت إضافي في الاختبارات', 'جلوس في المقدمة', 'تعليمات مبسطة'],
-          goals: [{
-            id: 'g1_' + Date.now(), domain: 'academic',
-            objective: 'قراءة 20 كلمة بدقة 85% في نهاية الفصل.',
-            targetDate: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
-            progressNotes: '', status: 'in-progress', baselineScore: 40, currentScore: 40,
-          }],
-          status: 'active',
-        });
-        return { actionTaken: `تم إنشاء خطة IEP للطالب ${student.fullName} ✅` };
-      } else {
-        return { actionTaken: 'لا يوجد طلاب في النظام بعد — أضف طالباً أولاً من صفحة الطلاب' };
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  return null;
-}
+  actions?: AiAction[];
+};
 
 function authJsonHeaders() {
   const token = typeof window !== 'undefined'
@@ -67,7 +29,10 @@ function authJsonHeaders() {
   };
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function timeLabel() {
+  return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -76,19 +41,28 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
     {
       id: 'init',
       sender: 'agent',
-      text: 'أهلاً يا د. إسماعيل! 👋\nأنا مساعدك — اسألني أي شيء أو اطلب مني أنفذ حاجة في المنصة مباشرةً.',
-      timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      text: 'أهلاً د. إسماعيل. اكتب طلبك مباشرة أو اطلب فتح قسم معين، وسأرد أو أجهز لك الإجراء المناسب.',
+      timestamp: timeLabel(),
     },
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    if (!isOpen) return;
+    const scrollTimer = setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+    const focusTimer = setTimeout(() => inputRef.current?.focus(), 120);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(focusTimer);
+    };
   }, [messages, isOpen]);
+
+  const runAction = useCallback((action: AiAction) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: action }));
+    if (action.target) window.location.href = action.target;
+  }, []);
 
   const sendMessage = useCallback(async (textToSend?: string) => {
     const inputPrompt = (textToSend || prompt).trim();
@@ -98,212 +72,194 @@ export default function MasarAIAgent({ branch = 'IKHLAS_JEDDAH' }: { branch?: st
       id: 'u-' + Date.now(),
       sender: 'user',
       text: inputPrompt,
-      timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: timeLabel(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const history = messages
+      .filter((m) => m.id !== 'init')
+      .slice(-10)
+      .map((m) => ({ sender: m.sender, text: m.text }));
+
+    setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setPrompt('');
     setLoading(true);
 
-    // Try real platform action first
-    const platformAction = tryExecutePlatformAction(inputPrompt);
-
-    const history = messages
-      .filter(m => m.id !== 'init')
-      .slice(-10)
-      .map(m => ({ sender: m.sender, text: m.text }));
-
-    let replyText = '';
-    let gateway = '';
-    let actionTaken = platformAction?.actionTaken;
+    let assistant: Message = {
+      id: 'a-' + Date.now(),
+      sender: 'agent',
+      text: 'تعذر الاتصال بالمساعد الآن. تأكد من تسجيل الدخول وإعداد مفاتيح Gemini ثم حاول مرة أخرى.',
+      timestamp: timeLabel(),
+      gateway: 'offline',
+    };
 
     try {
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
         headers: authJsonHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ prompt: inputPrompt, branch, history }),
       });
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.actions) && typeof window !== 'undefined') {
-          for (const action of data.actions) {
-            window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: { ...action, action: action.type, prompt: inputPrompt } }));
-          }
-        }
-        if (data.reply) {
-          replyText = data.reply;
-          gateway = data.gateway || '';
-          if (data.actionTaken && !actionTaken) actionTaken = data.actionTaken;
-        }
+        assistant = {
+          id: 'a-' + Date.now(),
+          sender: 'agent',
+          text: data.reply || 'تم استلام الطلب، لكن لم يصل نص رد واضح من المحرك.',
+          actions: Array.isArray(data.actions) ? data.actions : [],
+          gateway: data.gateway,
+          timestamp: timeLabel(),
+        };
+      } else if (data?.error) {
+        assistant.text = String(data.error);
       }
-    } catch { /* network error — use local fallback */ }
-
-    // If API completely failed, use a simple honest reply
-    if (!replyText) {
-      replyText = 'فيه مشكلة في الاتصال دلوقتي. جرب تاني بعد ثانية.';
-      gateway = 'offline';
+    } catch {
+      // Keep the honest offline message above.
     }
 
-    setMessages(prev => [...prev, {
-      id: 'a-' + Date.now(),
-      sender: 'agent',
-      text: replyText,
-      actionTaken,
-      gateway,
-      timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-    }]);
-
+    setMessages((prev) => [...prev, assistant]);
     setLoading(false);
-  }, [prompt, loading, messages, branch]);
+  }, [branch, loading, messages, prompt]);
 
   const clearChat = () => {
     setMessages([{
       id: 'init-' + Date.now(),
       sender: 'agent',
-      text: 'تم مسح المحادثة. تؤمر؟ 😊',
-      timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      text: 'تم مسح المحادثة. اكتب طلبك التالي بوضوح وسأتعامل معه مباشرة.',
+      timestamp: timeLabel(),
     }]);
   };
 
   const quickPrompts = [
-    'كم طالب عندي في النظام؟',
-    'اعمل خطة IEP لأول طالب',
-    'نصيحة للتعامل مع فرط الحركة',
-    'ما هي أحدث طرق تعليم القراءة؟',
-    'ابدأ حصة مباشرة',
+    'افتح إدارة الطلاب',
+    'جهز مسودة خطة IEP لطالب يحتاج دعم قراءة',
+    'اكتب رسالة متابعة قصيرة لولي الأمر',
+    'حلل أول تقرير يحتاج مراجعة',
   ];
 
   return (
     <div className="fixed bottom-6 left-6 z-50 font-sans" dir="rtl">
-
-      {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-3 bg-gradient-to-br from-teal-600 to-slate-900 hover:from-teal-500 hover:to-slate-800 text-white px-5 py-3.5 rounded-2xl shadow-2xl hover:shadow-teal-500/25 hover:scale-105 transition-all duration-200 border border-teal-400/20"
+          className="group flex items-center gap-3 rounded-2xl border border-teal-200 bg-white px-5 py-3.5 text-slate-950 shadow-xl shadow-slate-900/10 transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-2xl"
         >
-          <div className="relative shrink-0">
-            <Bot className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-black leading-tight flex items-center gap-1.5">
-              مساعد مسار <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            </p>
-            <p className="text-[11px] text-teal-200 opacity-90">اسألني أي شيء</p>
-          </div>
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-teal-600 text-white">
+            <Bot className="h-5 w-5" />
+          </span>
+          <span className="text-right">
+            <span className="block text-sm font-black leading-tight">مساعد مسار</span>
+            <span className="block text-[11px] font-bold text-slate-500">أوامر وتنفيذ داخل المنصة</span>
+          </span>
         </button>
       )}
 
-      {/* Chat Panel */}
       {isOpen && (
-        <div className="w-[400px] sm:w-[440px] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[580px]">
-
-          {/* Header */}
-          <div className="bg-gradient-to-r from-slate-900 to-teal-900 px-4 py-3.5 text-white flex items-center justify-between border-b border-slate-700/50">
+        <div className="flex h-[580px] w-[min(440px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3.5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0">
-                <Bot className="w-5 h-5 text-teal-300" />
-              </div>
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-teal-600 text-white">
+                <Bot className="h-5 w-5" />
+              </span>
               <div>
-                <h3 className="text-sm font-black flex items-center gap-2">
-                  مساعد مسار
-                  <span className="text-[10px] bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-2 py-0.5 rounded-full">
-                    ● نشط
-                  </span>
-                </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">د. إسماعيل عيسى · AI Agent</p>
+                <h3 className="text-sm font-black text-slate-950">مساعد مسار التنفيذي</h3>
+                <p className="text-[11px] font-bold text-slate-500">متصل بواجهات المنصة والصور</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={clearChat}
-                className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition"
+                className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-rose-600"
                 title="مسح المحادثة"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition"
+                className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                title="إغلاق"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {/* Quick Prompts */}
-          <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex gap-2 overflow-x-auto scrollbar-none">
-            {quickPrompts.map((qp, idx) => (
+          <div className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 py-2">
+            {quickPrompts.map((item) => (
               <button
-                key={idx}
-                onClick={() => sendMessage(qp)}
+                key={item}
+                onClick={() => sendMessage(item)}
                 disabled={loading}
-                className="text-[11px] bg-white border border-slate-200 hover:border-teal-400 hover:bg-teal-50 text-slate-700 font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 shadow-sm disabled:opacity-50"
+                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-black text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 disabled:opacity-50"
               >
-                {qp}
+                {item}
               </button>
             ))}
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/40">
-            {messages.map(m => (
+          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/50 p-4">
+            {messages.map((m) => (
               <div key={m.id} className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[88%] px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-sm ${
+                <div className={`max-w-[88%] rounded-3xl border px-4 py-3 text-sm font-bold leading-7 shadow-sm ${
                   m.sender === 'user'
-                    ? 'bg-teal-700 text-white rounded-br-sm font-medium'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
+                    ? 'rounded-br-md border-teal-600 bg-teal-600 text-white'
+                    : 'rounded-bl-md border-slate-200 bg-white text-slate-800'
                 }`}>
-                  <p className="whitespace-pre-wrap font-medium">{m.text}</p>
-
-                  {m.actionTaken && (
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      {m.actionTaken}
+                  <p className="whitespace-pre-wrap">{m.text}</p>
+                  {!!m.actions?.length && (
+                    <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+                      {m.actions.map((action, index) => (
+                        <button
+                          key={`${action.type}-${index}`}
+                          onClick={() => runAction(action)}
+                          className="flex items-center justify-between gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-black text-teal-800 transition hover:bg-teal-100"
+                        >
+                          <span>{action.label}</span>
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 px-1">{m.timestamp}</span>
+                <span className="mt-1 px-2 text-[10px] font-bold text-slate-400">{m.timestamp}</span>
               </div>
             ))}
 
             {loading && (
               <div className="flex items-start">
-                <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2 text-[13px] text-slate-500 shadow-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                  <span className="font-medium">بفكر...</span>
+                <div className="flex items-center gap-2 rounded-3xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
+                  جاري معالجة الطلب...
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-3 bg-white border-t border-slate-200">
-            <form
-              onSubmit={e => { e.preventDefault(); sendMessage(); }}
-              className="flex items-center gap-2"
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendMessage();
+            }}
+            className="flex items-center gap-2 border-t border-slate-200 bg-white p-3"
+          >
+            <input
+              ref={inputRef}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="اكتب أمراً أو سؤالاً..."
+              disabled={loading}
+              className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition focus:border-teal-500 focus:bg-white"
+            />
+            <button
+              type="submit"
+              disabled={loading || !prompt.trim()}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-teal-600 text-white transition hover:bg-teal-700 disabled:opacity-40"
+              title="إرسال"
             >
-              <input
-                ref={inputRef}
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder="اسأل أي شيء أو اطلب تنفيذ أمر..."
-                disabled={loading}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-500 focus:bg-white transition-all font-medium"
-              />
-              <button
-                type="submit"
-                disabled={loading || !prompt.trim()}
-                className="w-11 h-11 rounded-2xl bg-teal-700 hover:bg-teal-600 text-white flex items-center justify-center transition-all disabled:opacity-40 shrink-0 shadow-sm"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </form>
-          </div>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </form>
         </div>
       )}
     </div>
