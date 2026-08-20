@@ -20,8 +20,7 @@ import {
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
 import { getAccounts, getStudents, getReports, getSurveys, saveAccount, type AccountRecord } from '@/lib/localDb';
-import { saveCredential } from '@/lib/auth';
-import { deleteDocFromCloud } from '@/lib/firestoreSync';
+import { deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -39,6 +38,8 @@ const SEED_ACCOUNTS: AccountRecord[] = [
 ];
 
 async function loadAllAccounts(): Promise<AccountRecord[]> {
+  await pullServerSnapshotToLocal();
+
   // 1. Local storage accounts
   const localAccounts = getAccounts();
 
@@ -363,17 +364,6 @@ function Toggle({ checked, onChange, label, description }: {
   );
 }
 
-function createTempPassword(prefix: string) {
-  const partA = Math.random().toString(36).slice(2, 6).toUpperCase();
-  const partB = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-${partA}-${partB}`;
-}
-
-function createPlatformEmail(kind: 'student' | 'parent', branch: 'MASAR' | 'IKHLAS_JEDDAH') {
-  const branchSlug = branch === 'MASAR' ? 'masar' : 'ikhlas';
-  return `${kind}.${branchSlug}.${Date.now().toString(36)}${Math.floor(10 + Math.random() * 90)}@masarplatform.org`;
-}
-
 /* ══════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════ */
@@ -385,7 +375,7 @@ type GeneratedAccountBundle = {
   parentEmail: string;
   parentPassword: string;
   branch: 'MASAR' | 'IKHLAS_JEDDAH';
-  studentName: string;
+  grade: string;
 };
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
@@ -414,6 +404,7 @@ export default function PlatformSettingsPage() {
   const [generatorBranch, setGeneratorBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
   const [generatorGrade, setGeneratorGrade] = useState(GENERATOR_GRADE_OPTIONS[0]);
   const [generatedBundle, setGeneratedBundle] = useState<GeneratedAccountBundle | null>(null);
+  const [generatorError, setGeneratorError] = useState('');
   const unsubRef = useRef<(() => void) | null>(null);
 
   /* ── Load data ─────────────────────────── */
@@ -490,12 +481,7 @@ export default function PlatformSettingsPage() {
   };
 
   const handleGenerateAccounts = async () => {
-    let studentEmail = createPlatformEmail('student', generatorBranch);
-    let parentEmail = createPlatformEmail('parent', generatorBranch);
-    let studentPassword = createTempPassword('STU');
-    let parentPassword = createTempPassword('PAR');
-    const studentName = 'طالب جديد';
-    const parentName = 'ولي أمر جديد';
+    setGeneratorError('');
 
     try {
       const res = await fetch('/api/accounts/generate', {
@@ -505,51 +491,34 @@ export default function PlatformSettingsPage() {
         body: JSON.stringify({ branch: generatorBranch, grade: generatorGrade }),
       });
       const data = await res.json();
-      if (res.ok && data.ok) {
-        studentEmail = data.studentAccount.email;
-        parentEmail = data.parentAccount.email;
-        studentPassword = data.studentPassword;
-        parentPassword = data.parentPassword;
+      if (!res.ok || !data.ok) {
+        setGeneratorError(data.error || 'تعذر توليد الحسابات على السحابة. راجع إعداد Firebase Admin في السيرفر.');
+        return;
       }
+
+      saveAccount(data.studentAccount);
+      saveAccount(data.parentAccount);
+
+      setGeneratedBundle({
+        branch: generatorBranch,
+        grade: generatorGrade,
+        studentEmail: data.studentAccount.email,
+        studentPassword: data.studentPassword,
+        parentEmail: data.parentAccount.email,
+        parentPassword: data.parentPassword,
+      });
+      await loadSummary();
     } catch {
-      // Local fallback remains available for offline development.
+      setGeneratorError('تعذر الاتصال بالسيرفر أثناء توليد الحسابات. لم يتم إنشاء حساب محلي غير متزامن.');
     }
-
-    const studentAccount = saveAccount({
-      name: studentName,
-      email: studentEmail,
-      role: 'student',
-      schoolBranch: generatorBranch,
-      createdVia: 'email',
-      providerId: 'generated',
-    });
-    const parentAccount = saveAccount({
-      name: parentName,
-      email: parentEmail,
-      role: 'parent',
-      schoolBranch: generatorBranch,
-      createdVia: 'email',
-      providerId: 'generated',
-    });
-    saveCredential(studentAccount, studentPassword);
-    saveCredential(parentAccount, parentPassword);
-
-    setGeneratedBundle({
-      studentName,
-      branch: generatorBranch,
-      studentEmail,
-      studentPassword,
-      parentEmail,
-      parentPassword,
-    });
-    await loadSummary();
   };
 
   const copyGeneratedBundle = async () => {
     if (!generatedBundle) return;
     const text = [
-      `بيانات دخول ${generatedBundle.studentName}`,
+      'بيانات دخول حسابات منصة مسار',
       `النظام: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار' : 'فصل د. إسماعيل عيسى'}`,
+      `الصف/المسار المبدئي: ${generatedBundle.grade}`,
       `حساب الطالب: ${generatedBundle.studentEmail}`,
       `كلمة مرور الطالب: ${generatedBundle.studentPassword}`,
       `حساب ولي الأمر: ${generatedBundle.parentEmail}`,
@@ -813,6 +782,12 @@ export default function PlatformSettingsPage() {
                       أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات. استخدم البريد المولد نفسه في صفحة "نسيت كلمة المرور" عند الحاجة.
                     </p>
                   </div>
+
+                  {generatorError && (
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black leading-6 text-rose-700">
+                      {generatorError}
+                    </div>
+                  )}
 
                   {generatedBundle && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">

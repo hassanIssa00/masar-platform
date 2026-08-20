@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { saveCredential, signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
+import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
 import { getAccounts, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
@@ -51,8 +51,8 @@ type Country = {
 };
 
 const ALL_COUNTRIES: Country[] = [
-  { code: '+20', flag: '🇪🇬', name: 'مصر', example: '01012345678' },
   { code: '+966', flag: '🇸🇦', name: 'السعودية', example: '0501234567' },
+  { code: '+20', flag: '🇪🇬', name: 'مصر', example: '01012345678' },
   { code: '+971', flag: '🇦🇪', name: 'الإمارات', example: '0501234567' },
   { code: '+965', flag: '🇰🇼', name: 'الكويت', example: '91234567' },
   { code: '+974', flag: '🇶🇦', name: 'قطر', example: '55123456' },
@@ -120,7 +120,7 @@ export default function RegisterPage() {
     setMsLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
@@ -172,7 +172,7 @@ export default function RegisterPage() {
     pullCloudDataToLocal().catch(() => {});
     handleGoogleRedirectResult(getSelectedRole() as import('@/lib/localDb').UserRole, schoolBranch).then((result) => {
       if (result && result.ok) {
-        setSession(result.account);
+        setSession(result.account, false, false);
         const resolvedType =
           result.account.role === 'student' ? 'student'
           : result.account.role === 'parent' ? 'parent'
@@ -200,7 +200,7 @@ export default function RegisterPage() {
     setGoogleLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
@@ -225,7 +225,7 @@ export default function RegisterPage() {
     setAppleLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       if (typeof window !== 'undefined') {
         localStorage.setItem('masar_school_branch', schoolBranch);
         localStorage.setItem('masar_active_mode', accountType);
@@ -320,7 +320,7 @@ export default function RegisterPage() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
     setTouched({
@@ -349,15 +349,29 @@ export default function RegisterPage() {
       localStorage.removeItem('masar_active_mode');
     }
 
-    const account = saveAccount({
-      name: primaryName,
-      email: email.trim().toLowerCase(),
-      phone: fullPhone,
-      role: accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student',
-      schoolBranch,
-      createdVia: 'email',
-      lastLoginAt: new Date().toISOString(),
+    const role = accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student';
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: primaryName,
+        email: email.trim().toLowerCase(),
+        phone: fullPhone,
+        password,
+        role,
+        schoolBranch,
+      }),
     });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload?.ok || !payload.account) {
+      setLoading(false);
+      setGoogleError(payload?.error || 'تعذر إنشاء الحساب على السحابة. راجع إعداد Firebase Admin.');
+      return;
+    }
+
+    const account = saveAccount(payload.account);
+    setSession(account, false, false);
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('masar_account_type', accountType);
@@ -392,8 +406,6 @@ export default function RegisterPage() {
       });
     }
 
-    setSession(account);
-    saveCredential(account, password);
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
 
     if (typeof window !== 'undefined' && matchingStudent) {

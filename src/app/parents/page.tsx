@@ -14,7 +14,7 @@ import {
   getAccounts, getMessages, getReports, getSession, getStudents,
   MessageRecord, ReportRecord, saveMessage, StudentRecord, AccountRecord
 } from '@/lib/localDb';
-import { getCredentialByEmailOrPhone } from '@/lib/auth';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
 export default function ParentsManagementPage() {
   const router = useRouter();
@@ -31,7 +31,7 @@ export default function ParentsManagementPage() {
 
   // Auth Guard & Data Loading: Only Doctor/Admin can access
   useEffect(() => {
-    queueMicrotask(() => {
+    const load = () => {
       const session = getSession();
       if (session?.role === 'parent' || session?.role === 'student') {
         router.push('/parent');
@@ -48,9 +48,14 @@ export default function ParentsManagementPage() {
       setReports(allReports);
       setMessages(allMessages);
       if (allStudents.length > 0) {
-        setSelectedStudentId(allStudents[0].id);
+        setSelectedStudentId((current) => current || allStudents[0].id);
       }
-    });
+    };
+
+    queueMicrotask(load);
+    pullCloudDataToLocal().then(load).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(load);
+    return () => unsubscribe();
   }, [router]);
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId) ?? students[0] ?? null;
@@ -69,12 +74,6 @@ export default function ParentsManagementPage() {
 
     return found ?? accounts.filter((a) => a.role === 'parent')[0] ?? null;
   }, [selectedStudent, accounts]);
-
-  // Find credentials for linked account
-  const linkedCredential = useMemo(() => {
-    if (!linkedParentAccount) return null;
-    return getCredentialByEmailOrPhone(linkedParentAccount.email);
-  }, [linkedParentAccount]);
 
   // Find all student reports (up to 3 types: survey answers, student test, clinical analysis)
   const studentReports = useMemo(() => {
@@ -319,8 +318,8 @@ export default function ParentsManagementPage() {
                       </div>
                       <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
                         <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
-                        <p className="mt-0.5 text-xs font-black text-teal-800 font-mono">
-                          {linkedCredential?.password || 'محفوظة بشكل مشفر'}
+                        <p className="mt-0.5 text-xs font-black text-teal-800">
+                          محفوظة بشكل مشفر على السيرفر
                         </p>
                       </div>
                       <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">

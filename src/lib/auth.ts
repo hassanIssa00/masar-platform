@@ -1,7 +1,6 @@
 'use client';
 
-import { AccountRecord, getAccounts, saveAccount, UserRole } from '@/lib/localDb';
-import { syncDocToCloud } from './firestoreSync';
+import { AccountRecord, saveAccount, UserRole } from '@/lib/localDb';
 import { auth, googleProvider } from '@/lib/firebase';
 import {
   signInWithPopup,
@@ -33,50 +32,9 @@ export async function handleGoogleRedirectResult(
           ? 'microsoft'
           : 'google';
 
-    if (createdVia === 'apple' && !normalize(result.user.email ?? '')) {
-      return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, 'apple', 'مستخدم أبل');
-    }
-
-    const user = result.user;
-    const email = normalize(user.email ?? '');
-    if (!email || email === 'dr.ismail@masar.com') return null;
-
-    const accounts = getAccounts();
-    const existing = accounts.find((a) => normalize(a.email) === email);
-
-    if (existing) {
-      return { ok: true, account: touchSocialAccount(existing, createdVia, user), isNew: false };
-    }
-
-    const displayName = user.displayName ?? user.email?.split('@')[0] ?? 'مستخدم';
-    const validBranch =
-      schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
-        ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
-        : undefined;
-
-    const account = saveAccount({
-      name: displayName,
-      email,
-      role: preferredRole,
-      ...(validBranch ? { schoolBranch: validBranch } : {}),
-      createdVia,
-      providerId: createdVia,
-      firebaseUid: user.uid,
-      lastLoginAt: new Date().toISOString(),
-    });
-
-    try {
-      await syncDocToCloud('accounts', account.id, {
-        name: account.name,
-        email: account.email,
-        role: account.role,
-        ...(validBranch ? { schoolBranch: validBranch } : {}),
-        createdVia,
-        createdAt: new Date().toISOString(),
-      });
-    } catch {}
-
-    return { ok: true, account, isNew: true };
+    const fallbackName =
+      createdVia === 'apple' ? 'أبل' : createdVia === 'microsoft' ? 'مايكروسوفت' : 'جوجل';
+    return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, createdVia, fallbackName);
   } catch (err) {
     console.error('Google Redirect Result Error:', err);
     const authErr = err as AuthError;
@@ -101,60 +59,7 @@ export async function signInWithGoogle(
     }
 
     const result = await signInWithPopup(auth, googleProvider);
-
-    const user = result.user;
-    const email = normalize(user.email ?? '');
-
-    if (!email) {
-      return { ok: false, reason: 'لم يتم الحصول على البريد الإلكتروني من حساب جوجل.' };
-    }
-
-    // Protect the doctor account — never overwrite it via social login
-    if (email === 'dr.ismail@masar.com') {
-      return { ok: false, reason: 'لا يمكن استخدام هذا الحساب للدخول الاجتماعي.' };
-    }
-
-    // Check if email already exists locally
-    const accounts = getAccounts();
-    const existing = accounts.find((a) => normalize(a.email) === email);
-
-    if (existing) {
-      return { ok: true, account: touchSocialAccount(existing, 'google', user), isNew: false };
-    }
-
-    // New user — create account from Google profile
-    const displayName = user.displayName ?? user.email?.split('@')[0] ?? 'مستخدم';
-    const validBranch =
-      schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
-        ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
-        : undefined;
-
-    const account = saveAccount({
-      name: displayName,
-      email,
-      role: preferredRole,
-      ...(validBranch ? { schoolBranch: validBranch } : {}),
-      createdVia: 'google',
-      providerId: 'google',
-      firebaseUid: user.uid,
-      lastLoginAt: new Date().toISOString(),
-    });
-
-    // Sync to Firestore cloud
-    try {
-      await syncDocToCloud('accounts', account.id, {
-        name: account.name,
-        email: account.email,
-        role: account.role,
-        ...(validBranch ? { schoolBranch: validBranch } : {}),
-        createdVia: 'google',
-        createdAt: new Date().toISOString(),
-      });
-    } catch {
-      // Cloud sync is non-blocking — local account is already saved
-    }
-
-    return { ok: true, account, isNew: true };
+    return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, 'google', 'جوجل');
   } catch (err) {
     const authErr = err as AuthError;
     console.error('Google Sign-In Error Code:', authErr.code, authErr.message);
@@ -187,35 +92,13 @@ export async function signInWithGoogle(
   }
 }
 
-type CredentialRecord = {
-  accountId: string;
-  email: string;
-  phone?: string;
-  password: string;
-};
-
-type AuthResult =
-  | { ok: true; account: AccountRecord }
-  | { ok: false; reason: 'missing' | 'password' };
-
 export type GoogleSignInResult =
   | { ok: true; account: AccountRecord; isNew: boolean }
   | { ok: false; reason: string };
 
 export type PasswordResetResult =
-  | { ok: true; temporaryPassword?: string; mode?: 'firebase' | 'local' }
+  | { ok: true; mode?: 'firebase' }
   | { ok: false; reason: string };
-
-const KEY = 'masar.credentials.v1';
-
-const systemAccounts = [
-  {
-    name: 'د. إسماعيل عيسى',
-    email: 'dr.ismail@masar.com',
-    phone: '01000000000',
-    role: 'doctor' as UserRole,
-  },
-];
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -225,20 +108,6 @@ function getValidBranch(schoolBranch?: string) {
   return schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
     ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
     : undefined;
-}
-
-function touchSocialAccount(
-  account: AccountRecord,
-  createdVia: 'google' | 'apple' | 'microsoft',
-  user?: User,
-) {
-  return saveAccount({
-    ...account,
-    createdVia: account.createdVia ?? createdVia,
-    providerId: createdVia,
-    firebaseUid: account.firebaseUid ?? user?.uid,
-    lastLoginAt: new Date().toISOString(),
-  });
 }
 
 function currentHostLabel() {
@@ -362,146 +231,33 @@ async function mapFirebaseUserToAccount(
     return { ok: false, reason: 'لا يمكن استخدام هذا الحساب للدخول الاجتماعي.' };
   }
 
-  const accounts = getAccounts();
-  const existing = accounts.find(
-    (a) => normalize(a.email) === resolvedEmail || (createdVia === 'apple' && a.id === user.uid),
-  );
-
-  if (existing) {
-    return { ok: true, account: touchSocialAccount(existing, createdVia, user), isNew: false };
-  }
-
-  const validBranch = getValidBranch(schoolBranch);
-  const account = saveAccount({
-    name: user.displayName ?? user.email?.split('@')[0] ?? fallbackName,
-    email: resolvedEmail,
-    role: preferredRole,
-    ...(validBranch ? { schoolBranch: validBranch } : {}),
-    createdVia,
-    providerId: createdVia,
-    firebaseUid: user.uid,
-    lastLoginAt: new Date().toISOString(),
-  });
-
   try {
-    await syncDocToCloud('accounts', account.id, {
-      name: account.name,
-      email: account.email,
-      role: account.role,
-      ...(validBranch ? { schoolBranch: validBranch } : {}),
-      createdVia,
-      firebaseUid: user.uid,
-      createdAt: new Date().toISOString(),
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/auth/social', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        idToken,
+        providerId: createdVia,
+        preferredRole,
+        schoolBranch: getValidBranch(schoolBranch),
+      }),
     });
-  } catch {}
-
-  return { ok: true, account, isNew: true };
-}
-
-function readCredentials(): CredentialRecord[] {
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as CredentialRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeCredentials(records: CredentialRecord[]) {
-  localStorage.setItem(KEY, JSON.stringify(records));
-}
-
-export function getCredentialByEmailOrPhone(emailOrPhone: string): CredentialRecord | null {
-  const clean = normalize(emailOrPhone);
-  const records = readCredentials();
-  return records.find((item) => item.email === clean || item.phone === emailOrPhone.trim()) ?? null;
-}
-
-export function saveCredential(account: AccountRecord, password: string) {
-  if (!password || !password.trim()) return;
-  const records = readCredentials();
-  const cleanEmail = normalize(account.email);
-  const cleanPhone = account.phone ? account.phone.trim() : undefined;
-
-  const existingIndex = records.findIndex(
-    (r) => r.email === cleanEmail || r.accountId === account.id || (cleanPhone && r.phone === cleanPhone)
-  );
-
-  const newRecord: CredentialRecord = {
-    accountId: account.id,
-    email: cleanEmail,
-    phone: cleanPhone,
-    password: password.trim(),
-  };
-
-  if (existingIndex >= 0) {
-    records[existingIndex] = newRecord;
-  } else {
-    records.push(newRecord);
-  }
-
-  writeCredentials(records);
-}
-
-export function authenticate(identifier: string, password: string): AuthResult {
-  const cleanIdentifier = normalize(identifier);
-  const cleanPassword = password.trim();
-
-  // 1. Doctor / System Accounts check
-  const accountMatch = systemAccounts.find(
-    (item) => normalize(item.email) === cleanIdentifier || item.phone === identifier.trim()
-  );
-
-  if (accountMatch) {
-    // Check if there is a saved credential with a custom password for doctor
-    const savedCred = getCredentialByEmailOrPhone(cleanIdentifier);
-    const validPassword = savedCred ? savedCred.password === cleanPassword : cleanPassword === '123456';
-
-    if (validPassword) {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok || !data.account) {
       return {
-        ok: true,
-        account: saveAccount({
-          name: accountMatch.name,
-          email: accountMatch.email,
-          phone: accountMatch.phone,
-          role: accountMatch.role,
-        }),
+        ok: false,
+        reason: data?.error || `تعذر اعتماد حساب ${fallbackName} على السيرفر.`,
       };
     }
-    return { ok: false, reason: 'password' as const };
+
+    const account = saveAccount(data.account);
+    return { ok: true, account, isNew: Boolean(data.isNew) };
+  } catch {
+    return { ok: false, reason: `تعذر الاتصال بالسيرفر لاعتماد حساب ${fallbackName}.` };
   }
-
-  // 2. Regular User Accounts check (Parents / Students / Teachers)
-  const accounts = getAccounts();
-  const account = accounts.find(
-    (item) => normalize(item.email) === cleanIdentifier || (item.phone && item.phone.trim() === identifier.trim())
-  );
-
-  if (!account) {
-    return { ok: false, reason: 'missing' as const };
-  }
-
-  // 3. Check saved credential
-  const credential = getCredentialByEmailOrPhone(identifier);
-  if (credential) {
-    if (credential.password === cleanPassword) {
-      return { ok: true, account };
-    }
-    return { ok: false, reason: 'password' as const };
-  }
-
-  // 4. Fallback for accounts created during wizard or synced from cloud: if password >= 6 chars, save it & log in
-  if (cleanPassword && cleanPassword.length >= 6) {
-    saveCredential(account, cleanPassword);
-    return { ok: true, account };
-  }
-
-  return { ok: false, reason: 'password' as const };
 }
-
-
 
 // ─── Apple Sign-In ────────────────────────────────────────────────────────────
 export async function signInWithApple(
@@ -518,69 +274,7 @@ export async function signInWithApple(
     }
 
     const result = await signInWithPopup(auth, appleProvider);
-
-    const user = result.user;
-    const email = normalize(user.email ?? '');
-
-    if (!email) {
-      // Apple sometimes hides email on subsequent logins if scope wasn't saved, fallback to uid identifier
-      const fallbackEmail = `${user.uid}@apple.masarplatform.org`;
-      const accounts = getAccounts();
-      const existing = accounts.find((a) => a.id === user.uid || normalize(a.email) === fallbackEmail);
-      if (existing) return { ok: true, account: touchSocialAccount(existing, 'apple', user), isNew: false };
-
-      const account = saveAccount({
-        name: user.displayName ?? 'مستخدم أبل',
-        email: fallbackEmail,
-        role: preferredRole,
-        createdVia: 'apple',
-        providerId: 'apple',
-        firebaseUid: user.uid,
-        lastLoginAt: new Date().toISOString(),
-      });
-      return { ok: true, account, isNew: true };
-    }
-
-    if (email === 'dr.ismail@masar.com') {
-      return { ok: false, reason: 'لا يمكن استخدام هذا الحساب للدخول الاجتماعي.' };
-    }
-
-    const accounts = getAccounts();
-    const existing = accounts.find((a) => normalize(a.email) === email);
-
-    if (existing) {
-      return { ok: true, account: touchSocialAccount(existing, 'apple', user), isNew: false };
-    }
-
-    const displayName = user.displayName ?? 'مستخدم أبل';
-    const validBranch =
-      schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
-        ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
-        : undefined;
-
-    const account = saveAccount({
-      name: displayName,
-      email,
-      role: preferredRole,
-      ...(validBranch ? { schoolBranch: validBranch } : {}),
-      createdVia: 'apple',
-      providerId: 'apple',
-      firebaseUid: user.uid,
-      lastLoginAt: new Date().toISOString(),
-    });
-
-    try {
-      await syncDocToCloud('accounts', account.id, {
-        name: account.name,
-        email: account.email,
-        role: account.role,
-        ...(validBranch ? { schoolBranch: validBranch } : {}),
-        createdVia: 'apple',
-        createdAt: new Date().toISOString(),
-      });
-    } catch {}
-
-    return { ok: true, account, isNew: true };
+    return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, 'apple', 'أبل');
   } catch (err) {
     const authErr = err as AuthError;
     if (authErr.code === 'auth/internal-error') {
@@ -624,53 +318,7 @@ export async function signInWithMicrosoft(
   try {
     const { microsoftProvider } = await import('@/lib/firebase');
     const result = await signInWithPopup(auth, microsoftProvider);
-    const user = result.user;
-    const email = normalize(user.email ?? '');
-
-    if (!email) {
-      return { ok: false, reason: 'لم يتم الحصول على البريد الإلكتروني من حساب مايكروسوفت.' };
-    }
-
-    if (email === 'dr.ismail@masar.com') {
-      return { ok: false, reason: 'لا يمكن استخدام هذا الحساب للدخول الاجتماعي.' };
-    }
-
-    const accounts = getAccounts();
-    const existing = accounts.find((a) => normalize(a.email) === email);
-
-    if (existing) {
-      return { ok: true, account: touchSocialAccount(existing, 'microsoft', user), isNew: false };
-    }
-
-    const displayName = user.displayName ?? user.email?.split('@')[0] ?? 'مستخدم مايكروسوفت';
-    const validBranch =
-      schoolBranch === 'IKHLAS_JEDDAH' || schoolBranch === 'MASAR'
-        ? (schoolBranch as 'MASAR' | 'IKHLAS_JEDDAH')
-        : undefined;
-
-    const account = saveAccount({
-      name: displayName,
-      email,
-      role: preferredRole,
-      ...(validBranch ? { schoolBranch: validBranch } : {}),
-      createdVia: 'microsoft',
-      providerId: 'microsoft',
-      firebaseUid: user.uid,
-      lastLoginAt: new Date().toISOString(),
-    });
-
-    try {
-      await syncDocToCloud('accounts', account.id, {
-        name: account.name,
-        email: account.email,
-        role: account.role,
-        ...(validBranch ? { schoolBranch: validBranch } : {}),
-        createdVia: 'microsoft',
-        createdAt: new Date().toISOString(),
-      });
-    } catch {}
-
-    return { ok: true, account, isNew: true };
+    return await mapFirebaseUserToAccount(result.user, preferredRole, schoolBranch, 'microsoft', 'مايكروسوفت');
   } catch (err) {
     const authErr = err as AuthError;
     if (authErr.code === 'auth/popup-closed-by-user' || authErr.code === 'auth/cancelled-popup-request') {
@@ -705,18 +353,6 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
     return { ok: true, mode: 'firebase' };
   } catch (err) {
     const authErr = err as AuthError;
-    const localAccount = getAccounts().find((account) => normalize(account.email) === clean);
-    if (
-      localAccount &&
-      (authErr.code === 'auth/user-not-found' ||
-        authErr.code === 'auth/network-request-failed' ||
-        authErr.code === 'auth/operation-not-allowed' ||
-        authErr.code === 'auth/internal-error')
-    ) {
-      const temporaryPassword = `Masar-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      saveCredential(localAccount, temporaryPassword);
-      return { ok: true, mode: 'local', temporaryPassword };
-    }
     if (authErr.code === 'auth/user-not-found') {
       return { ok: true, mode: 'firebase' };
     }

@@ -27,7 +27,6 @@ import BrandMark from '@/components/BrandMark';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
 import { clearSession, getReports, getSession, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
-import { saveCredential } from '@/lib/auth';
 
 export default function KidsDashboard() {
   return (
@@ -116,7 +115,7 @@ function KidsDashboardContent() {
     [reports],
   );
 
-  const updatePassword = () => {
+  const updatePassword = async () => {
     if (!session) {
       setPasswordMessage('سجل الدخول أولا لتغيير كلمة المرور.');
       return;
@@ -127,18 +126,23 @@ function KidsDashboardContent() {
       return;
     }
 
-    saveCredential(
-      {
-        id: session.id,
-        name: session.name,
-        email: session.email,
-        role: session.role,
-        createdAt: new Date().toISOString(),
-      },
-      newPassword,
-    );
-    setNewPassword('');
-    setPasswordMessage('تم تحديث كلمة المرور لهذا الحساب المحلي.');
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setPasswordMessage(data?.error || 'تعذر تحديث كلمة المرور على السيرفر.');
+        return;
+      }
+      setNewPassword('');
+      setPasswordMessage('تم تحديث كلمة المرور على السيرفر بنجاح.');
+    } catch {
+      setPasswordMessage('تعذر الاتصال بالسيرفر لتحديث كلمة المرور.');
+    }
   };
 
   const logout = () => {

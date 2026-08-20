@@ -242,13 +242,6 @@ export default function Home() {
               دخول
             </Link>
 
-            <Link 
-              href="/auth/register" 
-              className="focus-ring rounded-xl bg-teal-600 px-3.5 sm:px-5 py-2 text-xs font-black text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition active:scale-95 flex items-center gap-1 shrink-0"
-            >
-              <span>التقييم</span>
-              <ArrowLeft size={14} />
-            </Link>
           </div>
         </div>
       </header>
@@ -297,10 +290,10 @@ export default function Home() {
                 {/* Hero Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link 
-                    href="/auth/register" 
+                    href="/auth/login" 
                     className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-7 py-3.5 text-sm sm:text-base font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition active:scale-95"
                   >
-                    <span>ابدأ تقييم تحديد المستوى الآن</span>
+                    <span>تسجيل الدخول الآن</span>
                     <MoveLeft size={18} className="transition-transform duration-300 group-hover:-translate-x-1.5" />
                   </Link>
 

@@ -177,7 +177,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         <div style="border:1.5px solid #06392c;padding:8px 16px;border-radius:14px;background:white;text-align:center;min-width:180px;">
           <div style="font-size:9px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">يعتمد:</div>
           <div style="font-size:13px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;margin-top:2px;">د. إسماعيل عيسى</div>
-          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
+          <div style="font-size:8px;color:#047857;font-family:'Cairo',sans-serif;">التأهيل والتعليم الحديث</div>
           <div style="height:44px;margin:4px auto 2px auto;background:white;">
             <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:100%;width:auto;object-fit:contain;margin:0 auto;mix-blend-mode:multiply;display:block;" />
           </div>
@@ -382,7 +382,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       "${metrics.teacherNotes}"
     </p>
     <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;font-size:10px;color:#94a3b8;font-weight:700;">
-      — د. إسماعيل عيسى · تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم · ${issuedDate}
+      — د. إسماعيل عيسى · التأهيل والتعليم الحديث · ${issuedDate}
     </div>
   </div>
 

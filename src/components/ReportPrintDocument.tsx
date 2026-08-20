@@ -36,6 +36,22 @@ export default function ReportPrintDocument({
     recommendationsList.slice(3, 6).length > 0
       ? recommendationsList.slice(3, 6)
       : recommendationsList.slice(0, 3);
+  const getGoalForDomain = (domainName: string) => {
+    if (domainName.includes('رياض')) return 'بناء مفهوم العدد والعمليات باستخدام المحسوسات ثم الرسم ثم الرمز مع حل مسألتين قصيرتين.';
+    if (domainName.includes('قراءة') || domainName.includes('عرب') || domainName.includes('الصوت')) return 'تمييز الصوت المستهدف داخل الكلمة وقراءة كلمات قصيرة ثم جملة من ثلاث كلمات بدقة متدرجة.';
+    if (domainName.includes('كتابة') || domainName.includes('حركي')) return 'نسخ حروف وكلمات قصيرة داخل السطر مع ضبط اتجاه الكتابة وتخفيف المساعدة الحركية.';
+    if (domainName.includes('نطق') || domainName.includes('لغة') || domainName.includes('سمع')) return 'إنتاج الصوت المستهدف في مقاطع وكلمات ثم جمل قصيرة مع تسجيل عينة صوتية للمراجعة.';
+    if (domainName.includes('انتباه') || domainName.includes('سلوك') || domainName.includes('حسي')) return 'إكمال مهمة تدريبية من 5 دقائق مع اتباع تعليمات من خطوتين وفاصل حسي منظم عند الحاجة.';
+    if (domainName.includes('بصري') || domainName.includes('رسم')) return 'تنفيذ تتبع بصري وتوصيل نقاط ونسخ نموذج بسيط دون خروج متكرر عن المسار.';
+    if (domainName.includes('ذهنية') || domainName.includes('قدرات')) return 'حل نمط بصري أو تصنيف من خطوتين مع تفسير الاختيار بلغة بسيطة.';
+    return 'رفع أداء المجال المستهدف من خلال تدريب قصير ومقاس داخل الجلسة.';
+  };
+  const getMasteryForDomain = (domainName: string) => {
+    if (domainName.includes('نطق') || domainName.includes('لغة') || domainName.includes('سمع')) return 'وضوح الصوت في 8 من 10 محاولات خلال جلستين.';
+    if (domainName.includes('كتابة') || domainName.includes('حركي') || domainName.includes('رسم')) return 'إنجاز 4 من 5 نماذج بجودة مقبولة ودون مساعدة مباشرة.';
+    if (domainName.includes('انتباه') || domainName.includes('سلوك') || domainName.includes('حسي')) return 'التزام بالمهمة 80% من الزمن في جلستين متتاليتين.';
+    return 'دقة 80% في قياسين متتاليين خلال 30 يوماً.';
+  };
 
   const getScoreBadge = (score: number) => {
     if (score >= 85) return { text: 'درجة ممتاز (أداء متقدم)', color: '#047857', bg: '#ecfdf5' };
@@ -121,7 +137,7 @@ export default function ReportPrintDocument({
           <div className="clinical-decision-box">
             <h3 className="section-title-sm">القرار الإكلينيكي والتأهيلي الموثق:</h3>
             <p className="decision-text">
-              بناءً على نتائج الملاحظة المباشرة وتحليل المهارات، يوصى ببدء تطبيق <strong>{report.program || 'برنامج التأهيل الشامل وصعوبات التعلم'}</strong> بمعدل جلسات منتظمة مع متابعة المؤشرات شهرياً.
+              بناءً على نتائج الملاحظة المباشرة وتحليل المهارات، يوصى ببدء تطبيق <strong>{report.program || 'برنامج التأهيل الشامل وصعوبات التعلم'}</strong> بمعدل جلسات منتظمة مع متابعة المؤشرات بشكل دوري.
             </p>
           </div>
         </div>
@@ -194,8 +210,8 @@ export default function ReportPrintDocument({
                 {(domainsList.slice(0, 4)).map((domain, index) => (
                   <tr key={index} className={index % 2 === 0 ? 'row-even' : 'row-odd'}>
                     <td className="font-black text-purple-900">{domain.name}</td>
-                    <td>تحسين المهارات التأسيسية وتطبيق الاستراتيجيات الموصى بها دقة 80%</td>
-                    <td className="font-mono text-xs">دقة 80% · خلال 30 يوماً</td>
+                    <td>{getGoalForDomain(domain.name)}</td>
+                    <td className="text-xs font-bold">{getMasteryForDomain(domain.name)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -250,12 +266,12 @@ export default function ReportPrintDocument({
         </header>
 
         <div className="page-body">
-          <h2 className="section-heading">4. توجيهات وتوصيات بيئة المنزل والمدرسة</h2>
+          <h2 className="section-heading">4. التوصيات</h2>
 
           <div className="recs-dual-grid">
             {/* Home Recommendations */}
             <div className="rec-card home-card">
-              <h3 className="rec-card-title">🏡 توصيات البيئة المنزلية والأسرة</h3>
+              <h3 className="rec-card-title">توجيهات الأسرة</h3>
               <ul className="rec-list">
                 {homeRecommendations.map((rec, i) => (
                   <li key={i}>
@@ -268,7 +284,7 @@ export default function ReportPrintDocument({
 
             {/* School Recommendations */}
             <div className="rec-card school-card">
-              <h3 className="rec-card-title">🏫 توصيات المدرسة والبيئة الصفية</h3>
+              <h3 className="rec-card-title">توجيهات الجلسات</h3>
               <ul className="rec-list">
                 {schoolRecommendations.map((rec, i) => (
                   <li key={i}>
@@ -341,7 +357,7 @@ export default function ReportPrintDocument({
             {/* Verification Statement */}
             <div className="verification-statement mt-4">
               <p className="statement-text">
-                نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى في تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم، وهي موثقة بالختم الرقمي والتوقيع أدناه.
+                نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
               </p>
             </div>
           </div>
@@ -388,7 +404,7 @@ export default function ReportPrintDocument({
 
             {/* Doctor Signature Block */}
             <div className="doctor-sig-box">
-              <div className="doc-title-lbl">التوقيع والإعتماد الإكلينيكي ✍️</div>
+              <div className="doc-title-lbl">التوقيع والاعتماد</div>
               <div className="sig-image-holder">
                 <img
                   src={`${origin}/dr-ismail-signature.png`}
@@ -398,7 +414,6 @@ export default function ReportPrintDocument({
               </div>
               <div className="sig-divider" />
               <div className="doc-name font-black">د. إسماعيل عيسى</div>
-              <div className="doc-title">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
               <div className="doc-date font-mono">{report.date || hijriDate}</div>
             </div>
           </div>

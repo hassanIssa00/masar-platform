@@ -18,7 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { authenticate, signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
+import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
 import { getReports, getStudents, setSession } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 import dynamic from 'next/dynamic';
@@ -66,7 +66,6 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState('');
-  const [forgotTempPassword, setForgotTempPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
@@ -83,7 +82,7 @@ export default function LoginPage() {
     // Check if coming back from Google redirect
     handleGoogleRedirectResult('parent').then((result) => {
       if (result && result.ok) {
-        setSession(result.account, false);
+        setSession(result.account, false, false);
         redirectAfterLogin(result.account);
       } else if (result?.reason) {
         setLoginError(result.reason);
@@ -195,46 +194,19 @@ export default function LoginPage() {
         }
         localStorage.removeItem('masar_remember_pass');
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
-        setSession(data.account, rememberMe);
+        setSession(data.account, rememberMe, false);
         setTimeout(() => {
           redirectAfterLogin(data.account);
         }, 600);
         return;
       }
 
-      // Only stop on validation/server messages that should not fall through.
-      // A 401 can simply mean this is a generated/local platform account, so
-      // we continue to the local credential fallback below.
-      if (data.error && res.status !== 401) {
-        setLoginError(data.error);
-        return;
-      }
-    } catch (_) {}
-
-    // Fallback local auth check
-    const result = authenticate(email, password);
-
-    if (result.ok) {
-      if (rememberMe) {
-        localStorage.setItem('masar_remember_email', email);
-      } else {
-        localStorage.removeItem('masar_remember_email');
-      }
-      localStorage.removeItem('masar_remember_pass');
-      setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
-      setSession(result.account, rememberMe);
-      setTimeout(() => {
-        redirectAfterLogin(result.account);
-      }, 600);
+      setLoginError(data.error || 'بيانات الدخول غير صحيحة.');
+      return;
+    } catch (_) {
+      setLoginError('تعذر الاتصال بسيرفر تسجيل الدخول. حاول مرة أخرى.');
       return;
     }
-
-    setLoginError(
-      result.reason === 'missing'
-        ? 'الحساب غير موجود. يُرجى التحقق من البريد الإلكتروني أو التواصل مع الإدارة.'
-        : 'بيانات الدخول غير صحيحة. جرّب نسيت كلمة المرور أو راجع بيانات الحساب المولدة.',
-    );
-    trackEvent('login_failed', { userName: email });
   };
 
   // ─── Google Sign-In ──────────────────────────────────────────────────────────
@@ -247,7 +219,7 @@ export default function LoginPage() {
     setGoogleLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
       redirectAfterLogin(result.account);
     } else if (result.reason) {
@@ -265,7 +237,7 @@ export default function LoginPage() {
     setAppleLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       trackEvent('login_apple', { userId: result.account.id, isNew: result.isNew });
       redirectAfterLogin(result.account);
     } else if (result.reason) {
@@ -283,7 +255,7 @@ export default function LoginPage() {
     setMsLoading(false);
 
     if (result.ok) {
-      setSession(result.account);
+      setSession(result.account, false, false);
       trackEvent('login_microsoft', { userId: result.account.id, isNew: result.isNew });
       redirectAfterLogin(result.account);
     } else if (result.reason) {
@@ -301,7 +273,6 @@ export default function LoginPage() {
     setForgotLoading(false);
 
     if (result.ok) {
-      setForgotTempPassword(result.temporaryPassword || '');
       setForgotSent(true);
     } else {
       setForgotError(result.reason);
@@ -313,7 +284,6 @@ export default function LoginPage() {
     setForgotEmail('');
     setForgotError('');
     setForgotSent(false);
-    setForgotTempPassword('');
     setForgotLoading(false);
   };
 
@@ -561,38 +531,27 @@ export default function LoginPage() {
                 </div>
                 <div>
                   <p className="text-lg font-black text-slate-900">
-                    {forgotTempPassword ? 'تم إنشاء كلمة مرور مؤقتة' : 'تم إرسال الرابط'}
+                    تم إرسال الرابط
                   </p>
                   <p className="mt-2 text-sm font-bold text-slate-500 leading-relaxed">
-                    {forgotTempPassword ? (
-                      <>
-                        هذا الحساب مولد داخل منصة مسار. استخدم كلمة المرور المؤقتة التالية ثم غيّرها بعد الدخول:
-                        <span className="mt-3 block rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 font-mono text-base font-black text-teal-800" dir="ltr">
-                          {forgotTempPassword}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        تحقق من بريدك الإلكتروني{' '}
-                        <span className="font-black text-teal-700">{forgotEmail}</span>
-                        {' '}وستجد رسالة فيها رابط لإعادة تعيين كلمة المرور.
-                        <br />
-                        <span className="text-xs text-slate-400 mt-1 block">
-                          الرابط صالح لمدة ساعة واحدة فقط.
-                        </span>
-                      </>
-                    )}
+                    تحقق من بريدك الإلكتروني{' '}
+                    <span className="font-black text-teal-700">{forgotEmail}</span>
+                    {' '}وستجد رسالة فيها رابط لإعادة تعيين كلمة المرور.
+                    <br />
+                    <span className="text-xs text-slate-400 mt-1 block">
+                      الرابط صالح لمدة ساعة واحدة فقط.
+                    </span>
                   </p>
                 </div>
                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs font-bold text-amber-800 text-right">
-                  {forgotTempPassword ? 'هذه الكلمة تظهر هنا مرة واحدة فقط.' : 'لم تجد الرسالة؟ تحقق من مجلد Spam أو Junk'}
+                  لم تجد الرسالة؟ تحقق من مجلد Spam أو Junk
                 </div>
                 <button
                   type="button"
                   onClick={closeForgot}
                   className="w-full mt-2 rounded-xl bg-teal-600 px-4 py-3 font-black text-white hover:bg-teal-700 transition"
                 >
-                  {forgotTempPassword ? 'حسناً، سأدخل بالكلمة المؤقتة' : 'حسناً، سأتحقق من بريدي'}
+                  حسناً، سأتحقق من بريدي
                 </button>
               </div>
             ) : (

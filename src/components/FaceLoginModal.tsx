@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound } from 'lucide-react';
 import FaceCamera from './FaceCamera';
-import { findBestMatch, isFaceEnrolled } from '@/lib/faceAuth';
-import { getAccounts, setSession } from '@/lib/localDb';
+import { isFaceEnrolled } from '@/lib/faceAuth';
+import { AccountRecord, getAccounts, setSession } from '@/lib/localDb';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analyticsTracker';
 
@@ -24,14 +24,25 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
 
-  const handleDescriptor = (descriptor: Float32Array) => {
-    const { userId } = findBestMatch(descriptor);
+  const handleDescriptor = async (descriptor: Float32Array) => {
+    let resolvedAccount: AccountRecord | null = null;
 
-    if (!userId) {
+    try {
+      const res = await fetch('/api/auth/face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ descriptor: Array.from(descriptor) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok || !data.account) {
+        throw new Error(data?.error || 'لم يتم التعرف على الوجه');
+      }
+      resolvedAccount = data.account as AccountRecord;
+    } catch {
       const count = failCount + 1;
       setFailCount(count);
       if (count >= 3) {
-        // Auto-fallback after 3 failures
         onFallback();
       } else {
         setPhase('fail');
@@ -39,14 +50,15 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       return;
     }
 
-    // Find the account and log in
-    const accounts = getAccounts();
-    const account = accounts.find(a => a.id === userId);
-    if (!account) { setPhase('fail'); return; }
+    const account = resolvedAccount;
+    if (!account) {
+      setPhase('fail');
+      return;
+    }
 
     setMatchedName(account.name);
     setPhase('success');
-    setSession(account);
+    setSession(account, false, false);
     trackEvent('login', { userId: account.id, userName: account.name });
 
     // Redirect based on role

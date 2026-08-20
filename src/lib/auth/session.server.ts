@@ -2,6 +2,7 @@ import 'server-only';
 import bcrypt from 'bcryptjs';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const SESSION_COOKIE_NAME = 'masar_session';
 
@@ -89,24 +90,6 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
       } catch {}
     }
 
-    // Fallback payload parsing for valid client session cookies
-    try {
-      const payloadJson = decodeURIComponent(escape(Buffer.from(payloadB64, 'base64url').toString('binary')));
-      const payload = JSON.parse(payloadJson) as SessionPayload;
-      if (payload && payload.id && payload.role) {
-        return payload;
-      }
-    } catch {
-      // If decoding fails, try direct UTF-8
-      try {
-        const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-        const payload = JSON.parse(payloadJson) as SessionPayload;
-        if (payload && payload.id && payload.role) {
-          return payload;
-        }
-      } catch {}
-    }
-
     return null;
   } catch {
     return null;
@@ -159,7 +142,11 @@ export async function verifyProductionCredential(identifier: string, password: s
   const envHash = account.envHashVar ? process.env[account.envHashVar] : undefined;
   const hashToVerify = envHash || account.defaultBcryptHash;
 
-  const isValid = password.trim() === '123456' || (await verifyBcryptPassword(password, hashToVerify));
+  const allowDevMasterPassword =
+    process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEV_MASTER_PASSWORD === 'true';
+  const isValid =
+    (allowDevMasterPassword && password.trim() === '123456') ||
+    (await verifyBcryptPassword(password, hashToVerify));
   if (!isValid) return null;
 
   return {
@@ -172,6 +159,53 @@ export async function verifyProductionCredential(identifier: string, password: s
 
 async function verifyGeneratedCredential(identifier: string, password: string) {
   try {
+    const adminDb = getAdminDb();
+
+    if (adminDb) {
+      const credentialsSnap = await adminDb.collection('account_credentials').get();
+      const credentialDoc = credentialsSnap.docs
+        .map((entry) => entry.data() as {
+          accountId?: string;
+          email?: string;
+          phone?: string;
+          passwordHash?: string;
+        })
+        .find((entry) => {
+          const email = entry.email?.trim().toLowerCase();
+          const phone = entry.phone?.trim().toLowerCase();
+          return email === identifier || phone === identifier;
+        });
+
+      if (!credentialDoc?.accountId || !credentialDoc.passwordHash) return null;
+      const valid = await verifyBcryptPassword(password, credentialDoc.passwordHash);
+      if (!valid) return null;
+
+      const accountDoc = await adminDb.collection('accounts').doc(credentialDoc.accountId).get();
+      if (!accountDoc.exists) return null;
+
+      const data = accountDoc.data() as {
+        accountId?: string;
+        email?: string;
+        phone?: string;
+        name?: string;
+        role?: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
+        schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
+        providerId?: string;
+      };
+
+      if (!data.email || !data.role) return null;
+
+      return {
+        id: accountDoc.id,
+        name: data.name || 'مستخدم جديد',
+        email: data.email.trim().toLowerCase(),
+        role: data.role,
+        schoolBranch: data.schoolBranch,
+        phone: data.phone,
+        providerId: data.providerId,
+      };
+    }
+
     const [accountsSnap, credentialsSnap] = await Promise.all([
       getDocs(collection(db, 'accounts')),
       getDocs(collection(db, 'account_credentials')),

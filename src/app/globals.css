@@ -54,7 +54,6 @@ html.dark .text-slate-600 { color: #64748b !important; }
 html.dark .text-slate-500 { color: #475569 !important; }
 
 html.dark nav,
-html.dark aside,
 html.dark header { background-color: #161b22 !important; border-color: #30363d !important; }
 
 html.dark input,

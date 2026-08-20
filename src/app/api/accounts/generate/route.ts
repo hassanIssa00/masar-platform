@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { requireRole } from '@/lib/auth/authorization';
+import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 type Branch = 'MASAR' | 'IKHLAS_JEDDAH';
 
@@ -69,23 +68,38 @@ export async function POST(req: NextRequest) {
     bcrypt.hash(parentPassword, 10),
   ]);
 
-  await Promise.all([
-    setDoc(doc(db, 'accounts', studentAccount.id), studentAccount),
-    setDoc(doc(db, 'accounts', parentAccount.id), parentAccount),
-    setDoc(doc(db, 'account_credentials', studentAccount.id), {
+  const studentCredential = {
       accountId: studentAccount.id,
       email: studentEmail,
       passwordHash: studentPasswordHash,
       createdAt: now,
       createdBy: auth.user?.id,
-    }),
-    setDoc(doc(db, 'account_credentials', parentAccount.id), {
+  };
+  const parentCredential = {
       accountId: parentAccount.id,
       email: parentEmail,
       passwordHash: parentPasswordHash,
       createdAt: now,
       createdBy: auth.user?.id,
-    }),
+  };
+
+  const adminDb = getAdminDb();
+  if (!adminDb) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          'Firebase Admin غير مفعل على السيرفر. أضف FIREBASE_SERVICE_ACCOUNT_KEY أو FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY/FIREBASE_PROJECT_ID في Vercel ثم أعد النشر.',
+      },
+      { status: 500 },
+    );
+  }
+
+  await Promise.all([
+    adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
+    adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
+    adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+    adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
   ]);
 
   return NextResponse.json({

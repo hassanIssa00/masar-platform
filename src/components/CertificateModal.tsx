@@ -666,7 +666,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                   {data.doctorName || (isAr ? 'د. إسماعيل عيسى' : 'Dr. Ismail Issa')}
                 </h3>
                 <p style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', margin: 0 }}>
-                  {isAr ? 'تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم' : 'Special Education & Learning Disabilities Consultant'}
+                  {isAr ? 'التأهيل والتعليم الحديث' : 'Modern Learning Development'}
                 </p>
                 {/* Signature image inline above underline */}
                 <div style={{ marginTop: 6, width: 180 }}>

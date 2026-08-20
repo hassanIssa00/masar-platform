@@ -73,7 +73,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     certTitle: 'شهادة تفوق وتميز صفي 🏆',
     subTitle: 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف',
     doctorName: 'د. إسماعيل عيسى',
-    doctorTitle: 'تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم',
+    doctorTitle: 'التأهيل والتعليم الحديث',
     studentPrefix: 'بأن الطالب المتفوق',
     studentName: 'ربيع إسماعيل محمد كامل عيسى',
     gradeLabel: 'الصف الثالث الابتدائي',

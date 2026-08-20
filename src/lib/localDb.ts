@@ -185,7 +185,7 @@ export function getAccounts() {
   return readList<AccountRecord>(KEYS.accounts);
 }
 
-export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
+export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & Partial<Pick<AccountRecord, 'id' | 'createdAt'>>) {
   const accounts = getAccounts();
   const cleanEmail = account.email.trim().toLowerCase();
   const existing = accounts.find((item) => item.email.toLowerCase() === cleanEmail);
@@ -193,8 +193,8 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
     ...existing,
     ...account,
     email: cleanEmail,
-    id: existing?.id ?? createId('account'),
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    id: existing?.id ?? account.id ?? createId('account'),
+    createdAt: existing?.createdAt ?? account.createdAt ?? new Date().toISOString(),
   };
 
   writeList(KEYS.accounts, [next, ...accounts.filter((item) => item.id !== next.id)]);
@@ -210,8 +210,10 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'>) {
 
 export function setSession(
   account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>,
-  rememberMe: boolean = false
+  rememberMe: boolean = false,
+  _writeClientCookie: boolean = false
 ) {
+  void _writeClientCookie;
   const targetStorage = rememberMe ? localStorage : sessionStorage;
 
   // Clear session from both storages to avoid conflicting states
@@ -235,23 +237,7 @@ export function setSession(
     targetStorage.setItem('masar_school_branch', account.schoolBranch);
   }
 
-  if (typeof document !== 'undefined') {
-    try {
-      const now = Math.floor(Date.now() / 1000);
-      const exp = rememberMe ? now + 7 * 86400 : now + 86400;
-      const payload = { ...account, iat: now, exp, v: 1 };
-      const headerB64 = btoa(unescape(encodeURIComponent(JSON.stringify({ alg: 'HS256', typ: 'JWT' })))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
-      const payloadB64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c] ?? c));
-      const token = `${headerB64}.${payloadB64}.client_session`;
-
-      if (rememberMe) {
-        document.cookie = `masar_session=${token}; path=/; max-age=604800; SameSite=Lax`;
-      } else {
-        // Session Cookie — automatically deleted when the browser is closed!
-        document.cookie = `masar_session=${token}; path=/; SameSite=Lax`;
-      }
-    } catch {}
-  }
+  // Authentication cookies are created only by server routes as HttpOnly signed tokens.
 }
 
 export function getSession() {

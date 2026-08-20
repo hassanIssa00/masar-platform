@@ -8,8 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
-import { pullCloudDataToLocal } from '@/lib/firestoreSync';
-import { getCredentialByEmailOrPhone } from '@/lib/auth';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
@@ -54,12 +53,12 @@ export default function StudentsControlPage() {
   useEffect(() => {
     const session = getSession();
     if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-    // Initial load from local cache
     refresh();
-    // Then pull latest from Firestore cloud and refresh again
     pullCloudDataToLocal()
       .then(() => refresh())
       .catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(refresh);
+    return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -716,9 +715,6 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
     );
   }
 
-  // Get password from credentials store
-  const credential = getCredentialByEmailOrPhone(linkedAccount.email);
-  const password = credential?.password ?? 'محفوظة بشكل مشفر';
   const providerLabel =
     linkedAccount.createdVia === 'google'
       ? 'Google'
@@ -752,7 +748,7 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
         </div>
         <div className="rounded-xl bg-white border border-teal-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
-          <p className="mt-0.5 text-xs font-black text-teal-800 font-mono tracking-wide">{password}</p>
+          <p className="mt-0.5 text-xs font-black text-teal-800">محفوظة بشكل مشفر على السيرفر</p>
         </div>
         <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
           <p className="text-[10px] font-black text-slate-400">رقم الهاتف</p>

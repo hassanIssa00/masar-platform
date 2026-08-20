@@ -12,6 +12,7 @@ import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
 import { deleteReport, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
 const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التقرير التحليلي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 
@@ -37,21 +38,29 @@ function ReportsContent() {
   const router = useRouter();
 
   useEffect(() => {
+    const load = () => {
+      const session = getSession();
+      if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
+        router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
+        return;
+      }
+      const rawReports = getReports();
+      const nextReports = Array.isArray(rawReports) ? rawReports.filter(Boolean) : [];
+      setReports(nextReports);
+      const rawStudents = getStudents();
+      setStudents(Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : []);
+      const reportId = searchParams.get('report');
+      if (reportId && nextReports.some((report) => report && report.id === reportId)) {
+        setSelectedId(reportId);
+      }
+    };
+
     const session = getSession();
-    if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
-      router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
-      return;
-    }
     if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
-    const rawReports = getReports();
-    const nextReports = Array.isArray(rawReports) ? rawReports.filter(Boolean) : [];
-    setReports(nextReports);
-    const rawStudents = getStudents();
-    setStudents(Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : []);
-    const reportId = searchParams.get('report');
-    if (reportId && nextReports.some((report) => report && report.id === reportId)) {
-      setSelectedId(reportId);
-    }
+    load();
+    pullCloudDataToLocal().then(load).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(load);
+    return () => unsubscribe();
   }, [searchParams, router]);
 
   const filtered = useMemo(
@@ -160,7 +169,7 @@ function ReportsContent() {
                     <div className="flex-1 text-center px-4">
                       <h1 className="text-3xl font-black text-indigo-950 tracking-tight">مَسَار · MASAR</h1>
                       <p className="mt-1 text-sm font-black text-blue-700">منصة التأهيل والتعليم الذكي لصعوبات التعلم</p>
-                      <p className="mt-0.5 text-xs font-bold text-slate-500">مؤسس المنصة: د. إسماعيل عيسى — تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</p>
+                      <p className="mt-0.5 text-xs font-bold text-slate-500">تحت إشراف د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>
                     </div>
 
                     {/* Masar Logo Only */}
@@ -327,7 +336,7 @@ function ReportsContent() {
                             <tr key={domain.name} className="border-b border-purple-100 last:border-0">
                               <td className="p-3 font-black text-purple-800">{domain.name}</td>
                               <td className="p-3 font-bold text-slate-800">{getGoalForDomain(domain.name)}</td>
-                              <td className="p-3 font-bold text-slate-700">دقة 80% في قياسين متتاليين</td>
+                              <td className="p-3 font-bold text-slate-700">{getMasteryForDomain(domain.name)}</td>
                               <td className="p-3 font-bold text-slate-600">{getPlanMonth(index)}</td>
                             </tr>
                           ))}
@@ -363,10 +372,10 @@ function ReportsContent() {
                 </ReportSection>
 
                 {recommendationsList.length > 0 && (
-                  <ReportSection number="5" title="توصيات المنزل والمدرسة">
+                  <ReportSection number="5" title="التوصيات">
                     <div className="grid gap-4 lg:grid-cols-2">
-                      <RecommendationBox title="توصيات المنزل" items={homeRecommendations} tone="home" />
-                      <RecommendationBox title="توصيات المدرسة" items={schoolRecommendations} tone="school" />
+                      <RecommendationBox title="توجيهات الأسرة" items={homeRecommendations} tone="home" />
+                      <RecommendationBox title="توجيهات الجلسات" items={schoolRecommendations} tone="school" />
                     </div>
                   </ReportSection>
                 )}
@@ -389,7 +398,6 @@ function ReportsContent() {
                   <div className="text-right flex flex-col gap-1">
                     <p className="text-xs font-bold text-slate-500">يعتمد:</p>
                     <h3 className="text-xl font-black text-slate-950 margin-0">د. إسماعيل عيسى</h3>
-                    <p className="text-xs font-bold text-slate-600">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</p>
                     <div className="w-56 mt-3">
                       <img
                         src="/dr-ismail-signature.png"
@@ -715,6 +723,15 @@ function getGoalForDomain(domain: string) {
   if (domain.includes('بصري') || domain.includes('حركي')) return 'تحسين التتبع البصري والتحكم بالقلم داخل مسارات قصيرة.';
   if (domain.includes('ذهنية') || domain.includes('قدرات')) return 'تنفيذ تعليمات من خطوتين وحل نمط بصري أو عددي بسيط.';
   return 'رفع دقة المجال إلى مستوى الإتقان من خلال تدريب قصير ومقاس.';
+}
+
+function getMasteryForDomain(domain: string) {
+  if (domain.includes('نطق') || domain.includes('لغة') || domain.includes('سمع')) return 'وضوح الصوت في 8 من 10 محاولات خلال جلستين.';
+  if (domain.includes('كتابة') || domain.includes('الحركي') || domain.includes('رسم')) return 'إنجاز 4 من 5 نماذج بجودة مقبولة ودون مساعدة مباشرة.';
+  if (domain.includes('انتباه') || domain.includes('سلوك') || domain.includes('حسي')) return 'التزام بالمهمة 80% من الزمن في جلستين متتاليتين.';
+  if (domain.includes('رياض')) return 'حل 4 من 5 مسائل مشابهة دون تلميح مباشر.';
+  if (domain.includes('قراءة') || domain.includes('الصوتي') || domain.includes('العربية')) return 'قراءة 8 من 10 كلمات مستهدفة بدقة في قياسين.';
+  return 'دقة 80% في قياسين متتاليين خلال 30 يوماً.';
 }
 
 function getPlanMonth(index: number) {

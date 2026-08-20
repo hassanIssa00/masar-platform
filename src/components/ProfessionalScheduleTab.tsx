@@ -258,7 +258,7 @@ export default function ProfessionalScheduleTab({
 
     <div class="stamp-box">
       <div style="font-size:13px;font-weight:900;color:#06392c;">د. إسماعيل عيسى</div>
-      <div style="font-size:9.5px;color:#047857;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
+      <div style="font-size:9.5px;color:#047857;">التأهيل والتعليم الحديث</div>
       <div style="margin-top:4px;">
         <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:38px;object-fit:contain;mix-blend-mode:multiply;margin:0 auto;display:block;"/>
       </div>

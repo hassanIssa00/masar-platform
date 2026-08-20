@@ -352,10 +352,10 @@ function PlacementAssessmentContent() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار الطالب بعد استبيان ولي الأمر' : 'اختبارات القبول وتحديد المستوى'}</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'أجب على الأسئلة بهدوء' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
+              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار مهارات الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
                 {isStudentFlow
-                  ? 'بعد انتهاء الاختبار سيتم إرسال إجاباتك لد. إسماعيل، ثم تفتح لك صفحة الطالب والألعاب بدون عرض درجات أو تشخيص.'
+                  ? 'ركّز في السؤال الحالي، واختر الإجابة المناسبة لك بدون عرض درجات أو تشخيص داخل تجربة الطالب.'
                   : 'اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.'}
               </p>
             </div>

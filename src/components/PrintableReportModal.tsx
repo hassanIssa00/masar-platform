@@ -49,10 +49,10 @@ export default function PrintableReportModal({
           ? 'تحليل اختبار الطالب المباشر'
           : 'التقرير التحليلي الشامل';
     const reportSubtitle = isSurveyAnswersReport
-      ? 'سجل إجابات خام فقط، بدون تحليل أو تشخيص داخل هذا الملف'
+      ? 'سجل إجابات ولي الأمر كما تم حفظها داخل ملف الطالب'
       : isStudentAnswersReport
         ? 'إجابات الطالب سؤالاً بسؤال مع قراءة المجالات المرتبطة بالاختبار'
-        : 'تحليل المجالات والأولويات والخطة المقترحة دون عرض الإجابات الخام';
+        : 'تحليل المجالات والأولويات والخطة المقترحة دون عرض الإجابات التفصيلية';
     const printableAnswers = isAnswersReport ? answersList : [];
     const student = getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName);
     const studentPhoto = student?.photoUrl?.trim();
@@ -106,7 +106,7 @@ export default function PrintableReportModal({
           <div class="brand-center">
             <div class="brand-title">MASAR · مَسَار</div>
             <div class="brand-subtitle">منصة التأهيل والتعليم الذكي لصعوبات التعلم</div>
-            <div class="brand-owner">مؤسس المنصة: د. إسماعيل عيسى — تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
+            <div class="brand-owner">تحت إشراف د. إسماعيل عيسى للتأهيل والتعليم الحديث</div>
             <div class="brand-label">${label}</div>
           </div>
           <div class="serial-card">
@@ -133,6 +133,22 @@ export default function PrintableReportModal({
       recommendationsList.slice(3, 6).length > 0
         ? recommendationsList.slice(3, 6)
         : recommendationsList.slice(0, 3);
+    const getPrintableGoal = (domainName: string) => {
+      if (domainName.includes('رياض')) return 'بناء مفهوم العدد والعمليات باستخدام المحسوسات ثم الرسم ثم الرمز مع حل مسألتين قصيرتين.';
+      if (domainName.includes('قراءة') || domainName.includes('عرب') || domainName.includes('الصوت')) return 'تمييز الصوت المستهدف داخل الكلمة وقراءة كلمات قصيرة ثم جملة من ثلاث كلمات بدقة متدرجة.';
+      if (domainName.includes('كتابة') || domainName.includes('حركي')) return 'نسخ حروف وكلمات قصيرة داخل السطر مع ضبط اتجاه الكتابة وتخفيف المساعدة الحركية.';
+      if (domainName.includes('نطق') || domainName.includes('لغة') || domainName.includes('سمع')) return 'إنتاج الصوت المستهدف في مقاطع وكلمات ثم جمل قصيرة مع تسجيل عينة صوتية للمراجعة.';
+      if (domainName.includes('انتباه') || domainName.includes('سلوك') || domainName.includes('حسي')) return 'إكمال مهمة تدريبية من 5 دقائق مع اتباع تعليمات من خطوتين وفاصل حسي منظم عند الحاجة.';
+      if (domainName.includes('بصري') || domainName.includes('رسم')) return 'تنفيذ تتبع بصري وتوصيل نقاط ونسخ نموذج بسيط دون خروج متكرر عن المسار.';
+      if (domainName.includes('ذهنية') || domainName.includes('قدرات')) return 'حل نمط بصري أو تصنيف من خطوتين مع تفسير الاختيار بلغة بسيطة.';
+      return 'رفع أداء المجال المستهدف من خلال تدريب قصير ومقاس داخل الجلسة.';
+    };
+    const getPrintableMastery = (domainName: string) => {
+      if (domainName.includes('نطق') || domainName.includes('لغة') || domainName.includes('سمع')) return 'وضوح الصوت في 8 من 10 محاولات خلال جلستين.';
+      if (domainName.includes('كتابة') || domainName.includes('حركي') || domainName.includes('رسم')) return 'إنجاز 4 من 5 نماذج بجودة مقبولة ودون مساعدة مباشرة.';
+      if (domainName.includes('انتباه') || domainName.includes('سلوك') || domainName.includes('حسي')) return 'التزام بالمهمة 80% من الزمن في جلستين متتاليتين.';
+      return 'دقة 80% في قياسين متتاليين خلال 30 يوماً.';
+    };
 
     const domainsRows =
       domainsList.length > 0
@@ -152,8 +168,8 @@ export default function PrintableReportModal({
       (d, i) => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
         <td style="padding:8px 12px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${d.name}</td>
-        <td style="padding:8px 12px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">تحسين المهارات التأسيسية وتطبيق الاستراتيجيات الموصى بها</td>
-        <td style="padding:8px 12px;font-weight:900;color:#64748b;font-size:10px;font-family:monospace;border-bottom:1px solid #e2e8f0">دقة 80% · 30 يوماً</td>
+        <td style="padding:8px 12px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">${getPrintableGoal(d.name)}</td>
+        <td style="padding:8px 12px;font-weight:900;color:#64748b;font-size:10px;border-bottom:1px solid #e2e8f0">${getPrintableMastery(d.name)}</td>
       </tr>`,
     ).join('');
 
@@ -467,7 +483,7 @@ export default function PrintableReportModal({
           isAnswersReport
             ? `<div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
                 <div style="font-size:12px;font-weight:900;color:#06392c;margin-bottom:4px;">طبيعة هذا التقرير</div>
-                <div style="font-size:10.5px;font-weight:800;color:#334155;line-height:1.8;">هذا الملف مخصص لعرض الإجابات الخام فقط، ويتم فصل التحليل المهني في تقرير مستقل حتى لا تختلط بيانات الإجابة بقرار د. إسماعيل.</div>
+                <div style="font-size:10.5px;font-weight:800;color:#334155;line-height:1.8;">هذا الملف مخصص لعرض الإجابات التفصيلية كما تم حفظها داخل المنصة، ويُقرأ بجانب تقرير التحليل عند مراجعة ملف الطالب.</div>
               </div>`
             : `
         <div class="score-card">
@@ -485,7 +501,7 @@ export default function PrintableReportModal({
         <div style="background: #ffffff; border: 1.5px solid #06392c; border-radius: 10px; padding: 10px 14px; margin-top: 10px;">
           <div style="font-size: 11px; font-weight: 900; color: #06392c; margin-bottom: 4px;">قرار التأهيل التعليمي:</div>
           <div style="font-size: 10.5px; font-weight: 700; color: #1e293b; line-height: 1.6;">
-            بدء تطبيق خطة التدخل الخاصة بـ <strong>${report.program || 'برنامج التأهيل الشامل'}</strong> وتوثيق نسبة التطور بشكل شهري.
+            بدء تطبيق خطة التدخل الخاصة بـ <strong>${report.program || 'برنامج التأهيل الشامل'}</strong> وتوثيق نسبة التطور بشكل دوري.
           </div>
         </div>`
         }
@@ -589,16 +605,16 @@ export default function PrintableReportModal({
         ` : ''}
 
         ${!isAnswersReport ? `
-        <div class="sec-head" style="margin-top: 14px;">4. توصيات المنزل والمدرسة</div>
+        <div class="sec-head" style="margin-top: 14px;">4. التوصيات</div>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
           <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px;">
-            <div style="font-size: 10.5px; font-weight: 900; color: #92400e; margin-bottom: 6px;">🏡 توصيات المنزل:</div>
+            <div style="font-size: 10.5px; font-weight: 900; color: #92400e; margin-bottom: 6px;">توجيهات الأسرة:</div>
             <ul style="font-size: 9.5px; color: #78350f; font-weight: 700; padding-right: 12px; margin: 0;">
               ${homeRecommendations.map((r) => `<li style="margin-bottom: 4px;">• ${r}</li>`).join('')}
             </ul>
           </div>
           <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
-            <div style="font-size: 10.5px; font-weight: 900; color: #1e40af; margin-bottom: 6px;">🏫 توصيات المدرسة:</div>
+            <div style="font-size: 10.5px; font-weight: 900; color: #1e40af; margin-bottom: 6px;">توجيهات الجلسات:</div>
             <ul style="font-size: 9.5px; color: #1e3a8a; font-weight: 700; padding-right: 12px; margin: 0;">
               ${schoolRecommendations.map((r) => `<li style="margin-bottom: 4px;">• ${r}</li>`).join('')}
             </ul>
@@ -639,7 +655,7 @@ export default function PrintableReportModal({
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 14px;">
           <p style="font-size: 9.5px; color: #475569; font-weight: 700; line-height: 1.6; margin: 0;">
-            وثيقة إشرافية مستخرجة إلكترونياً من منصة مَسَار تحت إشراف د. إسماعيل عيسى، مخصصة لمتابعة التعليم الحديث وتأسيس الصفوف الأولية والنطق والتخاطب وصعوبات التعلم.
+            وثيقة إشرافية مستخرجة إلكترونياً من منصة مَسَار تحت إشراف د. إسماعيل عيسى، مخصصة لمتابعة التأهيل والتعليم الحديث.
           </p>
         </div>
       </div>
@@ -671,7 +687,6 @@ export default function PrintableReportModal({
           <div class="sig-box">
             <div style="font-size: 9px; font-weight: 700; color: #64748b;">يعتمد:</div>
             <div style="font-size: 13px; font-weight: 900; color: #06392c; margin-top: 2px;">د. إسماعيل عيسى</div>
-            <div style="font-size: 8px; color: #047857;">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</div>
             <div style="height: 44px; display: flex; align-items: center; justify-content: center; margin: 4px 0 2px 0;">
               <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
             </div>

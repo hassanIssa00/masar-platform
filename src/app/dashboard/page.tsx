@@ -10,7 +10,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
 import { getStudents, getReports, getSession, StudentRecord, ReportRecord } from '@/lib/localDb';
-import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
@@ -37,7 +37,6 @@ export default function Dashboard() {
       setAuthorized(true);
       setStudents(getStudents());
       setReports(getReports());
-      // Pull latest from cloud and refresh counters
       pullCloudDataToLocal()
         .then(() => {
           setStudents(getStudents());
@@ -45,6 +44,11 @@ export default function Dashboard() {
         })
         .catch(() => {});
     });
+    const unsubscribe = subscribeToCloudUpdates(() => {
+      setStudents(getStudents());
+      setReports(getReports());
+    });
+    return () => unsubscribe();
   }, [router]);
 
   if (!authorized) {
@@ -76,7 +80,7 @@ export default function Dashboard() {
                   <img
                     src="/dr-ismail.jpg"
                     alt="د. إسماعيل عيسى"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-slate-900"
                   />
                 </div>
                 <div>
@@ -190,27 +194,21 @@ export default function Dashboard() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-black text-slate-950">مكتبة المسارات</h2>
-              <p className="text-xs font-bold text-slate-500">كل مسار مرتبط باختبار وتدريب وتدوين تقارير</p>
-              <div className="mt-4 space-y-3">
-                {[
-                  { name: 'التهجي البسيط', href: '/programs/simple-spelling' },
-                  { name: 'القراءة والكتابة', href: '/programs/reading' },
-                  { name: 'الرياضيات', href: '/programs/math' },
-                  { name: 'صعوبات التعلم', href: '/programs/learning-difficulties' },
-                  { name: 'تعديل السلوك', href: '/programs/learning-difficulties' },
-                  { name: 'التخاطب والنطق', href: '/programs/learning-difficulties' },
-                  { name: 'طيف التوحد', href: '/programs/learning-difficulties' },
-                ].map((p, idx) => (
-                  <Link
-                    key={idx}
-                    href={p.href}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-xs font-black text-slate-900 hover:bg-teal-50 transition border border-slate-100"
-                  >
-                    <span>{p.name}</span>
-                    <ArrowLeft size={14} className="text-slate-400" />
-                  </Link>
-                ))}
+              <h2 className="text-lg font-black text-slate-950">ملخص التشغيل</h2>
+              <p className="text-xs font-bold text-slate-500">البيانات هنا تأتي من Firestore مباشرة وتظهر لأي جهاز مسجل بصلاحية الإدارة.</p>
+              <div className="mt-4 grid gap-3">
+                <Link href="/students" className="flex items-center justify-between rounded-xl border border-teal-100 bg-teal-50 p-4 text-sm font-black text-teal-950 hover:bg-teal-100 transition">
+                  <span>إدارة الطلاب والحسابات</span>
+                  <ArrowLeft size={16} />
+                </Link>
+                <Link href="/reports" className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-black text-slate-950 hover:bg-slate-100 transition">
+                  <span>مراجعة التقارير والاعتماد</span>
+                  <ArrowLeft size={16} />
+                </Link>
+                <Link href="/platform-settings?tab=users&focus=account-generator" className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-black text-amber-950 hover:bg-amber-100 transition">
+                  <span>توليد حسابات سحابية</span>
+                  <ArrowLeft size={16} />
+                </Link>
               </div>
             </div>
           </section>

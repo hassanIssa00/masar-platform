@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
-import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimit';
+import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,6 +37,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    try {
+      const adminDb = getAdminDb();
+      if (adminDb && account.id) {
+        await adminDb.collection('accounts').doc(account.id).set(
+          {
+            lastLoginAt: new Date().toISOString(),
+            lastLoginProvider: 'password',
+          },
+          { merge: true },
+        );
+      }
+    } catch {}
+
     // Return JSON with account - cookie set separately
     const response = NextResponse.json({
       ok: true,
@@ -46,14 +59,14 @@ export async function POST(req: NextRequest) {
     // Set HttpOnly + SameSite=Lax cookie (Session cookie when rememberMe is false)
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: false, // Allow on HTTP too for testing
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 } : {}),
     });
 
     return response;
-  } catch (err: any) {
+  } catch {
     return NextResponse.json(
       { ok: false, reason: 'server_error', error: 'خطأ في معالجة طلب الدخول' },
       { status: 500 }

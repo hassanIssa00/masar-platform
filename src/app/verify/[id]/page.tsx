@@ -108,7 +108,7 @@ export default function VerifyCertificatePage({ params }: { params: { id: string
             <div>
               <h4 className="text-sm font-black text-slate-900">جهة الإشراف والمتابعة:</h4>
               <p className="text-xs font-black text-teal-700">د. إسماعيل عيسى</p>
-              <p className="text-[10px] font-bold text-slate-600">تأسيس الصفوف الأولية، النطق والتخاطب، وصعوبات التعلم</p>
+              <p className="text-[10px] font-bold text-slate-600">التأهيل والتعليم الحديث</p>
             </div>
           </div>
 
