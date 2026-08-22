@@ -95,9 +95,17 @@ const PUBLIC_PATHS = [
 const PUBLIC_API_PATHS = [
   '/api/auth/login',
   '/api/auth/register',
+  '/api/auth/social',
+  '/api/auth/face',
 ];
 
 const LOGIN_URL = '/auth/login';
+
+function matchesPublicPath(pathname: string, publicPath: string) {
+  if (publicPath === '/') return pathname === '/';
+  if (publicPath.endsWith('/')) return pathname === publicPath.slice(0, -1) || pathname.startsWith(publicPath);
+  return pathname === publicPath;
+}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -111,10 +119,10 @@ export async function middleware(req: NextRequest) {
   }
 
   // ── Always allow public pages and auth endpoints ─────────────────────────────
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((p) => matchesPublicPath(pathname, p));
   if (isPublic) return NextResponse.next();
 
-  const isPublicApi = PUBLIC_API_PATHS.some((p) => pathname.startsWith(p));
+  const isPublicApi = PUBLIC_API_PATHS.some((p) => pathname === p);
   if (isPublicApi) return NextResponse.next();
 
   // ── All other routes require a valid session ─────────────────────────────────
