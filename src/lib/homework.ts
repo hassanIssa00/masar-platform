@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { syncDocToCloud } from './firestoreSync';
 
 export interface HomeworkRecord {
   id: string;
@@ -44,11 +43,7 @@ export async function createHomework(hw: Omit<HomeworkRecord, 'id' | 'createdAt'
   const updated = [item, ...current];
   saveLocalHomework(updated);
 
-  try {
-    await addDoc(collection(db, 'homework'), item);
-  } catch (e) {
-    console.warn('Firestore homework save error:', e);
-  }
+  await syncDocToCloud('homework', item.id, item);
   return item;
 }
 
@@ -56,4 +51,6 @@ export function updateHomeworkStatus(id: string, status: HomeworkRecord['status'
   const current = getLocalHomework();
   const updated = current.map((h) => (h.id === id ? { ...h, status, parentNotes: parentNotes ?? h.parentNotes } : h));
   saveLocalHomework(updated);
+  const item = updated.find((h) => h.id === id);
+  if (item) syncDocToCloud('homework', id, item);
 }

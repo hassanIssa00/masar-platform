@@ -110,13 +110,61 @@ export async function verifyBcryptPassword(password: string, hash: string): Prom
   }
 }
 
+function normalizeIdentifier(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function credentialLookupId(value: string) {
+  return `lookup_${normalizeIdentifier(value).replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
+}
+
+type StoredCredential = {
+  accountId?: string;
+  email?: string;
+  phone?: string;
+  passwordHash?: string;
+};
+
+async function findAdminCredential(
+  adminDb: NonNullable<ReturnType<typeof getAdminDb>>,
+  identifier: string,
+): Promise<StoredCredential | null> {
+  const lookup = await adminDb.collection('account_credentials').doc(credentialLookupId(identifier)).get();
+  if (lookup.exists) return lookup.data() as StoredCredential;
+
+  const emailMatch = await adminDb
+    .collection('account_credentials')
+    .where('email', '==', identifier)
+    .limit(1)
+    .get();
+  if (!emailMatch.empty) return emailMatch.docs[0].data() as StoredCredential;
+
+  const phoneMatch = await adminDb
+    .collection('account_credentials')
+    .where('phone', '==', identifier)
+    .limit(1)
+    .get();
+  if (!phoneMatch.empty) return phoneMatch.docs[0].data() as StoredCredential;
+
+  const credentialsSnap = await adminDb.collection('account_credentials').get();
+  const credentialDoc = credentialsSnap.docs
+    .map((entry) => entry.data() as StoredCredential)
+    .find((entry) => {
+      const email = normalizeIdentifier(entry.email || '');
+      const phone = normalizeIdentifier(entry.phone || '');
+      return email === identifier || phone === identifier;
+    });
+
+  return credentialDoc || null;
+}
+
 /**
  * Server-side Credential Verification for Production Accounts.
  * Performs bcrypt password hash verification.
  * NO demo accounts, NO backdoors, NO password whitelists.
  */
 export async function verifyProductionCredential(identifier: string, password: string) {
-  const cleanId = identifier.trim().toLowerCase();
+  const cleanId = normalizeIdentifier(identifier);
 
   // Registered production system accounts
   const accountConfigs: Record<string, {
@@ -162,19 +210,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
     const adminDb = getAdminDb();
 
     if (adminDb) {
-      const credentialsSnap = await adminDb.collection('account_credentials').get();
-      const credentialDoc = credentialsSnap.docs
-        .map((entry) => entry.data() as {
-          accountId?: string;
-          email?: string;
-          phone?: string;
-          passwordHash?: string;
-        })
-        .find((entry) => {
-          const email = entry.email?.trim().toLowerCase();
-          const phone = entry.phone?.trim().toLowerCase();
-          return email === identifier || phone === identifier;
-        });
+      const credentialDoc = await findAdminCredential(adminDb, identifier);
 
       if (!credentialDoc?.accountId || !credentialDoc.passwordHash) return null;
       const valid = await verifyBcryptPassword(password, credentialDoc.passwordHash);
@@ -191,6 +227,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
         role?: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
         schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
         providerId?: string;
+        onboardingRequired?: boolean;
       };
 
       if (!data.email || !data.role) return null;
@@ -203,6 +240,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
         schoolBranch: data.schoolBranch,
         phone: data.phone,
         providerId: data.providerId,
+        onboardingRequired: data.onboardingRequired,
       };
     }
 

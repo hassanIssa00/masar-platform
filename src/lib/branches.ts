@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export interface BranchRecord {
   id: string;
@@ -36,14 +35,18 @@ export async function createBranch(data: Omit<BranchRecord, 'id' | 'createdAt'>)
     createdAt: new Date().toISOString(),
   };
   saveLocalBranches([item, ...getLocalBranches()]);
-  try { await addDoc(collection(db, 'branches'), item); } catch {}
+  await syncDocToCloud('branches', item.id, item);
   return item;
 }
 
 export function updateBranch(id: string, patch: Partial<BranchRecord>) {
-  saveLocalBranches(getLocalBranches().map(b => b.id === id ? { ...b, ...patch } : b));
+  const updated = getLocalBranches().map(b => b.id === id ? { ...b, ...patch } : b);
+  saveLocalBranches(updated);
+  const item = updated.find((b) => b.id === id);
+  if (item) syncDocToCloud('branches', id, item);
 }
 
 export function deleteBranch(id: string) {
   saveLocalBranches(getLocalBranches().filter(b => b.id !== id));
+  deleteDocFromCloud('branches', id);
 }

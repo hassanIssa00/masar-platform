@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export type WaitlistStatus = 'new-lead' | 'contacted' | 'assessment-scheduled' | 'in-sessions' | 'completed' | 'lost';
 
@@ -44,17 +43,20 @@ export async function createWaitlistEntry(data: Omit<WaitlistRecord, 'id' | 'cre
     updatedAt: now,
   };
   saveLocalWaitlist([item, ...getLocalWaitlist()]);
-  try { await addDoc(collection(db, 'waitlist'), item); } catch {}
+  await syncDocToCloud('waitlist', item.id, item);
   return item;
 }
 
 export function updateWaitlistEntry(id: string, patch: Partial<WaitlistRecord>) {
   const items = getLocalWaitlist().map(w => w.id === id ? { ...w, ...patch, updatedAt: new Date().toISOString() } : w);
   saveLocalWaitlist(items);
+  const updated = items.find(w => w.id === id);
+  if (updated) syncDocToCloud('waitlist', id, updated);
 }
 
 export function deleteWaitlistEntry(id: string) {
   saveLocalWaitlist(getLocalWaitlist().filter(w => w.id !== id));
+  deleteDocFromCloud('waitlist', id);
 }
 
 export const STATUS_LABELS: Record<WaitlistStatus, string> = {

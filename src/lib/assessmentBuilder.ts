@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'rating-scale' | 'observation' | 'open-text';
 
@@ -63,18 +62,19 @@ export async function createTemplate(data: Omit<AssessmentTemplate, 'id' | 'crea
     updatedAt: now,
   };
   localStorage.setItem(TMPL_KEY, JSON.stringify([item, ...getTemplates()]));
-  try { await addDoc(collection(db, 'assessment_templates'), item); } catch {}
+  await syncDocToCloud('assessment_templates', item.id, item);
   return item;
 }
 
 export function deleteTemplate(id: string) {
   localStorage.setItem(TMPL_KEY, JSON.stringify(getTemplates().filter(t => t.id !== id)));
+  deleteDocFromCloud('assessment_templates', id);
 }
 
 export async function saveResult(data: Omit<AssessmentResult, 'id'>): Promise<AssessmentResult> {
   const item: AssessmentResult = { ...data, id: `res_${Date.now()}` };
   localStorage.setItem(RESULTS_KEY, JSON.stringify([item, ...getResults()]));
-  try { await addDoc(collection(db, 'assessment_results'), item); } catch {}
+  await syncDocToCloud('assessment_results', item.id, item);
   return item;
 }
 

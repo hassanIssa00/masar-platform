@@ -1,4 +1,4 @@
-import { syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -117,13 +117,15 @@ export function saveCurriculumFile(file: Omit<CurriculumFile, 'id' | 'uploadedAt
   };
   writeList(FILES_KEY, [newFile, ...all]);
   // Sync metadata to cloud (without base64 data — too large)
-  const { base64Data, ...meta } = newFile;
+  const { base64Data: _base64Data, ...meta } = newFile;
+  void _base64Data;
   syncDocToCloud('curriculum_files', newFile.id, meta);
   return newFile;
 }
 
 export function deleteCurriculumFile(fileId: string) {
   writeList(FILES_KEY, readList<CurriculumFile>(FILES_KEY).filter(f => f.id !== fileId));
+  deleteDocFromCloud('curriculum_files', fileId);
 }
 
 // ── Quizzes ───────────────────────────────────────────────────────────────────
@@ -148,6 +150,7 @@ export function saveQuiz(quiz: GeneratedQuiz): GeneratedQuiz {
 
 export function deleteQuiz(quizId: string) {
   writeList(QUIZZES_KEY, readList<GeneratedQuiz>(QUIZZES_KEY).filter(q => q.id !== quizId));
+  deleteDocFromCloud('curriculum_quizzes', quizId);
 }
 
 export function createQuizId(): string {

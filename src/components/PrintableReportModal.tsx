@@ -432,7 +432,7 @@ export default function PrintableReportModal({
       border-right: 4px solid #d97706; padding-right: 8px; margin-bottom: 8px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
-    table, thead, tbody, tr, td, th { page-break-inside: avoid; break-inside: avoid; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
     th { background: #06392c; color: #ffffff; padding: 6px 10px; text-align: right; font-weight: 900; }
     td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
     .answers-table td { padding: 6px 9px !important; line-height: 1.55; }

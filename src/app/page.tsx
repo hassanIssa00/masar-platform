@@ -1,7 +1,5 @@
 'use client';
 
-"use client";
-
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -352,10 +350,10 @@ export default function Home() {
                       </div>
 
                       <Link 
-                        href="/auth/register"
+                        href="/auth/login"
                         className="group/btn rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shrink-0 flex items-center gap-1.5"
                       >
-                        <span>ابدأ التقييم</span>
+                        <span>تسجيل الدخول الآن</span>
                         <ArrowLeft size={14} className="transition-transform duration-300 group-hover/btn:-translate-x-1" />
                       </Link>
                     </div>
@@ -545,10 +543,10 @@ export default function Home() {
 
                 <div className="pt-4 border-t border-slate-100">
                   <Link
-                    href="/auth/register"
+                    href="/auth/login"
                     className="group/m inline-flex items-center justify-between w-full px-6 py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs sm:text-sm transition shadow-md"
                   >
-                    <span>ابدأ تقييم مسار للأطفال</span>
+                    <span>تسجيل الدخول إلى مسار</span>
                     <MoveLeft size={18} className="transition-transform duration-300 group-hover/m:-translate-x-2" />
                   </Link>
                 </div>
@@ -901,10 +899,10 @@ export default function Home() {
             </p>
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link 
-                href="/auth/register" 
+                href="/auth/login" 
                 className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white hover:bg-slate-100 text-teal-950 font-black text-base shadow-xl transition active:scale-95 flex items-center justify-center gap-2"
               >
-                <span>إنشاء حساب جديد وابدأ التقييم</span>
+                <span>تسجيل الدخول الآن</span>
                 <ArrowLeft size={18} />
               </Link>
               <Link 

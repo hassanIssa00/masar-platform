@@ -20,6 +20,7 @@ import {
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
 import { getReports, getStudents, setSession } from '@/lib/localDb';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
@@ -80,10 +81,10 @@ export default function LoginPage() {
     trackEvent('visit', { page: '/login' });
 
     // Check if coming back from Google redirect
-    handleGoogleRedirectResult('parent').then((result) => {
+    handleGoogleRedirectResult('parent').then(async (result) => {
       if (result && result.ok) {
         setSession(result.account, false, false);
-        redirectAfterLogin(result.account);
+        await redirectAfterLogin(result.account);
       } else if (result?.reason) {
         setLoginError(result.reason);
       }
@@ -99,7 +100,9 @@ export default function LoginPage() {
   }, []);
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
-  function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
+  async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
+    await pullCloudDataToLocal().catch(() => {});
+
     const branch =
       account.schoolBranch ??
       (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
@@ -196,7 +199,7 @@ export default function LoginPage() {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
         setSession(data.account, rememberMe, false);
         setTimeout(() => {
-          redirectAfterLogin(data.account);
+          void redirectAfterLogin(data.account);
         }, 600);
         return;
       }
@@ -221,7 +224,7 @@ export default function LoginPage() {
     if (result.ok) {
       setSession(result.account, false, false);
       trackEvent('login_google', { userId: result.account.id, isNew: result.isNew });
-      redirectAfterLogin(result.account);
+      await redirectAfterLogin(result.account);
     } else if (result.reason) {
       setLoginError(result.reason);
     }
@@ -239,7 +242,7 @@ export default function LoginPage() {
     if (result.ok) {
       setSession(result.account, false, false);
       trackEvent('login_apple', { userId: result.account.id, isNew: result.isNew });
-      redirectAfterLogin(result.account);
+      await redirectAfterLogin(result.account);
     } else if (result.reason) {
       setLoginError(result.reason);
     }
@@ -257,7 +260,7 @@ export default function LoginPage() {
     if (result.ok) {
       setSession(result.account, false, false);
       trackEvent('login_microsoft', { userId: result.account.id, isNew: result.isNew });
-      redirectAfterLogin(result.account);
+      await redirectAfterLogin(result.account);
     } else if (result.reason) {
       setLoginError(result.reason);
     }

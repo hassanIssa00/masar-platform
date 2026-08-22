@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export type ResourceCategory = 'worksheet' | 'activity' | 'video' | 'article' | 'tool' | 'assessment';
 export type ResourceDomain = 'reading' | 'math' | 'speech' | 'social' | 'motor' | 'behavioral' | 'cognitive';
@@ -38,17 +37,20 @@ export async function createResource(data: Omit<ResourceItem, 'id' | 'createdAt'
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(LOCAL_KEY, JSON.stringify([item, ...getLocalResources()]));
-  try { await addDoc(collection(db, 'resources'), item); } catch {}
+  await syncDocToCloud('resources', item.id, item);
   return item;
 }
 
 export function deleteResource(id: string) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(getLocalResources().filter(r => r.id !== id)));
+  deleteDocFromCloud('resources', id);
 }
 
 export function incrementDownload(id: string) {
   const updated = getLocalResources().map(r => r.id === id ? { ...r, downloads: r.downloads + 1 } : r);
   localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  const item = updated.find((r) => r.id === id);
+  if (item) syncDocToCloud('resources', id, item);
 }
 
 export const CATEGORY_LABELS: Record<ResourceCategory, string> = {

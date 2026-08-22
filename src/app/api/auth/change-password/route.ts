@@ -3,6 +3,10 @@ import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
+function credentialLookupId(value: string) {
+  return `lookup_${value.trim().toLowerCase().replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireRole(req, ['doctor', 'specialist', 'teacher', 'parent', 'student']);
   if (!auth.authorized || !auth.user) {
@@ -21,17 +25,24 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await adminDb.collection('account_credentials').doc(auth.user.id).set(
-    {
-      accountId: auth.user.id,
-      email: auth.user.email.trim().toLowerCase(),
-      phone: auth.user.phone || '',
-      passwordHash,
-      updatedAt: new Date().toISOString(),
-      source: 'self-service-password-change',
-    },
-    { merge: true },
-  );
+  const email = auth.user.email.trim().toLowerCase();
+  const phone = auth.user.phone?.trim() || '';
+  const credential = {
+    accountId: auth.user.id,
+    email,
+    phone,
+    passwordHash,
+    updatedAt: new Date().toISOString(),
+    source: 'self-service-password-change',
+  };
+
+  const writes = [
+    adminDb.collection('account_credentials').doc(auth.user.id).set(credential, { merge: true }),
+    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+  ];
+  if (phone) writes.push(adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+
+  await Promise.all(writes);
 
   return NextResponse.json({ ok: true });
 }

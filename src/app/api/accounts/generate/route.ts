@@ -21,6 +21,10 @@ function createPlatformEmail(kind: 'student' | 'parent', branch: Branch) {
   return `${kind}.${branchSlug}.${token}@masarplatform.org`;
 }
 
+function credentialLookupId(value: string) {
+  return `lookup_${value.trim().toLowerCase().replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireRole(req, ['doctor', 'specialist', 'teacher']);
   if (!auth.authorized) {
@@ -100,6 +104,8 @@ export async function POST(req: NextRequest) {
     adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
     adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
     adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+    adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+    adminDb.collection('account_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
   ]);
 
   return NextResponse.json({

@@ -2,17 +2,12 @@
 
 import { auth, db } from './firebase';
 import {
-  collection,
-  addDoc,
-  getDocs,
   setDoc,
   doc,
   getDoc,
   onSnapshot,
-  query,
-  orderBy,
-  limit,
 } from 'firebase/firestore';
+import { pullServerSnapshotToLocal, subscribeToCloudCollection, syncDocToCloud } from './firestoreSync';
 
 /* ────────────────────────────────────────────────
    TYPES
@@ -140,6 +135,19 @@ function saveLocalEvent(ev: AnalyticsEvent) {
   } catch {}
 }
 
+async function syncAnalyticsEvent(event: AnalyticsEvent) {
+  try {
+    const res = await fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(event),
+    });
+    if (res.ok) return;
+  } catch {}
+  await syncDocToCloud('platform_analytics', event.id || `evt_${Date.now()}`, event);
+}
+
 function getActiveSessionUser(): { id?: string; name?: string; role?: string } {
   if (typeof window === 'undefined') return {};
   try {
@@ -191,8 +199,7 @@ export async function trackEvent(
     };
 
     saveLocalEvent(event);
-    if (!hasCloudAuthSession()) return;
-    await addDoc(collection(db, 'platform_analytics'), event);
+    await syncAnalyticsEvent(event);
   } catch (e) {
     console.warn('Analytics track failed:', e);
   }
@@ -230,25 +237,11 @@ export function subscribeToRecentEvents(
     window.addEventListener('masar_analytics_event', handleLocalUpdate);
   }
 
-  // Cloud listener
-  let unsubCloud = () => {};
-  try {
-    if (!hasCloudAuthSession()) return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('masar_analytics_event', handleLocalUpdate);
-      }
-    };
-
-    const q = query(
-      collection(db, 'platform_analytics'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-    unsubCloud = onSnapshot(q, (snap) => {
-      const cloudEvts = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
-      callback(getCombined(cloudEvts));
-    });
-  } catch {}
+  const unsubCloud = subscribeToCloudCollection<AnalyticsEvent>(
+    'platform_analytics',
+    'platformAnalytics',
+    (items) => callback(getCombined(items.slice(0, 50))),
+  );
 
   return () => {
     if (typeof window !== 'undefined') {
@@ -272,24 +265,12 @@ function todayStart(): string {
 }
 
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
+  await pullServerSnapshotToLocal();
   const localEvents = getLocalEvents();
   const seedEvents = generateSeedEvents();
 
-  let cloudEvents: AnalyticsEvent[] = [];
-  try {
-    if (!hasCloudAuthSession()) throw new Error('cloud analytics unavailable before Firebase Auth');
-    const fetchPromise = getDocs(
-      query(collection(db, 'platform_analytics'), orderBy('createdAt', 'desc'), limit(1000))
-    );
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
-    const snap = await Promise.race([fetchPromise, timeoutPromise]);
-    if (snap && snap.docs) {
-      cloudEvents = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AnalyticsEvent));
-    }
-  } catch {}
-
   const map = new Map<string, AnalyticsEvent>();
-  [...cloudEvents, ...localEvents, ...seedEvents].forEach((e) => {
+  [...localEvents, ...seedEvents].forEach((e) => {
     const key = e.id || `${e.type}_${e.createdAt}_${e.userName}`;
     if (!map.has(key)) map.set(key, e);
   });

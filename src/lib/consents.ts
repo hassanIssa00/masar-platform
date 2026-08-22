@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { syncDocToCloud } from './firestoreSync';
 
 export type ConsentStatus = 'pending' | 'signed' | 'revoked' | 'expired';
 
@@ -35,7 +34,7 @@ export async function createConsent(data: Omit<ConsentForm, 'id' | 'createdAt'>)
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(LOCAL_KEY, JSON.stringify([item, ...getLocalConsents()]));
-  try { await addDoc(collection(db, 'consents'), item); } catch {}
+  await syncDocToCloud('consents', item.id, item);
   return item;
 }
 
@@ -44,6 +43,8 @@ export function updateConsentStatus(id: string, status: ConsentStatus, signature
     c.id === id ? { ...c, status, digitalSignature: signature || c.digitalSignature, signedAt: status === 'signed' ? new Date().toISOString() : c.signedAt } : c
   );
   localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  const item = updated.find((c) => c.id === id);
+  if (item) syncDocToCloud('consents', id, item);
 }
 
 export function revokeConsent(id: string) {

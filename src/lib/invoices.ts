@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { syncDocToCloud } from './firestoreSync';
 
 export interface InvoiceRecord {
   id: string;
@@ -45,11 +44,7 @@ export async function createInvoice(inv: Omit<InvoiceRecord, 'id' | 'invoiceNumb
   const updated = [item, ...current];
   saveLocalInvoices(updated);
 
-  try {
-    await addDoc(collection(db, 'invoices'), item);
-  } catch (e) {
-    console.warn('Firestore invoice save error:', e);
-  }
+  await syncDocToCloud('invoices', item.id, item);
   return item;
 }
 
@@ -57,4 +52,6 @@ export async function updateInvoiceStatus(id: string, status: InvoiceRecord['sta
   const current = getLocalInvoices();
   const updated = current.map((i) => (i.id === id ? { ...i, status } : i));
   saveLocalInvoices(updated);
+  const item = updated.find((i) => i.id === id);
+  if (item) await syncDocToCloud('invoices', id, item);
 }

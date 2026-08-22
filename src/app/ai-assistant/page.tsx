@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Bot, Check, Copy, FileText, ImageIcon, Loader2, MessageSquareText,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { deleteDocFromCloud, subscribeToCloudCollection, syncDocToCloud } from '@/lib/firestoreSync';
 
 type AiAction = {
   type: string;
@@ -34,6 +36,7 @@ type Thread = {
 };
 
 const STORAGE_KEY = 'masar.ai.threads.v4';
+const CLOUD_COLLECTION = 'ai_threads';
 
 const QUICK_COMMANDS = [
   'اكتب خطة IEP مختصرة لطالب صف أول عنده صعوبة في القراءة',
@@ -44,16 +47,32 @@ const QUICK_COMMANDS = [
 ];
 
 function makeThread(): Thread {
+  const now = new Date();
   return {
-    id: `thread-${Date.now()}`,
+    id: `thread-${now.getTime()}`,
     title: 'محادثة جديدة',
-    createdAt: new Date().toLocaleDateString('ar-SA'),
+    createdAt: now.toLocaleDateString('ar-SA'),
     messages: [],
   };
 }
 
 function nowTime() {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+}
+
+function sortThreads(items: Thread[]) {
+  return [...items].sort((a, b) => {
+    const aLast = a.messages.at(-1)?.id?.replace(/^[ua]-/, '') || a.id.replace(/^thread-/, '');
+    const bLast = b.messages.at(-1)?.id?.replace(/^[ua]-/, '') || b.id.replace(/^thread-/, '');
+    return Number(bLast) - Number(aLast);
+  });
+}
+
+function persistThread(thread: Thread) {
+  syncDocToCloud(CLOUD_COLLECTION, thread.id, {
+    ...thread,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export default function AIAssistantPage() {
@@ -68,24 +87,28 @@ export default function AIAssistantPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Thread[];
-        if (parsed.length) {
-          setThreads(parsed);
-          setActiveId(parsed[0].id);
-          return;
-        }
+    let firstLoad = true;
+    const unsubscribe = subscribeToCloudCollection<Thread>(CLOUD_COLLECTION, 'aiThreads', (items) => {
+      const cloudThreads = sortThreads(items.filter((item) => item?.id && Array.isArray(item.messages)));
+      if (cloudThreads.length) {
+        setThreads(cloudThreads);
+        setActiveId((current) => (cloudThreads.some((item) => item.id === current) ? current : cloudThreads[0].id));
+      } else if (firstLoad) {
+        const first = makeThread();
+        setThreads([first]);
+        setActiveId(first.id);
+        persistThread(first);
       }
-    } catch {}
-    const first = makeThread();
-    setThreads([first]);
-    setActiveId(first.id);
+      firstLoad = false;
+    });
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
-    if (threads.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+    try {
+      if (threads.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+    } catch {}
   }, [threads]);
 
   useEffect(() => {
@@ -98,14 +121,17 @@ export default function AIAssistantPage() {
     const next = makeThread();
     setThreads((current) => [next, ...current]);
     setActiveId(next.id);
+    persistThread(next);
   };
 
   const deleteThread = (id: string) => {
+    deleteDocFromCloud(CLOUD_COLLECTION, id);
     setThreads((current) => {
       const next = current.filter((item) => item.id !== id);
       if (!next.length) {
         const fresh = makeThread();
         setActiveId(fresh.id);
+        persistThread(fresh);
         return [fresh];
       }
       if (activeId === id) setActiveId(next[0].id);
@@ -154,15 +180,18 @@ export default function AIAssistantPage() {
       text: item.text,
     }));
 
+    const userThread: Thread = {
+      ...active,
+      title: active.messages.length ? active.title : userMessage.text.slice(0, 34),
+      messages: [...active.messages, userMessage],
+    };
+
     setThreads((current) => current.map((thread) => (
       thread.id === active.id
-        ? {
-            ...thread,
-            title: thread.messages.length ? thread.title : userMessage.text.slice(0, 34),
-            messages: [...thread.messages, userMessage],
-          }
+        ? userThread
         : thread
     )));
+    persistThread(userThread);
     setPrompt('');
     setSelectedImage(null);
     setLoading(true);
@@ -186,6 +215,7 @@ export default function AIAssistantPage() {
       setThreads((current) => current.map((thread) => (
         thread.id === active.id ? { ...thread, messages: [...thread.messages, agentMessage] } : thread
       )));
+      persistThread({ ...userThread, messages: [...userThread.messages, agentMessage] });
     } catch {
       const agentMessage: Message = {
         id: `a-${Date.now()}`,
@@ -196,6 +226,7 @@ export default function AIAssistantPage() {
       setThreads((current) => current.map((thread) => (
         thread.id === active.id ? { ...thread, messages: [...thread.messages, agentMessage] } : thread
       )));
+      persistThread({ ...userThread, messages: [...userThread.messages, agentMessage] });
     } finally {
       setLoading(false);
     }
@@ -318,7 +349,14 @@ export default function AIAssistantPage() {
                           : 'border-slate-200 bg-white text-slate-800'
                       }`}>
                         {message.image && (
-                          <img src={message.image} alt="صورة مرفقة" className="mb-3 max-h-56 rounded-2xl border object-cover" />
+                          <Image
+                            src={message.image}
+                            alt="صورة مرفقة"
+                            width={520}
+                            height={320}
+                            unoptimized
+                            className="mb-3 max-h-56 rounded-2xl border object-cover"
+                          />
                         )}
                         <p className="whitespace-pre-wrap text-sm font-bold leading-7">{message.text}</p>
                         {!!message.actions?.length && (

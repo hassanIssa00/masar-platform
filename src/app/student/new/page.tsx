@@ -7,6 +7,7 @@ import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { getSession, getStudents, saveStudent, updateStudent } from '@/lib/localDb';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
@@ -34,52 +35,57 @@ export default function NewStudentPage() {
 
   // Pre-fill from registration if a student record already exists
   useEffect(() => {
-    const session = getSession();
-    const params = new URLSearchParams(window.location.search);
-    const flow = params.get('flow');
-    const isStudent = session?.role === 'student' || flow === 'student';
-    setNextFlow(isStudent ? 'student-test' : 'parent-survey');
+    const load = async () => {
+      await pullCloudDataToLocal().catch(() => {});
+      const session = getSession();
+      const params = new URLSearchParams(window.location.search);
+      const flow = params.get('flow');
+      const isStudent = session?.role === 'student' || flow === 'student';
+      setNextFlow(isStudent ? 'student-test' : 'parent-survey');
 
-    const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
-    if (!savedStudentId) {
-      if (session?.role === 'student') {
-        setStudent((prev) => ({
-          ...prev,
-          fullName: session.name || prev.fullName,
-          parentPhone: session.phone || prev.parentPhone,
-        }));
-      } else if (session?.role === 'parent') {
-        setStudent((prev) => ({
-          ...prev,
-          parentName: session.name || prev.parentName,
-          parentPhone: session.phone || prev.parentPhone,
-        }));
+      const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
+      if (!savedStudentId) {
+        if (session?.role === 'student') {
+          setStudent((prev) => ({
+            ...prev,
+            fullName: session.name || prev.fullName,
+            parentPhone: session.phone || prev.parentPhone,
+          }));
+        } else if (session?.role === 'parent') {
+          setStudent((prev) => ({
+            ...prev,
+            parentName: session.name || prev.parentName,
+            parentPhone: session.phone || prev.parentPhone,
+          }));
+        }
+        return;
       }
-      return;
-    }
 
-    const allStudents = getStudents();
-    const found = allStudents.find((s) => s.id === savedStudentId);
-    if (!found) return;
+      const allStudents = getStudents();
+      const found = allStudents.find((s) => s.id === savedStudentId);
+      if (!found) return;
 
-    setExistingStudentId(found.id);
-    setStudent((prev) => ({
-      ...prev,
-      fullName: found.fullName || prev.fullName,
-      grade: found.grade || prev.grade,
-      parentName: found.parentName || prev.parentName,
-      parentPhone: found.parentPhone || prev.parentPhone,
-      photoUrl: found.photoUrl || prev.photoUrl,
-      notes: found.notes || prev.notes,
-      nationalId: found.nationalId || prev.nationalId,
-    }));
+      setExistingStudentId(found.id);
+      setStudent((prev) => ({
+        ...prev,
+        fullName: found.fullName || prev.fullName,
+        grade: found.grade || prev.grade,
+        parentName: found.parentName || prev.parentName,
+        parentPhone: found.parentPhone || prev.parentPhone,
+        photoUrl: found.photoUrl || prev.photoUrl,
+        notes: found.notes || prev.notes,
+        nationalId: found.nationalId || prev.nationalId,
+      }));
+    };
+
+    void load();
   }, []);
 
   const handleFieldChange = (key: keyof typeof student, value: string) => {
     setStudent((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     const dateOfBirth = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : '';
@@ -132,6 +138,7 @@ export default function NewStudentPage() {
     localStorage.setItem('masar.current-student-id', savedStudent!.id);
     localStorage.setItem('masar_active_student_id', savedStudent!.id);
     localStorage.setItem('masar_active_mode', nextFlow === 'student-test' ? 'student' : 'parent');
+    await syncDocToCloud('students', savedStudent!.id, savedStudent);
     router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}&flow=student` : `/survey?student=${savedStudent!.id}&flow=parent`);
   };
 

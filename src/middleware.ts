@@ -1,5 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
+
+const SESSION_COOKIE_NAME = 'masar_session';
+
+type MiddlewareSessionPayload = {
+  exp?: number;
+};
+
+function getJwtSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.trim().length === 0) {
+    return 'masar_default_session_secret_jwt_2026_prod_key_#88219';
+  }
+  return secret.trim();
+}
+
+function base64UrlToBytes(value: string) {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function verifySessionTokenInMiddleware(token: string): Promise<MiddlewareSessionPayload | null> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [headerB64, payloadB64, sigB64] = parts;
+    const data = `${headerB64}.${payloadB64}`;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(getJwtSecret()),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+
+    const valid = await crypto.subtle.verify('HMAC', key, base64UrlToBytes(sigB64), enc.encode(data));
+    if (!valid) return null;
+
+    const payloadText = new TextDecoder().decode(base64UrlToBytes(payloadB64));
+    const payload = JSON.parse(payloadText) as MiddlewareSessionPayload;
+    if (!payload.exp || Date.now() / 1000 > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * PUBLIC routes that do NOT require authentication.
@@ -86,7 +133,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  const user = await verifySessionToken(token);
+  const user = await verifySessionTokenInMiddleware(token);
 
   if (!user) {
     // Invalid/expired token

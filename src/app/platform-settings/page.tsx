@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
 import {
-  Activity, AlertTriangle, BarChart3, CheckCircle2,
-  ChevronLeft, Database, Download, Eye, Globe, Globe2,
+  AlertTriangle, BarChart3, CheckCircle2,
+  Database, Download, Eye, Globe2,
   Laptop, Loader2, Lock, LogIn, Monitor, RefreshCw,
   Settings2, Shield, ShieldAlert, Smartphone, Tablet,
-  Trash2, TrendingUp, Upload, UserCheck, UserMinus,
-  UserPlus, Users, Wifi, XCircle, ToggleLeft, ToggleRight,
-  Calendar, Clock, Activity as ActivityIcon, Copy,
+  Trash2, TrendingUp, UserCheck, UserMinus,
+  UserPlus, Users, Wifi, XCircle,
+  Clock, Activity as ActivityIcon, Copy,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -38,30 +37,12 @@ const SEED_ACCOUNTS: AccountRecord[] = [
 ];
 
 async function loadAllAccounts(): Promise<AccountRecord[]> {
-  await pullServerSnapshotToLocal();
+  const serverSynced = await pullServerSnapshotToLocal();
+  const cloudAccounts = serverSynced ? getAccounts() : [];
 
-  // 1. Local storage accounts
-  const localAccounts = getAccounts();
-
-  // 2. Try Firestore accounts
-  let cloudAccounts: AccountRecord[] = [];
-  try {
-    type QSnap = Awaited<ReturnType<typeof getDocs>>;
-    const snapResult = await Promise.race([
-      getDocs(collection(db, 'accounts')).then((s) => s as QSnap),
-      new Promise<null>((r) => setTimeout(() => r(null), 1500)),
-    ]);
-    if (snapResult && typeof snapResult === 'object' && 'docs' in snapResult) {
-      cloudAccounts = snapResult.docs.map(
-        (d) => ({ id: d.id, ...(d.data() as Omit<AccountRecord, 'id'>) }) as AccountRecord
-      );
-    }
-  } catch {}
-
-
-  // 3. Merge: cloud + local + seed (deduplicate by email)
+  // Cloud snapshot is the source of truth. LocalStorage is only a cache after a successful server sync.
   const map = new Map<string, AccountRecord>();
-  [...SEED_ACCOUNTS, ...localAccounts, ...cloudAccounts].forEach((a) => {
+  [...SEED_ACCOUNTS, ...cloudAccounts].forEach((a) => {
     const key = a.email?.toLowerCase() || a.id;
     if (!map.has(key)) map.set(key, a);
     else {
@@ -133,7 +114,10 @@ const GENERATOR_GRADE_OPTIONS = [
 function useCountUp(target: number, duration = 900) {
   const [val, setVal] = useState(0);
   useEffect(() => {
-    if (!target) { setVal(0); return; }
+    if (!target) {
+      const resetTimer = setTimeout(() => setVal(0), 0);
+      return () => clearTimeout(resetTimer);
+    }
     let start = 0;
     const step = target / (duration / 16);
     const timer = setInterval(() => {
@@ -390,7 +374,10 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
    MAIN PAGE
 ══════════════════════════════════════════════ */
 export default function PlatformSettingsPage() {
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === 'undefined') return 'overview';
+    return new URLSearchParams(window.location.search).get('tab') === 'users' ? 'users' : 'overview';
+  });
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [liveEvents, setLiveEvents] = useState<AnalyticsEvent[]>([]);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
@@ -429,14 +416,17 @@ export default function PlatformSettingsPage() {
   }, []);
 
   useEffect(() => {
-    const requestedTab = new URLSearchParams(window.location.search).get('tab');
-    if (requestedTab === 'users') setTab('users');
-    loadSummary();
+    const loadTimer = window.setTimeout(() => {
+      loadSummary();
+    }, 0);
     // Track this visit
     trackEvent('visit', { page: '/platform-settings' });
     // Realtime feed
     unsubRef.current = subscribeToRecentEvents(setLiveEvents);
-    return () => { unsubRef.current?.(); };
+    return () => {
+      window.clearTimeout(loadTimer);
+      unsubRef.current?.();
+    };
   }, [loadSummary]);
 
   /* ── Save config ───────────────────────── */
@@ -779,7 +769,7 @@ export default function PlatformSettingsPage() {
                       <UserPlus size={16} /> توليد حسابين وربطهما
                     </button>
                     <p className="text-xs font-bold text-slate-500">
-                      أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات. استخدم البريد المولد نفسه في صفحة "نسيت كلمة المرور" عند الحاجة.
+                      أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات. استخدم البريد المولد نفسه في صفحة &quot;نسيت كلمة المرور&quot; عند الحاجة.
                     </p>
                   </div>
 

@@ -75,7 +75,7 @@ export default function ReportPrintDocument({
             <span className="brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
           </div>
           <div className="doc-meta">
-            <span className="doc-type">تقرير تشخيص وتقييم إكلينيكي رقمياً</span>
+            <span className="doc-type">تقرير تقييم وتأهيل رقمي</span>
             <span className="doc-serial">{fileNumber}</span>
           </div>
         </header>
@@ -135,7 +135,7 @@ export default function ReportPrintDocument({
 
           {/* Summary Clinical Decision */}
           <div className="clinical-decision-box">
-            <h3 className="section-title-sm">القرار الإكلينيكي والتأهيلي الموثق:</h3>
+            <h3 className="section-title-sm">قرار التأهيل التعليمي:</h3>
             <p className="decision-text">
               بناءً على نتائج الملاحظة المباشرة وتحليل المهارات، يوصى ببدء تطبيق <strong>{report.program || 'برنامج التأهيل الشامل وصعوبات التعلم'}</strong> بمعدل جلسات منتظمة مع متابعة المؤشرات بشكل دوري.
             </p>
@@ -318,7 +318,7 @@ export default function ReportPrintDocument({
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">الإعتماد الرقمي والختم الإكلينيكي</span>
+            <span className="brand-sub">الاعتماد الرقمي والختم</span>
           </div>
           <div className="doc-meta">
             <span className="doc-serial">{fileNumber}</span>
@@ -341,7 +341,7 @@ export default function ReportPrintDocument({
                       </tr>
                     </thead>
                     <tbody>
-                      {answersList.slice(0, 10).map((ans, idx) => (
+                      {answersList.map((ans, idx) => (
                         <tr key={idx} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
                           <td className="font-bold font-mono text-center">{idx + 1}</td>
                           <td className="font-bold text-slate-800">{ans.question}</td>

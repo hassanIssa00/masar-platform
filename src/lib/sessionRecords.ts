@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export type SessionRating = 1 | 2 | 3 | 4 | 5;
 export type CooperationLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'refused';
@@ -57,17 +56,20 @@ export async function createSessionRecord(data: Omit<SessionRecord, 'id' | 'crea
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(LOCAL_KEY, JSON.stringify([item, ...getLocalSessionRecords()]));
-  try { await addDoc(collection(db, 'session_records'), item); } catch {}
+  await syncDocToCloud('session_records', item.id, item);
   return item;
 }
 
 export function updateSessionRecord(id: string, patch: Partial<SessionRecord>) {
   const updated = getLocalSessionRecords().map(s => s.id === id ? { ...s, ...patch } : s);
   localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  const item = updated.find((s) => s.id === id);
+  if (item) syncDocToCloud('session_records', id, item);
 }
 
 export function deleteSessionRecord(id: string) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(getLocalSessionRecords().filter(s => s.id !== id)));
+  deleteDocFromCloud('session_records', id);
 }
 
 export const COOPERATION_LABELS: Record<CooperationLevel, string> = {

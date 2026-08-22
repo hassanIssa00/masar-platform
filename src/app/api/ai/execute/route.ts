@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiApi, type GeminiMessage } from '@/lib/gemini';
 import { authenticateRequest } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIdentifier, getIpIdentifier } from '@/lib/rateLimit';
+import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 type AiActionType =
   | 'navigate'
@@ -18,6 +19,17 @@ type AiAction = {
   label: string;
   target?: string;
   payload?: Record<string, unknown>;
+};
+
+type AuthUser = NonNullable<Awaited<ReturnType<typeof authenticateRequest>>['user']>;
+
+type StudentDoc = {
+  id: string;
+  fullName?: string;
+  name?: string;
+  grade?: string;
+  parentName?: string;
+  parentPhone?: string;
 };
 
 const SYSTEM_PROMPT = `
@@ -56,7 +68,8 @@ const RESEARCH_WORDS = [
 ];
 
 function includesAny(text: string, words: string[]) {
-  return words.some((word) => text.includes(word.toLowerCase()));
+  const normalizedText = normalizeArabic(text);
+  return words.some((word) => normalizedText.includes(normalizeArabic(word)));
 }
 
 function wantsStudentAdmin(p: string) {
@@ -82,6 +95,129 @@ function wantsMessage(p: string) {
 function wantsStudentNote(p: string) {
   return (p.includes('ملاحظة') || p.includes('ملاحظه') || p.includes('ملحوظة') || p.includes('ملحوظه'))
     && (p.includes('طالب') || p.includes('الطالب') || p.includes('ملفه') || p.includes('ملف الطالب'));
+}
+
+function normalizeArabic(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractStudentName(prompt: string) {
+  const text = prompt.trim();
+  const match = text.match(/(?:الطالب|طالب)\s+(.+?)(?=\s+(?:عنده|عندة|لديه|ليديه|فيه|في ملفه|ملفه|ملاحظة|ملاحظه|ملحوظة|ملحوظه)|[،,.]|$)/i);
+  return match?.[1]?.trim() || '';
+}
+
+function extractStudentNote(prompt: string) {
+  const text = prompt.trim();
+  const patterns = [
+    /(?:ملاحظة|ملاحظه|ملحوظة|ملحوظه)\s*(?:في ملفه|في ملف الطالب|عن)?\s*(.+)$/i,
+    /(?:عنده|عندة|لديه|ليديه)\s+(.+)$/i,
+    /(?:اكتب|ضيف|أضف|اضف|سجل)\s+(.+?)\s+(?:في ملف الطالب|في ملفه)$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]?.trim()) return match[1].trim();
+  }
+  return text.replace(/.*?(?:الطالب|طالب)\s+.+?(?:عنده|عندة|لديه|ليديه)?/i, '').trim();
+}
+
+function isStaff(role: string) {
+  return role === 'doctor' || role === 'specialist' || role === 'teacher';
+}
+
+async function findStudentByName(rawName: string): Promise<StudentDoc | null> {
+  const adminDb = getAdminDb();
+  if (!adminDb || !rawName) return null;
+
+  const wanted = normalizeArabic(rawName);
+  const collections = ['students', 'class_students'];
+
+  for (const collectionName of collections) {
+    const snap = await adminDb.collection(collectionName).limit(250).get();
+    const candidates = snap.docs.map((docSnap) => {
+      const data = docSnap.data() as StudentDoc;
+      const displayName = data.fullName || data.name || '';
+      const normalized = normalizeArabic(displayName);
+      const score = normalized === wanted ? 4 : normalized.includes(wanted) ? 3 : wanted.includes(normalized) ? 2 : 0;
+      return { ...data, id: data.id || docSnap.id, score };
+    });
+    const found = candidates
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+    if (found) return found;
+  }
+
+  return null;
+}
+
+async function tryExecuteStudentNote(prompt: string, user: AuthUser): Promise<{ reply: string; actions: AiAction[] } | null> {
+  const p = prompt.toLowerCase();
+  if (!wantsStudentNote(p)) return null;
+
+  if (!isStaff(user.role)) {
+    return {
+      reply: 'إضافة الملاحظات في ملفات الطلاب متاحة لد. إسماعيل وفريق التشغيل فقط. يمكنني صياغة الملاحظة لك بدون حفظ إذا أردت.',
+      actions: [],
+    };
+  }
+
+  const studentName = extractStudentName(prompt);
+  const noteText = extractStudentNote(prompt);
+  if (!studentName || !noteText || normalizeArabic(noteText).length < 4) {
+    return {
+      reply: 'أحتاج اسم الطالب ونص الملاحظة بوضوح. مثال: الطالب أحمد إبراهيم عنده ملاحظة أنه يحتاج متابعة في القراءة.',
+      actions: [{ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' }],
+    };
+  }
+
+  const student = await findStudentByName(studentName);
+  if (!student) {
+    return {
+      reply: `لم أجد طالباً باسم "${studentName}" في السحابة. افتح إدارة الطلاب واختر الطالب الصحيح أو اكتب الاسم كما هو في الملف.`,
+      actions: [{ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' }],
+    };
+  }
+
+  const adminDb = getAdminDb();
+  if (!adminDb) {
+    return {
+      reply: 'تعذر حفظ الملاحظة لأن Firebase Admin غير مضبوط على السيرفر.',
+      actions: [],
+    };
+  }
+
+  const noteId = `note_ai_${Date.now()}`;
+  const displayName = student.fullName || student.name || studentName;
+  await adminDb.collection('student_notes').doc(noteId).set({
+    id: noteId,
+    studentId: student.id,
+    studentName: displayName,
+    text: noteText,
+    source: 'ai-assistant',
+    createdBy: user.id,
+    createdByName: user.name,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  return {
+    reply: [
+      `تم حفظ الملاحظة في ملف الطالب: ${displayName}.`,
+      '',
+      `نص الملاحظة: ${noteText}`,
+      '',
+      'تقدر تراجعها من إدارة الطلاب داخل سجل الملاحظات.',
+    ].join('\n'),
+    actions: [{ type: 'navigate', label: 'فتح ملف الطالب في إدارة الطلاب', target: `/students?student=${encodeURIComponent(student.id)}` }],
+  };
 }
 
 function wantsIep(p: string) {
@@ -122,7 +258,8 @@ function inferActions(prompt: string, hasImage: boolean): AiAction[] {
     if (!actions.some((item) => item.type === action.type && item.target === action.target)) actions.push(action);
   };
 
-  if (wantsStudentAdmin(p)) add({ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' });
+  if (wantsResearch(p)) add({ type: 'research_note', label: 'إعداد ملخص علمي', target: '/ai-assistant' });
+  if (!wantsResearch(p) && wantsStudentAdmin(p)) add({ type: 'navigate', label: 'فتح إدارة الطلاب', target: '/students' });
   if (wantsParentAdmin(p)) add({ type: 'navigate', label: 'فتح أولياء الأمور', target: '/parents' });
   if (wantsReports(p)) add({ type: 'report_review', label: 'فتح التقارير', target: '/reports' });
   if (p.includes('اختبار') || p.includes('تقييم')) add({ type: 'navigate', label: 'فتح اختبارات تحديد المستوى', target: '/assessment' });
@@ -338,7 +475,7 @@ function buildFallback(prompt: string, actions: AiAction[], hasImage: boolean) {
 
 export async function POST(req: NextRequest) {
   const authResult = await authenticateRequest(req);
-  if (!authResult.authorized) {
+  if (!authResult.authorized || !authResult.user) {
     return NextResponse.json({ success: false, error: 'جلسة الدخول غير صالحة.' }, { status: 401 });
   }
 
@@ -367,6 +504,18 @@ export async function POST(req: NextRequest) {
 
   if (direct) {
     return NextResponse.json({ success: true, reply: direct, gateway: '', actions });
+  }
+
+  if (prompt) {
+    const executed = await tryExecuteStudentNote(prompt, authResult.user);
+    if (executed) {
+      return NextResponse.json({
+        success: true,
+        reply: executed.reply,
+        gateway: 'Masar Action Engine',
+        actions: executed.actions,
+      });
+    }
   }
 
   const messages: GeminiMessage[] = [];

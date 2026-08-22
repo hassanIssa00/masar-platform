@@ -59,7 +59,7 @@ export default function DoctorSignatureCard({
       <div className="absolute -top-12 -left-12 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Card Header: Official Clinical Seal Badge */}
+      {/* Card Header: digital seal badge */}
       <div className="flex items-center justify-between border-b border-slate-200/80 pb-4 mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center shadow-md shadow-teal-600/20 shrink-0">
@@ -67,12 +67,12 @@ export default function DoctorSignatureCard({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-base font-black text-slate-900">التوقيع والختم الإكلينيكي المعتمد</h3>
+              <h3 className="text-base font-black text-slate-900">التوقيع والختم الرقمي</h3>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-black text-emerald-800">
                 <CheckCircle2 size={10} /> موثّق
               </span>
             </div>
-            <p className="text-xs font-bold text-slate-500">منصة مَسَار للتأهيل والتشخيص الإكلينيكي</p>
+            <p className="text-xs font-bold text-slate-500">منصة مَسَار للتأهيل والتعليم الحديث</p>
           </div>
         </div>
 
@@ -80,7 +80,7 @@ export default function DoctorSignatureCard({
           <div className="hidden sm:flex flex-col items-center justify-center w-16 h-16 rounded-full border-2 border-dashed border-teal-600/40 bg-teal-50/70 p-1 text-center shrink-0">
             <ShieldCheck size={18} className="text-teal-700" />
             <span className="text-[8px] font-black text-teal-900 leading-none mt-0.5">مَسَار</span>
-            <span className="text-[7px] font-bold text-teal-700 leading-none">معتمد</span>
+            <span className="text-[7px] font-bold text-teal-700 leading-none">رقمي</span>
           </div>
         )}
       </div>

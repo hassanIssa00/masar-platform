@@ -29,6 +29,35 @@ const KEYS = {
   ikhlasPosts: 'masar.ikhlasPosts.v1',
   calendarSessions: 'masar.calendar_sessions.v1',
   faceRecords: 'masar.face.v1',
+  notifications: 'masar.notifications.v1',
+  attendance: 'masar.attendance.v1',
+  assessmentTemplates: 'masar.assessmentTemplates.v1',
+  assessmentResults: 'masar.assessmentResults.v1',
+  iepRecords: 'masar.iep.v1',
+  consents: 'masar.consents.v1',
+  resources: 'masar.resources.v1',
+  sessionRecords: 'masar.sessionRecords.v1',
+  classStudents: 'masar_class_students_v1',
+  studentNotes: 'masar_student_notes_v1',
+  studentHomeworkLogs: 'masar_student_hw_logs_v1',
+  studentCertLogs: 'masar_student_cert_logs_v1',
+  curriculumFiles: 'masar_curriculum_files_v1',
+  curriculumQuizzes: 'masar_curriculum_quizzes_v1',
+  quizSubmissions: 'masar_quiz_submissions_v1',
+  classroomQuizzes: 'masar_class_quizzes_v1',
+  smartSchedules: 'masar_smart_schedule_v1',
+  scheduleNotificationLogs: 'masar_notification_logs_v1',
+  parentsCommunityChat: 'masar_parents_community_chat_v2',
+  parentsChatSettings: 'masar_parents_chat_settings_v2',
+  aiThreads: 'masar.ai.threads.v4',
+  teacherAiThreads: 'masar_teacher_ai_threads_v2',
+  branches: 'masar.branches.v1',
+  homework: 'masar.homework.v1',
+  invoices: 'masar.invoices.v1',
+  waitlist: 'masar.waitlist.v1',
+  points: 'masar.points.v1',
+  pointTransactions: 'masar.transactions.v1',
+  platformAnalytics: 'masar.analytics.v1',
 };
 
 type CloudPayload = unknown;
@@ -164,6 +193,35 @@ export async function pullCloudDataToLocal() {
     syncCollection<CloudPayload>('ikhlasPosts', KEYS.ikhlasPosts),
     syncCollection<CloudPayload>('calendar_sessions', KEYS.calendarSessions),
     syncCollection<CloudPayload>('faceRecords', KEYS.faceRecords),
+    syncCollection<CloudPayload>('notifications', KEYS.notifications),
+    syncCollection<CloudPayload>('attendance', KEYS.attendance),
+    syncCollection<CloudPayload>('assessment_templates', KEYS.assessmentTemplates),
+    syncCollection<CloudPayload>('assessment_results', KEYS.assessmentResults),
+    syncCollection<CloudPayload>('iep_records', KEYS.iepRecords),
+    syncCollection<CloudPayload>('consents', KEYS.consents),
+    syncCollection<CloudPayload>('resources', KEYS.resources),
+    syncCollection<CloudPayload>('session_records', KEYS.sessionRecords),
+    syncCollection<CloudPayload>('class_students', KEYS.classStudents),
+    syncCollection<CloudPayload>('student_notes', KEYS.studentNotes),
+    syncCollection<CloudPayload>('student_homework_logs', KEYS.studentHomeworkLogs),
+    syncCollection<CloudPayload>('student_cert_logs', KEYS.studentCertLogs),
+    syncCollection<CloudPayload>('curriculum_files', KEYS.curriculumFiles),
+    syncCollection<CloudPayload>('curriculum_quizzes', KEYS.curriculumQuizzes),
+    syncCollection<CloudPayload>('quiz_submissions', KEYS.quizSubmissions),
+    syncCollection<CloudPayload>('classroom_quizzes', KEYS.classroomQuizzes),
+    syncCollection<CloudPayload>('smart_schedules', KEYS.smartSchedules),
+    syncCollection<CloudPayload>('schedule_notification_logs', KEYS.scheduleNotificationLogs),
+    syncCollection<CloudPayload>('parents_community_chat', KEYS.parentsCommunityChat),
+    syncCollection<CloudPayload>('parents_chat_settings', KEYS.parentsChatSettings),
+    syncCollection<CloudPayload>('ai_threads', KEYS.aiThreads),
+    syncCollection<CloudPayload>('teacher_ai_chats', KEYS.teacherAiThreads),
+    syncCollection<CloudPayload>('branches', KEYS.branches),
+    syncCollection<CloudPayload>('homework', KEYS.homework),
+    syncCollection<CloudPayload>('invoices', KEYS.invoices),
+    syncCollection<CloudPayload>('waitlist', KEYS.waitlist),
+    syncCollection<CloudPayload>('student_points', KEYS.points),
+    syncCollection<CloudPayload>('point_transactions', KEYS.pointTransactions),
+    syncCollection<CloudPayload>('platform_analytics', KEYS.platformAnalytics),
   ]);
 }
 
@@ -209,6 +267,35 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   setupListener('ikhlasPosts', KEYS.ikhlasPosts);
   setupListener('calendar_sessions', KEYS.calendarSessions);
   setupListener('faceRecords', KEYS.faceRecords);
+  setupListener('notifications', KEYS.notifications);
+  setupListener('attendance', KEYS.attendance);
+  setupListener('assessment_templates', KEYS.assessmentTemplates);
+  setupListener('assessment_results', KEYS.assessmentResults);
+  setupListener('iep_records', KEYS.iepRecords);
+  setupListener('consents', KEYS.consents);
+  setupListener('resources', KEYS.resources);
+  setupListener('session_records', KEYS.sessionRecords);
+  setupListener('class_students', KEYS.classStudents);
+  setupListener('student_notes', KEYS.studentNotes);
+  setupListener('student_homework_logs', KEYS.studentHomeworkLogs);
+  setupListener('student_cert_logs', KEYS.studentCertLogs);
+  setupListener('curriculum_files', KEYS.curriculumFiles);
+  setupListener('curriculum_quizzes', KEYS.curriculumQuizzes);
+  setupListener('quiz_submissions', KEYS.quizSubmissions);
+  setupListener('classroom_quizzes', KEYS.classroomQuizzes);
+  setupListener('smart_schedules', KEYS.smartSchedules);
+  setupListener('schedule_notification_logs', KEYS.scheduleNotificationLogs);
+  setupListener('parents_community_chat', KEYS.parentsCommunityChat);
+  setupListener('parents_chat_settings', KEYS.parentsChatSettings);
+  setupListener('ai_threads', KEYS.aiThreads);
+  setupListener('teacher_ai_chats', KEYS.teacherAiThreads);
+  setupListener('branches', KEYS.branches);
+  setupListener('homework', KEYS.homework);
+  setupListener('invoices', KEYS.invoices);
+  setupListener('waitlist', KEYS.waitlist);
+  setupListener('student_points', KEYS.points);
+  setupListener('point_transactions', KEYS.pointTransactions);
+  setupListener('platform_analytics', KEYS.platformAnalytics);
 
   return () => {
     unsubscribes.forEach((unsub) => unsub());

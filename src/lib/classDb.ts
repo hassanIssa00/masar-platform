@@ -101,10 +101,10 @@ export function deleteStudentNote(noteId: string) {
 export function getStudentHomeworkLogs(studentId: string): StudentHomeworkLog[] {
   return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => h.studentId === studentId);
 }
-export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'>): StudentHomeworkLog {
+export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'> & { id?: string }): StudentHomeworkLog {
   const all = readList<StudentHomeworkLog>(HW_LOG_KEY);
-  const existing = all.findIndex(h => h.id === (log as any).id);
-  const newLog: StudentHomeworkLog = { ...log, id: (log as any).id || `hw-log-${Date.now()}`, createdAt: new Date().toISOString() };
+  const existing = log.id ? all.findIndex(h => h.id === log.id) : -1;
+  const newLog: StudentHomeworkLog = { ...log, id: log.id || `hw-log-${Date.now()}`, createdAt: new Date().toISOString() };
   if (existing >= 0) { all[existing] = newLog; writeList(HW_LOG_KEY, all); }
   else { writeList(HW_LOG_KEY, [newLog, ...all]); }
   syncDocToCloud(CLOUD_HW_LOGS, newLog.id, newLog);
@@ -134,50 +134,14 @@ export function deleteStudentCertificateLog(id: string) {
 const CLASS_STUDENTS_KEY = 'masar_class_students_v1';
 const CLOUD_COLLECTION = 'class_students';
 
-const INITIAL_CLASS_STUDENTS: ClassStudentRecord[] = [
-  {
-    id: 'cls-std-001',
-    fullName: 'انس ابراهيم محمد موافي',
-    fullNameEn: 'Anas Ibrahim Mohamed Moafi',
-    grade: 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-    nationalId: '1098234561',
-    dateOfBirth: '2019-04-12',
-    parentName: 'إبراهيم محمد موافي',
-    parentPhone: '0551234567',
-    assignedProgram: 'reading',
-    assignedPrograms: ['reading', 'math'],
-    createdAt: '2026-08-01T10:00:00Z',
-    updatedAt: '2026-08-12T10:00:00Z',
-  },
-  {
-    id: 'cls-std-002',
-    fullName: 'أحمد إبراهيم علي إسماعيل',
-    fullNameEn: 'Ahmed Ibrahim Ali Ismail',
-    grade: 'الصف الثاني الابتدائي — فصل د. إسماعيل عيسى',
-    nationalId: '1087654321',
-    dateOfBirth: '2018-09-20',
-    parentName: 'إبراهيم علي إسماعيل',
-    parentPhone: '0509876543',
-    assignedProgram: 'math',
-    assignedPrograms: ['math', 'learning-difficulties'],
-    createdAt: '2026-08-05T10:00:00Z',
-    updatedAt: '2026-08-12T10:00:00Z',
-  },
-];
-
 export function getClassStudents(): ClassStudentRecord[] {
-  if (typeof window === 'undefined') return INITIAL_CLASS_STUDENTS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(CLASS_STUDENTS_KEY);
-    if (!raw) {
-      localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(INITIAL_CLASS_STUDENTS));
-      // Seed cloud with initial data
-      INITIAL_CLASS_STUDENTS.forEach((s) => syncDocToCloud(CLOUD_COLLECTION, s.id, s));
-      return INITIAL_CLASS_STUDENTS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_CLASS_STUDENTS;
+    return [];
   }
 }
 

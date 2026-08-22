@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
   ArrowLeft, Bot, Send, Trash2, Image as ImageIcon, X,
   MessageSquare, Loader2, Plus, Clock, CloudSync, Lightbulb,
 } from 'lucide-react';
-import { syncDocToCloud, deleteDocFromCloud } from '@/lib/firestoreSync';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { deleteDocFromCloud, subscribeToCloudCollection, syncDocToCloud } from '@/lib/firestoreSync';
 
 interface ChatMessage {
   id: string;
@@ -36,6 +35,7 @@ interface ChatThread {
 
 const STORAGE_KEY = 'masar_teacher_ai_threads_v2';
 const CLOUD_COLLECTION = 'teacher_ai_chats';
+const EMPTY_MESSAGES: ChatMessage[] = [];
 
 function loadThreads(): Record<string, ChatThread> {
   if (typeof window === 'undefined') return {};
@@ -101,49 +101,34 @@ export default function TeacherAIChatTab() {
 
   // Initial load
   useEffect(() => {
-    const initial = loadThreads();
-    setThreads(initial);
-    const keys = Object.keys(initial).sort((a,b) => new Date(initial[b].lastUpdated).getTime() - new Date(initial[a].lastUpdated).getTime());
-    if (keys.length > 0) {
-      setActiveThreadId(keys[0]);
-    } else {
-      const newId = 'th-' + Date.now();
-      const defaultTh: ChatThread = {
-        id: newId,
-        title: 'محادثة جديدة مع المساعد الذكي',
-        messages: [],
-        lastUpdated: new Date().toISOString(),
-      };
-      setThreads({ [newId]: defaultTh });
-      setActiveThreadId(newId);
-      saveThread(defaultTh);
-    }
+    const timer = window.setTimeout(() => {
+      const initial = loadThreads();
+      setThreads(initial);
+      const keys = Object.keys(initial).sort((a,b) => new Date(initial[b].lastUpdated).getTime() - new Date(initial[a].lastUpdated).getTime());
+      if (keys.length > 0) {
+        setActiveThreadId(keys[0]);
+      } else {
+        const newId = 'th-' + Date.now();
+        const defaultTh: ChatThread = {
+          id: newId,
+          title: 'محادثة جديدة مع المساعد الذكي',
+          messages: [],
+          lastUpdated: new Date().toISOString(),
+        };
+        setThreads({ [newId]: defaultTh });
+        setActiveThreadId(newId);
+        saveThread(defaultTh);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Cloud sync
   useEffect(() => {
-    getDocs(collection(db, CLOUD_COLLECTION)).then((snap) => {
-      if (!snap.empty) {
-        const cloudMap: Record<string, ChatThread> = {};
-        snap.docs.forEach((docSnap) => {
-          const data = docSnap.data() as ChatThread;
-          if (data.id) cloudMap[data.id] = data;
-        });
-        setThreads(prev => {
-          const merged = { ...prev, ...cloudMap };
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          }
-          return merged;
-        });
-        setCloudSynced(true);
-      }
-    }).catch(e => console.warn('Cloud sync error:', e));
-
-    const unsub = onSnapshot(collection(db, CLOUD_COLLECTION), (snap) => {
+    const unsub = subscribeToCloudCollection<ChatThread>(CLOUD_COLLECTION, 'teacherAiThreads', (items) => {
       const cloudMap: Record<string, ChatThread> = {};
-      snap.docs.forEach((docSnap) => {
-        const data = docSnap.data() as ChatThread;
+      items.forEach((data) => {
         if (data.id) cloudMap[data.id] = data;
       });
       if (Object.keys(cloudMap).length > 0) {
@@ -162,7 +147,7 @@ export default function TeacherAIChatTab() {
   }, []);
 
   const activeThread = threads[activeThreadId] ?? null;
-  const currentMessages = activeThread?.messages ?? [];
+  const currentMessages = activeThread?.messages ?? EMPTY_MESSAGES;
 
   useEffect(() => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
@@ -228,7 +213,7 @@ export default function TeacherAIChatTab() {
   const runAction = (action: AiAction) => {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent('masar_action_executed', { detail: action }));
-    if (action.target) window.location.href = action.target;
+    if (action.target) window.location.assign(action.target);
   };
 
   const sendMessage = useCallback(async (overrideText?: string) => {
@@ -462,7 +447,14 @@ export default function TeacherAIChatTab() {
                   }`}>
                     {m.imageBase64 && (
                       <div className="rounded-xl overflow-hidden border border-white/20 max-w-xs">
-                        <img src={`data:${m.imageMime};base64,${m.imageBase64}`} alt="المرفق" className="w-full object-cover max-h-48" />
+                        <Image
+                          src={`data:${m.imageMime};base64,${m.imageBase64}`}
+                          alt="المرفق"
+                          width={360}
+                          height={240}
+                          unoptimized
+                          className="w-full object-cover max-h-48"
+                        />
                       </div>
                     )}
                     <div className="whitespace-pre-wrap">{m.text}</div>
@@ -505,7 +497,14 @@ export default function TeacherAIChatTab() {
             {imagePreview && (
               <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src={imagePreview} alt="معاينة" className="w-10 h-10 rounded-lg object-cover border border-slate-300" />
+                  <Image
+                    src={imagePreview}
+                    alt="معاينة"
+                    width={40}
+                    height={40}
+                    unoptimized
+                    className="w-10 h-10 rounded-lg object-cover border border-slate-300"
+                  />
                   <span className="text-xs font-bold text-slate-700">صورة مرفقة جاهزة للإرسال والتحليل</span>
                 </div>
                 <button onClick={clearImage} className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50">

@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { syncDocToCloud } from './firestoreSync';
 
 export interface AttendanceRecord {
   id: string;
@@ -35,13 +34,15 @@ export async function recordAttendance(data: Omit<AttendanceRecord, 'id' | 'crea
     createdAt: new Date().toISOString(),
   };
   saveLocalAttendance([item, ...getLocalAttendance()]);
-  try { await addDoc(collection(db, 'attendance'), item); } catch {}
+  await syncDocToCloud('attendance', item.id, item);
   return item;
 }
 
 export function updateAttendance(id: string, patch: Partial<AttendanceRecord>) {
   const items = getLocalAttendance().map(a => a.id === id ? { ...a, ...patch } : a);
   saveLocalAttendance(items);
+  const item = items.find((a) => a.id === id);
+  if (item) syncDocToCloud('attendance', id, item);
 }
 
 export function getAttendanceStats(studentId: string) {

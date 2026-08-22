@@ -12,6 +12,39 @@ const ALLOWED_COLLECTIONS = new Set([
   'ikhlasLogs',
   'ikhlasPosts',
   'calendar_sessions',
+  'faceRecords',
+  'notifications',
+  'attendance',
+  'assessment_templates',
+  'assessment_results',
+  'iep_records',
+  'consents',
+  'resources',
+  'session_records',
+  'class_students',
+  'student_notes',
+  'student_homework_logs',
+  'student_cert_logs',
+  'curriculum_files',
+  'curriculum_quizzes',
+  'quiz_submissions',
+  'classroom_quizzes',
+  'smart_schedules',
+  'schedule_parse_logs',
+  'parents_community_chat',
+  'parents_chat_settings',
+  'ai_threads',
+  'teacher_ai_threads',
+  'teacher_ai_chats',
+  'branches',
+  'homework',
+  'invoices',
+  'waitlist',
+  'student_points',
+  'point_transactions',
+  'schedule_notification_logs',
+  'platform_analytics',
+  'platform_config',
 ]);
 
 function cleanDocId(value: unknown) {
@@ -26,7 +59,20 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
     return collectionName !== 'account_credentials';
   }
   if (method === 'delete') return false;
-  return ['students', 'reports', 'surveys', 'messages', 'activities'].includes(collectionName);
+  return [
+    'students',
+    'reports',
+    'surveys',
+    'messages',
+    'activities',
+    'notifications',
+    'consents',
+    'quiz_submissions',
+    'homework',
+    'waitlist',
+    'student_points',
+    'point_transactions',
+  ].includes(collectionName);
 }
 
 export async function POST(req: NextRequest) {

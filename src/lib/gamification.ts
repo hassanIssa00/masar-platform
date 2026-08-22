@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { syncDocToCloud } from './firestoreSync';
 
 export interface Badge {
   id: string;
@@ -96,6 +95,7 @@ export async function awardPoints(studentId: string, studentName: string, points
 
   const newAll = existing ? all.map(p => p.studentId === studentId ? updated : p) : [...all, updated];
   localStorage.setItem(POINTS_KEY, JSON.stringify(newAll));
+  await syncDocToCloud('student_points', studentId, updated);
 
   const tx: PointTransaction = {
     id: `tx_${Date.now()}`,
@@ -107,7 +107,6 @@ export async function awardPoints(studentId: string, studentName: string, points
   };
   const txAll = [tx, ...getTransactions()].slice(0, 200);
   localStorage.setItem(TX_KEY, JSON.stringify(txAll));
-
-  try { await addDoc(collection(db, 'point_transactions'), tx); } catch {}
+  await syncDocToCloud('point_transactions', tx.id, tx);
   return updated;
 }

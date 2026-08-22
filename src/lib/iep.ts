@@ -1,7 +1,6 @@
 'use client';
 
-import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
 
 export type IEPGoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'discontinued';
 export type IEPDomain = 'academic' | 'speech' | 'social' | 'motor' | 'cognitive' | 'behavioral';
@@ -58,17 +57,20 @@ export async function createIEP(data: Omit<IEPRecord, 'id' | 'createdAt' | 'upda
   };
   const updated = [item, ...getLocalIEPs()];
   saveLocalIEPs(updated);
-  try { await addDoc(collection(db, 'iep_records'), item); } catch {}
+  await syncDocToCloud('iep_records', item.id, item);
   return item;
 }
 
 export function updateIEP(id: string, patch: Partial<IEPRecord>) {
   const items = getLocalIEPs().map(i => i.id === id ? { ...i, ...patch, updatedAt: new Date().toISOString() } : i);
   saveLocalIEPs(items);
+  const item = items.find((i) => i.id === id);
+  if (item) syncDocToCloud('iep_records', id, item);
 }
 
 export function deleteIEP(id: string) {
   saveLocalIEPs(getLocalIEPs().filter(i => i.id !== id));
+  deleteDocFromCloud('iep_records', id);
 }
 
 export const DOMAIN_LABELS: Record<IEPDomain, string> = {
