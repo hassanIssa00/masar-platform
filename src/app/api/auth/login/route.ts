@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting disabled temporarily - uncomment to re-enable

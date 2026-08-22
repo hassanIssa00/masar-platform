@@ -1,7 +1,5 @@
 import 'server-only';
 import bcrypt from 'bcryptjs';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const SESSION_COOKIE_NAME = 'masar_session';
@@ -244,51 +242,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
       };
     }
 
-    const [accountsSnap, credentialsSnap] = await Promise.all([
-      getDocs(collection(db, 'accounts')),
-      getDocs(collection(db, 'account_credentials')),
-    ]);
-
-    const credentialDoc = credentialsSnap.docs
-      .map((entry) => entry.data() as {
-        accountId?: string;
-        email?: string;
-        phone?: string;
-        passwordHash?: string;
-      })
-      .find((entry) => {
-        const email = entry.email?.trim().toLowerCase();
-        const phone = entry.phone?.trim().toLowerCase();
-        return email === identifier || phone === identifier;
-      });
-
-    if (!credentialDoc?.accountId || !credentialDoc.passwordHash) return null;
-    const valid = await verifyBcryptPassword(password, credentialDoc.passwordHash);
-    if (!valid) return null;
-
-    const accountEntry = accountsSnap.docs.find((entry) => entry.id === credentialDoc.accountId);
-    if (!accountEntry) return null;
-
-    const data = accountEntry.data() as {
-      name?: string;
-      email?: string;
-      role?: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
-      schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
-      phone?: string;
-      providerId?: string;
-    };
-
-    if (!data.email || !data.role) return null;
-
-    return {
-      id: accountEntry.id,
-      name: data.name || 'مستخدم جديد',
-      email: data.email.trim().toLowerCase(),
-      role: data.role,
-      schoolBranch: data.schoolBranch,
-      phone: data.phone,
-      providerId: data.providerId,
-    };
+    return null;
   } catch {
     return null;
   }

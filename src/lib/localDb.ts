@@ -61,6 +61,7 @@ export type ReportRecord = {
   recommendations: string[];
   answers: Array<{ question: string; answer: string }>;
   domains: Array<{ name: string; score: number; note: string }>;
+  media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string }>;
 };
 
 export type SurveySubmission = {

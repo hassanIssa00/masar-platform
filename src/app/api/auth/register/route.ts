@@ -4,6 +4,8 @@ import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 import type { UserRole } from '@/lib/localDb';
 
+export const runtime = 'nodejs';
+
 const ROLES = new Set<UserRole>(['parent', 'student', 'teacher']);
 
 function cleanEmail(value: unknown) {
@@ -16,6 +18,10 @@ function cleanRole(value: unknown): UserRole {
 
 function cleanBranch(value: unknown): 'MASAR' | 'IKHLAS_JEDDAH' {
   return value === 'IKHLAS_JEDDAH' || value === 'MASAR' ? value : 'MASAR';
+}
+
+function credentialLookupId(value: string) {
+  return `lookup_${value.trim().toLowerCase().replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -74,6 +80,32 @@ export async function POST(req: NextRequest) {
       },
       { merge: true },
     ),
+    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(
+      {
+        accountId,
+        email,
+        phone,
+        passwordHash,
+        createdAt: now,
+        source: 'manual-register',
+      },
+      { merge: true },
+    ),
+    ...(phone
+      ? [
+        adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(
+          {
+            accountId,
+            email,
+            phone,
+            passwordHash,
+            createdAt: now,
+            source: 'manual-register',
+          },
+          { merge: true },
+        ),
+      ]
+      : []),
   ]);
 
   const token = await createSessionToken(account);
