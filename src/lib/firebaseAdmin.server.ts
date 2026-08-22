@@ -27,6 +27,13 @@ function parseServiceAccount() {
   return null;
 }
 
+export function hasFirebaseAdminConfig() {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+      (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY),
+  );
+}
+
 function getAdminApp(): App | null {
   try {
     return (

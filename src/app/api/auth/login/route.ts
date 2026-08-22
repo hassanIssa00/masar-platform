@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
-import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { getAdminDb, hasFirebaseAdminConfig } from '@/lib/firebaseAdmin.server';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +25,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { ok: false, reason: 'missing', error: 'يرجى تقديم البريد الإلكتروني وكلمة المرور' },
         { status: 400 }
+      );
+    }
+
+    const cleanIdentifier = userIdentifier.trim().toLowerCase();
+    if (cleanIdentifier === 'dr.ismail@masar.com' && !process.env.OWNER_PASSWORD_HASH) {
+      return NextResponse.json(
+        { ok: false, reason: 'owner_password_missing', error: 'كلمة مرور د. إسماعيل غير مضبوطة على السيرفر.' },
+        { status: 503 }
+      );
+    }
+
+    if (cleanIdentifier !== 'dr.ismail@masar.com' && !hasFirebaseAdminConfig()) {
+      return NextResponse.json(
+        { ok: false, reason: 'firebase_admin_missing', error: 'اتصال حسابات السحابة غير مفعل على السيرفر.' },
+        { status: 503 }
       );
     }
 
