@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
+import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME, hasSessionSecret } from '@/lib/auth/session.server';
 import { getAdminDb, hasFirebaseAdminConfig } from '@/lib/firebaseAdmin.server';
 
 export const runtime = 'nodejs';
@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanIdentifier = userIdentifier.trim().toLowerCase();
+    if (!hasSessionSecret()) {
+      return NextResponse.json(
+        { ok: false, reason: 'session_secret_missing', error: 'مفتاح الجلسات الآمنة غير مضبوط على السيرفر.' },
+        { status: 503 },
+      );
+    }
+
     if (cleanIdentifier === 'dr.ismail@masar.com' && !process.env.OWNER_PASSWORD_HASH) {
       return NextResponse.json(
         { ok: false, reason: 'owner_password_missing', error: 'كلمة مرور د. إسماعيل غير مضبوطة على السيرفر.' },

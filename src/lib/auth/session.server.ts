@@ -16,9 +16,14 @@ export interface SessionPayload {
   v: number;
 }
 
-function getJwtSecret(): string {
+export function hasSessionSecret(): boolean {
+  return Boolean(process.env.SESSION_SECRET?.trim()) || process.env.NODE_ENV !== 'production';
+}
+
+function getJwtSecret(): string | null {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.trim().length === 0) {
+    if (process.env.NODE_ENV === 'production') return null;
     return 'masar_default_session_secret_jwt_2026_prod_key_#88219';
   }
   return secret.trim();
@@ -56,7 +61,7 @@ async function signToken(payload: SessionPayload): Promise<string | null> {
  */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   const secret = getJwtSecret();
-  if (!token) return null;
+  if (!secret || !token) return null;
 
   try {
     const parts = token.split('.');

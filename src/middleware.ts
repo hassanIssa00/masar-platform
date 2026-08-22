@@ -6,9 +6,10 @@ type MiddlewareSessionPayload = {
   exp?: number;
 };
 
-function getJwtSecret(): string {
+function getJwtSecret(): string | null {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.trim().length === 0) {
+    if (process.env.NODE_ENV === 'production') return null;
     return 'masar_default_session_secret_jwt_2026_prod_key_#88219';
   }
   return secret.trim();
@@ -22,6 +23,9 @@ function base64UrlToBytes(value: string) {
 
 async function verifySessionTokenInMiddleware(token: string): Promise<MiddlewareSessionPayload | null> {
   try {
+    const secret = getJwtSecret();
+    if (!secret) return null;
+
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
@@ -30,7 +34,7 @@ async function verifySessionTokenInMiddleware(token: string): Promise<Middleware
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
       'raw',
-      enc.encode(getJwtSecret()),
+      enc.encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify'],
