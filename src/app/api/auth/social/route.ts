@@ -5,6 +5,8 @@ import type { UserRole } from '@/lib/localDb';
 
 const ROLES = new Set<UserRole>(['parent', 'student', 'teacher', 'specialist']);
 
+export const runtime = 'nodejs';
+
 type SessionAccount = {
   id: string;
   name: string;
@@ -44,7 +46,7 @@ async function sessionResponse(account: SessionAccount, isNew: boolean) {
 }
 
 export async function POST(req: NextRequest) {
-  const adminAuth = getAdminAuth();
+  const adminAuth = await getAdminAuth();
   const adminDb = getAdminDb();
   if (!adminAuth || !adminDb) {
     return NextResponse.json(

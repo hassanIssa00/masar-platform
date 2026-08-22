@@ -1,6 +1,5 @@
 import 'server-only';
-import { cert, getApps, initializeApp, applicationDefault } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { cert, getApps, initializeApp, applicationDefault, type App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 function parseServiceAccount() {
@@ -28,14 +27,28 @@ function parseServiceAccount() {
   return null;
 }
 
-export function getAdminDb() {
+function getAdminApp(): App | null {
   try {
-    const app =
+    return (
       getApps()[0] ??
       initializeApp({
         credential: parseServiceAccount() ?? applicationDefault(),
         projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'masar-platform-8e642',
-      });
+      })
+    );
+  } catch (error) {
+    console.error(
+      '[FirebaseAdmin] Admin SDK is not configured. Set FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY/FIREBASE_PROJECT_ID.',
+      error,
+    );
+    return null;
+  }
+}
+
+export function getAdminDb() {
+  try {
+    const app = getAdminApp();
+    if (!app) return null;
 
     return getFirestore(app);
   } catch (error) {
@@ -47,15 +60,12 @@ export function getAdminDb() {
   }
 }
 
-export function getAdminAuth() {
+export async function getAdminAuth() {
   try {
-    const app =
-      getApps()[0] ??
-      initializeApp({
-        credential: parseServiceAccount() ?? applicationDefault(),
-        projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'masar-platform-8e642',
-      });
+    const app = getAdminApp();
+    if (!app) return null;
 
+    const { getAuth } = await import('firebase-admin/auth');
     return getAuth(app);
   } catch (error) {
     console.error(
