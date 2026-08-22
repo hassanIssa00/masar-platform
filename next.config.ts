@@ -42,9 +42,10 @@ import type { NextConfig } from "next";
 //   The correct long-term fix is to add CSP nonce support via middleware.
 //   This is documented as a future hardening task.
 //
-// NOTE on camera permission:
-//   Face ID (/auth/login, /admin) uses navigator.mediaDevices.getUserMedia.
-//   camera=(self) permits camera only on same-origin pages. It is NOT disabled.
+// NOTE on camera/microphone permission:
+//   Face ID uses navigator.mediaDevices.getUserMedia for camera access.
+//   Grade-one oral assessment uses microphone recording inside the same origin.
+//   Both permissions are limited to this platform origin.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -168,13 +169,12 @@ const nextConfig: NextConfig = {
 
 
           // ── Permissions Policy ─────────────────────────────────────────────
-          // camera=(self)    — Face ID requires camera on same-origin pages only
-          // microphone=()    — App does not use microphone (LiveKit audio handled
-          //                    by the LiveKit SDK; does NOT require this header)
+          // camera=(self)        — Face ID requires camera on same-origin pages only
+          // microphone=(self)    — Student oral assessments require recording audio
           // geolocation=()   — Not used by the application
           // payment=()       — No payment APIs used
           // usb=()           — Not used
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()' },
         ],
       },
       {

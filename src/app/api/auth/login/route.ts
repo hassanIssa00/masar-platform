@@ -10,10 +10,18 @@ export async function POST(req: NextRequest) {
     // const rateLimit = await checkRateLimit('login', identifier, { windowMs: 15 * 60 * 1000, maxRequests: 50, failClosed: false });
     // if (!rateLimit.allowed) { return NextResponse.json({ ok: false, reason: 'rate_limited', error: '...' }, { status: 429 }); }
 
-    const body = await req.json();
+    let body: { identifier?: unknown; password?: unknown; rememberMe?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { ok: false, reason: 'invalid_json', error: 'طلب تسجيل الدخول غير مكتمل. حدّث الصفحة وحاول مرة أخرى.' },
+        { status: 400 }
+      );
+    }
     const { identifier: userIdentifier, password, rememberMe } = body;
 
-    if (!userIdentifier || !password) {
+    if (typeof userIdentifier !== 'string' || typeof password !== 'string' || !userIdentifier || !password) {
       return NextResponse.json(
         { ok: false, reason: 'missing', error: 'يرجى تقديم البريد الإلكتروني وكلمة المرور' },
         { status: 400 }
@@ -68,7 +76,8 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error('[AuthLogin] Failed to process login request:', error);
     return NextResponse.json(
       { ok: false, reason: 'server_error', error: 'خطأ في معالجة طلب الدخول' },
       { status: 500 }
