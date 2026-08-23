@@ -1,4 +1,4 @@
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export interface CurriculumFile {
   subjectId: string;
   name: string;         // e.g. "الفصل الأول - لغتي 1"
   mimeType: 'application/pdf' | 'image/png' | 'image/jpeg' | 'image/webp';
-  base64Data: string;   // full base64 (stored locally for AI access)
+  base64Data: string;   // full base64 kept in the active browser memory cache for review tools
   totalPages?: number;
   uploadedAt: string;
   sizeKb?: number;
@@ -93,12 +93,12 @@ export const CURRICULUM_SUBJECTS: CurriculumSubject[] = [
 
 function readList<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+  return readCloudCache<T>(key);
 }
 
 function writeList<T>(key: string, data: T[]) {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* storage full */ }
+  writeCloudCache(key, data);
 }
 
 // ── Curriculum Files ──────────────────────────────────────────────────────────

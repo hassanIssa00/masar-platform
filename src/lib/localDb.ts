@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+import { clearCloudCache, deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type UserRole = 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
 
@@ -130,35 +130,29 @@ const KEYS = {
   ikhlasPosts: 'masar.ikhlasPosts.v1',
 };
 
-// Flag stored after a data purge — prevents stale local data being re-pushed to cloud
+// Flag kept in memory after a data purge — prevents stale client data being re-pushed to cloud
 export const CLEARED_FLAG_KEY = 'masar.dataCleared.v1';
+let dataClearedAt: string | null = null;
+let activeSession: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'> | null = null;
 
 export function isDataCleared(): boolean {
   if (typeof window === 'undefined') return false;
-  return !!localStorage.getItem(CLEARED_FLAG_KEY);
+  return Boolean(dataClearedAt);
 }
 
 export function markDataCleared() {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CLEARED_FLAG_KEY, new Date().toISOString());
+  dataClearedAt = new Date().toISOString();
 }
 
 function readList<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
-
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T[]) : [];
-  } catch {
-    return [];
-  }
+  return readCloudCache<T>(key);
 }
 
 function writeList<T>(key: string, value: T[]) {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  writeCloudCache<T>(key, value);
 }
 
 function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {
@@ -214,39 +208,33 @@ export function setSession(
   rememberMe: boolean = false,
   _writeClientCookie: boolean = false
 ) {
+  void rememberMe;
   void _writeClientCookie;
-  const targetStorage = rememberMe ? localStorage : sessionStorage;
-
-  // Clear session from both storages to avoid conflicting states
-  localStorage.removeItem(KEYS.session);
-  localStorage.removeItem('masar-user');
-  localStorage.removeItem('masar_logged_in');
-  localStorage.removeItem('user_role');
-  localStorage.removeItem('user_name');
-  sessionStorage.removeItem(KEYS.session);
-  sessionStorage.removeItem('masar-user');
-  sessionStorage.removeItem('masar_logged_in');
-  sessionStorage.removeItem('user_role');
-  sessionStorage.removeItem('user_name');
-
-  targetStorage.setItem(KEYS.session, JSON.stringify(account));
-  targetStorage.setItem('masar-user', JSON.stringify(account));
-  targetStorage.setItem('masar_logged_in', 'true');
-  targetStorage.setItem('user_role', account.role);
-  targetStorage.setItem('user_name', account.name);
-  if (account.schoolBranch) {
-    targetStorage.setItem('masar_school_branch', account.schoolBranch);
+  activeSession = account;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: account }));
   }
-
-  // Authentication cookies are created only by server routes as HttpOnly signed tokens.
 }
 
 export function getSession() {
   if (typeof window === 'undefined') return null;
+  return activeSession;
+}
 
+export async function hydrateSessionFromServer() {
+  if (typeof window === 'undefined') return null;
+  if (activeSession) return activeSession;
   try {
-    const raw = sessionStorage.getItem(KEYS.session) || localStorage.getItem(KEYS.session);
-    return raw ? (JSON.parse(raw) as Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>) : null;
+    const response = await fetch('/api/auth/session', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (!payload?.ok || !payload.account) return null;
+    setSession(payload.account);
+    return activeSession;
   } catch {
     return null;
   }
@@ -254,17 +242,9 @@ export function getSession() {
 
 export function clearSession() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(KEYS.session);
-    localStorage.removeItem('masar-user');
-    localStorage.removeItem('masar_logged_in');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_name');
-    sessionStorage.removeItem(KEYS.session);
-    sessionStorage.removeItem('masar-user');
-    sessionStorage.removeItem('masar_logged_in');
-    sessionStorage.removeItem('user_role');
-    sessionStorage.removeItem('user_name');
+    activeSession = null;
     document.cookie = `masar_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+    window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: null }));
   }
 }
 
@@ -483,16 +463,18 @@ export function saveIkhlasPost(post: Omit<IkhlasCommunityPost, 'id' | 'createdAt
 
 export function clearAllMockData() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(KEYS.students);
-  localStorage.removeItem(KEYS.reports);
-  localStorage.removeItem(KEYS.surveys);
-  localStorage.removeItem(KEYS.activity);
-  localStorage.removeItem(KEYS.messages);
-  localStorage.removeItem(KEYS.ikhlasLogs);
-  localStorage.removeItem(KEYS.ikhlasPosts);
-  localStorage.removeItem('masar.waitlist.v1');
-  localStorage.removeItem('masar_ai_threads_v2');
-  // Mark cleared so firestoreSync won't push stale items back up
+  clearCloudCache([
+    KEYS.students,
+    KEYS.reports,
+    KEYS.surveys,
+    KEYS.activity,
+    KEYS.messages,
+    KEYS.ikhlasLogs,
+    KEYS.ikhlasPosts,
+    'masar.waitlist.v1',
+    'masar.ai.threads.v4',
+  ]);
+  // Mark cleared so firestoreSync won't push stale items back up.
   markDataCleared();
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+import { syncDocToCloud, deleteDocFromCloud, readCloudCache, writeCloudCache } from './firestoreSync';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -74,11 +74,11 @@ const CLOUD_CERT_LOGS = 'student_cert_logs';
 
 function readList<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+  return readCloudCache<T>(key);
 }
 function writeList<T>(key: string, data: T[]) {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* full */ }
+  writeCloudCache(key, data);
 }
 
 // ── Student Notes ─────────────────────────────────────────────────────────
@@ -136,13 +136,7 @@ const CLOUD_COLLECTION = 'class_students';
 
 export function getClassStudents(): ClassStudentRecord[] {
   if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(CLASS_STUDENTS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return readCloudCache<ClassStudentRecord>(CLASS_STUDENTS_KEY);
 }
 
 export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[]> {
@@ -150,9 +144,7 @@ export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[
     const snap = await getDocs(collection(db, CLOUD_COLLECTION));
     if (!snap.empty) {
       const items = snap.docs.map((d) => d.data() as ClassStudentRecord);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(items));
-      }
+      writeList(CLASS_STUDENTS_KEY, items);
       return items;
     }
   } catch (e) {
@@ -195,9 +187,7 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
     list.unshift(target);
   }
 
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
-  }
+  writeList(CLASS_STUDENTS_KEY, list);
 
   // ☁️ Sync directly to Server Database Cloud
   syncDocToCloud(CLOUD_COLLECTION, target.id, target);
@@ -207,9 +197,7 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
 
 export function deleteClassStudent(id: string): void {
   const list = getClassStudents().filter((s) => s.id !== id);
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(CLASS_STUDENTS_KEY, JSON.stringify(list));
-  }
+  writeList(CLASS_STUDENTS_KEY, list);
 
   // ☁️ Delete from Server Database Cloud
   deleteDocFromCloud(CLOUD_COLLECTION, id);

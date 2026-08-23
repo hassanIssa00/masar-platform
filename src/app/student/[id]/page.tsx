@@ -19,7 +19,7 @@ export default function StudentProfilePage() {
   useEffect(() => {
     queueMicrotask(() => {
       const session = getSession();
-      const role = session?.role || (typeof window !== 'undefined' ? localStorage.getItem('user_role') : '') || 'parent';
+      const role = session?.role || 'parent';
       setUserRole(role);
 
       const found = getStudents().find((item) => item.id === params.id) ?? null;

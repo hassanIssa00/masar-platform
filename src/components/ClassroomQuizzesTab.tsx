@@ -6,7 +6,7 @@ import {
   Award, Trash2, ChevronRight, Check, X, FileText, BarChart2,
   BookOpen, Lightbulb, AlertCircle, RefreshCw, Trophy
 } from 'lucide-react';
-import { syncDocToCloud, deleteDocFromCloud } from '@/lib/firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -34,9 +34,7 @@ const STORAGE_KEY = 'masar_class_quizzes_v1';
 const CLOUD_COLLECTION = 'classroom_quizzes';
 
 function authJsonHeaders() {
-  if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };
-  const token = localStorage.getItem('masar_token') ?? localStorage.getItem('access_token');
-  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { 'Content-Type': 'application/json' };
 }
 
 function buildLocalQuizQuestions(subject: string): QuizQuestion[] {
@@ -213,18 +211,13 @@ const SAMPLE_QUIZZES: ClassQuiz[] = [
 ];
 
 function loadLocalQuizzes(): ClassQuiz[] {
-  if (typeof window === 'undefined') return SAMPLE_QUIZZES;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : SAMPLE_QUIZZES;
-  } catch { return SAMPLE_QUIZZES; }
+  const cached = readCloudCache<ClassQuiz>(STORAGE_KEY);
+  return cached.length ? cached : SAMPLE_QUIZZES;
 }
 
 function saveQuizStore(quiz: ClassQuiz, currentList: ClassQuiz[]): ClassQuiz[] {
   const updated = [quiz, ...currentList.filter(q => q.id !== quiz.id)];
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }
+  writeCloudCache(STORAGE_KEY, updated);
   // ☁️ Sync to Server Database Cloud
   syncDocToCloud(CLOUD_COLLECTION, quiz.id, quiz);
   return updated;
@@ -267,9 +260,7 @@ export default function ClassroomQuizzesTab() {
         const cloudItems = snap.docs.map(d => d.data() as ClassQuiz);
         setQuizzes(prev => {
           const merged = [...cloudItems, ...prev].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          }
+          writeCloudCache(STORAGE_KEY, merged);
           return merged;
         });
       } else {
@@ -282,9 +273,7 @@ export default function ClassroomQuizzesTab() {
       if (!snap.empty) {
         const cloudItems = snap.docs.map(d => d.data() as ClassQuiz);
         setQuizzes(cloudItems);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudItems));
-        }
+        writeCloudCache(STORAGE_KEY, cloudItems);
       }
     });
 
@@ -356,9 +345,7 @@ export default function ClassroomQuizzesTab() {
   const handleDeleteQuiz = (id: string) => {
     const updated = quizzes.filter(q => q.id !== id);
     setQuizzes(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    }
+    writeCloudCache(STORAGE_KEY, updated);
     deleteDocFromCloud(CLOUD_COLLECTION, id);
     if (activeQuiz?.id === id) setActiveQuiz(null);
   };

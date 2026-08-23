@@ -20,12 +20,8 @@ type Message = {
 };
 
 function authJsonHeaders() {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
-    : '';
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 

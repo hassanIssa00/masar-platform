@@ -43,8 +43,27 @@ export default function NewStudentPage() {
       const isStudent = session?.role === 'student' || flow === 'student';
       setNextFlow(isStudent ? 'student-test' : 'parent-survey');
 
-      const savedStudentId = typeof window !== 'undefined' ? localStorage.getItem('masar.current-student-id') : null;
-      if (!savedStudentId) {
+      const requestedStudentId = params.get('student');
+      const allStudents = getStudents();
+      const found =
+        allStudents.find((s) => s.id === requestedStudentId) ??
+        (session?.role === 'student'
+          ? allStudents.find((s) =>
+              s.fullName === session.name ||
+              s.parentPhone === session.phone ||
+              s.parentPhone === session.email ||
+              s.id === session.id,
+            )
+          : undefined) ??
+        (session?.role === 'parent'
+          ? allStudents.find((s) =>
+              s.parentPhone === session.phone ||
+              s.parentPhone === session.email ||
+              s.parentName === session.name,
+            )
+          : undefined);
+
+      if (!found) {
         if (session?.role === 'student') {
           setStudent((prev) => ({
             ...prev,
@@ -60,10 +79,6 @@ export default function NewStudentPage() {
         }
         return;
       }
-
-      const allStudents = getStudents();
-      const found = allStudents.find((s) => s.id === savedStudentId);
-      if (!found) return;
 
       setExistingStudentId(found.id);
       setStudent((prev) => ({
@@ -135,9 +150,6 @@ export default function NewStudentPage() {
       });
     }
 
-    localStorage.setItem('masar.current-student-id', savedStudent!.id);
-    localStorage.setItem('masar_active_student_id', savedStudent!.id);
-    localStorage.setItem('masar_active_mode', nextFlow === 'student-test' ? 'student' : 'parent');
     await syncDocToCloud('students', savedStudent!.id, savedStudent);
     router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}&flow=student` : `/survey?student=${savedStudent!.id}&flow=parent`);
   };

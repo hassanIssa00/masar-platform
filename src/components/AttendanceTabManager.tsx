@@ -8,7 +8,7 @@ import {
   Calendar, Layers, CheckCheck, BookOpen, Sun
 } from 'lucide-react';
 import { Period, DAY_NAMES, getTodayPeriods } from '@/data/ikhlasSchedule';
-import { syncDocToCloud } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 export interface Student {
   id: string;
@@ -68,17 +68,10 @@ export default function AttendanceTabManager({
     return todayPeriodsList[0]?.periodNumber || 1;
   });
 
-  // 2. Initialize matrix attendance state from localStorage
+  // 2. Initialize matrix attendance state from the shared cloud cache
   const [attendanceMatrix, setAttendanceMatrix] = useState<ClassAttendanceMatrix>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object') return parsed;
-        }
-      } catch { /* noop */ }
-    }
+    const cached = readCloudCache<{ id: string; matrix: ClassAttendanceMatrix }>(STORAGE_KEY_PREFIX).find((item) => item.id === storageKey);
+    if (cached?.matrix && typeof cached.matrix === 'object') return cached.matrix;
     const init: ClassAttendanceMatrix = {};
     students.forEach(s => {
       init[s.id] = {};
@@ -114,19 +107,17 @@ export default function AttendanceTabManager({
     });
   }, [students, todayPeriodsList]);
 
-  // Save to localStorage whenever matrix changes
+  // Save to cloud cache and server whenever matrix changes
   const saveMatrixToStorage = (matrix: ClassAttendanceMatrix) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(matrix));
-      } catch { /* noop */ }
-      // Sync to cloud
-      syncDocToCloud(CLOUD_COLLECTION, `IKHLAS_${todayStr}`, {
-        date: todayStr,
-        updatedAt: new Date().toISOString(),
-        matrix,
-      });
-    }
+    const record = {
+      id: storageKey,
+      date: todayStr,
+      updatedAt: new Date().toISOString(),
+      matrix,
+    };
+    const cached = readCloudCache<typeof record>(STORAGE_KEY_PREFIX);
+    writeCloudCache(STORAGE_KEY_PREFIX, [record, ...cached.filter((item) => item.id !== record.id)]);
+    syncDocToCloud(CLOUD_COLLECTION, `IKHLAS_${todayStr}`, record);
   };
 
   const [saving, setSaving] = useState(false);

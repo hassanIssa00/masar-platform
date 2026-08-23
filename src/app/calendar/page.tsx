@@ -22,22 +22,16 @@ export interface CalendarSession {
   notes?: string;
 }
 
-import { syncDocToCloud } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 const LOCAL_SESSIONS_KEY = 'masar.calendar_sessions.v1';
 
 function readCalendarSessions(): CalendarSession[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_SESSIONS_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readCloudCache<CalendarSession>(LOCAL_SESSIONS_KEY);
 }
 
 function saveCalendarSessions(items: CalendarSession[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_SESSIONS_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_SESSIONS_KEY, items);
   items.forEach((item) => {
     syncDocToCloud('calendar_sessions', item.id, item);
   });

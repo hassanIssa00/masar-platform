@@ -43,8 +43,12 @@ const ALLOWED_COLLECTIONS = new Set([
   'student_points',
   'point_transactions',
   'schedule_notification_logs',
+  'live_sessions',
+  'period_attendance',
   'platform_analytics',
   'platform_config',
+  'simple_spelling_assignments',
+  'simple_spelling_drawings',
 ]);
 
 function cleanDocId(value: unknown) {
@@ -72,6 +76,8 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
     'waitlist',
     'student_points',
     'point_transactions',
+    'simple_spelling_drawings',
+    'faceRecords',
   ].includes(collectionName);
 }
 

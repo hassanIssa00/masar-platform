@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type ConsentStatus = 'pending' | 'signed' | 'revoked' | 'expired';
 
@@ -24,7 +24,7 @@ const LOCAL_KEY = 'masar.consents.v1';
 
 export function getLocalConsents(): ConsentForm[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<ConsentForm>(LOCAL_KEY);
 }
 
 export async function createConsent(data: Omit<ConsentForm, 'id' | 'createdAt'>): Promise<ConsentForm> {
@@ -33,7 +33,7 @@ export async function createConsent(data: Omit<ConsentForm, 'id' | 'createdAt'>)
     id: `cns_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
     createdAt: new Date().toISOString(),
   };
-  localStorage.setItem(LOCAL_KEY, JSON.stringify([item, ...getLocalConsents()]));
+  writeCloudCache(LOCAL_KEY, [item, ...getLocalConsents()]);
   await syncDocToCloud('consents', item.id, item);
   return item;
 }
@@ -42,7 +42,7 @@ export function updateConsentStatus(id: string, status: ConsentStatus, signature
   const updated = getLocalConsents().map(c =>
     c.id === id ? { ...c, status, digitalSignature: signature || c.digitalSignature, signedAt: status === 'signed' ? new Date().toISOString() : c.signedAt } : c
   );
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  writeCloudCache(LOCAL_KEY, updated);
   const item = updated.find((c) => c.id === id);
   if (item) syncDocToCloud('consents', id, item);
 }

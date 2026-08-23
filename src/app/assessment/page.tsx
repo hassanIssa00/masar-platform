@@ -301,12 +301,9 @@ function PlacementAssessmentContent() {
       }
 
       const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
-      const stored = typeof window !== 'undefined' ? (localStorage.getItem('masar.assessment.gradeKey') as PlacementGradeKey | null) : null;
       const next = placementAssessments.some((item) => item.key === fromUrl)
         ? fromUrl
-        : placementAssessments.some((item) => item.key === stored)
-          ? stored
-          : null;
+        : null;
 
       if (next) {
         setGradeKey(next);
@@ -317,7 +314,7 @@ function PlacementAssessmentContent() {
     }, 0);
   }, [searchParams, router]);
 
-  const isStudentFlow = Boolean(studentIdParam || (typeof window !== 'undefined' && localStorage.getItem('masar.current-student-id')));
+  const isStudentFlow = Boolean(studentIdParam);
 
   useEffect(() => {
     if (!finished) return;
@@ -487,7 +484,7 @@ function PlacementAssessmentContent() {
         source: 'student-wizard',
       });
 
-    const rawReport = saveReport({
+    saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade: savedStudent.grade || assessment.shortTitle,
@@ -537,20 +534,6 @@ function PlacementAssessmentContent() {
       domains,
     });
 
-    localStorage.setItem(
-      'masar.last-placement-result',
-      JSON.stringify({
-        reportId: report.id,
-        rawReportId: rawReport.id,
-        gradeKey,
-        studentAge,
-        correctCount,
-        total: scoredQuestions.length,
-        recommendedProgram,
-      }),
-    );
-    localStorage.setItem('masar.recommended-program', recommendedProgram.href);
-    localStorage.setItem('masar.current-student-id', savedStudent.id);
     setSavedReportId(report.id);
     setSavedStudentId(savedStudent.id);
     setFinished(true);

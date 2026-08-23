@@ -89,46 +89,26 @@ export default function LoginPage() {
         setLoginError(result.reason);
       }
     });
-
-    if (typeof window !== 'undefined') {
-      const savedEmail = localStorage.getItem('masar_remember_email');
-      if (savedEmail) {
-        queueMicrotask(() => setEmail(savedEmail));
-      }
-      localStorage.removeItem('masar_remember_pass');
-    }
   }, []);
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
   async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
     await pullCloudDataToLocal().catch(() => {});
 
-    const branch =
-      account.schoolBranch ??
-      (typeof window !== 'undefined' ? (localStorage.getItem('masar_school_branch') ?? 'MASAR') : 'MASAR');
-
-    if (typeof window !== 'undefined' && account.schoolBranch) {
-      localStorage.setItem('masar_school_branch', account.schoolBranch);
-    }
+    const branch = account.schoolBranch ?? 'MASAR';
 
     trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
 
     let targetUrl = '/dashboard';
     if (account.role === 'doctor' || account.role === 'specialist' || account.role === 'teacher') {
-      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'parent');
       targetUrl = '/dashboard';
     } else if (account.role === 'student') {
-      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'student');
       if (branch === 'IKHLAS_JEDDAH') {
         const allStudents = getStudents();
         const linked = allStudents.find(
           (s) => s.fullName === account.name || s.parentPhone === account.email,
         );
-        const needsSetup =
-          !linked?.dateOfBirth &&
-          (typeof window !== 'undefined'
-            ? !localStorage.getItem('school_student_setup_done')
-            : true);
+        const needsSetup = !linked?.dateOfBirth;
         targetUrl = needsSetup ? '/school-student/setup' : '/school-student';
       } else {
         const linked = getStudents().find((s) => s.fullName === account.name || s.parentPhone === account.email);
@@ -139,14 +119,9 @@ export default function LoginPage() {
                 (report.type === 'student-assessment-analysis' || report.type === 'student-assessment-answers'),
             )
           : false;
-        if (typeof window !== 'undefined' && linked) {
-          localStorage.setItem('masar.current-student-id', linked.id);
-          localStorage.setItem('masar_active_student_id', linked.id);
-        }
         targetUrl = linked && hasStudentTest ? `/student/${linked.id}` : '/student/new?flow=student';
       }
     } else {
-      if (typeof window !== 'undefined') localStorage.setItem('masar_active_mode', 'parent');
       if (branch === 'IKHLAS_JEDDAH') {
         targetUrl = '/school-parent';
       } else {
@@ -190,12 +165,6 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.ok && data.account) {
-        if (rememberMe) {
-          localStorage.setItem('masar_remember_email', email);
-        } else {
-          localStorage.removeItem('masar_remember_email');
-        }
-        localStorage.removeItem('masar_remember_pass');
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
         setSession(data.account, rememberMe, false);
         setTimeout(() => {

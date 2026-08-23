@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type IEPGoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'discontinued';
 export type IEPDomain = 'academic' | 'speech' | 'social' | 'motor' | 'cognitive' | 'behavioral';
@@ -38,13 +38,12 @@ const LOCAL_KEY = 'masar.iep.v1';
 
 export function getLocalIEPs(): IEPRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); }
-  catch { return []; }
+  return readCloudCache<IEPRecord>(LOCAL_KEY);
 }
 
 export function saveLocalIEPs(items: IEPRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createIEP(data: Omit<IEPRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<IEPRecord> {

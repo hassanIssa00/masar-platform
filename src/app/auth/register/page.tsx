@@ -121,11 +121,6 @@ export default function RegisterPage() {
 
     if (result.ok) {
       setSession(result.account, false, false);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('masar_school_branch', schoolBranch);
-        localStorage.setItem('masar_active_mode', accountType);
-        localStorage.setItem('masar_registered_email', result.account.email);
-      }
       trackEvent('register_microsoft', { userId: result.account.id, userName: result.account.name, userRole: result.account.role, isNew: result.isNew });
 
       routeRegisteredAccount(accountType, schoolBranch);
@@ -177,11 +172,6 @@ export default function RegisterPage() {
           result.account.role === 'student' ? 'student'
           : result.account.role === 'parent' ? 'parent'
           : 'teacher';
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('masar_school_branch', result.account.schoolBranch || schoolBranch);
-          localStorage.setItem('masar_active_mode', resolvedType);
-          localStorage.setItem('masar_registered_email', result.account.email);
-        }
         routeRegisteredAccount(resolvedType, (result.account.schoolBranch as typeof schoolBranch) || schoolBranch);
       } else if (result?.reason) {
         setGoogleError(result.reason);
@@ -201,11 +191,6 @@ export default function RegisterPage() {
 
     if (result.ok) {
       setSession(result.account, false, false);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('masar_school_branch', schoolBranch);
-        localStorage.setItem('masar_active_mode', accountType);
-        localStorage.setItem('masar_registered_email', result.account.email);
-      }
       trackEvent('register_google', { userId: result.account.id, isNew: result.isNew });
 
       routeRegisteredAccount(accountType, schoolBranch);
@@ -226,11 +211,6 @@ export default function RegisterPage() {
 
     if (result.ok) {
       setSession(result.account, false, false);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('masar_school_branch', schoolBranch);
-        localStorage.setItem('masar_active_mode', accountType);
-        localStorage.setItem('masar_registered_email', result.account.email);
-      }
       trackEvent('register_apple', { userId: result.account.id, isNew: result.isNew });
 
       routeRegisteredAccount(accountType, schoolBranch);
@@ -342,12 +322,7 @@ export default function RegisterPage() {
 
     // Clear any existing session (e.g. a previous doctor demo session)
     // so that the new parent/student account starts fresh
-    if (typeof window !== 'undefined') {
-      clearSession();
-      localStorage.removeItem('masar.current-student-id');
-      localStorage.removeItem('masar_active_student_id');
-      localStorage.removeItem('masar_active_mode');
-    }
+    clearSession();
 
     const role = accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student';
     const res = await fetch('/api/auth/register', {
@@ -372,12 +347,6 @@ export default function RegisterPage() {
 
     const account = saveAccount(payload.account);
     setSession(account, false, false);
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('masar_account_type', accountType);
-      localStorage.setItem('masar_school_branch', schoolBranch);
-      localStorage.setItem('masar_registered_email', email.trim().toLowerCase());
-    }
 
     const allStudents = getStudents();
     const normalizedParentName = parentName.trim().toLowerCase();
@@ -407,12 +376,6 @@ export default function RegisterPage() {
     }
 
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
-
-    if (typeof window !== 'undefined' && matchingStudent) {
-      localStorage.setItem('masar_active_student_id', matchingStudent.id);
-      localStorage.setItem('masar_active_mode', accountType);
-      localStorage.setItem('masar.current-student-id', matchingStudent.id);
-    }
 
     setTimeout(() => {
       if (schoolBranch === 'IKHLAS_JEDDAH') {

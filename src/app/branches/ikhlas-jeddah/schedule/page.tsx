@@ -17,10 +17,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 function authHeaders() {
-  const token = typeof window !== 'undefined'
-    ? (localStorage.getItem('masar_token') ?? localStorage.getItem('access_token'))
-    : null;
-  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { 'Content-Type': 'application/json' };
 }
 
 const DEFAULT_SUBJECTS = [

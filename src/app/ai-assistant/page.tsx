@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { deleteDocFromCloud, subscribeToCloudCollection, syncDocToCloud } from '@/lib/firestoreSync';
+import { deleteDocFromCloud, subscribeToCloudCollection, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 type AiAction = {
   type: string;
@@ -106,9 +106,7 @@ export default function AIAssistantPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      if (threads.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
-    } catch {}
+    if (threads.length) writeCloudCache(STORAGE_KEY, threads);
   }, [threads]);
 
   useEffect(() => {

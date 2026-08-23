@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type SessionRating = 1 | 2 | 3 | 4 | 5;
 export type CooperationLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'refused';
@@ -42,7 +42,7 @@ const LOCAL_KEY = 'masar.sessionRecords.v1';
 
 export function getLocalSessionRecords(): SessionRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<SessionRecord>(LOCAL_KEY);
 }
 
 export function getStudentSessionRecords(studentId: string): SessionRecord[] {
@@ -55,20 +55,20 @@ export async function createSessionRecord(data: Omit<SessionRecord, 'id' | 'crea
     id: `sess_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
     createdAt: new Date().toISOString(),
   };
-  localStorage.setItem(LOCAL_KEY, JSON.stringify([item, ...getLocalSessionRecords()]));
+  writeCloudCache(LOCAL_KEY, [item, ...getLocalSessionRecords()]);
   await syncDocToCloud('session_records', item.id, item);
   return item;
 }
 
 export function updateSessionRecord(id: string, patch: Partial<SessionRecord>) {
   const updated = getLocalSessionRecords().map(s => s.id === id ? { ...s, ...patch } : s);
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  writeCloudCache(LOCAL_KEY, updated);
   const item = updated.find((s) => s.id === id);
   if (item) syncDocToCloud('session_records', id, item);
 }
 
 export function deleteSessionRecord(id: string) {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(getLocalSessionRecords().filter(s => s.id !== id)));
+  writeCloudCache(LOCAL_KEY, getLocalSessionRecords().filter(s => s.id !== id));
   deleteDocFromCloud('session_records', id);
 }
 

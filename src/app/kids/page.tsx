@@ -63,7 +63,7 @@ function KidsDashboardContent() {
       if (isStaff) {
         setIsStaffPreview(true);
         setAllStudents(getStudents());
-        const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
+        const studentId = searchParams.get('student');
         if (studentId) {
           const s = getStudents().find((item) => item.id === studentId) ?? null;
           setStudent(s);
@@ -75,20 +75,26 @@ function KidsDashboardContent() {
 
       // Parent → parent portal (not kids)
       if (currentSession.role === 'parent') {
-        const branch = currentSession.schoolBranch ?? localStorage.getItem('masar_school_branch');
-        router.replace(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
+        router.replace(currentSession.schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
         return;
       }
 
       // Ikhlas student → school-student portal
-      const branch = currentSession.schoolBranch ?? localStorage.getItem('masar_school_branch');
-      if (branch === 'IKHLAS_JEDDAH') {
+      if (currentSession.schoolBranch === 'IKHLAS_JEDDAH') {
         router.replace('/school-student');
         return;
       }
 
-      const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
-      const currentStudent = getStudents().find((item) => item.id === studentId) ?? null;
+      const students = getStudents();
+      const studentId =
+        searchParams.get('student') ??
+        students.find((item) =>
+          item.fullName === currentSession.name ||
+          item.parentPhone === currentSession.phone ||
+          item.parentPhone === currentSession.email ||
+          item.id === currentSession.id,
+        )?.id;
+      const currentStudent = students.find((item) => item.id === studentId) ?? null;
       setStudent(currentStudent);
       setReports(studentId ? getReports().filter((report) => report.studentId === studentId) : []);
       setSessionState(currentSession);

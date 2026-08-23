@@ -64,12 +64,19 @@ export default function StudentDashboard() {
     }
     // Set student name and photo from session or from linked student record
     const students = getStudents();
-    const linked = students.find((s) =>
-      s.parentPhone === session.email || s.fullName === session.name
-    );
+    const email = session.email?.trim().toLowerCase() ?? '';
+    const phone = session.phone?.replace(/\D/g, '') ?? '';
+    const linked = students.find((s) => {
+      const record = s as { email?: string; parentEmail?: string; parentPhone?: string; fullName?: string; id?: string };
+      const parentPhone = record.parentPhone?.replace(/\D/g, '') ?? '';
+      if (session.id && record.id === session.id) return true;
+      if (record.fullName === session.name) return true;
+      if (email && (record.email?.trim().toLowerCase() === email || record.parentEmail?.trim().toLowerCase() === email)) return true;
+      if (phone && parentPhone.includes(phone)) return true;
+      return false;
+    });
     setStudentName(linked?.fullName || session.name || 'طالب');
-    const savedPhoto = typeof window !== 'undefined' ? localStorage.getItem('student_photo_url') : null;
-    setStudentPhoto(linked?.photoUrl || savedPhoto || '');
+    setStudentPhoto(linked?.photoUrl || '');
     fetchData();
   }, [router]);
 
@@ -78,10 +85,8 @@ export default function StudentDashboard() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('masar_token') || localStorage.getItem('access_token') || localStorage.getItem('token') || '';
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       };
 
       let hwData = [];
@@ -402,7 +407,6 @@ function SubmissionModal({ hw, onClose, onSubmit }: { hw: any, onClose: () => vo
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
       // Mock submit
       // await fetch(`${API}/school/homework/${hw.id}/submit`, { ... })
       await new Promise(r => setTimeout(r, 1000));

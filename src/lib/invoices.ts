@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface InvoiceRecord {
   id: string;
@@ -20,16 +20,12 @@ const LOCAL_KEY = 'masar.invoices.v1';
 
 export function getLocalInvoices(): InvoiceRecord[] {
   if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readCloudCache<InvoiceRecord>(LOCAL_KEY);
 }
 
 export function saveLocalInvoices(items: InvoiceRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createInvoice(inv: Omit<InvoiceRecord, 'id' | 'invoiceNumber' | 'createdAt'>) {

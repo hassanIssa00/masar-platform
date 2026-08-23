@@ -8,7 +8,7 @@ import {
   Plus, Trash2, Settings, Eye, ZapIcon, Cloud,
 } from 'lucide-react';
 import { getClassParents, ClassParentRecord } from '@/lib/classDb';
-import { syncDocToCloud } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { DEFAULT_SCHEDULE, DAY_MAP_NUM_TO_AR } from '@/data/ikhlasSchedule';
@@ -57,12 +57,8 @@ const CLOUD_LOGS_COLLECTION = 'schedule_notification_logs';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 function authJsonHeaders() {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
-    : '';
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -94,11 +90,8 @@ function getDefaultParsedSchedule(): ParsedSchedule {
 /* ── Storage & Cloud Helpers ────────────────────────────────────────── */
 function loadSchedule(): ParsedSchedule {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_SCHEDULE);
-    if (!raw) return getDefaultParsedSchedule();
-    const parsed = JSON.parse(raw);
+    const parsed = readCloudCache<ParsedSchedule>(STORAGE_KEY_SCHEDULE)[0];
     if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
-      // If all slots are "درس حر", replace with actual default schedule
       const hasRealSubjects = parsed.slots.some((s: any) => s.subject && s.subject !== 'درس حر');
       if (!hasRealSubjects) return getDefaultParsedSchedule();
       return parsed;
@@ -110,7 +103,7 @@ function loadSchedule(): ParsedSchedule {
 }
 
 function saveScheduleStore(s: ParsedSchedule) {
-  try { localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(s)); } catch { /* noop */ }
+  writeCloudCache(STORAGE_KEY_SCHEDULE, [s]);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('masar_schedule_updated'));
   }
@@ -118,7 +111,6 @@ function saveScheduleStore(s: ParsedSchedule) {
   syncDocToCloud(CLOUD_SCHEDULE_COLLECTION, 'IKHLAS_JEDDAH_SCHEDULE', s);
 
   // Sync to NestJS backend API if reachable
-  const token = typeof window !== 'undefined' ? localStorage.getItem('masar_token') || localStorage.getItem('access_token') : null;
   const daysMap: Record<string, number> = { 'الأحد': 0, 'الاثنين': 1, 'الثلاثاء': 2, 'الأربعاء': 3, 'الخميس': 4 };
   const bulkPeriods = s.slots.map(slot => ({
     branch: 'IKHLAS_JEDDAH',
@@ -131,18 +123,18 @@ function saveScheduleStore(s: ParsedSchedule) {
 
   fetch(`${API}/school/schedule/bulk`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(bulkPeriods),
   }).catch(e => console.warn('Backend API schedule sync note:', e));
 }
 
 function loadLogs(): NotificationLog[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]'); }
+  try { return readCloudCache<NotificationLog>(STORAGE_KEY_LOGS); }
   catch { return []; }
 }
 
 function saveLogs(logs: NotificationLog[]) {
-  try { localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs.slice(0, 200))); } catch { /* noop */ }
+  writeCloudCache(STORAGE_KEY_LOGS, logs.slice(0, 200));
   // ☁️ Sync logs to Server DB Cloud
   logs.slice(0, 50).forEach(log => syncDocToCloud(CLOUD_LOGS_COLLECTION, log.id, log));
 }
@@ -233,9 +225,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
           const data = cloudScheduleDoc.data() as ParsedSchedule;
           if (data?.slots && isRealSchedule(data.slots)) {
             setSchedule(data);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(data));
-            }
+            writeCloudCache(STORAGE_KEY_SCHEDULE, [data]);
           }
         }
       }
@@ -247,9 +237,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
         const cloudLogs = snap.docs.map(d => d.data() as NotificationLog);
         setLogs(prev => {
           const merged = [...cloudLogs, ...prev].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(merged));
-          }
+          writeCloudCache(STORAGE_KEY_LOGS, merged);
           return merged;
         });
       }
@@ -262,6 +250,7 @@ export default function SmartScheduleTab({ onNavigateToSchedule }: Props) {
         const data = docSnap.data() as ParsedSchedule;
         if (data?.slots && isRealSchedule(data.slots)) {
           setSchedule(data);
+          writeCloudCache(STORAGE_KEY_SCHEDULE, [data]);
         }
       }
     });

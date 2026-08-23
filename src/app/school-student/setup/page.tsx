@@ -36,9 +36,17 @@ export default function StudentSetupPage() {
     }
 
     const students = getStudents();
-    // Find linked student record by name or phone or active ID
-    const activeId = localStorage.getItem('masar_active_student_id') || localStorage.getItem('masar.current-student-id');
-    const linked = students.find((s) => s.id === activeId || s.fullName === session.name || s.parentPhone === session.phone);
+    const email = session.email?.trim().toLowerCase() ?? '';
+    const phone = session.phone?.replace(/\D/g, '') ?? '';
+    const linked = students.find((s) => {
+      const record = s as StudentRecord & { email?: string; parentEmail?: string };
+      const parentPhone = s.parentPhone?.replace(/\D/g, '') ?? '';
+      if (session.id && s.id === session.id) return true;
+      if (s.fullName === session.name) return true;
+      if (email && (record.email?.trim().toLowerCase() === email || record.parentEmail?.trim().toLowerCase() === email)) return true;
+      if (phone && parentPhone.includes(phone)) return true;
+      return false;
+    });
     
     if (linked) {
       setStudent(linked);
@@ -91,12 +99,6 @@ export default function StudentSetupPage() {
         dateOfBirth,
         photoUrl: photoUrlToSave,
       });
-    }
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('school_student_setup_done', 'true');
-      if (photoUrlToSave) localStorage.setItem('student_photo_url', photoUrlToSave);
-      if (dateOfBirth) localStorage.setItem('student_dob', dateOfBirth);
     }
 
     setSuccess(true);

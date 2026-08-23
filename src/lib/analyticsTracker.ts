@@ -7,7 +7,8 @@ import {
   getDoc,
   onSnapshot,
 } from 'firebase/firestore';
-import { pullServerSnapshotToLocal, subscribeToCloudCollection, syncDocToCloud } from './firestoreSync';
+import { pullServerSnapshotToLocal, readCloudCache, subscribeToCloudCollection, syncDocToCloud, writeCloudCache } from './firestoreSync';
+import { getSession } from './localDb';
 
 /* ────────────────────────────────────────────────
    TYPES
@@ -117,22 +118,15 @@ function detectBrowser(ua: string): string {
 
 function getLocalEvents(): AnalyticsEvent[] {
   if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_ANALYTICS_KEY);
-    return raw ? (JSON.parse(raw) as AnalyticsEvent[]) : [];
-  } catch {
-    return [];
-  }
+  return readCloudCache<AnalyticsEvent>(LOCAL_ANALYTICS_KEY);
 }
 
 function saveLocalEvent(ev: AnalyticsEvent) {
   if (typeof window === 'undefined') return;
-  try {
-    const list = getLocalEvents();
-    const updated = [ev, ...list.filter((x) => x.id !== ev.id)].slice(0, 500);
-    localStorage.setItem(LOCAL_ANALYTICS_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('masar_analytics_event', { detail: ev }));
-  } catch {}
+  const list = getLocalEvents();
+  const updated = [ev, ...list.filter((x) => x.id !== ev.id)].slice(0, 500);
+  writeCloudCache(LOCAL_ANALYTICS_KEY, updated);
+  window.dispatchEvent(new CustomEvent('masar_analytics_event', { detail: ev }));
 }
 
 async function syncAnalyticsEvent(event: AnalyticsEvent) {
@@ -150,21 +144,9 @@ async function syncAnalyticsEvent(event: AnalyticsEvent) {
 
 function getActiveSessionUser(): { id?: string; name?: string; role?: string } {
   if (typeof window === 'undefined') return {};
-  try {
-    const sessionRaw = localStorage.getItem('masar.session.v1') || localStorage.getItem('masar_user');
-    if (sessionRaw) {
-      const parsed = JSON.parse(sessionRaw);
-      return {
-        id: parsed.id || parsed.email,
-        name: parsed.name || parsed.fullName,
-        role: parsed.role,
-      };
-    }
-    const name = localStorage.getItem('user_name');
-    const role = localStorage.getItem('user_role');
-    if (name || role) return { name: name || undefined, role: role || undefined };
-  } catch {}
-  return {};
+  const session = getSession();
+  if (!session) return {};
+  return { id: session.id || session.email, name: session.name, role: session.role };
 }
 
 function generateSeedEvents(): AnalyticsEvent[] {

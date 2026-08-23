@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ClipboardCheck, Download, Eraser, PenLine, RotateCcw, Save, Send, Users } from 'lucide-react';
 import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/localDb';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 const PAGE_COUNT = 81;
 const STORAGE_PREFIX = 'masar.simpleSpellingWorkbook.v1';
 const ASSIGNMENTS_KEY = 'masar.simpleSpellingAssignments.v1';
+const DRAWINGS_KEY = 'masar.simpleSpellingDrawings.v1';
 
 type Tool = 'view' | 'pen' | 'eraser';
 type Assignment = {
@@ -15,6 +17,13 @@ type Assignment = {
   fromPage: number;
   toPage: number;
   assignedAt: string;
+};
+type DrawingRecord = {
+  id: string;
+  studentId: string;
+  page: number;
+  dataUrl: string;
+  updatedAt: string;
 };
 
 function pageSrc(page: number) {
@@ -39,20 +48,52 @@ export default function SimpleSpellingWorkbook() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [notice, setNotice] = useState('');
 
-  const storageKey = `${STORAGE_PREFIX}.page.${page}`;
-
   function readAssignments(): Assignment[] {
-    if (typeof window === 'undefined') return [];
-    try {
-      return JSON.parse(localStorage.getItem(ASSIGNMENTS_KEY) || '[]') as Assignment[];
-    } catch {
-      return [];
-    }
+    return readCloudCache<Assignment>(ASSIGNMENTS_KEY);
   }
 
   function writeAssignments(items: Assignment[]) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(items));
+    writeCloudCache(ASSIGNMENTS_KEY, items);
+    items.forEach((item) => {
+      void syncDocToCloud('simple_spelling_assignments', item.studentId, item);
+    });
+  }
+
+  function getActiveStudentId() {
+    const session = getSession();
+    const allStudents = getStudents();
+
+    if (session?.role === 'student') {
+      return (
+        allStudents.find((student) =>
+          student.fullName === session.name ||
+          student.parentPhone === session.phone ||
+          student.parentPhone === session.email ||
+          student.id === session.id,
+        )?.id ?? ''
+      );
+    }
+
+    return selectedStudentId || allStudents[0]?.id || '';
+  }
+
+  function drawingId(pageNumber = page) {
+    return `${getActiveStudentId() || 'doctor'}-${pageNumber}`;
+  }
+
+  function readDrawings() {
+    return readCloudCache<DrawingRecord>(DRAWINGS_KEY);
+  }
+
+  function readDrawing(pageNumber = page) {
+    const id = drawingId(pageNumber);
+    return readDrawings().find((item) => item.id === id);
+  }
+
+  function upsertDrawing(record: DrawingRecord) {
+    const next = [record, ...readDrawings().filter((item) => item.id !== record.id)];
+    writeCloudCache(DRAWINGS_KEY, next);
+    void syncDocToCloud('simple_spelling_drawings', record.id, record);
   }
 
   function getCanvasContext() {
@@ -63,9 +104,17 @@ export default function SimpleSpellingWorkbook() {
 
   function persistCanvas() {
     const canvas = canvasRef.current;
-    if (!canvas || typeof window === 'undefined') return;
+    if (!canvas) return;
     try {
-      localStorage.setItem(storageKey, canvas.toDataURL('image/png'));
+      const studentId = getActiveStudentId();
+      const record: DrawingRecord = {
+        id: drawingId(page),
+        studentId: studentId || 'doctor',
+        page,
+        dataUrl: canvas.toDataURL('image/png'),
+        updatedAt: new Date().toISOString(),
+      };
+      upsertDrawing(record);
       setSavedAt(new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
     } catch {}
   }
@@ -89,7 +138,7 @@ export default function SimpleSpellingWorkbook() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = readDrawing(page)?.dataUrl;
       if (!saved) return;
       const img = new Image();
       img.onload = () => {
@@ -103,12 +152,20 @@ export default function SimpleSpellingWorkbook() {
   useEffect(() => {
     const session = getSession();
     const allStudents = getStudents();
-    const currentStudentId = localStorage.getItem('masar.current-student-id') ?? localStorage.getItem('masar_active_student_id') ?? '';
+    const currentStudentId =
+      session?.role === 'student'
+        ? allStudents.find((student) =>
+            student.fullName === session.name ||
+            student.parentPhone === session.phone ||
+            student.parentPhone === session.email ||
+            student.id === session.id,
+          )?.id ?? ''
+        : '';
     const currentAssignment = readAssignments().find((item) => item.studentId === currentStudentId) ?? null;
 
     setSessionRole(session?.role ?? '');
     setStudents(allStudents);
-    setSelectedStudentId(allStudents[0]?.id ?? '');
+    setSelectedStudentId(currentStudentId || allStudents[0]?.id || '');
     setAssignment(currentAssignment);
     if (currentAssignment) {
       setPage(currentAssignment.fromPage);
@@ -189,7 +246,15 @@ export default function SimpleSpellingWorkbook() {
     const ctx = getCanvasContext();
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (typeof window !== 'undefined') localStorage.removeItem(storageKey);
+    const id = drawingId(page);
+    writeCloudCache(DRAWINGS_KEY, readDrawings().filter((item) => item.id !== id));
+    void syncDocToCloud('simple_spelling_drawings', id, {
+      id,
+      studentId: getActiveStudentId() || 'doctor',
+      page,
+      dataUrl: '',
+      clearedAt: new Date().toISOString(),
+    });
     setSavedAt('');
   }
 
@@ -236,7 +301,7 @@ export default function SimpleSpellingWorkbook() {
 
   function submitAssignedPages() {
     persistCanvas();
-    const currentStudentId = localStorage.getItem('masar.current-student-id') ?? localStorage.getItem('masar_active_student_id') ?? '';
+    const currentStudentId = getActiveStudentId();
     const student = getStudents().find((item) => item.id === currentStudentId);
     if (!student || !assignment) {
       setNotice('لا يوجد تكليف صفحات مرتبط بهذا الطالب حالياً.');
@@ -257,7 +322,7 @@ export default function SimpleSpellingWorkbook() {
       recommendations: ['مراجعة الكتابة فوق الصفحات وتحديد الحروف التي تحتاج إعادة تدريب.', 'إرسال ملاحظة قصيرة لولي الأمر بعد التصحيح.'],
       answers: pages.map((pageNumber) => ({
         question: `صفحة ${pageNumber} من مذكرة التهجي البسيط`,
-        answer: localStorage.getItem(`${STORAGE_PREFIX}.page.${pageNumber}`) ? 'تم حل الصفحة وإرسالها للمراجعة' : 'لم يتم العثور على كتابة محفوظة على الصفحة',
+        answer: readDrawing(pageNumber)?.dataUrl ? 'تم حل الصفحة وإرسالها للمراجعة' : 'لم يتم العثور على كتابة محفوظة على الصفحة',
       })),
       domains: [],
     });

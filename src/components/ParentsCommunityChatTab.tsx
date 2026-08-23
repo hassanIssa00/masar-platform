@@ -10,7 +10,7 @@ import {
 import { getClassParents, type ClassParentRecord } from '@/lib/classDb';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
-import { syncDocToCloud } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 export interface ChatMessage {
   id: string;
@@ -85,22 +85,14 @@ const DEFAULT_SETTINGS: ChatSettings = {
 export default function ParentsCommunityChatTab() {
   const [parents, setParents] = useState<ClassParentRecord[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_CHAT_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch { /* noop */ }
-    }
+    const cached = readCloudCache<ChatMessage>(STORAGE_CHAT_KEY);
+    if (cached.length) return cached;
     return INITIAL_MESSAGES;
   });
 
   const [settings, setSettings] = useState<ChatSettings>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_SETTINGS_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch { /* noop */ }
-    }
+    const cached = readCloudCache<ChatSettings>(STORAGE_SETTINGS_KEY)[0];
+    if (cached) return cached;
     return DEFAULT_SETTINGS;
   });
 
@@ -134,13 +126,11 @@ export default function ParentsCommunityChatTab() {
     setParents(pList);
   }, []);
 
-  // Sync to localStorage & cloud helper
+  // Sync to cloud cache & server helper
   const persistMessages = (newMessages: ChatMessage[]) => {
     setMessages(newMessages);
     if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(newMessages));
-      } catch { /* noop */ }
+      writeCloudCache(STORAGE_CHAT_KEY, newMessages);
       syncDocToCloud('parents_community_chat', FIRESTORE_CHAT_DOC, {
         updatedAt: new Date().toISOString(),
         messages: newMessages,
@@ -151,9 +141,7 @@ export default function ParentsCommunityChatTab() {
   const persistSettings = (newSettings: ChatSettings) => {
     setSettings(newSettings);
     if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(newSettings));
-      } catch { /* noop */ }
+      writeCloudCache(STORAGE_SETTINGS_KEY, [newSettings]);
       syncDocToCloud('parents_chat_settings', FIRESTORE_CHAT_DOC, {
         updatedAt: new Date().toISOString(),
         settings: newSettings,
@@ -171,9 +159,7 @@ export default function ParentsCommunityChatTab() {
           const data = docSnap.data();
           if (data && Array.isArray(data.messages) && data.messages.length > 0) {
             setMessages(data.messages);
-            try {
-              localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(data.messages));
-            } catch { /* noop */ }
+            writeCloudCache(STORAGE_CHAT_KEY, data.messages);
           }
         }
       });

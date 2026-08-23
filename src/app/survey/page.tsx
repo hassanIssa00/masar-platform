@@ -265,9 +265,34 @@ function SurveyContent() {
   const isCurrentSectionComplete = sectionAnsweredCount === section.questions.length;
   const progress = Math.round((answeredCount / totalQuestions) * 100);
 
+  function resolveStudentId() {
+    const requested = searchParams.get('student');
+    if (requested) return requested;
+
+    const session = getSession();
+    const students = getStudents();
+    const matched =
+      session?.role === 'student'
+        ? students.find((student) =>
+            student.fullName === session.name ||
+            student.parentPhone === session.phone ||
+            student.parentPhone === session.email ||
+            student.id === session.id,
+          )
+        : session?.role === 'parent'
+          ? students.find((student) =>
+              student.parentPhone === session.phone ||
+              student.parentPhone === session.email ||
+              student.parentName === session.name,
+            )
+          : undefined;
+
+    return matched?.id;
+  }
+
   useEffect(() => {
     queueMicrotask(() => {
-      const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id');
+      const studentId = resolveStudentId();
       const existing = getStudents().find((student) => student.id === studentId);
       if (!existing) return;
 
@@ -293,7 +318,7 @@ function SurveyContent() {
     const clinicalDomains = getClinicalDomains(answers);
     const priorityDomains = [...clinicalDomains].sort((first, second) => first.score - second.score).slice(0, 3);
     const priorityText = priorityDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ');
-    const studentId = searchParams.get('student') ?? localStorage.getItem('masar.current-student-id') ?? undefined;
+    const studentId = resolveStudentId() ?? undefined;
     const savedStudent = saveStudent({
       id: studentId,
       fullName: studentName.trim() || 'طالب من الاستبيان',
@@ -320,9 +345,9 @@ function SurveyContent() {
       score: Math.round((Object.keys(answers).length / totalQuestions) * 100),
       status: 'pending',
       type: 'survey-answers',
-      summary: 'ملف إجابات خام مخصص لد. إسماعيل لمراجعة كل إجابة قبل اعتماد المسار العلاجي.',
+      summary: 'ملف إجابات تفصيلي مخصص لد. إسماعيل لمراجعة كل إجابة قبل اعتماد المسار العلاجي.',
       recommendations: [
-        'مراجعة الإجابات الخام بجانب المقابلة الإكلينيكية قبل اعتماد أي مسار.',
+        'مراجعة الإجابات بجانب المقابلة الإكلينيكية قبل اعتماد أي مسار.',
         'مطابقة إجابات ولي الأمر مع أداء الطالب داخل مهمة قصيرة عند أول مقابلة.',
       ],
       answers: activeReportSections.flatMap((sectionItem) =>
@@ -350,10 +375,8 @@ function SurveyContent() {
     });
 
     updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
-    localStorage.setItem('masar.current-student-id', savedStudent.id);
-    localStorage.setItem('masar_active_student_id', savedStudent.id);
     setSubmitted(true);
-    const flow = searchParams.get('flow') ?? localStorage.getItem('masar_active_mode') ?? getSession()?.role ?? 'parent';
+    const flow = searchParams.get('flow') ?? getSession()?.role ?? 'parent';
     if (flow === 'student') {
       router.push(`/assessment?student=${savedStudent.id}&flow=student`);
     } else {

@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface BranchRecord {
   id: string;
@@ -19,13 +19,12 @@ const LOCAL_KEY = 'masar.branches.v1';
 
 export function getLocalBranches(): BranchRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); }
-  catch { return []; }
+  return readCloudCache<BranchRecord>(LOCAL_KEY);
 }
 
 export function saveLocalBranches(items: BranchRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createBranch(data: Omit<BranchRecord, 'id' | 'createdAt'>): Promise<BranchRecord> {

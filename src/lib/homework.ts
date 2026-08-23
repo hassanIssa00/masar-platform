@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface HomeworkRecord {
   id: string;
@@ -19,16 +19,12 @@ const LOCAL_KEY = 'masar.homework.v1';
 
 export function getLocalHomework(): HomeworkRecord[] {
   if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readCloudCache<HomeworkRecord>(LOCAL_KEY);
 }
 
 export function saveLocalHomework(items: HomeworkRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createHomework(hw: Omit<HomeworkRecord, 'id' | 'createdAt' | 'status'>) {

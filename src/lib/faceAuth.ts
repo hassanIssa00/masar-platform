@@ -2,7 +2,7 @@
  * FaceAuthService — Browser-side Face Recognition
  * - Face detection via TinyFaceDetector (fast & lightweight)
  * - 128-dim face descriptor (embedding) via face-api.js
- * - Embedding stored encrypted in localStorage (never raw image)
+ * - Embedding stored obfuscated in Firestore-backed platform cache (never raw image)
  * - Liveness: eye-blink detection via Eye Aspect Ratio (EAR)
  */
 
@@ -28,7 +28,7 @@ async function loadModels() {
   modelsLoaded = true;
 }
 
-// ─── XOR-based obfuscation for localStorage (no server key needed) ──────────
+// ─── Lightweight obfuscation before writing the descriptor to cloud ─────────
 function obfuscate(data: number[]): string {
   const key = 'MASAR_FACE_SECURE_2026_XK9';
   const json = JSON.stringify(data);
@@ -49,7 +49,7 @@ function deobfuscate(encoded: string): number[] {
   return JSON.parse(result);
 }
 
-import { syncDocToCloud, deleteDocFromCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface FaceRecord {
   userId: string;
@@ -63,14 +63,11 @@ export interface FaceRecord {
 }
 
 function readStore(): FaceRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  return readCloudCache<FaceRecord>(STORAGE_KEY);
 }
 
 function writeStore(records: FaceRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  writeCloudCache(STORAGE_KEY, records);
 }
 
 // ─── Eye Aspect Ratio for liveness ──────────────────────────────────────────
@@ -173,7 +170,7 @@ export function checkBlink(landmarks: any): { isBlinking: boolean; ear: number }
 }
 
 /**
- * Enroll a user's face. Stores encrypted embedding + profile metadata in localStorage & Firestore Cloud.
+ * Enroll a user's face. Stores obfuscated embedding + profile metadata in Firestore Cloud.
  */
 export function enrollFace(
   userId: string,

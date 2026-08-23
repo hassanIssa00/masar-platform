@@ -42,7 +42,11 @@ const COLLECTIONS = [
   ['points', 'student_points'],
   ['pointTransactions', 'point_transactions'],
   ['scheduleNotificationLogs', 'schedule_notification_logs'],
+  ['liveSessions', 'live_sessions'],
+  ['periodAttendance', 'period_attendance'],
   ['platformAnalytics', 'platform_analytics'],
+  ['simpleSpellingAssignments', 'simple_spelling_assignments'],
+  ['simpleSpellingDrawings', 'simple_spelling_drawings'],
 ] as const;
 
 function isStaff(role: string) {

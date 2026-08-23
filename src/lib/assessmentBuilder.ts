@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'rating-scale' | 'observation' | 'open-text';
 
@@ -45,12 +45,12 @@ const RESULTS_KEY = 'masar.assessmentResults.v1';
 
 export function getTemplates(): AssessmentTemplate[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(TMPL_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<AssessmentTemplate>(TMPL_KEY);
 }
 
 export function getResults(): AssessmentResult[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<AssessmentResult>(RESULTS_KEY);
 }
 
 export async function createTemplate(data: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentTemplate> {
@@ -61,19 +61,19 @@ export async function createTemplate(data: Omit<AssessmentTemplate, 'id' | 'crea
     createdAt: now,
     updatedAt: now,
   };
-  localStorage.setItem(TMPL_KEY, JSON.stringify([item, ...getTemplates()]));
+  writeCloudCache(TMPL_KEY, [item, ...getTemplates()]);
   await syncDocToCloud('assessment_templates', item.id, item);
   return item;
 }
 
 export function deleteTemplate(id: string) {
-  localStorage.setItem(TMPL_KEY, JSON.stringify(getTemplates().filter(t => t.id !== id)));
+  writeCloudCache(TMPL_KEY, getTemplates().filter(t => t.id !== id));
   deleteDocFromCloud('assessment_templates', id);
 }
 
 export async function saveResult(data: Omit<AssessmentResult, 'id'>): Promise<AssessmentResult> {
   const item: AssessmentResult = { ...data, id: `res_${Date.now()}` };
-  localStorage.setItem(RESULTS_KEY, JSON.stringify([item, ...getResults()]));
+  writeCloudCache(RESULTS_KEY, [item, ...getResults()]);
   await syncDocToCloud('assessment_results', item.id, item);
   return item;
 }

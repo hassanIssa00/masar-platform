@@ -51,7 +51,7 @@ export default function SyncStatus() {
     setStatus('loading');
     // 1️⃣ Wipe Firestore first
     await purgeFirestore();
-    // 2️⃣ Wipe localStorage and set cleared flag
+    // 2️⃣ Wipe browser cloud cache and reset in-memory data
     clearAllMockData();
     // 3️⃣ Refresh counters
     refreshSnapshot();

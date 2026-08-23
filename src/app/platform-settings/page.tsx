@@ -19,7 +19,7 @@ import {
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
 import { getAccounts, getStudents, getReports, getSurveys, saveAccount, type AccountRecord } from '@/lib/localDb';
-import { deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
+import { clearCloudCache, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -458,13 +458,13 @@ export default function PlatformSettingsPage() {
     setClearStatus((s) => ({ ...s, [colName]: 'loading' }));
     const snap = await getDocs(collection(db, colName));
     for (const d of snap.docs) await deleteDoc(doc(db, colName, d.id));
-    // Also clear localStorage keys
+    // Also clear the in-memory cloud cache for this browser session.
     const keyMap: Record<string, string> = {
       students: 'masar.students.v1', reports: 'masar.reports.v1',
       surveys: 'masar.surveys.v1', activities: 'masar.activity.v1',
       messages: 'masar.messages.v1', platform_analytics: '',
     };
-    if (keyMap[colName]) localStorage.removeItem(keyMap[colName]);
+    if (keyMap[colName]) clearCloudCache([keyMap[colName]]);
     setClearStatus((s) => ({ ...s, [colName]: 'done' }));
     setTimeout(() => setClearStatus((s) => ({ ...s, [colName]: 'idle' })), 3000);
     await loadSummary();

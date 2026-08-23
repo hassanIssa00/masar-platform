@@ -6,7 +6,13 @@ import {
   ArrowLeft, Bot, Send, Trash2, Image as ImageIcon, X,
   MessageSquare, Loader2, Plus, Clock, CloudSync, Lightbulb,
 } from 'lucide-react';
-import { deleteDocFromCloud, subscribeToCloudCollection, syncDocToCloud } from '@/lib/firestoreSync';
+import {
+  deleteDocFromCloud,
+  readCloudCache,
+  subscribeToCloudCollection,
+  syncDocToCloud,
+  writeCloudCache,
+} from '@/lib/firestoreSync';
 
 interface ChatMessage {
   id: string;
@@ -38,30 +44,30 @@ const CLOUD_COLLECTION = 'teacher_ai_chats';
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
 function loadThreads(): Record<string, ChatThread> {
-  if (typeof window === 'undefined') return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    return Object.fromEntries(readCloudCache<ChatThread>(STORAGE_KEY).map((thread) => [thread.id, thread]));
   } catch { return {}; }
 }
 
+function persistThreadsMap(threads: Record<string, ChatThread>) {
+  writeCloudCache(STORAGE_KEY, Object.values(threads));
+}
+
 function saveThread(thread: ChatThread) {
-  if (typeof window === 'undefined') return;
   try {
     const all = loadThreads();
     all[thread.id] = thread;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    persistThreadsMap(all);
   } catch { /* storage limit */ }
 
   syncDocToCloud(CLOUD_COLLECTION, thread.id, thread);
 }
 
 function removeThread(id: string) {
-  if (typeof window === 'undefined') return;
   try {
     const all = loadThreads();
     delete all[id];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    persistThreadsMap(all);
   } catch { /* err */ }
 
   deleteDocFromCloud(CLOUD_COLLECTION, id);
@@ -77,12 +83,8 @@ const QUICK_PROMPTS = [
 ];
 
 function authJsonHeaders() {
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('masar_token') || localStorage.getItem('access_token')
-    : '';
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -134,9 +136,7 @@ export default function TeacherAIChatTab() {
       if (Object.keys(cloudMap).length > 0) {
         setThreads(prev => {
           const merged = { ...prev, ...cloudMap };
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          }
+          persistThreadsMap(merged);
           return merged;
         });
         setCloudSynced(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteDocFromCloud, syncDocToCloud } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type WaitlistStatus = 'new-lead' | 'contacted' | 'assessment-scheduled' | 'in-sessions' | 'completed' | 'lost';
 
@@ -25,13 +25,12 @@ const LOCAL_KEY = 'masar.waitlist.v1';
 
 export function getLocalWaitlist(): WaitlistRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); }
-  catch { return []; }
+  return readCloudCache<WaitlistRecord>(LOCAL_KEY);
 }
 
 export function saveLocalWaitlist(items: WaitlistRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createWaitlistEntry(data: Omit<WaitlistRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<WaitlistRecord> {

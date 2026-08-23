@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface Badge {
   id: string;
@@ -53,7 +53,7 @@ const TX_KEY = 'masar.transactions.v1';
 
 export function getStudentPointsAll(): StudentPoints[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<StudentPoints>(POINTS_KEY);
 }
 
 export function getStudentPoints(studentId: string): StudentPoints | null {
@@ -62,7 +62,7 @@ export function getStudentPoints(studentId: string): StudentPoints | null {
 
 export function getTransactions(): PointTransaction[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(TX_KEY) || '[]'); } catch { return []; }
+  return readCloudCache<PointTransaction>(TX_KEY);
 }
 
 export function calculateLevel(points: number): number {
@@ -94,7 +94,7 @@ export async function awardPoints(studentId: string, studentName: string, points
   };
 
   const newAll = existing ? all.map(p => p.studentId === studentId ? updated : p) : [...all, updated];
-  localStorage.setItem(POINTS_KEY, JSON.stringify(newAll));
+  writeCloudCache(POINTS_KEY, newAll);
   await syncDocToCloud('student_points', studentId, updated);
 
   const tx: PointTransaction = {
@@ -106,7 +106,7 @@ export async function awardPoints(studentId: string, studentName: string, points
     createdAt: new Date().toISOString(),
   };
   const txAll = [tx, ...getTransactions()].slice(0, 200);
-  localStorage.setItem(TX_KEY, JSON.stringify(txAll));
+  writeCloudCache(TX_KEY, txAll);
   await syncDocToCloud('point_transactions', tx.id, tx);
   return updated;
 }

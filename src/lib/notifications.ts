@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud, subscribeToCloudCollection } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, subscribeToCloudCollection, writeCloudCache } from './firestoreSync';
 
 export type NotificationType = 'survey' | 'report' | 'meeting' | 'message' | 'student' | 'system';
 
@@ -18,16 +18,12 @@ const LOCAL_KEY = 'masar.notifications.v1';
 
 function getLocalNotifications(): AppNotification[] {
   if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readCloudCache<AppNotification>(LOCAL_KEY);
 }
 
 function saveLocalNotifications(items: AppNotification[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function createNotification(notif: Omit<AppNotification, 'id' | 'read' | 'createdAt'>) {
@@ -38,7 +34,6 @@ export async function createNotification(notif: Omit<AppNotification, 'id' | 're
     createdAt: new Date().toISOString(),
   };
 
-  // Save to local
   const current = getLocalNotifications();
   saveLocalNotifications([item, ...current].slice(0, 50));
 

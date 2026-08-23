@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
-import { getSession, getStudents, StudentRecord, clearSession } from '@/lib/localDb';
+import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/localDb';
 
 export default function Navbar() {
   const router = useRouter();
@@ -23,66 +23,50 @@ export default function Navbar() {
 
   const handleLogout = () => {
     clearSession();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('masar_logged_in');
-      localStorage.removeItem('masar_token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('masar_user');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('masar_active_mode');
-      localStorage.removeItem('masar_active_student_id');
-    }
     router.push('/login');
   };
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const session = getSession();
-      const name = session?.name || localStorage.getItem('user_name') || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
-      const role = session?.role || localStorage.getItem('user_role') || 'parent';
-      const savedMode = (localStorage.getItem('masar_active_mode') as 'parent' | 'student') || 'parent';
-      const savedStudentId = localStorage.getItem('masar_active_student_id') || '';
+    let cancelled = false;
+    const loadHeaderState = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      const name = session?.name || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
+      const role = session?.role || 'parent';
+      const resolvedMode: 'parent' | 'student' = role === 'student' ? 'student' : 'parent';
 
       setUserName(name);
       setUserRole(role);
-      setMode(savedMode);
+      setMode(resolvedMode);
 
       const allStudents = getStudents();
       let filteredStudents = allStudents;
       if (session && session.role === 'parent') {
         const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
         const pName = session.name ? session.name.trim().toLowerCase() : '';
-        const activeId = savedStudentId || localStorage.getItem('masar.current-student-id');
 
         filteredStudents = allStudents.filter((s) => {
           if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
           if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
-          if (activeId && s.id === activeId) return true;
           return false;
         });
-
-        if (filteredStudents.length === 0 && activeId) {
-          filteredStudents = allStudents.filter((s) => s.id === activeId);
-        }
+      } else if (session && session.role === 'student') {
+        filteredStudents = allStudents.filter((s) => s.fullName === session.name || s.id === session.id);
       }
 
       setStudents(filteredStudents);
-      if (filteredStudents.length > 0) {
-        const targetId = (savedStudentId && filteredStudents.some(s => s.id === savedStudentId)) ? savedStudentId : filteredStudents[0].id;
-        setActiveStudentId(targetId);
-        localStorage.setItem('masar_active_student_id', targetId);
-      } else {
-        setActiveStudentId(savedStudentId);
-      }
-    });
+      setActiveStudentId(filteredStudents[0]?.id ?? '');
+    };
+    loadHeaderState();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
 
   const selectStudent = (id: string) => {
     setActiveStudentId(id);
-    localStorage.setItem('masar_active_student_id', id);
   };
 
   return (
@@ -111,9 +95,7 @@ export default function Navbar() {
                 isStaff
                   ? '/dashboard'
                   : userRole === 'parent'
-                  ? typeof window !== 'undefined' && localStorage.getItem('masar_school_branch') === 'IKHLAS_JEDDAH'
-                    ? '/school-parent'
-                    : '/parent'
+                  ? '/parent'
                   : userRole === 'student'
                   ? '/school-student'
                   : '/'

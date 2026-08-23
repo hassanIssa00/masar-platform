@@ -12,6 +12,14 @@ import {
 } from 'firebase/auth';
 
 const OAUTH_PENDING_KEY = 'masar.oauth.pending.v1';
+let oauthPendingMemory:
+  | {
+      provider: 'google' | 'apple' | 'microsoft';
+      preferredRole: UserRole;
+      schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
+      createdAt: number;
+    }
+  | null = null;
 
 // ─── Handle Redirect Result (On Page Load) ───────────────────────────────────
 export async function handleGoogleRedirectResult(
@@ -129,17 +137,13 @@ function saveOAuthPending(
   schoolBranch?: string,
 ) {
   if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.setItem(
-      OAUTH_PENDING_KEY,
-      JSON.stringify({
-        provider,
-        preferredRole,
-        schoolBranch: getValidBranch(schoolBranch),
-        createdAt: Date.now(),
-      }),
-    );
-  } catch {}
+  void OAUTH_PENDING_KEY;
+  oauthPendingMemory = {
+    provider,
+    preferredRole,
+    schoolBranch: getValidBranch(schoolBranch),
+    createdAt: Date.now(),
+  };
 }
 
 function consumeOAuthPending(defaultRole: UserRole, defaultBranch?: string) {
@@ -152,9 +156,9 @@ function consumeOAuthPending(defaultRole: UserRole, defaultBranch?: string) {
   }
 
   try {
-    const raw = sessionStorage.getItem(OAUTH_PENDING_KEY);
-    sessionStorage.removeItem(OAUTH_PENDING_KEY);
-    if (!raw) {
+    const pending = oauthPendingMemory;
+    oauthPendingMemory = null;
+    if (!pending) {
       return {
         preferredRole: defaultRole,
         schoolBranch: getValidBranch(defaultBranch),
@@ -162,12 +166,6 @@ function consumeOAuthPending(defaultRole: UserRole, defaultBranch?: string) {
       };
     }
 
-    const pending = JSON.parse(raw) as {
-      provider?: string;
-      preferredRole?: UserRole;
-      schoolBranch?: string;
-      createdAt?: number;
-    };
     const isFresh = pending.createdAt ? Date.now() - pending.createdAt < 10 * 60 * 1000 : false;
 
     return {

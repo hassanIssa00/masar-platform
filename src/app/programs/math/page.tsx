@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Check, CheckCircle2, Headphones, Lock, RefreshCw } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -50,16 +50,9 @@ export default function MathProgramPage() {
 
   const speak = (text: string) => void speakWithMasarVoice(text, { lang: 'ar-SA', rate: 0.8 });
   const currentGuided = guidedMath[Math.min(openStep, guidedMath.length - 1)];
-  useEffect(() => {
-    queueMicrotask(() => {
-      setOpenStep(Number(localStorage.getItem('masar.math.openStep') ?? 0));
-    });
-  }, []);
-
   const completeStep = () => {
     const next = Math.min(openStep + 1, guidedMath.length - 1);
     setOpenStep(next);
-    localStorage.setItem('masar.math.openStep', String(next));
   };
 
   const check = (correct: number) => setFeedback(Number(answer) === correct ? 'correct' : 'wrong');

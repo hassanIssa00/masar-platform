@@ -11,6 +11,7 @@ import {
   VideoConference,
   RoomAudioRenderer,
 } from '@livekit/components-react';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 interface LiveSession {
   id: string;
@@ -63,18 +64,18 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
 
   /* ─ Load sessions ─ */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      setSessions(saved ? JSON.parse(saved) : DEFAULT_SESSIONS);
-      if (!saved) localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SESSIONS));
-    } catch {
-      setSessions(DEFAULT_SESSIONS);
-    }
+    const cached = readCloudCache<LiveSession>(STORAGE_KEY);
+    const next = cached.length ? cached : DEFAULT_SESSIONS;
+    setSessions(next);
+    if (!cached.length) writeCloudCache(STORAGE_KEY, DEFAULT_SESSIONS);
   }, []);
 
   const saveSessions = (updated: LiveSession[]) => {
     setSessions(updated);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
+    writeCloudCache(STORAGE_KEY, updated);
+    updated.forEach((session) => {
+      void syncDocToCloud('live_sessions', session.id, session);
+    });
   };
 
   const currentLive = sessions.find(s => s.status === 'LIVE');
@@ -129,13 +130,14 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
       recorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
         const videoUrl = URL.createObjectURL(blob);
-        const finalSessions: LiveSession[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        const finalSessions: LiveSession[] = readCloudCache<LiveSession>(STORAGE_KEY);
         const target = finalSessions.find(s => s.id === newId);
         if (target) {
           target.status = 'RECORDED';
           target.endedAt = new Date().toISOString();
           target.recordedVideoUrl = videoUrl;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSessions));
+          writeCloudCache(STORAGE_KEY, finalSessions);
+          void syncDocToCloud('live_sessions', target.id, target);
           setSessions(finalSessions);
         }
       };

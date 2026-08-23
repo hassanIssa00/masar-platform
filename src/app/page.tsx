@@ -286,21 +286,13 @@ export default function Home() {
                 </p>
 
                 {/* Hero Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-3 pt-3">
                   <Link 
                     href="/auth/login" 
-                    className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-7 py-3.5 text-sm sm:text-base font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 transition active:scale-95"
+                    className="group focus-ring inline-flex items-center justify-center gap-3 rounded-2xl bg-teal-600 px-10 py-4.5 text-lg sm:text-xl font-black text-white shadow-xl shadow-teal-600/30 hover:bg-teal-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 w-full sm:w-auto"
                   >
                     <span>تسجيل الدخول الآن</span>
-                    <MoveLeft size={18} className="transition-transform duration-300 group-hover:-translate-x-1.5" />
-                  </Link>
-
-                  <Link 
-                    href="https://nexus.masarplatform.org" 
-                    className="group focus-ring inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-6 py-3.5 text-sm sm:text-base font-black text-white shadow-md hover:from-slate-900 hover:to-cyan-900 transition active:scale-95"
-                  >
-                    <Trophy size={16} className="text-amber-400" />
-                    <span>بوابة نكسس للمدارس (NEXUS)</span>
+                    <MoveLeft size={24} className="transition-transform duration-300 group-hover:-translate-x-2" />
                   </Link>
                 </div>
 

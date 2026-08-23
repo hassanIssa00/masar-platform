@@ -24,10 +24,7 @@ export function getEntryGradeLabel(value: string) {
 }
 
 export function saveEntryGrade(value: string) {
-  const assessmentKey = getAssessmentKey(value);
-  localStorage.setItem('masar.entry-grade', value);
-  localStorage.setItem('masar.assessment.gradeKey', assessmentKey);
-  return assessmentKey;
+  return getAssessmentKey(value);
 }
 
 export function getAssessmentHref(value: string) {

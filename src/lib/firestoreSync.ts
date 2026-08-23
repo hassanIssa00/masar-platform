@@ -47,6 +47,8 @@ const KEYS = {
   classroomQuizzes: 'masar_class_quizzes_v1',
   smartSchedules: 'masar_smart_schedule_v1',
   scheduleNotificationLogs: 'masar_notification_logs_v1',
+  liveSessions: 'ikhlas_live_sessions_v1',
+  periodAttendance: 'masar_period_attendance_v2_',
   parentsCommunityChat: 'masar_parents_community_chat_v2',
   parentsChatSettings: 'masar_parents_chat_settings_v2',
   aiThreads: 'masar.ai.threads.v4',
@@ -58,21 +60,40 @@ const KEYS = {
   points: 'masar.points.v1',
   pointTransactions: 'masar.transactions.v1',
   platformAnalytics: 'masar.analytics.v1',
+  simpleSpellingAssignments: 'masar.simpleSpellingAssignments.v1',
+  simpleSpellingDrawings: 'masar.simpleSpellingDrawings.v1',
 };
 
 type CloudPayload = unknown;
+const memoryCache = new Map<string, unknown[]>();
 
 function hasCloudAuthSession() {
   return typeof window !== 'undefined' && Boolean(auth.currentUser);
 }
 
-function writeLocal<T>(key: string, data: T[]) {
+export function readCloudCache<T>(key: string): T[] {
+  return (memoryCache.get(key) as T[] | undefined) ?? [];
+}
+
+export function writeCloudCache<T>(key: string, data: T[]) {
+  memoryCache.set(key, data);
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error('LocalStorage write error', e);
+  window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key } }));
+}
+
+export function clearCloudCache(keys?: string[]) {
+  if (keys?.length) {
+    keys.forEach((key) => memoryCache.delete(key));
+  } else {
+    memoryCache.clear();
   }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { cleared: true } }));
+  }
+}
+
+function writeLocal<T>(key: string, data: T[]) {
+  writeCloudCache(key, data);
 }
 
 async function writeDocThroughServer(collectionName: string, docId: string, data: CloudPayload) {
@@ -159,7 +180,7 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
   }
 }
 
-// Initial full sync from Firestore Cloud to LocalStorage
+// Initial full sync from Firestore Cloud to the in-memory browser cache.
 export async function pullCloudDataToLocal() {
   if (typeof window === 'undefined') return;
   const serverSynced = await pullServerSnapshotToLocal();
@@ -171,7 +192,7 @@ export async function pullCloudDataToLocal() {
       const snap = await getDocs(collection(db, collectionName));
 
       if (!snap.empty) {
-        // Cloud is the source of truth. LocalStorage is only a browser cache.
+        // Cloud is the source of truth. The client cache only keeps the current screen responsive.
         const cloudItems: T[] = snap.docs.map((docSnap) => docSnap.data() as T);
         writeLocal(localKey, cloudItems);
       } else {
@@ -211,6 +232,8 @@ export async function pullCloudDataToLocal() {
     syncCollection<CloudPayload>('classroom_quizzes', KEYS.classroomQuizzes),
     syncCollection<CloudPayload>('smart_schedules', KEYS.smartSchedules),
     syncCollection<CloudPayload>('schedule_notification_logs', KEYS.scheduleNotificationLogs),
+    syncCollection<CloudPayload>('live_sessions', KEYS.liveSessions),
+    syncCollection<CloudPayload>('period_attendance', KEYS.periodAttendance),
     syncCollection<CloudPayload>('parents_community_chat', KEYS.parentsCommunityChat),
     syncCollection<CloudPayload>('parents_chat_settings', KEYS.parentsChatSettings),
     syncCollection<CloudPayload>('ai_threads', KEYS.aiThreads),
@@ -222,10 +245,12 @@ export async function pullCloudDataToLocal() {
     syncCollection<CloudPayload>('student_points', KEYS.points),
     syncCollection<CloudPayload>('point_transactions', KEYS.pointTransactions),
     syncCollection<CloudPayload>('platform_analytics', KEYS.platformAnalytics),
+    syncCollection<CloudPayload>('simple_spelling_assignments', KEYS.simpleSpellingAssignments),
+    syncCollection<CloudPayload>('simple_spelling_drawings', KEYS.simpleSpellingDrawings),
   ]);
 }
 
-// Realtime listeners — always mirrors cloud state into localStorage
+// Realtime listeners — always mirrors cloud state into the in-memory cache.
 export function subscribeToCloudUpdates(onUpdate?: () => void) {
   if (typeof window === 'undefined') return () => {};
   if (!hasCloudAuthSession()) {
@@ -247,7 +272,7 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   const setupListener = (collectionName: string, localKey: string) => {
     try {
       const unsub = onSnapshot(collection(db, collectionName), (snap) => {
-        // Always write what cloud says (even an empty array) so localStorage stays in sync
+        // Always write what cloud says (even an empty array) so the client cache stays in sync.
         const items = snap.docs.map((d) => d.data());
         writeLocal(localKey, items);
         if (onUpdate) onUpdate();
@@ -285,6 +310,8 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   setupListener('classroom_quizzes', KEYS.classroomQuizzes);
   setupListener('smart_schedules', KEYS.smartSchedules);
   setupListener('schedule_notification_logs', KEYS.scheduleNotificationLogs);
+  setupListener('live_sessions', KEYS.liveSessions);
+  setupListener('period_attendance', KEYS.periodAttendance);
   setupListener('parents_community_chat', KEYS.parentsCommunityChat);
   setupListener('parents_chat_settings', KEYS.parentsChatSettings);
   setupListener('ai_threads', KEYS.aiThreads);
@@ -296,6 +323,8 @@ export function subscribeToCloudUpdates(onUpdate?: () => void) {
   setupListener('student_points', KEYS.points);
   setupListener('point_transactions', KEYS.pointTransactions);
   setupListener('platform_analytics', KEYS.platformAnalytics);
+  setupListener('simple_spelling_assignments', KEYS.simpleSpellingAssignments);
+  setupListener('simple_spelling_drawings', KEYS.simpleSpellingDrawings);
 
   return () => {
     unsubscribes.forEach((unsub) => unsub());
@@ -312,12 +341,7 @@ export function subscribeToCloudCollection<T>(
     let disposed = false;
     const emit = async () => {
       await pullServerSnapshotToLocal();
-      try {
-        const raw = localStorage.getItem(KEYS[localKey]);
-        if (!disposed) onItems(raw ? (JSON.parse(raw) as T[]) : []);
-      } catch {
-        if (!disposed) onItems([]);
-      }
+      if (!disposed) onItems(readCloudCache<T>(KEYS[localKey]));
     };
     emit();
     const interval = window.setInterval(emit, 10000);
@@ -337,15 +361,13 @@ export function subscribeToCloudCollection<T>(
       },
       (error) => {
         console.error(`Cloud listener failed for ${collectionName}:`, error);
-        const raw = localStorage.getItem(KEYS[localKey]);
-        onItems(raw ? (JSON.parse(raw) as T[]) : []);
+        onItems(readCloudCache<T>(KEYS[localKey]));
       },
     );
     return unsub;
   } catch (error) {
     console.error(`Listener setup failed for ${collectionName}:`, error);
-    const raw = localStorage.getItem(KEYS[localKey]);
-    onItems(raw ? (JSON.parse(raw) as T[]) : []);
+    onItems(readCloudCache<T>(KEYS[localKey]));
     return () => {};
   }
 }

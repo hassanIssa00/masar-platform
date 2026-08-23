@@ -16,10 +16,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 function authHeaders() {
-  const token = typeof window !== 'undefined'
-    ? (localStorage.getItem('masar_token') ?? localStorage.getItem('access_token'))
-    : null;
-  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { 'Content-Type': 'application/json' };
 }
 
 type Tab = 'home' | 'schedule' | 'homework' | 'meetings' | 'community' | 'photos' | 'report';
@@ -62,12 +59,12 @@ export default function SchoolParentPage() {
     const allStudents = getStudents();
     const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
     const pName = session.name ? session.name.trim().toLowerCase() : '';
-    const activeId = typeof window !== 'undefined'
-      ? (localStorage.getItem('masar_active_student_id') || localStorage.getItem('masar.current-student-id'))
-      : null;
+    const pEmail = session.email ? session.email.trim().toLowerCase() : '';
 
     const linked = allStudents.find((s) => {
-      if (activeId && s.id === activeId) return true;
+      const record = s as StudentRecord & { email?: string; parentEmail?: string };
+      if (session.id && s.id === session.id) return true;
+      if (pEmail && (record.email?.trim().toLowerCase() === pEmail || record.parentEmail?.trim().toLowerCase() === pEmail)) return true;
       if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
       if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
       return false;
@@ -80,20 +77,10 @@ export default function SchoolParentPage() {
 
   const handleLogout = () => {
     clearSession();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('masar_logged_in');
-      localStorage.removeItem('masar_token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('masar_user');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_name');
-    }
     router.push('/login');
   };
 
-  const studentId = typeof window !== 'undefined'
-    ? (localStorage.getItem('school_student_id') ?? 'demo-student')
-    : 'demo-student';
+  const studentId = studentRecord?.id ?? getSession()?.id ?? 'demo-student';
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);

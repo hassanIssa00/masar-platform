@@ -27,16 +27,6 @@ export default function ParentDashboard() {
 
   const handleLogout = () => {
     clearSession();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('masar_logged_in');
-      localStorage.removeItem('masar_token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('masar_user');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('masar_active_mode');
-      localStorage.removeItem('masar_active_student_id');
-    }
     router.push('/login');
   };
 
@@ -57,8 +47,7 @@ export default function ParentDashboard() {
       }
 
       // Ikhlas-branch parent → redirect to school-parent portal
-      const schoolBranch = typeof window !== 'undefined' ? localStorage.getItem('masar_school_branch') : null;
-      if (schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') {
+      if (session.schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') {
         router.replace('/school-parent');
         return;
       }
@@ -66,11 +55,8 @@ export default function ParentDashboard() {
       const allStudents = getStudents();
       const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
       const pName = session.name ? session.name.trim().toLowerCase() : '';
-      const activeId = typeof window !== 'undefined'
-        ? (localStorage.getItem('masar_active_student_id') || localStorage.getItem('masar.current-student-id'))
-        : null;
+      const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
 
-      // Filter students to strictly match THIS parent's phone, name, or active linked student
       let myStudents = allStudents.filter((s) => {
         if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
         if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
@@ -91,20 +77,8 @@ export default function ParentDashboard() {
       if (myStudents.length > 0) {
         const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('masar_active_student_id', targetId);
-        }
       }
     });
-
-    const handleStorage = () => {
-      const savedStudentId = localStorage.getItem('masar_active_student_id');
-      if (savedStudentId) {
-        setSelectedStudentId(savedStudentId);
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, [router]);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
@@ -226,10 +200,7 @@ export default function ParentDashboard() {
                   return (
                     <button
                       key={student.id}
-                      onClick={() => {
-                        setSelectedStudentId(student.id);
-                        if (typeof window !== 'undefined') localStorage.setItem('masar_active_student_id', student.id);
-                      }}
+                      onClick={() => setSelectedStudentId(student.id)}
                       className={`flex items-center gap-3 rounded-xl border p-3.5 text-right transition cursor-pointer ${
                         isSelected
                           ? 'border-teal-700 bg-teal-50 shadow-2xs'

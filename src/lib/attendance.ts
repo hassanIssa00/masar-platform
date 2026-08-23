@@ -1,6 +1,6 @@
 'use client';
 
-import { syncDocToCloud } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface AttendanceRecord {
   id: string;
@@ -18,13 +18,12 @@ const LOCAL_KEY = 'masar.attendance.v1';
 
 export function getLocalAttendance(): AttendanceRecord[] {
   if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); }
-  catch { return []; }
+  return readCloudCache<AttendanceRecord>(LOCAL_KEY);
 }
 
 export function saveLocalAttendance(items: AttendanceRecord[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
+  writeCloudCache(LOCAL_KEY, items);
 }
 
 export async function recordAttendance(data: Omit<AttendanceRecord, 'id' | 'createdAt'>): Promise<AttendanceRecord> {

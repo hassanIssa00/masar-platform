@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, Headphones, Lock, Printer, Volume2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -48,18 +48,11 @@ export default function ReadingProgramPage() {
   const [selectedLetter, setSelectedLetter] = useState(letters[0]);
   const [openStep, setOpenStep] = useState(0);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setOpenStep(Number(localStorage.getItem('masar.reading.openStep') ?? 0));
-    });
-  }, []);
-
   const speak = (text: string) => void speakWithMasarVoice(text, { lang: 'ar-SA', rate: 0.78 });
   const currentGuided = guidedReading[Math.min(openStep, guidedReading.length - 1)];
   const completeStep = () => {
     const next = Math.min(openStep + 1, guidedReading.length - 1);
     setOpenStep(next);
-    localStorage.setItem('masar.reading.openStep', String(next));
   };
 
   return (

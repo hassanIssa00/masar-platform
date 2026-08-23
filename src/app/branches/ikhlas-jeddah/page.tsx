@@ -17,6 +17,7 @@ import {
   type Period,
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/localDb';
+import { writeCloudCache } from '@/lib/firestoreSync';
 import { getClassStudents } from '@/lib/classDb';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -59,13 +60,8 @@ type Tab =
   | 'photos'
   | 'reports';
 
-function getToken() {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('masar_token') ?? localStorage.getItem('access_token');
-}
 function authHeaders() {
-  const token = getToken();
-  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { 'Content-Type': 'application/json' };
 }
 
 /* ══════════════════════════════════════════════════
@@ -116,9 +112,7 @@ export default function IkhlasJeddahPage() {
             if (hasRealSubjects) {
               const periods = parseSlotsToPeriods(data.slots);
               setSchedule(periods);
-              try {
-                localStorage.setItem('masar_smart_schedule_v1', JSON.stringify(data));
-              } catch { /* noop */ }
+              writeCloudCache('masar_smart_schedule_v1', [data]);
             }
           }
         }
@@ -303,9 +297,6 @@ export default function IkhlasJeddahPage() {
   /* ── Logout ── */
   const handleLogout = () => {
     clearSession();
-    ['masar_logged_in','masar_token','access_token','masar_user','user_role','user_name'].forEach(k =>
-      localStorage.removeItem(k)
-    );
     router.push('/login');
   };
 

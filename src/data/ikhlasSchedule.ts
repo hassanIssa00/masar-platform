@@ -1,5 +1,6 @@
 // جدول الحصص الأسبوعي — فصل د. إسماعيل عيسى
 // يُستخدَم من الـ Frontend ويُزامَن مع قاعدة البيانات
+import { readCloudCache } from '@/lib/firestoreSync';
 
 export type Period = {
   dayOfWeek: number; // 0=الأحد … 4=الخميس
@@ -123,9 +124,8 @@ export function parseSlotsToPeriods(slots: any[]): Period[] {
 export function getSavedSchedule(): Period[] {
   if (typeof window === 'undefined') return DEFAULT_SCHEDULE;
   try {
-    const raw = localStorage.getItem('masar_smart_schedule_v1');
-    if (!raw) return DEFAULT_SCHEDULE;
-    const parsed = JSON.parse(raw);
+    const parsed = readCloudCache<any>('masar_smart_schedule_v1')[0];
+    if (!parsed) return DEFAULT_SCHEDULE;
     if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
       const hasRealSubjects = parsed.slots.some((s: any) => {
         const sub = s.subject || s.subjectName;
