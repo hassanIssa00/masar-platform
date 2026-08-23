@@ -28,7 +28,7 @@ import {
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import { clearSession, getSession, getStudents, getIkhlasPosts, hydrateSessionFromServer } from '@/lib/localDb';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 export default function StudentDashboard() {

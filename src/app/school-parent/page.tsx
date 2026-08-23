@@ -12,7 +12,7 @@ import {
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import { clearSession, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 function authHeaders() {

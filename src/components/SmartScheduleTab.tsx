@@ -54,7 +54,7 @@ const STORAGE_KEY_SCHEDULE = 'masar_smart_schedule_v1';
 const STORAGE_KEY_LOGS = 'masar_notification_logs_v1';
 const CLOUD_SCHEDULE_COLLECTION = 'smart_schedules';
 const CLOUD_LOGS_COLLECTION = 'schedule_notification_logs';
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
 function authJsonHeaders() {
   return {

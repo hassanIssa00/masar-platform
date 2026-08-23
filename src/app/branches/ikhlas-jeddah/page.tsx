@@ -38,7 +38,7 @@ import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 type Tab =
