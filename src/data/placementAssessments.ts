@@ -97,9 +97,9 @@ const lowerCore: PlacementQuestion[] = [
 ];
 
 const gradeOneCore: PlacementQuestion[] = [
-  { ...q('g1_write_dots', 'visualMotor', 'صل النقاط كما في النموذج.', 'draw:dotted-lines', [], '', 'مسك القلم والتحكم', 'يقيس هذا البند التحكم بالقلم والتآزر البصري الحركي قبل الكتابة.',), responseType: 'drawing', maxScore: 5 },
-  { ...q('g1_write_vertical', 'visualMotor', 'ارسم خطاً عمودياً.', 'draw:vertical-line-model', [], '', 'التحكم في اتجاه الخط', 'يقيس قدرة الطالب على التحكم في اتجاه الحركة من أعلى إلى أسفل.',), responseType: 'drawing', maxScore: 2.5 },
-  { ...q('g1_write_circle', 'visualMotor', 'ارسم دائرة.', 'draw:circle-model', [], '', 'إغلاق الشكل والتحكم الدائري', 'يقيس دقة الإغلاق الحركي واستمرارية الحركة.',), responseType: 'drawing', maxScore: 2.5 },
+  { ...q('g1_write_dots', 'visualMotor', 'صل النقاط كما في النموذج.', 'draw:dotted-lines', [], '', 'مسك القلم والتحكم', 'يقيس هذا البند التحكم بالقلم والتآزر البصري الحركي قبل الكتابة.',), responseType: 'drawing', maxScore: 2 },
+  { ...q('g1_write_vertical', 'visualMotor', 'ارسم خطاً عمودياً.', 'draw:vertical-line-model', [], '', 'التحكم في اتجاه الخط', 'يقيس قدرة الطالب على التحكم في اتجاه الحركة من أعلى إلى أسفل.',), responseType: 'drawing', maxScore: 1.5 },
+  { ...q('g1_write_circle', 'visualMotor', 'ارسم دائرة.', 'draw:circle-model', [], '', 'إغلاق الشكل والتحكم الدائري', 'يقيس دقة الإغلاق الحركي واستمرارية الحركة.',), responseType: 'drawing', maxScore: 1.5 },
   { ...q('g1_write_letters', 'arabic', 'اكتب الحروف بعد إملاء المعلم: أ  ب  ت  ث  م  و  ي  س  ض  ع  ط', 'حروف الإملاء', [], '', 'كتابة الحروف', 'يقيس التعرف الكتابي على الحروف الأساسية والتمييز السمعي الحركي.',), responseType: 'text', maxScore: 10, expectedResponse: 'أ ب ت ث م و ي س ض ع ط' },
   { ...q('g1_write_name', 'arabic', 'اكتب اسمك الأول.', 'اسم الطالب', [], '', 'كتابة الاسم الأول', 'يقيس قدرة الطالب على كتابة اسمه والتحكم الأولي في اتجاه الكتابة.',), responseType: 'text', maxScore: 5 },
   { ...q('g1_oral_greeting', 'arabic', 'قل: السلام عليكم.', 'استجابة شفهية', [], '', 'التعريف بالنفس', 'يسجل النظام الاستجابة الصوتية لمراجعة وضوح النطق والمبادرة اللفظية.',), responseType: 'oral', maxScore: 1, expectedResponse: 'السلام عليكم' },

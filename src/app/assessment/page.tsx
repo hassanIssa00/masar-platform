@@ -16,6 +16,9 @@ type ResponseRecord = {
   answer: string;
   correct: boolean;
   answered: boolean;
+  scoreValue: number | null;
+  maxScore: number;
+  scoreStatus: 'auto' | 'manual' | 'pending' | 'excluded';
 };
 
 type MediaAnswer = {
@@ -245,6 +248,7 @@ function PlacementAssessmentContent() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [mediaAnswers, setMediaAnswers] = useState<Record<string, MediaAnswer>>({});
+  const [manualScores, setManualScores] = useState<Record<string, number>>({});
   const [recordingQuestionId, setRecordingQuestionId] = useState('');
   const [recordingError, setRecordingError] = useState('');
   const [finished, setFinished] = useState(false);
@@ -257,22 +261,46 @@ function PlacementAssessmentContent() {
   const current = assessment.questions[index];
   const currentResponseType = current.responseType ?? (current.options.length ? 'choice' : 'text');
   const selected = answers[current.id];
-  const scoredQuestions = assessment.questions.filter((question) => question.countsForScore !== false);
   const isManualAssessment = assessment.questions.some((question) => ['oral', 'drawing', 'text'].includes(question.responseType ?? ''));
   const responses: ResponseRecord[] = assessment.questions.map((question) => {
     const answer = answers[question.id] ?? '';
     const hasMedia = Boolean(mediaAnswers[question.id]?.dataUrl);
     const answered = Boolean(answer.trim()) || hasMedia;
-    const correct = question.countsForScore === false
+    const maxScore = question.maxScore ?? 1;
+    const isExcluded = question.countsForScore === false;
+    const manualScore = manualScores[question.id];
+    const hasManualScore = typeof manualScore === 'number' && Number.isFinite(manualScore);
+    const autoScored = !isExcluded && Boolean(question.correct);
+    const correct = isExcluded
       ? answered
-      : question.correct
+      : autoScored
         ? answer === question.correct
-        : answered;
-    return { question, answer, correct, answered };
+        : hasManualScore
+          ? manualScore > 0
+          : false;
+    const scoreValue = isExcluded
+      ? null
+      : autoScored
+        ? (answer === question.correct ? maxScore : 0)
+        : hasManualScore
+          ? Math.max(0, Math.min(maxScore, manualScore))
+          : null;
+    const scoreStatus = isExcluded
+      ? 'excluded'
+      : autoScored
+        ? 'auto'
+        : hasManualScore
+          ? 'manual'
+          : 'pending';
+    return { question, answer, correct, answered, scoreValue, maxScore, scoreStatus };
   });
+  const currentResponse = responses[index];
   const answeredCount = responses.filter((response) => response.answered).length;
-  const correctCount = responses.filter((response) => response.question.countsForScore !== false && response.correct).length;
-  const score = scoredQuestions.length ? Math.round((correctCount / scoredQuestions.length) * 100) : 0;
+  const correctedResponses = responses.filter((response) => response.scoreValue !== null);
+  const correctedMaxScore = correctedResponses.reduce((total, response) => total + response.maxScore, 0);
+  const earnedScore = correctedResponses.reduce((total, response) => total + (response.scoreValue ?? 0), 0);
+  const correctCount = correctedResponses.filter((response) => response.scoreValue !== null && response.scoreValue > 0).length;
+  const score = correctedMaxScore ? Math.round((earnedScore / correctedMaxScore) * 100) : 0;
   const progress = Math.round((answeredCount / assessment.questions.length) * 100);
   const decision = getDecisionFromScore(score);
 
@@ -342,12 +370,15 @@ function PlacementAssessmentContent() {
     });
 
     const baseDomains = Array.from(grouped.entries()).map(([name, items]) => {
-      const domainScore = Math.round((items.filter((item) => item.correct).length / items.length) * 100);
+      const correctedItems = items.filter((item) => item.scoreValue !== null);
+      const domainMax = correctedItems.reduce((total, item) => total + item.maxScore, 0);
+      const domainEarned = correctedItems.reduce((total, item) => total + (item.scoreValue ?? 0), 0);
+      const domainScore = domainMax ? Math.round((domainEarned / domainMax) * 100) : 0;
       return {
         name,
         score: domainScore,
         note: isManualAssessment
-          ? `${items.filter((item) => item.answered).length} من ${items.length} بنود موثقة للمراجعة`
+          ? `${correctedItems.length} من ${items.length} بنود مصححة، و${items.filter((item) => item.answered).length} موثقة للمراجعة`
           : `${items.filter((item) => item.correct).length} من ${items.length} إجابات صحيحة`,
       };
     });
@@ -393,6 +424,20 @@ function PlacementAssessmentContent() {
       return next;
     });
     if (dataUrl) setShowExplanation(true);
+  };
+
+  const saveManualScore = (question: PlacementQuestion, value: string) => {
+    const parsed = value === '' ? null : Number(value);
+    setManualScores((currentScores) => {
+      const next = { ...currentScores };
+      if (parsed === null || Number.isNaN(parsed)) {
+        delete next[question.id];
+      } else {
+        const max = question.maxScore ?? 1;
+        next[question.id] = Math.max(0, Math.min(max, parsed));
+      }
+      return next;
+    });
   };
 
   const startRecording = async () => {
@@ -452,6 +497,7 @@ function PlacementAssessmentContent() {
     setIndex(0);
     setAnswers({});
     setMediaAnswers({});
+    setManualScores({});
     setRecordingQuestionId('');
     setRecordingError('');
     setFinished(false);
@@ -504,8 +550,10 @@ function PlacementAssessmentContent() {
           response.answer || 'لم يجب',
           response.question.correct ? `الإجابة الصحيحة: ${response.question.correct}` : '',
           response.question.expectedResponse ? `النموذج المتوقع: ${response.question.expectedResponse}` : '',
+          response.scoreStatus === 'manual' ? `درجة المصحح: ${response.scoreValue} من ${response.maxScore}` : '',
+          response.scoreStatus === 'auto' ? `الدرجة التلقائية: ${response.scoreValue} من ${response.maxScore}` : '',
           mediaAnswers[response.question.id] ? `مرفق: ${mediaAnswers[response.question.id].type === 'audio' ? 'تسجيل صوتي' : 'رسم/كتابة يدوية'}` : '',
-          response.question.countsForScore === false ? 'بند ملاحظة لا يدخل في الدرجة' : response.correct ? (isManualAssessment ? 'موثق للمراجعة' : 'صحيح') : 'يحتاج مراجعة',
+          response.question.countsForScore === false ? 'بند ملاحظة لا يدخل في الدرجة' : response.scoreStatus === 'pending' ? 'موثق وينتظر التصحيح' : response.correct ? (isManualAssessment ? 'مصَحح وموثق للمراجعة' : 'صحيح') : 'يحتاج مراجعة',
           `المهارة: ${response.question.skill}`,
         ].filter(Boolean).join(' | '),
       })),
@@ -527,7 +575,7 @@ function PlacementAssessmentContent() {
         score,
         domains,
         correctCount,
-        total: scoredQuestions.length,
+        total: correctedResponses.length,
       }),
       recommendations: buildPlacementRecommendations(score, domains),
       answers: [],
@@ -793,6 +841,55 @@ function PlacementAssessmentContent() {
                   </div>
                 ) : null}
 
+                {!isStudentFlow && currentResponse && currentResponse.scoreStatus !== 'auto' && currentResponse.scoreStatus !== 'excluded' ? (
+                  <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-black text-amber-950">تصحيح الدكتور لهذا البند</p>
+                        <p className="mt-1 text-xs font-bold leading-6 text-amber-900/80">
+                          هذا السؤال لا يحسب تلقائياً. أدخل الدرجة بعد سماع التسجيل أو مراجعة الرسم/الكتابة.
+                        </p>
+                      </div>
+                      <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-amber-200">
+                        <span className="text-xs font-black text-slate-600">الدرجة</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={currentResponse.maxScore}
+                          step={currentResponse.maxScore % 1 === 0 ? 1 : 0.5}
+                          value={manualScores[current.id] ?? ''}
+                          onChange={(event) => saveManualScore(current, event.target.value)}
+                          className="w-20 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-black text-slate-950 outline-none focus:border-amber-600"
+                        />
+                        <span className="text-xs font-black text-slate-500">من {currentResponse.maxScore}</span>
+                      </label>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveManualScore(current, '0')}
+                        className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-black text-rose-700"
+                      >
+                        0
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveManualScore(current, String(currentResponse.maxScore / 2))}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700"
+                      >
+                        نصف الدرجة
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveManualScore(current, String(currentResponse.maxScore))}
+                        className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-700"
+                      >
+                        الدرجة كاملة
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
                 {selected && (
                   <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50/70 p-4 transition-all shadow-xs">
                     <div className="flex items-center justify-between">
@@ -841,7 +938,9 @@ function PlacementAssessmentContent() {
                 <p className="mt-2 text-sm font-bold leading-7 text-slate-700">
                   {isStudentFlow
                     ? 'تم إرسال إجاباتك وتقرير التحليل إلى د. إسماعيل. سيتم فتح صفحة الطالب والألعاب الآن حتى يراجع الدكتور الملف ويعتمد المسار المناسب.'
-                    : `النتيجة ${score}%، القرار: ${decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.`}
+                    : correctedResponses.length
+                      ? `النتيجة المصححة حتى الآن ${score}%، القرار: ${decision.label}. تم حفظ التقرير داخل لوحة د. إسماعيل وصفحة التقارير.`
+                      : 'تم حفظ إجابات الطالب ومرفقات الأداء، وتحتاج البنود اليدوية إلى تصحيح الدكتور قبل اعتماد النسبة النهائية.'}
                 </p>
                 <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
                   {!isStudentFlow && <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
@@ -882,7 +981,12 @@ function PlacementAssessmentContent() {
               <>
                 <div className="mt-5 rounded-lg bg-slate-950 p-5 text-center text-white">
                   <p className="text-5xl font-black">{score}%</p>
-                  <p className="mt-2 text-sm font-bold text-white/70">{correctCount} من {scoredQuestions.length}</p>
+                  <p className="mt-2 text-sm font-bold text-white/70">
+                    {earnedScore} من {correctedMaxScore || 0} درجة مصححة
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-white/50">
+                    {correctedResponses.length} بند مصحح من {responses.filter((response) => response.question.countsForScore !== false).length}
+                  </p>
                 </div>
                 <div className="mt-5 space-y-3">
                   {domains.map((domain) => (
