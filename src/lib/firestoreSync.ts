@@ -66,6 +66,7 @@ const KEYS = {
 
 type CloudPayload = unknown;
 const memoryCache = new Map<string, unknown[]>();
+const SERVER_SNAPSHOT_POLL_MS = 60_000;
 
 function hasCloudAuthSession() {
   return typeof window !== 'undefined' && Boolean(auth.currentUser);
@@ -128,17 +129,21 @@ async function deleteDocThroughServer(collectionName: string, docId: string) {
   }
 }
 
-export async function pullServerSnapshotToLocal() {
+export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return false;
 
   try {
-    const res = await fetch('/api/data/snapshot', {
+    const params = collectionKeys?.length
+      ? `?collections=${encodeURIComponent(collectionKeys.join(','))}`
+      : '';
+    const res = await fetch(`/api/data/snapshot${params}`, {
       method: 'GET',
       credentials: 'include',
       cache: 'no-store',
     });
 
     if (!res.ok) return false;
+
     const payload = await res.json();
     if (!payload?.ok || !payload.data) return false;
 
@@ -181,9 +186,9 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
 }
 
 // Initial full sync from Firestore Cloud to the in-memory browser cache.
-export async function pullCloudDataToLocal() {
+export async function pullCloudDataToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return;
-  const serverSynced = await pullServerSnapshotToLocal();
+  const serverSynced = await pullServerSnapshotToLocal(collectionKeys);
   if (serverSynced) return;
   if (!hasCloudAuthSession()) return;
 
@@ -251,16 +256,16 @@ export async function pullCloudDataToLocal() {
 }
 
 // Realtime listeners — always mirrors cloud state into the in-memory cache.
-export function subscribeToCloudUpdates(onUpdate?: () => void) {
+export function subscribeToCloudUpdates(onUpdate?: () => void, collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return () => {};
   if (!hasCloudAuthSession()) {
     let disposed = false;
     const tick = async () => {
-      const synced = await pullServerSnapshotToLocal();
+      const synced = await pullServerSnapshotToLocal(collectionKeys);
       if (synced && onUpdate && !disposed) onUpdate();
     };
     tick();
-    const interval = window.setInterval(tick, 10000);
+    const interval = window.setInterval(tick, SERVER_SNAPSHOT_POLL_MS);
     return () => {
       disposed = true;
       window.clearInterval(interval);
@@ -340,11 +345,11 @@ export function subscribeToCloudCollection<T>(
   if (!hasCloudAuthSession()) {
     let disposed = false;
     const emit = async () => {
-      await pullServerSnapshotToLocal();
+      await pullServerSnapshotToLocal([localKey]);
       if (!disposed) onItems(readCloudCache<T>(KEYS[localKey]));
     };
     emit();
-    const interval = window.setInterval(emit, 10000);
+    const interval = window.setInterval(emit, SERVER_SNAPSHOT_POLL_MS);
     return () => {
       disposed = true;
       window.clearInterval(interval);

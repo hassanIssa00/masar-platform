@@ -89,6 +89,7 @@ const ALL_COUNTRIES: Country[] = [
 ];
 
 const DEFAULT_COUNTRY = ALL_COUNTRIES.find((country) => country.code === '+966') ?? ALL_COUNTRIES[0];
+const REGISTER_SYNC_KEYS = ['accounts', 'students'] as const;
 
 const grades = [
   'الصف الأول الابتدائي',
@@ -164,7 +165,7 @@ export default function RegisterPage() {
 
   // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
   useEffect(() => {
-    pullCloudDataToLocal().catch(() => {});
+    pullCloudDataToLocal([...REGISTER_SYNC_KEYS]).catch(() => {});
     handleGoogleRedirectResult(getSelectedRole() as import('@/lib/localDb').UserRole, schoolBranch).then((result) => {
       if (result && result.ok) {
         setSession(result.account, false, false);

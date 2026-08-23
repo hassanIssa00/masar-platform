@@ -24,6 +24,7 @@ import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
+const LOGIN_SYNC_KEYS = ['accounts', 'students', 'reports'] as const;
 
 // Google icon SVG (official brand colors)
 function GoogleIcon({ size = 20 }: { size?: number }) {
@@ -93,7 +94,7 @@ export default function LoginPage() {
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
   async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
-    await pullCloudDataToLocal().catch(() => {});
+    await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
 
     const branch = account.schoolBranch ?? 'MASAR';
 

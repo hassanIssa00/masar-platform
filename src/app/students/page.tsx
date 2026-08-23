@@ -14,6 +14,8 @@ import CertificateModal from '@/components/CertificateModal';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
 import { Award } from 'lucide-react';
 
+const STUDENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'studentNotes'] as const;
+
 export default function StudentsControlPage() {
   const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -54,10 +56,10 @@ export default function StudentsControlPage() {
     const session = getSession();
     if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
     refresh();
-    pullCloudDataToLocal()
+    pullCloudDataToLocal([...STUDENTS_SYNC_KEYS])
       .then(() => refresh())
       .catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(refresh);
+    const unsubscribe = subscribeToCloudUpdates(refresh, [...STUDENTS_SYNC_KEYS]);
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

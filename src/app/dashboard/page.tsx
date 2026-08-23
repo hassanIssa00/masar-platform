@@ -13,6 +13,8 @@ import { getStudents, getReports, getSession, StudentRecord, ReportRecord } from
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
 
+const DASHBOARD_SYNC_KEYS = ['students', 'reports', 'surveys', 'calendarSessions'] as const;
+
 export default function Dashboard() {
   const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -37,7 +39,7 @@ export default function Dashboard() {
       setAuthorized(true);
       setStudents(getStudents());
       setReports(getReports());
-      pullCloudDataToLocal()
+      pullCloudDataToLocal([...DASHBOARD_SYNC_KEYS])
         .then(() => {
           setStudents(getStudents());
           setReports(getReports());
@@ -47,7 +49,7 @@ export default function Dashboard() {
     const unsubscribe = subscribeToCloudUpdates(() => {
       setStudents(getStudents());
       setReports(getReports());
-    });
+    }, [...DASHBOARD_SYNC_KEYS]);
     return () => unsubscribe();
   }, [router]);
 

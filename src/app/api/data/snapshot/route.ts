@@ -49,6 +49,8 @@ const COLLECTIONS = [
   ['simpleSpellingDrawings', 'simple_spelling_drawings'],
 ] as const;
 
+const MAX_DOCS_PER_COLLECTION = 800;
+
 function isStaff(role: string) {
   return role === 'doctor' || role === 'specialist' || role === 'teacher';
 }
@@ -100,22 +102,44 @@ export async function GET(req: NextRequest) {
 
   const canReadAll = isStaff(auth.user.role);
   const result: Record<string, SnapshotItem[]> = {};
+  const failedCollections: Array<{ key: string; reason: string }> = [];
+  const requested = req.nextUrl.searchParams
+    .get('collections')
+    ?.split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const requestedSet = requested?.length ? new Set(requested) : null;
+  const collections = requestedSet
+    ? COLLECTIONS.filter(([payloadKey]) => requestedSet.has(payloadKey))
+    : COLLECTIONS;
 
   await Promise.all(
-    COLLECTIONS.map(async ([payloadKey, collectionName]) => {
-      const snap = await adminDb.collection(collectionName).get();
-      const items = snap.docs.map((doc) => {
-        const data = doc.data();
-        return { ...data, id: data.id || data.accountId || doc.id } as SnapshotItem;
-      });
+    collections.map(async ([payloadKey, collectionName]) => {
+      try {
+        const snap = await adminDb.collection(collectionName).limit(MAX_DOCS_PER_COLLECTION).get();
+        const items = snap.docs.map((doc) => {
+          const data = doc.data();
+          return { ...data, id: data.id || data.accountId || doc.id } as SnapshotItem;
+        });
 
-      result[payloadKey] = canReadAll ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
+        result[payloadKey] = canReadAll ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
+      } catch (error) {
+        console.error(`[snapshot] Failed reading ${collectionName}:`, error);
+        result[payloadKey] = [];
+        failedCollections.push({
+          key: payloadKey,
+          reason: error instanceof Error ? error.message : 'unknown',
+        });
+      }
     }),
   );
 
   return NextResponse.json({
     ok: true,
     data: result,
+    partial: failedCollections.length > 0,
+    failedCollections,
     serverTime: new Date().toISOString(),
   });
 }

@@ -15,6 +15,7 @@ import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
 const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التقرير التحليلي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
+const REPORTS_SYNC_KEYS = ['students', 'reports', 'surveys'] as const;
 
 export default function ReportsPage() {
   return (
@@ -58,8 +59,8 @@ function ReportsContent() {
     const session = getSession();
     if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
     load();
-    pullCloudDataToLocal().then(load).catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(load);
+    pullCloudDataToLocal([...REPORTS_SYNC_KEYS]).then(load).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(load, [...REPORTS_SYNC_KEYS]);
     return () => unsubscribe();
   }, [searchParams, router]);
 

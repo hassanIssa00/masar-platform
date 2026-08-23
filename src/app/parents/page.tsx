@@ -16,6 +16,8 @@ import {
 } from '@/lib/localDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
+const PARENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'messages'] as const;
+
 export default function ParentsManagementPage() {
   const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -53,8 +55,8 @@ export default function ParentsManagementPage() {
     };
 
     queueMicrotask(load);
-    pullCloudDataToLocal().then(load).catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(load);
+    pullCloudDataToLocal([...PARENTS_SYNC_KEYS]).then(load).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(load, [...PARENTS_SYNC_KEYS]);
     return () => unsubscribe();
   }, [router]);
 
