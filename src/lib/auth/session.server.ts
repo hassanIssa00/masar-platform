@@ -107,10 +107,30 @@ export async function verifyBcryptPassword(password: string, hash: string): Prom
   if (!hash.startsWith('$2a$') && !hash.startsWith('$2b$')) return false;
 
   try {
-    return await bcrypt.compare(password.trim(), hash);
+    const candidates = Array.from(new Set([
+      password.trim(),
+      normalizePasswordInput(password),
+    ])).filter(Boolean);
+
+    for (const candidate of candidates) {
+      if (await bcrypt.compare(candidate, hash)) return true;
+    }
+    return false;
   } catch {
     return false;
   }
+}
+
+export function normalizePasswordInput(value: string) {
+  const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+  const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+
+  return value
+    .trim()
+    .replace(/^\\_/, '_')
+    .replace(/[‐‑‒–—―−]/g, '-')
+    .replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String(persianDigits.indexOf(digit)));
 }
 
 function normalizeIdentifier(value: string) {
@@ -128,37 +148,73 @@ type StoredCredential = {
   passwordHash?: string;
 };
 
-async function findAdminCredential(
+const CREDENTIAL_COLLECTIONS = ['auth_credentials', 'account_credentials'] as const;
+
+async function findCredentialInCollection(
   adminDb: NonNullable<ReturnType<typeof getAdminDb>>,
+  collectionName: (typeof CREDENTIAL_COLLECTIONS)[number],
   identifier: string,
 ): Promise<StoredCredential | null> {
-  const lookup = await adminDb.collection('account_credentials').doc(credentialLookupId(identifier)).get();
+  const lookup = await adminDb.collection(collectionName).doc(credentialLookupId(identifier)).get();
   if (lookup.exists) return lookup.data() as StoredCredential;
 
+  const directDoc = await adminDb.collection(collectionName).doc(identifier).get();
+  if (directDoc.exists) return directDoc.data() as StoredCredential;
+
   const emailMatch = await adminDb
-    .collection('account_credentials')
+    .collection(collectionName)
     .where('email', '==', identifier)
     .limit(1)
     .get();
   if (!emailMatch.empty) return emailMatch.docs[0].data() as StoredCredential;
 
   const phoneMatch = await adminDb
-    .collection('account_credentials')
+    .collection(collectionName)
     .where('phone', '==', identifier)
     .limit(1)
     .get();
   if (!phoneMatch.empty) return phoneMatch.docs[0].data() as StoredCredential;
 
-  const credentialsSnap = await adminDb.collection('account_credentials').get();
-  const credentialDoc = credentialsSnap.docs
-    .map((entry) => entry.data() as StoredCredential)
-    .find((entry) => {
-      const email = normalizeIdentifier(entry.email || '');
-      const phone = normalizeIdentifier(entry.phone || '');
-      return email === identifier || phone === identifier;
-    });
+  return null;
+}
 
-  return credentialDoc || null;
+async function findAdminCredential(
+  adminDb: NonNullable<ReturnType<typeof getAdminDb>>,
+  identifier: string,
+): Promise<StoredCredential | null> {
+  for (const collectionName of CREDENTIAL_COLLECTIONS) {
+    const credential = await findCredentialInCollection(adminDb, collectionName, identifier);
+    if (credential) return credential;
+  }
+
+  const accountMatch = await adminDb
+    .collection('accounts')
+    .where('email', '==', identifier)
+    .limit(1)
+    .get();
+  const accountDoc = !accountMatch.empty ? accountMatch.docs[0] : null;
+
+  if (accountDoc) {
+    for (const collectionName of CREDENTIAL_COLLECTIONS) {
+      const credentialByAccountId = await adminDb.collection(collectionName).doc(accountDoc.id).get();
+      if (credentialByAccountId.exists) return credentialByAccountId.data() as StoredCredential;
+    }
+  }
+
+  for (const collectionName of CREDENTIAL_COLLECTIONS) {
+    const credentialsSnap = await adminDb.collection(collectionName).limit(500).get();
+    const credentialDoc = credentialsSnap.docs
+      .map((entry) => entry.data() as StoredCredential)
+      .find((entry) => {
+        const email = normalizeIdentifier(entry.email || '');
+        const phone = normalizeIdentifier(entry.phone || '');
+        return email === identifier || phone === identifier;
+      });
+
+    if (credentialDoc) return credentialDoc;
+  }
+
+  return null;
 }
 
 /**

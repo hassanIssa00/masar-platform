@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
+import { normalizePasswordInput } from '@/lib/auth/session.server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
+
+export const runtime = 'nodejs';
 
 function credentialLookupId(value: string) {
   return `lookup_${value.trim().toLowerCase().replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف.' }, { status: 400 });
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(normalizePasswordInput(password), 12);
   const email = auth.user.email.trim().toLowerCase();
   const phone = auth.user.phone?.trim() || '';
   const credential = {
@@ -37,10 +40,15 @@ export async function POST(req: NextRequest) {
   };
 
   const writes = [
+    adminDb.collection('auth_credentials').doc(auth.user.id).set(credential, { merge: true }),
+    adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
     adminDb.collection('account_credentials').doc(auth.user.id).set(credential, { merge: true }),
     adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
   ];
-  if (phone) writes.push(adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+  if (phone) {
+    writes.push(adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+    writes.push(adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+  }
 
   await Promise.all(writes);
 

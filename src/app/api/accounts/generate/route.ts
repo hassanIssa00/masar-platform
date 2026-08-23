@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
+export const runtime = 'nodejs';
+
 type Branch = 'MASAR' | 'IKHLAS_JEDDAH';
 
 function createId(prefix: string) {
@@ -102,6 +104,10 @@ export async function POST(req: NextRequest) {
   await Promise.all([
     adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
     adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
+    adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+    adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+    adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+    adminDb.collection('auth_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
     adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
     adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
     adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),

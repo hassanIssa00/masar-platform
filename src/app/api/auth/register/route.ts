@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
-import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
+import { createSessionToken, normalizePasswordInput, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 import type { UserRole } from '@/lib/localDb';
 
 export const runtime = 'nodejs';
@@ -65,45 +65,26 @@ export async function POST(req: NextRequest) {
     lastLoginAt: now,
     onboardingRequired: true,
   };
-  const passwordHash = await bcrypt.hash(password.trim(), 12);
+  const passwordHash = await bcrypt.hash(normalizePasswordInput(password), 12);
+  const credential = {
+    accountId,
+    email,
+    phone,
+    passwordHash,
+    createdAt: now,
+    source: 'manual-register',
+  };
 
   await Promise.all([
     adminDb.collection('accounts').doc(accountId).set(account, { merge: true }),
-    adminDb.collection('account_credentials').doc(accountId).set(
-      {
-        accountId,
-        email,
-        phone,
-        passwordHash,
-        createdAt: now,
-        source: 'manual-register',
-      },
-      { merge: true },
-    ),
-    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(
-      {
-        accountId,
-        email,
-        phone,
-        passwordHash,
-        createdAt: now,
-        source: 'manual-register',
-      },
-      { merge: true },
-    ),
+    adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),
+    adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+    adminDb.collection('account_credentials').doc(accountId).set(credential, { merge: true }),
+    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
     ...(phone
       ? [
-        adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(
-          {
-            accountId,
-            email,
-            phone,
-            passwordHash,
-            createdAt: now,
-            source: 'manual-register',
-          },
-          { merge: true },
-        ),
+        adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
+        adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
       ]
       : []),
   ]);

@@ -342,7 +342,7 @@ export default function RegisterPage() {
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || !payload?.ok || !payload.account) {
       setLoading(false);
-      setGoogleError(payload?.error || 'تعذر إنشاء الحساب على السحابة. راجع إعداد Firebase Admin.');
+      setGoogleError(payload?.error || 'تعذر إنشاء الحساب على السحابة. حدّث الصفحة وحاول مرة أخرى.');
       return;
     }
 
@@ -736,8 +736,8 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-900/50 text-slate-900 backdrop-blur-md">
           <div className="motion-scale-in rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-2xl max-w-sm w-full mx-4 space-y-3">
             <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-teal-600" />
-            <p className="text-lg font-black text-slate-900">جاري ربط ملف الطالب والتقارير...</p>
-            <p className="text-xs font-bold text-slate-500">سيتم التعرف التلقائي على نتائج وتقارير الطفل.</p>
+            <p className="text-lg font-black text-slate-900">جاري إنشاء الحساب الآمن...</p>
+            <p className="text-xs font-bold text-slate-500">لحظات ونفتح صفحة استكمال البيانات المناسبة للحساب.</p>
           </div>
         </div>
       )}
