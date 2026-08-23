@@ -10,6 +10,7 @@ import { getSession, getStudents, saveStudent, updateStudent } from '@/lib/local
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
+const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students'] as const;
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
 const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
 const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFullYear() - 3 - index));
@@ -36,7 +37,7 @@ export default function NewStudentPage() {
   // Pre-fill from registration if a student record already exists
   useEffect(() => {
     const load = async () => {
-      await pullCloudDataToLocal().catch(() => {});
+      await pullCloudDataToLocal([...STUDENT_WIZARD_SYNC_KEYS]).catch(() => {});
       const session = getSession();
       const params = new URLSearchParams(window.location.search);
       const flow = params.get('flow');

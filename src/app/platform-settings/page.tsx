@@ -37,7 +37,7 @@ const SEED_ACCOUNTS: AccountRecord[] = [
 ];
 
 async function loadAllAccounts(): Promise<AccountRecord[]> {
-  const serverSynced = await pullServerSnapshotToLocal();
+  const serverSynced = await pullServerSnapshotToLocal(['accounts']);
   const cloudAccounts = serverSynced ? getAccounts() : [];
 
   // Cloud snapshot is the source of truth. LocalStorage is only a cache after a successful server sync.

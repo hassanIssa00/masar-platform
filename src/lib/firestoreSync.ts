@@ -9,14 +9,6 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import type {
-  AccountRecord,
-  StudentRecord,
-  ReportRecord,
-  SurveySubmission,
-  ActivityRecord,
-  MessageRecord,
-} from './localDb';
 
 const KEYS = {
   accounts: 'masar.accounts.v1',
@@ -67,6 +59,57 @@ const KEYS = {
 type CloudPayload = unknown;
 const memoryCache = new Map<string, unknown[]>();
 const SERVER_SNAPSHOT_POLL_MS = 60_000;
+const CLOUD_COLLECTIONS = [
+  ['accounts', 'accounts'],
+  ['students', 'students'],
+  ['reports', 'reports'],
+  ['surveys', 'surveys'],
+  ['activity', 'activities'],
+  ['messages', 'messages'],
+  ['ikhlasLogs', 'ikhlasLogs'],
+  ['ikhlasPosts', 'ikhlasPosts'],
+  ['calendarSessions', 'calendar_sessions'],
+  ['faceRecords', 'faceRecords'],
+  ['notifications', 'notifications'],
+  ['attendance', 'attendance'],
+  ['assessmentTemplates', 'assessment_templates'],
+  ['assessmentResults', 'assessment_results'],
+  ['iepRecords', 'iep_records'],
+  ['consents', 'consents'],
+  ['resources', 'resources'],
+  ['sessionRecords', 'session_records'],
+  ['classStudents', 'class_students'],
+  ['studentNotes', 'student_notes'],
+  ['studentHomeworkLogs', 'student_homework_logs'],
+  ['studentCertLogs', 'student_cert_logs'],
+  ['curriculumFiles', 'curriculum_files'],
+  ['curriculumQuizzes', 'curriculum_quizzes'],
+  ['quizSubmissions', 'quiz_submissions'],
+  ['classroomQuizzes', 'classroom_quizzes'],
+  ['smartSchedules', 'smart_schedules'],
+  ['scheduleNotificationLogs', 'schedule_notification_logs'],
+  ['liveSessions', 'live_sessions'],
+  ['periodAttendance', 'period_attendance'],
+  ['parentsCommunityChat', 'parents_community_chat'],
+  ['parentsChatSettings', 'parents_chat_settings'],
+  ['aiThreads', 'ai_threads'],
+  ['teacherAiThreads', 'teacher_ai_chats'],
+  ['branches', 'branches'],
+  ['homework', 'homework'],
+  ['invoices', 'invoices'],
+  ['waitlist', 'waitlist'],
+  ['points', 'student_points'],
+  ['pointTransactions', 'point_transactions'],
+  ['platformAnalytics', 'platform_analytics'],
+  ['simpleSpellingAssignments', 'simple_spelling_assignments'],
+  ['simpleSpellingDrawings', 'simple_spelling_drawings'],
+] as const satisfies Array<[keyof typeof KEYS, string]>;
+
+function selectedCollections(collectionKeys?: Array<keyof typeof KEYS>) {
+  if (!collectionKeys?.length) return CLOUD_COLLECTIONS;
+  const selected = new Set(collectionKeys);
+  return CLOUD_COLLECTIONS.filter(([key]) => selected.has(key));
+}
 
 function hasCloudAuthSession() {
   return typeof window !== 'undefined' && Boolean(auth.currentUser);
@@ -147,7 +190,14 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
     const payload = await res.json();
     if (!payload?.ok || !payload.data) return false;
 
+    const failedKeys = new Set<string>(
+      Array.isArray(payload.failedCollections)
+        ? payload.failedCollections.map((item: { key?: string }) => item.key).filter(Boolean)
+        : [],
+    );
+
     Object.entries(KEYS).forEach(([payloadKey, localKey]) => {
+      if (failedKeys.has(payloadKey)) return;
       const items = payload.data[payloadKey];
       if (Array.isArray(items)) {
         writeLocal(localKey, items);
@@ -208,51 +258,11 @@ export async function pullCloudDataToLocal(collectionKeys?: Array<keyof typeof K
     }
   };
 
-  await Promise.allSettled([
-    syncCollection<AccountRecord>('accounts', KEYS.accounts),
-    syncCollection<StudentRecord>('students', KEYS.students),
-    syncCollection<ReportRecord>('reports', KEYS.reports),
-    syncCollection<SurveySubmission>('surveys', KEYS.surveys),
-    syncCollection<ActivityRecord>('activities', KEYS.activity),
-    syncCollection<MessageRecord>('messages', KEYS.messages),
-    syncCollection<CloudPayload>('ikhlasLogs', KEYS.ikhlasLogs),
-    syncCollection<CloudPayload>('ikhlasPosts', KEYS.ikhlasPosts),
-    syncCollection<CloudPayload>('calendar_sessions', KEYS.calendarSessions),
-    syncCollection<CloudPayload>('faceRecords', KEYS.faceRecords),
-    syncCollection<CloudPayload>('notifications', KEYS.notifications),
-    syncCollection<CloudPayload>('attendance', KEYS.attendance),
-    syncCollection<CloudPayload>('assessment_templates', KEYS.assessmentTemplates),
-    syncCollection<CloudPayload>('assessment_results', KEYS.assessmentResults),
-    syncCollection<CloudPayload>('iep_records', KEYS.iepRecords),
-    syncCollection<CloudPayload>('consents', KEYS.consents),
-    syncCollection<CloudPayload>('resources', KEYS.resources),
-    syncCollection<CloudPayload>('session_records', KEYS.sessionRecords),
-    syncCollection<CloudPayload>('class_students', KEYS.classStudents),
-    syncCollection<CloudPayload>('student_notes', KEYS.studentNotes),
-    syncCollection<CloudPayload>('student_homework_logs', KEYS.studentHomeworkLogs),
-    syncCollection<CloudPayload>('student_cert_logs', KEYS.studentCertLogs),
-    syncCollection<CloudPayload>('curriculum_files', KEYS.curriculumFiles),
-    syncCollection<CloudPayload>('curriculum_quizzes', KEYS.curriculumQuizzes),
-    syncCollection<CloudPayload>('quiz_submissions', KEYS.quizSubmissions),
-    syncCollection<CloudPayload>('classroom_quizzes', KEYS.classroomQuizzes),
-    syncCollection<CloudPayload>('smart_schedules', KEYS.smartSchedules),
-    syncCollection<CloudPayload>('schedule_notification_logs', KEYS.scheduleNotificationLogs),
-    syncCollection<CloudPayload>('live_sessions', KEYS.liveSessions),
-    syncCollection<CloudPayload>('period_attendance', KEYS.periodAttendance),
-    syncCollection<CloudPayload>('parents_community_chat', KEYS.parentsCommunityChat),
-    syncCollection<CloudPayload>('parents_chat_settings', KEYS.parentsChatSettings),
-    syncCollection<CloudPayload>('ai_threads', KEYS.aiThreads),
-    syncCollection<CloudPayload>('teacher_ai_chats', KEYS.teacherAiThreads),
-    syncCollection<CloudPayload>('branches', KEYS.branches),
-    syncCollection<CloudPayload>('homework', KEYS.homework),
-    syncCollection<CloudPayload>('invoices', KEYS.invoices),
-    syncCollection<CloudPayload>('waitlist', KEYS.waitlist),
-    syncCollection<CloudPayload>('student_points', KEYS.points),
-    syncCollection<CloudPayload>('point_transactions', KEYS.pointTransactions),
-    syncCollection<CloudPayload>('platform_analytics', KEYS.platformAnalytics),
-    syncCollection<CloudPayload>('simple_spelling_assignments', KEYS.simpleSpellingAssignments),
-    syncCollection<CloudPayload>('simple_spelling_drawings', KEYS.simpleSpellingDrawings),
-  ]);
+  await Promise.allSettled(
+    selectedCollections(collectionKeys).map(([key, collectionName]) =>
+      syncCollection<CloudPayload>(collectionName, KEYS[key]),
+    ),
+  );
 }
 
 // Realtime listeners — always mirrors cloud state into the in-memory cache.
@@ -288,48 +298,9 @@ export function subscribeToCloudUpdates(onUpdate?: () => void, collectionKeys?: 
     }
   };
 
-  setupListener('students', KEYS.students);
-  setupListener('reports', KEYS.reports);
-  setupListener('messages', KEYS.messages);
-  setupListener('accounts', KEYS.accounts);
-  setupListener('surveys', KEYS.surveys);
-  setupListener('ikhlasLogs', KEYS.ikhlasLogs);
-  setupListener('ikhlasPosts', KEYS.ikhlasPosts);
-  setupListener('calendar_sessions', KEYS.calendarSessions);
-  setupListener('faceRecords', KEYS.faceRecords);
-  setupListener('notifications', KEYS.notifications);
-  setupListener('attendance', KEYS.attendance);
-  setupListener('assessment_templates', KEYS.assessmentTemplates);
-  setupListener('assessment_results', KEYS.assessmentResults);
-  setupListener('iep_records', KEYS.iepRecords);
-  setupListener('consents', KEYS.consents);
-  setupListener('resources', KEYS.resources);
-  setupListener('session_records', KEYS.sessionRecords);
-  setupListener('class_students', KEYS.classStudents);
-  setupListener('student_notes', KEYS.studentNotes);
-  setupListener('student_homework_logs', KEYS.studentHomeworkLogs);
-  setupListener('student_cert_logs', KEYS.studentCertLogs);
-  setupListener('curriculum_files', KEYS.curriculumFiles);
-  setupListener('curriculum_quizzes', KEYS.curriculumQuizzes);
-  setupListener('quiz_submissions', KEYS.quizSubmissions);
-  setupListener('classroom_quizzes', KEYS.classroomQuizzes);
-  setupListener('smart_schedules', KEYS.smartSchedules);
-  setupListener('schedule_notification_logs', KEYS.scheduleNotificationLogs);
-  setupListener('live_sessions', KEYS.liveSessions);
-  setupListener('period_attendance', KEYS.periodAttendance);
-  setupListener('parents_community_chat', KEYS.parentsCommunityChat);
-  setupListener('parents_chat_settings', KEYS.parentsChatSettings);
-  setupListener('ai_threads', KEYS.aiThreads);
-  setupListener('teacher_ai_chats', KEYS.teacherAiThreads);
-  setupListener('branches', KEYS.branches);
-  setupListener('homework', KEYS.homework);
-  setupListener('invoices', KEYS.invoices);
-  setupListener('waitlist', KEYS.waitlist);
-  setupListener('student_points', KEYS.points);
-  setupListener('point_transactions', KEYS.pointTransactions);
-  setupListener('platform_analytics', KEYS.platformAnalytics);
-  setupListener('simple_spelling_assignments', KEYS.simpleSpellingAssignments);
-  setupListener('simple_spelling_drawings', KEYS.simpleSpellingDrawings);
+  selectedCollections(collectionKeys).forEach(([key, collectionName]) => {
+    setupListener(collectionName, KEYS[key]);
+  });
 
   return () => {
     unsubscribes.forEach((unsub) => unsub());

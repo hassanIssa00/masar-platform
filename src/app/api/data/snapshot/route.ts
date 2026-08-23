@@ -50,12 +50,24 @@ const COLLECTIONS = [
 ] as const;
 
 const MAX_DOCS_PER_COLLECTION = 800;
+const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
+const STALE_SNAPSHOT_TTL_MS = 60 * 60 * 1000;
 
 function isStaff(role: string) {
   return role === 'doctor' || role === 'specialist' || role === 'teacher';
 }
 
 type SnapshotItem = Record<string, unknown>;
+type FailedCollection = { key: string; reason: string };
+type SnapshotCacheEntry = {
+  data: Record<string, SnapshotItem[]>;
+  failedCollections: FailedCollection[];
+  expiresAt: number;
+  staleUntil: number;
+  serverTime: string;
+};
+
+const snapshotCache = new Map<string, SnapshotCacheEntry>();
 
 function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string }) {
   const userEmail = user.email?.toLowerCase();
@@ -113,6 +125,21 @@ export async function GET(req: NextRequest) {
   const collections = requestedSet
     ? COLLECTIONS.filter(([payloadKey]) => requestedSet.has(payloadKey))
     : COLLECTIONS;
+  const cacheKey = `${canReadAll ? 'staff' : 'user'}:${canReadAll ? 'all' : auth.user.id}:${collections
+    .map(([payloadKey]) => payloadKey)
+    .join(',')}`;
+  const now = Date.now();
+  const cached = snapshotCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return NextResponse.json({
+      ok: true,
+      data: cached.data,
+      partial: cached.failedCollections.length > 0,
+      failedCollections: cached.failedCollections,
+      cached: true,
+      serverTime: cached.serverTime,
+    });
+  }
 
   await Promise.all(
     collections.map(async ([payloadKey, collectionName]) => {
@@ -126,7 +153,6 @@ export async function GET(req: NextRequest) {
         result[payloadKey] = canReadAll ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
       } catch (error) {
         console.error(`[snapshot] Failed reading ${collectionName}:`, error);
-        result[payloadKey] = [];
         failedCollections.push({
           key: payloadKey,
           reason: error instanceof Error ? error.message : 'unknown',
@@ -135,11 +161,32 @@ export async function GET(req: NextRequest) {
     }),
   );
 
+  const succeededCollections = Object.keys(result).length;
+  const serverTime = new Date().toISOString();
+  if (succeededCollections > 0) {
+    snapshotCache.set(cacheKey, {
+      data: result,
+      failedCollections,
+      expiresAt: now + SNAPSHOT_CACHE_TTL_MS,
+      staleUntil: now + STALE_SNAPSHOT_TTL_MS,
+      serverTime,
+    });
+  } else if (cached && cached.staleUntil > now) {
+    return NextResponse.json({
+      ok: true,
+      data: cached.data,
+      partial: true,
+      stale: true,
+      failedCollections,
+      serverTime: cached.serverTime,
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     data: result,
     partial: failedCollections.length > 0,
     failedCollections,
-    serverTime: new Date().toISOString(),
+    serverTime,
   });
 }

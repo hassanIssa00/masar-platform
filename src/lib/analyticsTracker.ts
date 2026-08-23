@@ -247,7 +247,7 @@ function todayStart(): string {
 }
 
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
-  await pullServerSnapshotToLocal();
+  await pullServerSnapshotToLocal(['platformAnalytics']);
   const localEvents = getLocalEvents();
   const seedEvents = generateSeedEvents();
 
