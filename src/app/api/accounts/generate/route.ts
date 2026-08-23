@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
+import { createGeneratedAccountPassword } from '@/lib/auth/session.server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const runtime = 'nodejs';
@@ -9,12 +10,6 @@ type Branch = 'MASAR' | 'IKHLAS_JEDDAH';
 
 function createId(prefix: string) {
   return `${prefix}_${crypto.randomUUID()}`;
-}
-
-function createTempPassword(prefix: string) {
-  const partA = crypto.randomUUID().slice(0, 4).toUpperCase();
-  const partB = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-${partA}-${partB}`;
 }
 
 function createPlatformEmail(kind: 'student' | 'parent', branch: Branch) {
@@ -39,8 +34,8 @@ export async function POST(req: NextRequest) {
 
   const studentEmail = createPlatformEmail('student', branch);
   const parentEmail = createPlatformEmail('parent', branch);
-  const studentPassword = createTempPassword('STU');
-  const parentPassword = createTempPassword('PAR');
+  const studentPassword = createGeneratedAccountPassword('STU', studentEmail, 'student');
+  const parentPassword = createGeneratedAccountPassword('PAR', parentEmail, 'parent');
   const now = new Date().toISOString();
 
   const studentAccount = {

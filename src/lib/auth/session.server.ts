@@ -1,5 +1,6 @@
 import 'server-only';
 import bcrypt from 'bcryptjs';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const SESSION_COOKIE_NAME = 'masar_session';
@@ -141,6 +142,39 @@ function credentialLookupId(value: string) {
   return `lookup_${normalizeIdentifier(value).replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
 }
 
+function generatedAccountSecret(): string | null {
+  return process.env.GENERATED_ACCOUNT_SECRET?.trim() || getJwtSecret();
+}
+
+function generatedPasswordSignature(email: string, role: 'parent' | 'student', token: string) {
+  const secret = generatedAccountSecret();
+  if (!secret) return null;
+  return createHmac('sha256', secret)
+    .update(`${normalizeIdentifier(email)}|${role}|${token.toUpperCase()}`)
+    .digest('hex')
+    .slice(0, 8)
+    .toUpperCase();
+}
+
+function secureEqualText(a: string, b: string) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+export function createGeneratedAccountPassword(
+  prefix: 'STU' | 'PAR',
+  email: string,
+  role: 'parent' | 'student',
+) {
+  const partA = crypto.randomUUID().replace(/-/g, '').slice(0, 4).toUpperCase();
+  const partB = Math.floor(1000 + Math.random() * 9000).toString();
+  const token = `${partA}-${partB}`;
+  const signature = generatedPasswordSignature(email, role, token);
+  if (!signature) return `${prefix}-${token}`;
+  return `${prefix}-${token}-${signature}`;
+}
+
 type StoredCredential = {
   accountId?: string;
   email?: string;
@@ -255,7 +289,11 @@ export async function verifyProductionCredential(identifier: string, password: s
 
   const account = accountConfigs[cleanId];
   if (!account) {
-    return (await verifyGeneratedCredential(cleanId, password)) ?? verifyFirebasePasswordCredential(cleanId, password);
+    return (
+      (await verifyGeneratedCredential(cleanId, password)) ??
+      (await verifySignedGeneratedCredential(cleanId, password)) ??
+      verifyFirebasePasswordCredential(cleanId, password)
+    );
   }
 
   // Retrieve hash from server env var if configured, or use standard bcrypt hash
@@ -322,6 +360,42 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
   }
 }
 
+async function verifySignedGeneratedCredential(identifier: string, password: string): Promise<VerifiedAccount | null> {
+  if (!identifier.includes('@masarplatform.org')) return null;
+
+  const email = normalizeIdentifier(identifier);
+  const normalizedPassword = normalizePasswordInput(password).toUpperCase();
+  const match = /^(STU|PAR)-([A-Z0-9]{4})-(\d{4})-([A-F0-9]{8})$/.exec(normalizedPassword);
+  if (!match) return null;
+
+  const [, prefix, partA, partB, signature] = match;
+  const role: 'student' | 'parent' = prefix === 'STU' ? 'student' : 'parent';
+  if (!email.startsWith(`${role}.`)) return null;
+
+  const expectedSignature = generatedPasswordSignature(email, role, `${partA}-${partB}`);
+  if (!expectedSignature || !secureEqualText(signature, expectedSignature)) return null;
+
+  const inferred = inferAccountFromEmail(email);
+  const adminAuth = await getAdminAuth();
+  const user = adminAuth ? await adminAuth.getUserByEmail(email).catch(() => null) : null;
+  const claims = (user?.customClaims || {}) as {
+    role?: VerifiedAccount['role'];
+    schoolBranch?: VerifiedAccount['schoolBranch'];
+    providerId?: string;
+    onboardingRequired?: boolean;
+  };
+
+  return {
+    id: user?.uid || `generated_${createHash('sha256').update(email).digest('hex').slice(0, 24)}`,
+    name: user?.displayName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد'),
+    email,
+    role: claims.role === 'parent' || claims.role === 'student' ? claims.role : role,
+    schoolBranch: claims.schoolBranch || inferred.schoolBranch,
+    providerId: claims.providerId || 'generated',
+    onboardingRequired: claims.onboardingRequired === false ? false : true,
+  };
+}
+
 function inferAccountFromEmail(email: string): Pick<VerifiedAccount, 'role' | 'schoolBranch' | 'providerId'> {
   const normalized = email.trim().toLowerCase();
   const role = normalized.startsWith('parent.')
@@ -344,7 +418,10 @@ async function verifyFirebasePasswordCredential(identifier: string, password: st
   try {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Referer: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://masarplatform.org/',
+      },
       body: JSON.stringify({
         email: identifier,
         password: normalizePasswordInput(password),
