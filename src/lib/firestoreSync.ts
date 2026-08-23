@@ -59,6 +59,7 @@ const KEYS = {
 type CloudPayload = unknown;
 const memoryCache = new Map<string, unknown[]>();
 const SERVER_SNAPSHOT_POLL_MS = 60_000;
+let serverSnapshotBackoffUntil = 0;
 const CLOUD_COLLECTIONS = [
   ['accounts', 'accounts'],
   ['students', 'students'],
@@ -174,6 +175,7 @@ async function deleteDocThroughServer(collectionName: string, docId: string) {
 
 export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return false;
+  if (Date.now() < serverSnapshotBackoffUntil) return false;
 
   try {
     const params = collectionKeys?.length
@@ -189,6 +191,9 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
 
     const payload = await res.json();
     if (!payload?.ok || !payload.data) return false;
+    if (typeof payload.retryAfterMs === 'number' && payload.retryAfterMs > 0) {
+      serverSnapshotBackoffUntil = Date.now() + payload.retryAfterMs;
+    }
 
     const failedKeys = new Set<string>(
       Array.isArray(payload.failedCollections)
@@ -207,6 +212,7 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
     return true;
   } catch (error) {
     console.error('Server snapshot sync failed:', error);
+    serverSnapshotBackoffUntil = Date.now() + 2 * 60 * 1000;
     return false;
   }
 }

@@ -52,6 +52,8 @@ const COLLECTIONS = [
 const MAX_DOCS_PER_COLLECTION = 800;
 const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
 const STALE_SNAPSHOT_TTL_MS = 60 * 60 * 1000;
+const PARTIAL_RETRY_AFTER_MS = 2 * 60 * 1000;
+const EXHAUSTED_RETRY_AFTER_MS = 10 * 60 * 1000;
 
 function isStaff(role: string) {
   return role === 'doctor' || role === 'specialist' || role === 'teacher';
@@ -138,6 +140,7 @@ export async function GET(req: NextRequest) {
       failedCollections: cached.failedCollections,
       cached: true,
       serverTime: cached.serverTime,
+      retryAfterMs: cached.failedCollections.length > 0 ? PARTIAL_RETRY_AFTER_MS : 0,
     });
   }
 
@@ -179,14 +182,23 @@ export async function GET(req: NextRequest) {
       stale: true,
       failedCollections,
       serverTime: cached.serverTime,
+      retryAfterMs: EXHAUSTED_RETRY_AFTER_MS,
     });
   }
+
+  const retryAfterMs =
+    failedCollections.length === collections.length
+      ? EXHAUSTED_RETRY_AFTER_MS
+      : failedCollections.length > 0
+        ? PARTIAL_RETRY_AFTER_MS
+        : 0;
 
   return NextResponse.json({
     ok: true,
     data: result,
     partial: failedCollections.length > 0,
     failedCollections,
+    retryAfterMs,
     serverTime,
   });
 }
