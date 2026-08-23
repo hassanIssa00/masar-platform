@@ -74,6 +74,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [faceLoginOpen, setFaceLoginOpen] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
@@ -141,25 +142,31 @@ export default function LoginPage() {
   // ─── Email/Password Login ────────────────────────────────────────────────────
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (loginLoading) return;
     setLoginError('');
     setLoginMessage('');
 
-    if (password.trim().length < 6) {
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    if (cleanPassword.length < 6) {
       setLoginError('كلمة المرور يجب ألا تقل عن 6 أحرف.');
       return;
     }
 
     // Call server-side authentication API (sets HttpOnly masar_session cookie)
     try {
+      setLoginLoading(true);
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ identifier: email, password, rememberMe }),
+        body: JSON.stringify({ identifier: cleanEmail, password: cleanPassword, rememberMe }),
       });
 
       if (res.status === 429) {
         setLoginError('محاولات دخول كثيرة جداً. يرجى المحاولة بعد قليل.');
+        setLoginLoading(false);
         return;
       }
 
@@ -174,10 +181,17 @@ export default function LoginPage() {
         return;
       }
 
-      setLoginError(data.error || 'بيانات الدخول غير صحيحة.');
+      setLoginError(
+        data.error ||
+          (cleanEmail.toLowerCase() === 'dr.ismail@masar.com'
+            ? 'بيانات الدخول غير صحيحة. تأكد من نسخ كلمة المرور كاملة بدون حذف أول أو آخر حرف.'
+            : 'بيانات الدخول غير صحيحة.'),
+      );
+      setLoginLoading(false);
       return;
     } catch (_) {
       setLoginError('تعذر الاتصال بسيرفر تسجيل الدخول. حاول مرة أخرى.');
+      setLoginLoading(false);
       return;
     }
   };
@@ -453,10 +467,11 @@ export default function LoginPage() {
             <button
               id="btn-login-submit"
               type="submit"
+              disabled={loginLoading}
               className="focus-ring flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition shadow-md shadow-teal-600/20 active:scale-95"
             >
-              <LogIn size={18} />
-              تسجيل الدخول
+              {loginLoading ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
+              {loginLoading ? 'جارٍ تسجيل الدخول...' : 'تسجيل الدخول'}
             </button>
           </form>
 
