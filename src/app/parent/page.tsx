@@ -11,7 +11,7 @@ import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
 import {
-  getMessages, getReports, getSession, getStudents, MessageRecord, ReportRecord,
+  getMessages, getReports, getSession, getStudents, hydrateSessionFromServer, MessageRecord, ReportRecord,
   saveMessage, StudentRecord, clearSession
 } from '@/lib/localDb';
 
@@ -31,8 +31,10 @@ export default function ParentDashboard() {
   };
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const session = getSession();
+    let cancelled = false;
+    const loadParentPortal = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
 
       // Not logged in → send to login
       if (!session) {
@@ -78,7 +80,11 @@ export default function ParentDashboard() {
         const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
       }
-    });
+    };
+    void loadParentPortal();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];

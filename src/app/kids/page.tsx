@@ -26,7 +26,7 @@ import {
 import BrandMark from '@/components/BrandMark';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
-import { clearSession, getReports, getSession, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { clearSession, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function KidsDashboard() {
   return (
@@ -48,8 +48,11 @@ function KidsDashboardContent() {
   const [allStudents, setAllStudents] = useState<StudentRecord[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     const timeout = window.setTimeout(() => {
-      const currentSession = getSession();
+      void (async () => {
+      const currentSession = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
 
       // Not logged in → send to login
       if (!currentSession) {
@@ -98,9 +101,13 @@ function KidsDashboardContent() {
       setStudent(currentStudent);
       setReports(studentId ? getReports().filter((report) => report.studentId === studentId) : []);
       setSessionState(currentSession);
+      })();
     }, 0);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, [router, searchParams]);
 
   const assignedSlugs = useMemo(() => {

@@ -9,7 +9,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
-import { getStudents, getReports, getSession, StudentRecord, ReportRecord } from '@/lib/localDb';
+import { getStudents, getReports, getSession, hydrateSessionFromServer, StudentRecord, ReportRecord } from '@/lib/localDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
 
@@ -22,8 +22,10 @@ export default function Dashboard() {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const session = getSession();
+    let cancelled = false;
+    const loadDashboard = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
       if (!session) {
         router.replace('/login');
         return;
@@ -41,16 +43,21 @@ export default function Dashboard() {
       setReports(getReports());
       pullCloudDataToLocal([...DASHBOARD_SYNC_KEYS])
         .then(() => {
+          if (cancelled) return;
           setStudents(getStudents());
           setReports(getReports());
         })
         .catch(() => {});
-    });
+    };
+    void loadDashboard();
     const unsubscribe = subscribeToCloudUpdates(() => {
       setStudents(getStudents());
       setReports(getReports());
     }, [...DASHBOARD_SYNC_KEYS]);
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [router]);
 
   if (!authorized) {

@@ -4,7 +4,7 @@ import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Camera, Upload, Check, Sparkles, ArrowLeft, Loader2, User } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { getSession, getStudents, updateStudent, StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, updateStudent, StudentRecord } from '@/lib/localDb';
 
 // Preset avatar options for quick selection
 const PRESET_AVATARS = [
@@ -29,7 +29,10 @@ export default function StudentSetupPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
+    let cancelled = false;
+    const loadSetup = async () => {
+    const session = getSession() ?? await hydrateSessionFromServer();
+    if (cancelled) return;
     if (!session) {
       router.replace('/login');
       return;
@@ -60,6 +63,11 @@ export default function StudentSetupPage() {
         }
       }
     }
+    };
+    void loadSetup();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Calculate age dynamically

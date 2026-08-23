@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { getSession, getStudents, saveStudent, updateStudent } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveStudent, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
@@ -38,7 +38,7 @@ export default function NewStudentPage() {
   useEffect(() => {
     const load = async () => {
       await pullCloudDataToLocal([...STUDENT_WIZARD_SYNC_KEYS]).catch(() => {});
-      const session = getSession();
+      const session = getSession() ?? await hydrateSessionFromServer();
       const params = new URLSearchParams(window.location.search);
       const flow = params.get('flow');
       const isStudent = session?.role === 'student' || flow === 'student';

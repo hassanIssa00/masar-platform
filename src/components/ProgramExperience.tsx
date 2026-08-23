@@ -10,7 +10,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SimpleSpellingWorkbook from '@/components/SimpleSpellingWorkbook';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
-import { getSession } from '@/lib/localDb';
+import { getSession, hydrateSessionFromServer } from '@/lib/localDb';
 
 type ProgramExperienceProps = {
   program: CurriculumProgram;
@@ -21,13 +21,21 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
+    let cancelled = false;
+    const loadProgramAccess = async () => {
+    const session = getSession() ?? await hydrateSessionFromServer();
+    if (cancelled) return;
     // Block unauthenticated access
     if (!session) {
       router.replace('/kids');
       return;
     }
     queueMicrotask(() => setAuthorized(true));
+    };
+    void loadProgramAccess();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!authorized) {

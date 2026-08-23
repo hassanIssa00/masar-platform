@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Send, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getMessages, getSession, getStudents, MessageRecord, saveMessage, StudentRecord } from '@/lib/localDb';
+import { getMessages, getSession, getStudents, hydrateSessionFromServer, MessageRecord, saveMessage, StudentRecord } from '@/lib/localDb';
 
 export default function MessagesPage() {
   return (
@@ -23,17 +23,17 @@ function MessagesContent() {
   const [body, setBody] = useState('');
   const [role, setRole] = useState<'doctor' | 'parent'>('doctor');
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     const nextStudents = getStudents();
     setStudents(nextStudents);
     setMessages(getMessages());
     setSelectedStudentId((current) => current || searchParams.get('student') || nextStudents[0]?.id || '');
-    const sessionRole = getSession()?.role;
+    const sessionRole = (getSession() ?? await hydrateSessionFromServer())?.role;
     setRole(sessionRole === 'parent' ? 'parent' : 'doctor');
   }, [searchParams]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(refresh, 0);
+    const timeout = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(timeout);
   }, [refresh]);
 
@@ -50,7 +50,7 @@ function MessagesContent() {
       read: false,
     });
     setBody('');
-    refresh();
+    void refresh();
   };
 
   return (

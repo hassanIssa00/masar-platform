@@ -11,7 +11,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import {
-  getAccounts, getMessages, getReports, getSession, getStudents,
+  getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
   MessageRecord, ReportRecord, saveMessage, StudentRecord, AccountRecord
 } from '@/lib/localDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
@@ -33,8 +33,14 @@ export default function ParentsManagementPage() {
 
   // Auth Guard & Data Loading: Only Doctor/Admin can access
   useEffect(() => {
-    const load = () => {
-      const session = getSession();
+    let cancelled = false;
+    const load = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
       if (session?.role === 'parent' || session?.role === 'student') {
         router.push('/parent');
         return;
@@ -54,10 +60,15 @@ export default function ParentsManagementPage() {
       }
     };
 
-    queueMicrotask(load);
-    pullCloudDataToLocal([...PARENTS_SYNC_KEYS]).then(load).catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(load, [...PARENTS_SYNC_KEYS]);
-    return () => unsubscribe();
+    void load();
+    pullCloudDataToLocal([...PARENTS_SYNC_KEYS]).then(() => {
+      if (!cancelled) void load();
+    }).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(() => void load(), [...PARENTS_SYNC_KEYS]);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [router]);
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId) ?? students[0] ?? null;

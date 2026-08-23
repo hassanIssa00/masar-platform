@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
 import { useRouter } from 'next/navigation';
-import { deleteStudent, getAccounts, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { deleteStudent, getAccounts, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
@@ -32,8 +32,8 @@ export default function StudentsControlPage() {
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
 
-  const refresh = () => {
-    const session = getSession();
+  const refresh = async () => {
+    const session = getSession() ?? await hydrateSessionFromServer();
     if (!session || (session.role !== 'doctor' && session.role !== 'specialist' && session.role !== 'teacher')) {
       router.replace('/login');
       return;
@@ -53,14 +53,23 @@ export default function StudentsControlPage() {
   };
 
   useEffect(() => {
-    const session = getSession();
-    if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-    refresh();
+    let cancelled = false;
+    (async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
+      await refresh();
+    })();
     pullCloudDataToLocal([...STUDENTS_SYNC_KEYS])
-      .then(() => refresh())
+      .then(() => {
+        if (!cancelled) void refresh();
+      })
       .catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(refresh, [...STUDENTS_SYNC_KEYS]);
-    return () => unsubscribe();
+    const unsubscribe = subscribeToCloudUpdates(() => void refresh(), [...STUDENTS_SYNC_KEYS]);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

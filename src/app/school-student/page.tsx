@@ -26,7 +26,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents, getIkhlasPosts } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, getIkhlasPosts, hydrateSessionFromServer } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -48,8 +48,11 @@ export default function StudentDashboard() {
   const [selectedHw, setSelectedHw] = useState<any | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadStudentPortal = async () => {
     // Auth guard
-    const session = getSession();
+    const session = getSession() ?? await hydrateSessionFromServer();
+    if (cancelled) return;
     if (!session) {
       router.replace('/login');
       return;
@@ -78,6 +81,11 @@ export default function StudentDashboard() {
     setStudentName(linked?.fullName || session.name || 'طالب');
     setStudentPhoto(linked?.photoUrl || '');
     fetchData();
+    };
+    void loadStudentPortal();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
 

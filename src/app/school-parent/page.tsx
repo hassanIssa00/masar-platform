@@ -10,7 +10,7 @@ import {
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents, StudentRecord } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -38,8 +38,11 @@ export default function SchoolParentPage() {
   const [submitted, setSubmitted] = useState<string[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadSchoolParent = async () => {
     // Auth guard
-    const session = getSession();
+    const session = getSession() ?? await hydrateSessionFromServer();
+    if (cancelled) return;
     if (!session) {
       router.replace('/login');
       return;
@@ -73,6 +76,11 @@ export default function SchoolParentPage() {
     if (linked) {
       setStudentRecord(linked);
     }
+    };
+    void loadSchoolParent();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleLogout = () => {

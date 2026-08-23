@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
-import { getReports, getStudents, getSession, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
 
 export default function StudentProfilePage() {
   const params = useParams<{ id: string }>();
@@ -17,15 +17,21 @@ export default function StudentProfilePage() {
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const session = getSession();
+    let cancelled = false;
+    const loadStudentProfile = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
       const role = session?.role || 'parent';
       setUserRole(role);
 
       const found = getStudents().find((item) => item.id === params.id) ?? null;
       setStudent(found);
       setReports(getReports().filter((report) => report.studentId === params.id));
-    });
+    };
+    void loadStudentProfile();
+    return () => {
+      cancelled = true;
+    };
   }, [params.id]);
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist';

@@ -7,7 +7,7 @@ import {
   Trash2, RefreshCw, ArrowLeft, Loader2, User, Eye, EyeOff, ZapIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import { getSession } from '@/lib/localDb';
+import { getSession, hydrateSessionFromServer } from '@/lib/localDb';
 import { enrollFace, isFaceEnrolled, removeFaceEnrollment, initFaceAuth, detectFace, checkBlink } from '@/lib/faceAuth';
 
 type Phase = 'idle' | 'loading' | 'camera' | 'challenge' | 'capturing' | 'success' | 'error' | 'already_enrolled';
@@ -31,7 +31,10 @@ export default function FaceEnrollPage() {
 
   // Check session on mount
   useEffect(() => {
-    const session = getSession();
+    let cancelled = false;
+    const loadSession = async () => {
+    const session = getSession() ?? await hydrateSessionFromServer();
+    if (cancelled) return;
     if (!session) { router.replace('/auth/login'); return; }
     setUserId(session.id);
     setUserName(session.name);
@@ -40,6 +43,11 @@ export default function FaceEnrollPage() {
     if (isFaceEnrolled(session.id)) {
       setPhase('already_enrolled');
     }
+    };
+    void loadSession();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Stop camera on unmount

@@ -10,7 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import PrintableReportModal from '@/components/PrintableReportModal';
 import { getDecisionFromScore } from '@/data/assessmentModel';
 import { curriculumPrograms } from '@/data/curriculum';
-import { deleteReport, getReports, getSession, getStudents, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
+import { deleteReport, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
@@ -39,8 +39,10 @@ function ReportsContent() {
   const router = useRouter();
 
   useEffect(() => {
-    const load = () => {
-      const session = getSession();
+    let cancelled = false;
+    const load = async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
       if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
         router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
         return;
@@ -56,12 +58,20 @@ function ReportsContent() {
       }
     };
 
-    const session = getSession();
-    if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
-    load();
-    pullCloudDataToLocal([...REPORTS_SYNC_KEYS]).then(load).catch(() => {});
-    const unsubscribe = subscribeToCloudUpdates(load, [...REPORTS_SYNC_KEYS]);
-    return () => unsubscribe();
+    (async () => {
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/reports' });
+      await load();
+    })();
+    pullCloudDataToLocal([...REPORTS_SYNC_KEYS]).then(() => {
+      if (!cancelled) void load();
+    }).catch(() => {});
+    const unsubscribe = subscribeToCloudUpdates(() => void load(), [...REPORTS_SYNC_KEYS]);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [searchParams, router]);
 
   const filtered = useMemo(
