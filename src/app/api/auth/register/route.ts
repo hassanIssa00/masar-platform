@@ -87,8 +87,10 @@ export async function POST(req: NextRequest) {
     passwordHash,
     createdAt: now,
     source: 'manual-register',
+    authUserCreated: false,
   };
 
+  let authUserCreated = false;
   if (adminAuth) {
     try {
       await adminAuth.createUser({
@@ -97,20 +99,30 @@ export async function POST(req: NextRequest) {
         password: normalizePasswordInput(password),
         displayName: name,
       });
+      authUserCreated = true;
+      credential.authUserCreated = true;
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === 'auth/email-already-exists') {
         return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
       }
-      throw error;
+      console.error('[AuthRegister] Firebase Auth user creation skipped; Firestore credential will be used:', error);
+      if (!adminDb) {
+        return NextResponse.json(
+          { ok: false, error: 'تعذر إنشاء الحساب السحابي الآن. راجع إعداد Firebase Admin ثم حاول مرة أخرى.' },
+          { status: 503 },
+        );
+      }
     }
 
-    await adminAuth.setCustomUserClaims(accountId, {
-      role,
-      schoolBranch,
-      providerId: 'password',
-      onboardingRequired: true,
-    });
+    if (authUserCreated) {
+      await adminAuth.setCustomUserClaims(accountId, {
+        role,
+        schoolBranch,
+        providerId: 'password',
+        onboardingRequired: true,
+      });
+    }
   }
 
   if (adminDb) {

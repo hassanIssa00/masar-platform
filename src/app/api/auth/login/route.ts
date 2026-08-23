@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const adminDb = getAdminDb();
-      if (adminDb && account.id) {
+      if (adminDb && account.id && !account.id.startsWith('generated_')) {
         await adminDb.collection('accounts').doc(account.id).set(
           {
             lastLoginAt: new Date().toISOString(),
