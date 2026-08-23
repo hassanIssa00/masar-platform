@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
 import { normalizePasswordInput } from '@/lib/auth/session.server';
-import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   const adminDb = getAdminDb();
-  if (!adminDb) {
+  const adminAuth = await getAdminAuth();
+  if (!adminDb && !adminAuth) {
     return NextResponse.json({ ok: false, error: 'Firebase Admin غير مفعل على السيرفر.' }, { status: 503 });
   }
 
@@ -27,7 +28,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف.' }, { status: 400 });
   }
 
-  const passwordHash = await bcrypt.hash(normalizePasswordInput(password), 12);
+  const normalizedPassword = normalizePasswordInput(password);
+  const passwordHash = await bcrypt.hash(normalizedPassword, 12);
   const email = auth.user.email.trim().toLowerCase();
   const phone = auth.user.phone?.trim() || '';
   const credential = {
@@ -39,18 +41,35 @@ export async function POST(req: NextRequest) {
     source: 'self-service-password-change',
   };
 
-  const writes = [
-    adminDb.collection('auth_credentials').doc(auth.user.id).set(credential, { merge: true }),
-    adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
-    adminDb.collection('account_credentials').doc(auth.user.id).set(credential, { merge: true }),
-    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
-  ];
-  if (phone) {
-    writes.push(adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
-    writes.push(adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+  let authUpdated = false;
+  if (adminAuth) {
+    try {
+      await adminAuth.updateUser(auth.user.id, { password: normalizedPassword });
+      authUpdated = true;
+    } catch (error) {
+      console.error('[ChangePassword] Firebase Auth password update failed:', error);
+    }
   }
 
-  await Promise.all(writes);
+  if (adminDb) {
+    const writes = [
+      adminDb.collection('auth_credentials').doc(auth.user.id).set(credential, { merge: true }),
+      adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+      adminDb.collection('account_credentials').doc(auth.user.id).set(credential, { merge: true }),
+      adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+    ];
+    if (phone) {
+      writes.push(adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+      writes.push(adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }));
+    }
+
+    try {
+      await Promise.all(writes);
+    } catch (error) {
+      console.error('[ChangePassword] Firestore credential sync failed:', error);
+      if (!authUpdated) throw error;
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

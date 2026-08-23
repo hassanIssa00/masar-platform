@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireRole } from '@/lib/auth/authorization';
-import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const runtime = 'nodejs';
 
@@ -89,8 +89,9 @@ export async function POST(req: NextRequest) {
       createdBy: auth.user?.id,
   };
 
+  const adminAuth = await getAdminAuth();
   const adminDb = getAdminDb();
-  if (!adminDb) {
+  if (!adminAuth && !adminDb) {
     return NextResponse.json(
       {
         ok: false,
@@ -101,18 +102,76 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  await Promise.all([
-    adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
-    adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
-    adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
-    adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
-    adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
-    adminDb.collection('auth_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
-    adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
-    adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
-    adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
-    adminDb.collection('account_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
-  ]);
+  if (adminAuth) {
+    await Promise.all([
+      adminAuth
+        .createUser({
+          uid: studentAccount.id,
+          email: studentEmail,
+          password: studentPassword,
+          displayName: studentAccount.name,
+        })
+        .catch(async (error: { code?: string }) => {
+          if (error?.code !== 'auth/uid-already-exists' && error?.code !== 'auth/email-already-exists') throw error;
+          const existing = await adminAuth.getUserByEmail(studentEmail);
+          await adminAuth.updateUser(existing.uid, { password: studentPassword, displayName: studentAccount.name });
+          studentAccount.id = existing.uid;
+          studentCredential.accountId = existing.uid;
+        }),
+      adminAuth
+        .createUser({
+          uid: parentAccount.id,
+          email: parentEmail,
+          password: parentPassword,
+          displayName: parentAccount.name,
+        })
+        .catch(async (error: { code?: string }) => {
+          if (error?.code !== 'auth/uid-already-exists' && error?.code !== 'auth/email-already-exists') throw error;
+          const existing = await adminAuth.getUserByEmail(parentEmail);
+          await adminAuth.updateUser(existing.uid, { password: parentPassword, displayName: parentAccount.name });
+          parentAccount.id = existing.uid;
+          parentCredential.accountId = existing.uid;
+        }),
+    ]);
+
+    await Promise.all([
+      adminAuth.setCustomUserClaims(studentAccount.id, {
+        role: 'student',
+        schoolBranch: branch,
+        providerId: 'generated',
+        onboardingRequired: true,
+      }),
+      adminAuth.setCustomUserClaims(parentAccount.id, {
+        role: 'parent',
+        schoolBranch: branch,
+        providerId: 'generated',
+        onboardingRequired: true,
+        linkedStudentEmail: studentEmail,
+      }),
+    ]);
+  }
+
+  let cloudSynced = false;
+  if (adminDb) {
+    try {
+      await Promise.all([
+        adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
+        adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
+        adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+        adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+        adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+        adminDb.collection('auth_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
+        adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+        adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+        adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+        adminDb.collection('account_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
+      ]);
+      cloudSynced = true;
+    } catch (error) {
+      console.error('[AccountGenerator] Firestore sync failed after auth creation:', error);
+      if (!adminAuth) throw error;
+    }
+  }
 
   return NextResponse.json({
     ok: true,
@@ -120,5 +179,6 @@ export async function POST(req: NextRequest) {
     parentAccount,
     studentPassword,
     parentPassword,
+    cloudSynced,
   });
 }

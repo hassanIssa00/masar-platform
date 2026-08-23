@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, normalizePasswordInput, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 import type { UserRole } from '@/lib/localDb';
 
@@ -26,7 +26,8 @@ function credentialLookupId(value: string) {
 
 export async function POST(req: NextRequest) {
   const adminDb = getAdminDb();
-  if (!adminDb) {
+  const adminAuth = await getAdminAuth();
+  if (!adminDb && !adminAuth) {
     return NextResponse.json(
       { ok: false, error: 'Firebase Admin غير مفعل على السيرفر، لذلك لا يمكن إنشاء حساب سحابي.' },
       { status: 503 },
@@ -45,9 +46,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'بيانات التسجيل غير مكتملة أو كلمة المرور قصيرة.' }, { status: 400 });
   }
 
-  const existing = await adminDb.collection('accounts').where('email', '==', email).limit(1).get();
-  if (!existing.empty) {
-    return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
+  if (adminAuth) {
+    const existingAuthUser = await adminAuth.getUserByEmail(email).catch(() => null);
+    if (existingAuthUser) {
+      return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
+    }
+  }
+
+  if (adminDb) {
+    try {
+      const existing = await adminDb.collection('accounts').where('email', '==', email).limit(1).get();
+      if (!existing.empty) {
+        return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
+      }
+    } catch (error) {
+      console.error('[AuthRegister] Firestore duplicate check skipped:', error);
+    }
   }
 
   const now = new Date().toISOString();
@@ -75,19 +89,49 @@ export async function POST(req: NextRequest) {
     source: 'manual-register',
   };
 
-  await Promise.all([
-    adminDb.collection('accounts').doc(accountId).set(account, { merge: true }),
-    adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),
-    adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
-    adminDb.collection('account_credentials').doc(accountId).set(credential, { merge: true }),
-    adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
-    ...(phone
-      ? [
-        adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
-        adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
-      ]
-      : []),
-  ]);
+  if (adminAuth) {
+    try {
+      await adminAuth.createUser({
+        uid: accountId,
+        email,
+        password: normalizePasswordInput(password),
+        displayName: name,
+      });
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === 'auth/email-already-exists') {
+        return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
+      }
+      throw error;
+    }
+
+    await adminAuth.setCustomUserClaims(accountId, {
+      role,
+      schoolBranch,
+      providerId: 'password',
+      onboardingRequired: true,
+    });
+  }
+
+  if (adminDb) {
+    try {
+    await Promise.all([
+      adminDb.collection('accounts').doc(accountId).set(account, { merge: true }),
+      adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),
+      adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+      adminDb.collection('account_credentials').doc(accountId).set(credential, { merge: true }),
+      adminDb.collection('account_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
+      ...(phone
+        ? [
+          adminDb.collection('auth_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
+          adminDb.collection('account_credentials').doc(credentialLookupId(phone)).set(credential, { merge: true }),
+        ]
+        : []),
+    ]);
+    } catch (error) {
+      console.error('[AuthRegister] Firestore write failed after auth creation:', error);
+    }
+  }
 
   const token = await createSessionToken(account);
   if (!token) {

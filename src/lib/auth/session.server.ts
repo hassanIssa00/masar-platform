@@ -1,6 +1,6 @@
 import 'server-only';
 import bcrypt from 'bcryptjs';
-import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export const SESSION_COOKIE_NAME = 'masar_session';
 
@@ -148,6 +148,17 @@ type StoredCredential = {
   passwordHash?: string;
 };
 
+type VerifiedAccount = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
+  schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
+  phone?: string;
+  providerId?: string;
+  onboardingRequired?: boolean;
+};
+
 const CREDENTIAL_COLLECTIONS = ['auth_credentials', 'account_credentials'] as const;
 
 async function findCredentialInCollection(
@@ -243,7 +254,9 @@ export async function verifyProductionCredential(identifier: string, password: s
   };
 
   const account = accountConfigs[cleanId];
-  if (!account) return verifyGeneratedCredential(cleanId, password);
+  if (!account) {
+    return (await verifyGeneratedCredential(cleanId, password)) ?? verifyFirebasePasswordCredential(cleanId, password);
+  }
 
   // Retrieve hash from server env var if configured, or use standard bcrypt hash
   const envHash = account.envHashVar ? process.env[account.envHashVar] : undefined;
@@ -304,6 +317,78 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
     }
 
     return null;
+  } catch {
+    return null;
+  }
+}
+
+function inferAccountFromEmail(email: string): Pick<VerifiedAccount, 'role' | 'schoolBranch' | 'providerId'> {
+  const normalized = email.trim().toLowerCase();
+  const role = normalized.startsWith('parent.')
+    ? 'parent'
+    : normalized.startsWith('student.')
+      ? 'student'
+      : 'parent';
+  const schoolBranch = normalized.includes('.ikhlas.') ? 'IKHLAS_JEDDAH' : 'MASAR';
+  return { role, schoolBranch, providerId: normalized.includes('.masar.') || normalized.includes('.ikhlas.') ? 'generated' : 'password' };
+}
+
+async function verifyFirebasePasswordCredential(identifier: string, password: string): Promise<VerifiedAccount | null> {
+  const apiKey =
+    process.env.FIREBASE_WEB_API_KEY ||
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    'AIzaSyAP2z3lctzFGPQfRKNEKc_Sv-JOG-m0_Vk';
+
+  if (!apiKey || !identifier.includes('@')) return null;
+
+  try {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: identifier,
+        password: normalizePasswordInput(password),
+        returnSecureToken: true,
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      idToken?: string;
+      localId?: string;
+      email?: string;
+      displayName?: string;
+    };
+    if (!data.idToken || !data.localId) return null;
+
+    const adminAuth = await getAdminAuth();
+    const decoded = adminAuth ? await adminAuth.verifyIdToken(data.idToken).catch(() => null) : null;
+    const user = adminAuth ? await adminAuth.getUser(data.localId).catch(() => null) : null;
+    const inferred = inferAccountFromEmail(identifier);
+
+    const role =
+      decoded?.role === 'doctor' ||
+      decoded?.role === 'parent' ||
+      decoded?.role === 'student' ||
+      decoded?.role === 'specialist' ||
+      decoded?.role === 'teacher'
+        ? decoded.role
+        : inferred.role;
+    const schoolBranch =
+      decoded?.schoolBranch === 'IKHLAS_JEDDAH' || decoded?.schoolBranch === 'MASAR'
+        ? decoded.schoolBranch
+        : inferred.schoolBranch;
+
+    return {
+      id: data.localId,
+      name: user?.displayName || data.displayName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد'),
+      email: (data.email || identifier).trim().toLowerCase(),
+      role,
+      schoolBranch,
+      phone: user?.phoneNumber || undefined,
+      providerId: typeof decoded?.providerId === 'string' ? decoded.providerId : inferred.providerId,
+      onboardingRequired: decoded?.onboardingRequired === false ? false : true,
+    };
   } catch {
     return null;
   }
