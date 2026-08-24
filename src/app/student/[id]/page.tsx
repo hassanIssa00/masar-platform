@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -8,6 +8,15 @@ import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
 import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
+
+type StudentMediaItem = {
+  id: string;
+  type: 'audio' | 'image';
+  dataUrl: string;
+  label: string;
+  categoryLabel?: string;
+  createdAt?: string;
+};
 
 export default function StudentProfilePage() {
   const params = useParams<{ id: string }>();
@@ -36,8 +45,36 @@ export default function StudentProfilePage() {
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist';
 
+  const mediaList = useMemo<StudentMediaItem[]>(() => {
+    const list: StudentMediaItem[] = [];
+
+    if (student?.media) {
+      Object.entries(student.media).forEach(([key, val]) => {
+        if (val?.dataUrl) {
+          list.push({ id: key, ...val });
+        }
+      });
+    }
+
+    reports.forEach((rep) => {
+      if (rep.media) {
+        Object.entries(rep.media).forEach(([key, val]) => {
+          if (val?.dataUrl && !list.some((item) => item.dataUrl === val.dataUrl)) {
+            list.push({ id: `${rep.id}_${key}`, ...val });
+          }
+        });
+      }
+    });
+
+    return list;
+  }, [student, reports]);
+
+  const audioList = mediaList.filter((item: StudentMediaItem) => item.type === 'audio');
+  const imageList = mediaList.filter((item: StudentMediaItem) => item.type === 'image');
+
   const tabs = [
     { id: 'profile', name: 'البروفايل' },
+    { id: 'recordings', name: `التسجيلات والمرفقات (${mediaList.length})` },
     { id: 'plan', name: 'خطة التعلم' },
     ...(isStaff ? [{ id: 'reports', name: 'التقارير الطبيّة (للدكتور فقط)' }] : []),
     { id: 'progress', name: 'التقدم' },
@@ -124,6 +161,62 @@ export default function StudentProfilePage() {
               <Info label="الصف" value={student.grade} />
               <Info label="تاريخ الميلاد" value={student.dateOfBirth || 'غير مسجل'} />
               <Info label="ولي الأمر" value={student.parentName || 'غير مسجل'} />
+            </div>
+          )}
+
+          {activeTab === 'recordings' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-black text-slate-950">تسجيلات الطالب الصوتية ومرفقات الاختبار</h2>
+                <p className="mt-1 text-sm font-bold text-slate-600">
+                  جميع الإجابات الشفهية والتسجيلات المسجلة للطالب أثناء اختبار تحديد المستوى المباشر.
+                </p>
+              </div>
+
+              {audioList.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-black text-blue-800">🎙️ التسجيلات الصوتية ({audioList.length})</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {audioList.map((item, idx) => (
+                      <div key={item.id || idx} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">
+                            {item.categoryLabel || 'استجابة صوتية'}
+                          </span>
+                          {item.createdAt && (
+                            <span className="text-xs font-bold text-slate-400">
+                              {new Date(item.createdAt).toLocaleDateString('ar-EG')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-black text-slate-900 mb-3">{item.label}</p>
+                        <audio controls className="w-full" src={item.dataUrl} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {imageList.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <h3 className="text-sm font-black text-teal-800">🎨 رسومات وتوصيلات الطالب ({imageList.length})</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {imageList.map((item, idx) => (
+                      <div key={item.id || idx} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-sm font-black text-slate-900 mb-2">{item.label}</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.dataUrl} alt={item.label} className="h-48 w-full rounded-lg object-contain bg-slate-50 border border-slate-200" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {mediaList.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                  <p className="text-sm font-bold text-slate-500">لا توجد تسجيلات صوتية أو مرفقات محفوظة لهذا الطالب بعد.</p>
+                </div>
+              )}
             </div>
           )}
 

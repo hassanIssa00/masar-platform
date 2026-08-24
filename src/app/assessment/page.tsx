@@ -25,6 +25,9 @@ type MediaAnswer = {
   type: 'audio' | 'image';
   dataUrl: string;
   label: string;
+  questionId?: string;
+  categoryLabel?: string;
+  createdAt?: string;
 };
 
 function ShapeCard({ label, children }: { label: string; children: ReactNode }) {
@@ -133,11 +136,132 @@ function PlacementVisual({ visual }: { visual: string }) {
   }
 }
 
+function renderCanvasGuide(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  visual?: string
+) {
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  // Clean soft white background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle grid
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 1;
+  const gridSize = 24;
+  for (let x = 0; x < width; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let y = 0; y < height; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  if (!visual) return;
+  const token = visual.replace('draw:', '');
+
+  if (token === 'dotted-lines' || token.includes('dot')) {
+    // 2 rows of prominent, distinct guide dots for connecting
+    const rows = [height * 0.35, height * 0.65];
+    const cols = 6;
+    const padding = 80;
+    const spacing = (width - padding * 2) / (cols - 1);
+
+    for (const y of rows) {
+      // Dashed guide path between dots
+      ctx.beginPath();
+      ctx.setLineDash([8, 12]);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.moveTo(padding, y);
+      ctx.lineTo(width - padding, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Large clickable / connectable dots
+      for (let i = 0; i < cols; i++) {
+        const x = padding + i * spacing;
+        // Outer dot glow/ring
+        ctx.beginPath();
+        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f766e';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Inner dot center
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+    }
+  } else if (token === 'vertical-line-model') {
+    const centerX = width / 2;
+    ctx.beginPath();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.moveTo(centerX, height * 0.15);
+    ctx.lineTo(centerX, height * 0.85);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (token === 'circle-model' || token === 'copy_circle') {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    ctx.beginPath();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 6;
+    ctx.arc(centerX, centerY, Math.min(width, height) * 0.35, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (token === 'copy_square') {
+    const size = Math.min(width, height) * 0.6;
+    const x = (width - size) / 2;
+    const y = (height - size) / 2;
+    ctx.beginPath();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(x, y, size, size);
+    ctx.setLineDash([]);
+  } else if (token === 'copy_triangle') {
+    const size = Math.min(width, height) * 0.6;
+    const centerX = width / 2;
+    const topY = (height - size) / 2;
+    const bottomY = topY + size;
+    ctx.beginPath();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 6;
+    ctx.moveTo(centerX, topY);
+    ctx.lineTo(centerX - size / 2, bottomY);
+    ctx.lineTo(centerX + size / 2, bottomY);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
 function DrawingPad({
   value,
+  visual,
   onSave,
 }: {
   value?: string;
+  visual?: string;
   onSave: (dataUrl: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -170,7 +294,7 @@ function DrawingPad({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     const point = pointFromEvent(event);
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 7;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#0f172a';
@@ -188,41 +312,52 @@ function DrawingPad({
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    renderCanvasGuide(canvas, ctx, visual);
     onSave('');
   };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx || !value) return;
-    const img = new Image();
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    };
-    img.src = value;
-  }, [value]);
+    if (!canvas || !ctx) return;
+
+    if (value) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = value;
+    } else {
+      renderCanvasGuide(canvas, ctx, visual);
+    }
+  }, [value, visual]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800 border border-teal-200">
+          ✏️ وصّل بين النقاط أو ارسم مباشرة على المساحة
+        </span>
+        <button
+          type="button"
+          onClick={clear}
+          className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+        >
+          <RotateCcw size={14} />
+          مسح الرسم
+        </button>
+      </div>
       <canvas
         ref={canvasRef}
         width={900}
-        height={360}
-        className="h-56 w-full touch-none rounded-xl border border-dashed border-slate-300 bg-[linear-gradient(#f8fafc_1px,transparent_1px),linear-gradient(90deg,#f8fafc_1px,transparent_1px)] bg-[size:24px_24px]"
+        height={380}
+        className="h-64 sm:h-72 w-full touch-none rounded-xl border-2 border-dashed border-teal-300 bg-white cursor-crosshair shadow-inner"
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={stop}
         onPointerCancel={stop}
       />
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className="text-xs font-bold text-slate-500">اكتب أو ارسم داخل المساحة ثم ارفع القلم ليتم الحفظ.</p>
-        <button type="button" onClick={clear} className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
-          <RotateCcw size={14} />
-          مسح
-        </button>
-      </div>
     </div>
   );
 }
@@ -388,27 +523,26 @@ function PlacementAssessmentContent() {
 
   const speak = (text: string) => void speakWithMasarVoice(text, { lang: /[a-zA-Z]/.test(text) ? 'en-US' : 'ar-SA', rate: 0.84 });
 
-  const [showExplanation, setShowExplanation] = useState(false);
-
-  useEffect(() => {
-    setShowExplanation(false);
-  }, [index, gradeKey]);
-
   const choose = (answer: string) => {
     setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: answer }));
-    setShowExplanation(true);
   };
 
   const saveTypedAnswer = (answer: string) => {
     setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: answer }));
-    if (answer.trim()) setShowExplanation(true);
   };
 
   const saveDrawingAnswer = (dataUrl: string) => {
     setMediaAnswers((currentMedia) => {
       const next = { ...currentMedia };
       if (dataUrl) {
-        next[current.id] = { type: 'image', dataUrl, label: current.prompt };
+        next[current.id] = {
+          type: 'image',
+          dataUrl,
+          label: current.prompt,
+          questionId: current.id,
+          categoryLabel: current.categoryLabel,
+          createdAt: new Date().toISOString(),
+        };
       } else {
         delete next[current.id];
       }
@@ -423,7 +557,6 @@ function PlacementAssessmentContent() {
       }
       return next;
     });
-    if (dataUrl) setShowExplanation(true);
   };
 
   const saveManualScore = (question: PlacementQuestion, value: string) => {
@@ -468,10 +601,16 @@ function PlacementAssessmentContent() {
           if (dataUrl) {
             setMediaAnswers((currentMedia) => ({
               ...currentMedia,
-              [current.id]: { type: 'audio', dataUrl, label: current.prompt },
+              [current.id]: {
+                type: 'audio',
+                dataUrl,
+                label: current.prompt,
+                questionId: current.id,
+                categoryLabel: current.categoryLabel,
+                createdAt: new Date().toISOString(),
+              },
             }));
             setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: 'تسجيل صوتي محفوظ للمراجعة' }));
-            setShowExplanation(true);
           }
         };
         reader.readAsDataURL(blob);
@@ -506,12 +645,14 @@ function PlacementAssessmentContent() {
   };
 
   const finish = () => {
+    const studentMedia = { ...(student?.media || {}), ...mediaAnswers };
     const fallbackStudent: StudentRecord = {
       id: studentIdParam ?? 'student_assessment',
       fullName: studentName.trim() || 'طالب الاختبار',
       grade: assessment.shortTitle,
       reviewStatus: 'awaiting-doctor-review',
       source: 'student-wizard',
+      media: studentMedia,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -520,6 +661,7 @@ function PlacementAssessmentContent() {
         fullName: studentName.trim() || student.fullName,
         grade: student.grade,
         reviewStatus: 'awaiting-doctor-review',
+        media: studentMedia,
       }) ?? student
       : isStudentFlow
         ? saveStudent(fallbackStudent)
@@ -528,6 +670,7 @@ function PlacementAssessmentContent() {
         grade: assessment.shortTitle,
         reviewStatus: 'awaiting-doctor-review',
         source: 'student-wizard',
+        media: studentMedia,
       });
 
     saveReport({
@@ -741,9 +884,11 @@ function PlacementAssessmentContent() {
                     </button>
                   </div>
 
-                  <div className="mt-5 grid min-h-36 place-items-center rounded-2xl bg-white p-6 text-center text-5xl font-black text-slate-950 ring-1 ring-slate-200">
-                    <PlacementVisual visual={current.visual} />
-                  </div>
+                  {currentResponseType !== 'drawing' && (
+                    <div className="mt-5 grid min-h-36 place-items-center rounded-2xl bg-white p-6 text-center text-5xl font-black text-slate-950 ring-1 ring-slate-200">
+                      <PlacementVisual visual={current.visual} />
+                    </div>
+                  )}
                 </div>
 
                 {currentResponseType === 'choice' || currentResponseType === 'observation' ? (
@@ -788,7 +933,11 @@ function PlacementAssessmentContent() {
 
                 {currentResponseType === 'drawing' ? (
                   <div className="mt-5">
-                    <DrawingPad value={mediaAnswers[current.id]?.dataUrl} onSave={saveDrawingAnswer} />
+                    <DrawingPad
+                      value={mediaAnswers[current.id]?.dataUrl}
+                      visual={current.visual}
+                      onSave={saveDrawingAnswer}
+                    />
                   </div>
                 ) : null}
 
@@ -891,41 +1040,37 @@ function PlacementAssessmentContent() {
                 ) : null}
 
                 {selected && (
-                  <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50/70 p-4 transition-all shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => setShowExplanation(!showExplanation)}
-                        className="flex items-center gap-2 text-sm font-black text-blue-900 hover:text-blue-950 cursor-pointer"
-                      >
-                        <Sparkles size={16} className="text-blue-600 animate-pulse" />
-                        <span>{showExplanation ? 'إخفاء التفسير والتحليل' : 'فتح التفسير والتحليل الشارح للاستجابة'}</span>
-                        <ChevronDown size={16} className={`transition-transform duration-300 ${showExplanation ? 'rotate-180' : ''}`} />
-                      </button>
-                      <span className="rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-900 border border-emerald-300">
-                        تم تسجيل الإجابة ✓
-                      </span>
-                    </div>
-
-                    {showExplanation && (
-                      <div className="mt-3 border-t border-blue-200/80 pt-3 text-sm font-bold leading-7 text-slate-800 animate-fadeIn">
-                        <p className="text-xs font-black text-blue-700">التفسير الإكلينيكي والمهارات المستهدفة:</p>
-                        <p className="mt-1 text-sm font-bold text-slate-800">{current.explanation}</p>
-                      </div>
-                    )}
+                  <div className="mt-5 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-2xs">
+                    <span className="flex items-center gap-2 text-sm font-black text-emerald-900">
+                      <CheckCircle2 size={18} className="text-emerald-600" />
+                      تم تسجيل الإجابة بنجاح
+                    </span>
                   </div>
                 )}
 
                 <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
-                  <button onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0} className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 disabled:opacity-40">
+                  <button
+                    type="button"
+                    onClick={() => setIndex(Math.max(0, index - 1))}
+                    disabled={index === 0}
+                    className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+                  >
                     السابق
                   </button>
                   {index < assessment.questions.length - 1 ? (
-                    <button onClick={() => setIndex(index + 1)} disabled={!responses[index]?.answered} className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-black text-white disabled:opacity-40">
+                    <button
+                      type="button"
+                      onClick={() => setIndex(index + 1)}
+                      className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-black text-white hover:bg-blue-800 transition cursor-pointer shadow-sm"
+                    >
                       التالي
                     </button>
                   ) : (
-                    <button onClick={finish} disabled={answeredCount < assessment.questions.length} className="rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white disabled:opacity-40">
+                    <button
+                      type="button"
+                      onClick={finish}
+                      className="rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800 transition cursor-pointer shadow-sm"
+                    >
                       إنهاء وحفظ التقرير
                     </button>
                   )}

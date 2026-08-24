@@ -35,6 +35,7 @@ export type StudentRecord = {
   assignedBy?: string;
   assignedAt?: string;
   source: 'student-wizard' | 'survey' | 'import';
+  media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
   createdAt: string;
   updatedAt: string;
 };
@@ -61,7 +62,7 @@ export type ReportRecord = {
   recommendations: string[];
   answers: Array<{ question: string; answer: string }>;
   domains: Array<{ name: string; score: number; note: string }>;
-  media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string }>;
+  media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
 };
 
 export type SurveySubmission = {
