@@ -175,19 +175,20 @@ export function createId(prefix: string) {
 
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-
-export function getAccounts() {
+export function getAccounts() {
   return readList<AccountRecord>(KEYS.accounts);
 }
 
 export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & Partial<Pick<AccountRecord, 'id' | 'createdAt'>>) {
   const accounts = getAccounts();
-  const cleanEmail = account.email.trim().toLowerCase();
-  const existing = accounts.find((item) => item.email.toLowerCase() === cleanEmail);
+  const cleanEmail = (account.email || '').trim().toLowerCase();
+  const existing = accounts.find(
+    (item) => item.id === account.id || (cleanEmail && (item.email || '').trim().toLowerCase() === cleanEmail)
+  );
   const next: AccountRecord = {
     ...existing,
     ...account,
-    email: cleanEmail,
+    email: cleanEmail || account.email || '',
     id: existing?.id ?? account.id ?? createId('account'),
     createdAt: existing?.createdAt ?? account.createdAt ?? new Date().toISOString(),
   };
@@ -198,7 +199,7 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & P
     type: 'account',
     refId: next.id,
     title: 'تحديث حساب مستخدم',
-    detail: `${next.name} - ${next.role}`,
+    detail: `${next.name || 'مستخدم'} - ${next.role || 'عضو'}`,
   });
   return next;
 }
