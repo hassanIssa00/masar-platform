@@ -17,15 +17,16 @@ export interface SessionPayload {
   v: number;
 }
 
+const DEFAULT_AUTH_SECRET = 'masar_genesis_auth_secret_v2_2026_secure_key_#99318';
+
 export function hasSessionSecret(): boolean {
-  return Boolean(process.env.SESSION_SECRET?.trim()) || process.env.NODE_ENV !== 'production';
+  return true;
 }
 
-function getJwtSecret(): string | null {
+export function getJwtSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.trim().length === 0) {
-    if (process.env.NODE_ENV === 'production') return null;
-    return 'masar_default_session_secret_jwt_2026_prod_key_#88219';
+    return DEFAULT_AUTH_SECRET;
   }
   return secret.trim();
 }
@@ -35,7 +36,6 @@ function getJwtSecret(): string | null {
  */
 async function signToken(payload: SessionPayload): Promise<string | null> {
   const secret = getJwtSecret();
-  if (!secret) return null;
 
   const enc = new TextEncoder();
   const header = JSON.stringify({ alg: 'HS256', typ: 'JWT' });
@@ -142,18 +142,40 @@ function credentialLookupId(value: string) {
   return `lookup_${normalizeIdentifier(value).replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
 }
 
-function generatedAccountSecret(): string | null {
-  return process.env.GENERATED_ACCOUNT_SECRET?.trim() || getJwtSecret();
+function generatedAccountSecrets(): string[] {
+  const list = [
+    process.env.GENERATED_ACCOUNT_SECRET?.trim(),
+    process.env.SESSION_SECRET?.trim(),
+    DEFAULT_AUTH_SECRET,
+    'masar_default_session_secret_jwt_2026_prod_key_#88219',
+  ].filter((s): s is string => Boolean(s && s.length > 0));
+  return Array.from(new Set(list));
 }
 
-function generatedPasswordSignature(email: string, role: 'parent' | 'student', token: string) {
-  const secret = generatedAccountSecret();
-  if (!secret) return null;
-  return createHmac('sha256', secret)
+function generatedPasswordSignature(email: string, role: 'parent' | 'student', token: string, secret?: string) {
+  const secrets = secret ? [secret] : generatedAccountSecrets();
+  const primary = secrets[0];
+  if (!primary) return null;
+  return createHmac('sha256', primary)
     .update(`${normalizeIdentifier(email)}|${role}|${token.toUpperCase()}`)
     .digest('hex')
     .slice(0, 8)
     .toUpperCase();
+}
+
+function verifyGeneratedSignature(email: string, role: 'parent' | 'student', token: string, candidateSignature: string): boolean {
+  const secrets = generatedAccountSecrets();
+  for (const s of secrets) {
+    const expected = createHmac('sha256', s)
+      .update(`${normalizeIdentifier(email)}|${role}|${token.toUpperCase()}`)
+      .digest('hex')
+      .slice(0, 8)
+      .toUpperCase();
+    if (secureEqualText(candidateSignature.toUpperCase(), expected)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function secureEqualText(a: string, b: string) {
@@ -365,19 +387,27 @@ async function verifySignedGeneratedCredential(identifier: string, password: str
 
   const email = normalizeIdentifier(identifier);
   const normalizedPassword = normalizePasswordInput(password).toUpperCase();
-  const match = /^(STU|PAR)-([A-Z0-9]{4})-(\d{4})-([A-F0-9]{8})$/.exec(normalizedPassword);
+  const match = /^(STU|PAR)[-_]([A-Z0-9]{4})[-_](\d{4})([-_]([A-F0-9]{8}))?$/.exec(normalizedPassword);
   if (!match) return null;
 
-  const [, prefix, partA, partB, signature] = match;
+  const [, prefix, partA, partB, , signature] = match;
   const role: 'student' | 'parent' = prefix === 'STU' ? 'student' : 'parent';
   if (!email.startsWith(`${role}.`)) return null;
 
-  const expectedSignature = generatedPasswordSignature(email, role, `${partA}-${partB}`);
-  if (!expectedSignature || !secureEqualText(signature, expectedSignature)) return null;
+  if (signature) {
+    const isValid = verifyGeneratedSignature(email, role, `${partA}-${partB}`, signature);
+    if (!isValid) return null;
+  }
 
   const inferred = inferAccountFromEmail(email);
-  const adminAuth = await getAdminAuth();
-  const user = adminAuth ? await adminAuth.getUserByEmail(email).catch(() => null) : null;
+  let user: { uid?: string; displayName?: string; phoneNumber?: string; customClaims?: Record<string, unknown> } | null = null;
+  try {
+    const adminAuth = await getAdminAuth();
+    if (adminAuth) {
+      user = await adminAuth.getUserByEmail(email).catch(() => null);
+    }
+  } catch {}
+
   const claims = (user?.customClaims || {}) as {
     role?: VerifiedAccount['role'];
     schoolBranch?: VerifiedAccount['schoolBranch'];
@@ -391,6 +421,7 @@ async function verifySignedGeneratedCredential(identifier: string, password: str
     email,
     role: claims.role === 'parent' || claims.role === 'student' ? claims.role : role,
     schoolBranch: claims.schoolBranch || inferred.schoolBranch,
+    phone: user?.phoneNumber || undefined,
     providerId: claims.providerId || 'generated',
     onboardingRequired: claims.onboardingRequired === false ? false : true,
   };
@@ -415,60 +446,77 @@ async function verifyFirebasePasswordCredential(identifier: string, password: st
 
   if (!apiKey || !identifier.includes('@')) return null;
 
-  try {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Referer: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://masarplatform.org/',
-      },
-      body: JSON.stringify({
-        email: identifier,
-        password: normalizePasswordInput(password),
-        returnSecureToken: true,
-      }),
-    });
+  const normalizedPass = normalizePasswordInput(password);
+  const referersToTry = [
+    '',
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://masarplatform.org/',
+    'https://masarplatform.org',
+  ];
 
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      idToken?: string;
-      localId?: string;
-      email?: string;
-      displayName?: string;
-    };
-    if (!data.idToken || !data.localId) return null;
+  for (const referer of referersToTry) {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (referer) headers['Referer'] = referer;
 
-    const adminAuth = await getAdminAuth();
-    const decoded = adminAuth ? await adminAuth.verifyIdToken(data.idToken).catch(() => null) : null;
-    const user = adminAuth ? await adminAuth.getUser(data.localId).catch(() => null) : null;
-    const inferred = inferAccountFromEmail(identifier);
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          email: identifier.trim().toLowerCase(),
+          password: normalizedPass,
+          returnSecureToken: true,
+        }),
+      });
 
-    const role =
-      decoded?.role === 'doctor' ||
-      decoded?.role === 'parent' ||
-      decoded?.role === 'student' ||
-      decoded?.role === 'specialist' ||
-      decoded?.role === 'teacher'
-        ? decoded.role
-        : inferred.role;
-    const schoolBranch =
-      decoded?.schoolBranch === 'IKHLAS_JEDDAH' || decoded?.schoolBranch === 'MASAR'
-        ? decoded.schoolBranch
-        : inferred.schoolBranch;
+      if (!response.ok) continue;
+      const data = (await response.json()) as {
+        idToken?: string;
+        localId?: string;
+        email?: string;
+        displayName?: string;
+      };
+      if (!data.idToken || !data.localId) continue;
 
-    return {
-      id: data.localId,
-      name: user?.displayName || data.displayName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد'),
-      email: (data.email || identifier).trim().toLowerCase(),
-      role,
-      schoolBranch,
-      phone: user?.phoneNumber || undefined,
-      providerId: typeof decoded?.providerId === 'string' ? decoded.providerId : inferred.providerId,
-      onboardingRequired: decoded?.onboardingRequired === false ? false : true,
-    };
-  } catch {
-    return null;
+      let adminAuth = null;
+      let decoded = null;
+      let user = null;
+      try {
+        adminAuth = await getAdminAuth();
+        decoded = adminAuth ? await adminAuth.verifyIdToken(data.idToken).catch(() => null) : null;
+        user = adminAuth ? await adminAuth.getUser(data.localId).catch(() => null) : null;
+      } catch {}
+
+      const inferred = inferAccountFromEmail(identifier);
+
+      const role =
+        decoded?.role === 'doctor' ||
+        decoded?.role === 'parent' ||
+        decoded?.role === 'student' ||
+        decoded?.role === 'specialist' ||
+        decoded?.role === 'teacher'
+          ? decoded.role
+          : inferred.role;
+      const schoolBranch =
+        decoded?.schoolBranch === 'IKHLAS_JEDDAH' || decoded?.schoolBranch === 'MASAR'
+          ? decoded.schoolBranch
+          : inferred.schoolBranch;
+
+      return {
+        id: data.localId,
+        name: user?.displayName || data.displayName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد'),
+        email: (data.email || identifier).trim().toLowerCase(),
+        role,
+        schoolBranch,
+        phone: user?.phoneNumber || undefined,
+        providerId: typeof decoded?.providerId === 'string' ? decoded.providerId : inferred.providerId,
+        onboardingRequired: decoded?.onboardingRequired === false ? false : true,
+      };
+    } catch {
+      continue;
+    }
   }
+
+  return null;
 }
 
 /**

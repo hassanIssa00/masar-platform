@@ -24,15 +24,47 @@ function credentialLookupId(value: string) {
   return `lookup_${value.trim().toLowerCase().replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
 }
 
+async function createFirebaseUserViaRest(email: string, password: string, displayName: string) {
+  const apiKey =
+    process.env.FIREBASE_WEB_API_KEY ||
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    'AIzaSyAP2z3lctzFGPQfRKNEKc_Sv-JOG-m0_Vk';
+
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        displayName,
+        returnSecureToken: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+      if (errData?.error?.message === 'EMAIL_EXISTS') {
+        return { ok: false, error: 'EMAIL_EXISTS' as const };
+      }
+      return null;
+    }
+
+    const data = (await response.json()) as { localId?: string };
+    return { ok: true, localId: data.localId };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const adminDb = getAdminDb();
-  const adminAuth = await getAdminAuth();
-  if (!adminDb && !adminAuth) {
-    return NextResponse.json(
-      { ok: false, error: 'Firebase Admin غير مفعل على السيرفر، لذلك لا يمكن إنشاء حساب سحابي.' },
-      { status: 503 },
-    );
-  }
+  let adminAuth = null;
+  try {
+    adminAuth = await getAdminAuth();
+  } catch {}
 
   const body = await req.json().catch(() => ({}));
   const email = cleanEmail(body.email);
@@ -106,13 +138,7 @@ export async function POST(req: NextRequest) {
       if (code === 'auth/email-already-exists') {
         return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
       }
-      console.error('[AuthRegister] Firebase Auth user creation skipped; Firestore credential will be used:', error);
-      if (!adminDb) {
-        return NextResponse.json(
-          { ok: false, error: 'تعذر إنشاء الحساب السحابي الآن. راجع إعداد Firebase Admin ثم حاول مرة أخرى.' },
-          { status: 503 },
-        );
-      }
+      console.error('[AuthRegister] Firebase Auth admin creation failed; trying REST fallback:', error);
     }
 
     if (authUserCreated) {
@@ -121,7 +147,17 @@ export async function POST(req: NextRequest) {
         schoolBranch,
         providerId: 'password',
         onboardingRequired: true,
-      });
+      }).catch(() => {});
+    }
+  }
+
+  if (!authUserCreated) {
+    const restResult = await createFirebaseUserViaRest(email, normalizePasswordInput(password), name);
+    if (restResult?.ok) {
+      authUserCreated = true;
+      credential.authUserCreated = true;
+    } else if (restResult?.error === 'EMAIL_EXISTS') {
+      return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
     }
   }
 
