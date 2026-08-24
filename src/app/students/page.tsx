@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -189,8 +189,27 @@ export default function StudentsControlPage() {
   const handleDeleteStudent = (studentId: string) => {
     deleteStudent(studentId);
     setConfirmDeleteId(null);
+    const remaining = getStudents();
+    setStudents(remaining);
+    if (selectedId === studentId) {
+      setSelectedId(remaining[0]?.id || '');
+    }
     refresh();
-    setMessage('تم حذف ملف الطالب وكافة بياناته بنجاح.');
+    setMessage('تم حذف ملف الطالب وكافة بياناته وسجلاته بنجاح.');
+    setTimeout(() => setMessage(''), 4000);
+  };
+
+  const handleDeleteAllStudents = () => {
+    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل؟ سيتم مسح ملفاتهم وسجلاتهم.')) return;
+    const currentStudents = getStudents();
+    for (const s of currentStudents) {
+      deleteStudent(s.id);
+    }
+    setStudents([]);
+    setSelectedId('');
+    refresh();
+    setMessage('تم حذف جميع الطلاب بالكامل وتفريغ القائمة.');
+    setTimeout(() => setMessage(''), 4000);
   };
 
   return (
@@ -199,6 +218,16 @@ export default function StudentsControlPage() {
       <div className="flex">
         <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
+          {message && (
+            <div className="mb-4 flex items-center justify-between rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs sm:text-sm font-black text-teal-900 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-teal-600" />
+                <span>{message}</span>
+              </div>
+              <button onClick={() => setMessage('')} className="text-teal-700 hover:text-teal-900 text-xs cursor-pointer">إغلاق</button>
+            </div>
+          )}
+
           <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
@@ -208,9 +237,20 @@ export default function StudentsControlPage() {
                   يمكنك اختيار مسار واحد أو دمج عدة مسارات معاً للطالب بناءً على رؤيتك التشخيصية، ثم اعتمادها رقمياً.
                 </p>
               </div>
-              <Link href="/student/new" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 transition">
-                تسجيل طالب جديد
-              </Link>
+              <div className="flex items-center gap-2">
+                {students.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllStudents}
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer"
+                  >
+                    حذف جميع الطلاب ({students.length})
+                  </button>
+                )}
+                <Link href="/student/new" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 transition">
+                  تسجيل طالب جديد
+                </Link>
+              </div>
             </div>
           </header>
 
@@ -225,26 +265,53 @@ export default function StudentsControlPage() {
               
               {/* Sidebar list of students */}
               <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-24 xl:self-start">
-                <h2 className="px-2 text-lg font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="text-lg font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllStudents}
+                    className="text-[11px] font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                  >
+                    مسح الكل
+                  </button>
+                </div>
                 <div className="mt-4 grid gap-2.5">
                   {students.map((student) => {
                     const count = (student.assignedPrograms?.length || (student.assignedProgram ? 1 : 0));
+                    const isSelected = selectedStudent?.id === student.id;
                     return (
-                      <button
+                      <div
                         key={student.id}
-                        onClick={() => setSelectedId(student.id)}
-                        className={`flex items-center gap-3 rounded-xl border p-3 text-right transition ${
-                          selectedStudent?.id === student.id ? 'border-teal-600 bg-teal-50/80 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        className={`group flex items-center justify-between gap-2 rounded-xl border p-2.5 text-right transition ${
+                          isSelected ? 'border-teal-600 bg-teal-50/80 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
                         }`}
                       >
-                        <Avatar student={student} size="sm" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-black text-slate-950 text-sm">{student.fullName}</span>
-                          <span className="mt-0.5 block text-xs font-bold text-slate-500">
-                            {student.grade} {count > 0 ? `· (${count} مسار)` : ''}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(student.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-right cursor-pointer"
+                        >
+                          <Avatar student={student} size="sm" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-black text-slate-950 text-sm">{student.fullName}</span>
+                            <span className="mt-0.5 block text-xs font-bold text-slate-500">
+                              {student.grade} {count > 0 ? `· (${count} مسار)` : ''}
+                            </span>
                           </span>
-                        </span>
-                      </button>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(student.id);
+                          }}
+                          title={`حذف الطالب ${student.fullName}`}
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-transparent text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
