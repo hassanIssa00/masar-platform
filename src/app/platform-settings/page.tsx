@@ -392,6 +392,8 @@ export default function PlatformSettingsPage() {
   const [generatorGrade, setGeneratorGrade] = useState(GENERATOR_GRADE_OPTIONS[0]);
   const [generatedBundle, setGeneratedBundle] = useState<GeneratedAccountBundle | null>(null);
   const [generatorError, setGeneratorError] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [copiedState, setCopiedState] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
   /* ── Load data ─────────────────────────── */
@@ -489,6 +491,7 @@ export default function PlatformSettingsPage() {
 
   const handleGenerateAccounts = async () => {
     setGeneratorError('');
+    setGenerating(true);
 
     try {
       const res = await fetch('/api/accounts/generate', {
@@ -500,6 +503,7 @@ export default function PlatformSettingsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok || !data?.studentAccount || !data?.parentAccount) {
         setGeneratorError(data?.error || 'تعذر توليد الحسابات على السحابة. تحقق من الاتصال وحاول مرة أخرى.');
+        setGenerating(false);
         return;
       }
 
@@ -514,24 +518,43 @@ export default function PlatformSettingsPage() {
         parentEmail: data.parentAccount.email,
         parentPassword: data.parentPassword,
       });
-      await loadSummary();
-    } catch {
-      setGeneratorError('تعذر الاتصال بالسيرفر أثناء توليد الحسابات. تحقق من اتصالك وحاول مرة أخرى.');
+
+      setAccounts((prev) => [
+        data.studentAccount,
+        data.parentAccount,
+        ...prev.filter((a) => a.id !== data.studentAccount.id && a.id !== data.parentAccount.id),
+      ]);
+
+      try {
+        await loadSummary();
+      } catch {}
+    } catch (e: any) {
+      setGeneratorError(e?.message || 'تعذر الاتصال بالسيرفر أثناء توليد الحسابات. تحقق من اتصالك وحاول مرة أخرى.');
+    } finally {
+      setGenerating(false);
     }
   };
 
   const copyGeneratedBundle = async () => {
     if (!generatedBundle) return;
     const text = [
-      'بيانات دخول حسابات منصة مسار',
-      `النظام: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار' : 'فصل د. إسماعيل عيسى'}`,
-      `الصف/المسار المبدئي: ${generatedBundle.grade}`,
-      `حساب الطالب: ${generatedBundle.studentEmail}`,
-      `كلمة مرور الطالب: ${generatedBundle.studentPassword}`,
-      `حساب ولي الأمر: ${generatedBundle.parentEmail}`,
-      `كلمة مرور ولي الأمر: ${generatedBundle.parentPassword}`,
+      '══ بيانات حسابات منصة مسار ══',
+      `المؤسسة: ${generatedBundle.branch === 'MASAR' ? 'منصة مسار التعليمية' : 'فصل د. إسماعيل عيسى'}`,
+      `الصف الدراسي: ${generatedBundle.grade}`,
+      '--------------------------------',
+      `🎓 حساب الطالب:`,
+      `البريد: ${generatedBundle.studentEmail}`,
+      `كلمة المرور: ${generatedBundle.studentPassword}`,
+      '--------------------------------',
+      `👨‍👩‍👦 حساب ولي الأمر:`,
+      `البريد: ${generatedBundle.parentEmail}`,
+      `كلمة المرور: ${generatedBundle.parentPassword}`,
+      '--------------------------------',
+      'رابط تسجيل الدخول: https://masarplatform.org/login',
     ].join('\n');
     await navigator.clipboard.writeText(text);
+    setCopiedState('all');
+    setTimeout(() => setCopiedState(null), 2500);
   };
 
   const filteredAccounts = roleFilter === 'all'
@@ -780,10 +803,13 @@ export default function PlatformSettingsPage() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <button
+                      type="button"
+                      disabled={generating}
                       onClick={handleGenerateAccounts}
-                      className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-700 transition"
+                      className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-700 transition disabled:opacity-60 cursor-pointer"
                     >
-                      <UserPlus size={16} /> توليد حسابين وربطهما
+                      {generating ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                      <span>{generating ? 'جارٍ توليد وتشفير الحسابين...' : 'توليد حسابين وربطهما'}</span>
                     </button>
                     <p className="text-xs font-bold text-slate-500">
                       أول دخول للحسابات المولدة يمر على نفس مسار استكمال البيانات. استخدم البريد المولد نفسه في صفحة &quot;نسيت كلمة المرور&quot; عند الحاجة.
@@ -791,22 +817,78 @@ export default function PlatformSettingsPage() {
                   </div>
 
                   {generatorError && (
-                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black leading-6 text-rose-700">
-                      {generatorError}
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black leading-6 text-rose-700 flex items-center justify-between">
+                      <span>{generatorError}</span>
+                      <button onClick={() => setGeneratorError('')} className="text-rose-500 text-xs hover:underline mr-2">إغلاق</button>
                     </div>
                   )}
 
                   {generatedBundle && (
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
-                        <p className="text-xs font-black text-sky-800">حساب الطالب</p>
-                        <p className="mt-2 font-mono text-sm font-black text-slate-900" dir="ltr">{generatedBundle.studentEmail}</p>
-                        <p className="mt-1 font-mono text-sm font-black text-sky-800" dir="ltr">{generatedBundle.studentPassword}</p>
+                    <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl p-3 text-xs font-black text-teal-900">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 size={16} className="text-teal-600" />
+                          تم توليد الحسابين وتوثيقهما سحابياً بنجاح!
+                        </span>
+                        <button
+                          type="button"
+                          onClick={copyGeneratedBundle}
+                          className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 transition cursor-pointer"
+                        >
+                          <Copy size={13} /> {copiedState === 'all' ? 'تم النسخ!' : 'نسخ بيانات الحسابين معاً'}
+                        </button>
                       </div>
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="text-xs font-black text-emerald-800">حساب ولي الأمر</p>
-                        <p className="mt-2 font-mono text-sm font-black text-slate-900" dir="ltr">{generatedBundle.parentEmail}</p>
-                        <p className="mt-1 font-mono text-sm font-black text-emerald-800" dir="ltr">{generatedBundle.parentPassword}</p>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-black text-sky-800">حساب الطالب</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${generatedBundle.studentEmail}\n${generatedBundle.studentPassword}`);
+                                setCopiedState('stu');
+                                setTimeout(() => setCopiedState(null), 2500);
+                              }}
+                              className="text-xs font-black text-sky-700 hover:text-sky-900 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Copy size={12} /> {copiedState === 'stu' ? 'تم النسخ' : 'نسخ'}
+                            </button>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400">البريد الإلكتروني:</span>
+                            <p className="font-mono text-sm font-black text-slate-900 bg-white border border-sky-200 rounded-lg px-2.5 py-1.5 select-all" dir="ltr">{generatedBundle.studentEmail}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400">كلمة المرور:</span>
+                            <p className="font-mono text-sm font-black text-sky-800 bg-white border border-sky-200 rounded-lg px-2.5 py-1.5 select-all" dir="ltr">{generatedBundle.studentPassword}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-black text-emerald-800">حساب ولي الأمر</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${generatedBundle.parentEmail}\n${generatedBundle.parentPassword}`);
+                                setCopiedState('par');
+                                setTimeout(() => setCopiedState(null), 2500);
+                              }}
+                              className="text-xs font-black text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Copy size={12} /> {copiedState === 'par' ? 'تم النسخ' : 'نسخ'}
+                            </button>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400">البريد الإلكتروني:</span>
+                            <p className="font-mono text-sm font-black text-slate-900 bg-white border border-emerald-200 rounded-lg px-2.5 py-1.5 select-all" dir="ltr">{generatedBundle.parentEmail}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400">كلمة المرور:</span>
+                            <p className="font-mono text-sm font-black text-emerald-800 bg-white border border-emerald-200 rounded-lg px-2.5 py-1.5 select-all" dir="ltr">{generatedBundle.parentPassword}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
