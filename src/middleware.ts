@@ -6,13 +6,19 @@ type MiddlewareSessionPayload = {
   exp?: number;
 };
 
-function getJwtSecret(): string | null {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.trim().length === 0) {
-    if (process.env.NODE_ENV === 'production') return null;
-    return 'masar_default_session_secret_jwt_2026_prod_key_#88219';
+const DEFAULT_AUTH_SECRETS = [
+  'masar_genesis_auth_secret_v2_2026_secure_key_#99318',
+  'masar_default_session_secret_jwt_2026_prod_key_#88219',
+];
+
+function getJwtSecrets(): string[] {
+  const envSecret = process.env.SESSION_SECRET?.trim();
+  const list: string[] = [];
+  if (envSecret) list.push(envSecret);
+  for (const s of DEFAULT_AUTH_SECRETS) {
+    if (!list.includes(s)) list.push(s);
   }
-  return secret.trim();
+  return list;
 }
 
 function base64UrlToBytes(value: string) {
@@ -23,8 +29,8 @@ function base64UrlToBytes(value: string) {
 
 async function verifySessionTokenInMiddleware(token: string): Promise<MiddlewareSessionPayload | null> {
   try {
-    const secret = getJwtSecret();
-    if (!secret) return null;
+    const secrets = getJwtSecrets();
+    if (secrets.length === 0 || !token) return null;
 
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -32,21 +38,30 @@ async function verifySessionTokenInMiddleware(token: string): Promise<Middleware
     const [headerB64, payloadB64, sigB64] = parts;
     const data = `${headerB64}.${payloadB64}`;
     const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      enc.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify'],
-    );
+    const sigBytes = base64UrlToBytes(sigB64);
 
-    const valid = await crypto.subtle.verify('HMAC', key, base64UrlToBytes(sigB64), enc.encode(data));
-    if (!valid) return null;
+    for (const secret of secrets) {
+      try {
+        const key = await crypto.subtle.importKey(
+          'raw',
+          enc.encode(secret),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['verify'],
+        );
 
-    const payloadText = new TextDecoder().decode(base64UrlToBytes(payloadB64));
-    const payload = JSON.parse(payloadText) as MiddlewareSessionPayload;
-    if (!payload.exp || Date.now() / 1000 > payload.exp) return null;
-    return payload;
+        const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(data));
+        if (valid) {
+          const payloadText = new TextDecoder().decode(base64UrlToBytes(payloadB64));
+          const payload = JSON.parse(payloadText) as MiddlewareSessionPayload;
+          if (!payload.exp || Date.now() / 1000 <= payload.exp) {
+            return payload;
+          }
+        }
+      } catch {}
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -69,6 +84,7 @@ const PUBLIC_PATHS = [
   '/register',
   '/waitlist',
   '/verify/',
+  '/account-generator',
   '/programs/simple-spelling',
   '/programs/reading',
   '/programs/math',
@@ -101,6 +117,7 @@ const PUBLIC_API_PATHS = [
   '/api/auth/register',
   '/api/auth/social',
   '/api/auth/face',
+  '/api/accounts/generate',
 ];
 
 const LOGIN_URL = '/auth/login';

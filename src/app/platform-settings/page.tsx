@@ -480,14 +480,14 @@ export default function PlatformSettingsPage() {
         credentials: 'include',
         body: JSON.stringify({ branch: generatorBranch, grade: generatorGrade }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setGeneratorError(data.error || 'تعذر توليد الحسابات على السحابة. راجع إعداد Firebase Admin في السيرفر.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok || !data?.studentAccount || !data?.parentAccount) {
+        setGeneratorError(data?.error || 'تعذر توليد الحسابات على السحابة. تحقق من الاتصال وحاول مرة أخرى.');
         return;
       }
 
-      saveAccount(data.studentAccount);
-      saveAccount(data.parentAccount);
+      if (data.studentAccount) saveAccount(data.studentAccount);
+      if (data.parentAccount) saveAccount(data.parentAccount);
 
       setGeneratedBundle({
         branch: generatorBranch,
@@ -499,7 +499,7 @@ export default function PlatformSettingsPage() {
       });
       await loadSummary();
     } catch {
-      setGeneratorError('تعذر الاتصال بالسيرفر أثناء توليد الحسابات. لم يتم إنشاء حساب محلي غير متزامن.');
+      setGeneratorError('تعذر الاتصال بالسيرفر أثناء توليد الحسابات. تحقق من اتصالك وحاول مرة أخرى.');
     }
   };
 
