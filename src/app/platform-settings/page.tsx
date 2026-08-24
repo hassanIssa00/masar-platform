@@ -423,6 +423,23 @@ export default function PlatformSettingsPage() {
     trackEvent('visit', { page: '/platform-settings' });
     // Realtime feed
     unsubRef.current = subscribeToRecentEvents(setLiveEvents);
+
+    // Sync tab and focus from URL params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get('tab');
+      if (urlTab && ['overview', 'users', 'config', 'security', 'data'].includes(urlTab)) {
+        setTab(urlTab as Tab);
+      }
+      if (params.get('focus') === 'account-generator') {
+        setTab('users');
+        setTimeout(() => {
+          const el = document.getElementById('account-generator-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      }
+    }
+
     return () => {
       window.clearTimeout(loadTimer);
       unsubRef.current?.();
@@ -711,7 +728,7 @@ export default function PlatformSettingsPage() {
             ════════════════════════════════ */}
             {!loading && tab === 'users' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-teal-200 bg-white p-5 shadow-xs">
+                <div id="account-generator-section" className="rounded-2xl border border-teal-200 bg-white p-5 shadow-xs scroll-mt-24">
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-black text-slate-900 flex items-center gap-2">

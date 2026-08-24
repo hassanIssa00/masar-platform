@@ -110,7 +110,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
       icon: UsersRound,
       links: [
         { name: 'إدارة الطلاب', path: '/students', icon: UsersRound, badge: studentsCount || undefined, badgeColor: 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow-xs' },
-        { name: 'توليد الحسابات', path: '/account-generator', icon: KeyRound },
+        { name: 'توليد الحسابات', path: '/platform-settings?tab=users&focus=account-generator', icon: KeyRound },
         { name: 'أولياء الأمور', path: '/parents', icon: Users },
         { name: 'الرسائل', path: '/messages', icon: MessageSquareText },
       ],
