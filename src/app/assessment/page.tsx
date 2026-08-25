@@ -408,6 +408,8 @@ function PlacementAssessmentContent() {
   const [finished, setFinished] = useState(false);
   const [savedReportId, setSavedReportId] = useState('');
   const [savedStudentId, setSavedStudentId] = useState('');
+  // Show a loading screen until student data is fetched so we don't flash the wrong grade
+  const [loadingStudent, setLoadingStudent] = useState(Boolean(studentIdParam));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingQuestionIdRef = useRef('');
@@ -508,6 +510,7 @@ function PlacementAssessmentContent() {
         }
         const gk = getGradeKeyFromStudentGrade(found.grade);
         setGradeKey(gk);
+        setLoadingStudent(false);
         return;
       }
 
@@ -531,6 +534,7 @@ function PlacementAssessmentContent() {
           updatedAt: new Date().toISOString(),
         });
       }
+      setLoadingStudent(false);
     };
     void loadAssessmentStudent();
     return () => {
@@ -883,6 +887,17 @@ function PlacementAssessmentContent() {
     setSavedStudentId(savedStudent.id);
     setFinished(true);
   };
+
+  if (loadingStudent) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-700 border-t-transparent" />
+          <p className="text-sm font-black text-slate-600">جاري تحميل بيانات الطالب...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-slate-950">
