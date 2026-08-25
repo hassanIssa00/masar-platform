@@ -261,43 +261,46 @@ export default function StudentsControlPage() {
               <p className="mt-2 text-sm font-bold text-slate-500">سجل أول طالب وسيظهر هنا ملفه والتقارير الخاصة به.</p>
             </section>
           ) : (
-            <section className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+            <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] items-start">
               
               {/* Sidebar list of students */}
-              <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-24 xl:self-start">
-                <div className="flex items-center justify-between px-2">
-                  <h2 className="text-lg font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
+              <aside className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24 lg:self-start">
+                <div className="flex items-center justify-between px-1 pb-3 border-b border-slate-100">
+                  <h2 className="text-base font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
                   <button
                     type="button"
                     onClick={handleDeleteAllStudents}
-                    className="text-[11px] font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                    className="text-xs font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
                   >
                     مسح الكل
                   </button>
                 </div>
-                <div className="mt-4 grid gap-2.5">
+                <div className="mt-3.5 grid gap-2">
                   {students.map((student) => {
                     const count = (student.assignedPrograms?.length || (student.assignedProgram ? 1 : 0));
                     const isSelected = selectedStudent?.id === student.id;
                     return (
                       <div
                         key={student.id}
-                        className={`group flex items-center justify-between gap-2 rounded-xl border p-2.5 text-right transition ${
-                          isSelected ? 'border-teal-600 bg-teal-50/80 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        className={`group flex w-full min-w-0 items-center justify-between gap-2.5 rounded-xl border p-2.5 text-right transition ${
+                          isSelected ? 'border-teal-600 bg-teal-50/90 shadow-2xs ring-1 ring-teal-500/20' : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => setSelectedId(student.id)}
-                          className="flex min-w-0 flex-1 items-center gap-3 text-right cursor-pointer"
+                          className="flex min-w-0 flex-1 items-center gap-2.5 text-right cursor-pointer overflow-hidden"
+                          title={student.fullName}
                         >
                           <Avatar student={student} size="sm" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-black text-slate-950 text-sm">{student.fullName}</span>
-                            <span className="mt-0.5 block text-xs font-bold text-slate-500">
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <span className="block w-full truncate font-black text-slate-950 text-sm leading-snug">
+                              {student.fullName}
+                            </span>
+                            <span className="mt-0.5 block w-full truncate text-xs font-bold text-slate-500 leading-snug">
                               {student.grade} {count > 0 ? `· (${count} مسار)` : ''}
                             </span>
-                          </span>
+                          </div>
                         </button>
 
                         <button
@@ -550,44 +553,66 @@ export default function StudentsControlPage() {
                   </section>
 
                   {/* ══ FEATURE 4: STUDENT PROGRESS & GROWTH TIMELINE ══ */}
-                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                       <div>
-                        <h3 className="font-black text-slate-900 text-lg">📈 خط التطور والتحسن الزمني للطالب</h3>
-                        <p className="text-xs font-bold text-slate-500 mt-0.5">مقارنة التقييمات ومعدل التحسن عبر الأنشطة والاختبارات</p>
+                        <h3 className="font-black text-slate-950 text-xl flex items-center gap-2">
+                          <span>📈</span> خط التطور والتحسن الزمني للطالب
+                        </h3>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">مقارنة التقييمات ومعدل التحسن عبر الأنشطة والاختبارات المنجزة</p>
                       </div>
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">
-                        نسبة التحسن الفعلي: {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length > 0 ? `${reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName)[0].score}%` : 'قيد التقييم الأول'}
-                      </span>
+                      {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length > 0 && (
+                        <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-300 px-4 py-2 text-emerald-950 shadow-2xs self-start sm:self-auto">
+                          <span className="text-xs font-black text-emerald-800">نسبة التحسن الفعلي:</span>
+                          <span className="text-lg font-black text-emerald-950">
+                            {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName)[0].score}%
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length === 0 ? (
-                      <div className="py-8 text-center text-slate-400 space-y-1">
-                        <BookOpenCheck className="mx-auto text-slate-300" size={32} />
-                        <p className="text-xs font-black">لا توجد تقارير أو تقييمات سابقة لهذا الطالب بعد</p>
+                      <div className="py-10 text-center text-slate-400 space-y-2">
+                        <BookOpenCheck className="mx-auto text-slate-300" size={36} />
+                        <p className="text-sm font-black text-slate-600">لا توجد تقارير أو تقييمات سابقة لهذا الطالب بعد</p>
+                        <p className="text-xs font-bold text-slate-400">ستظهر الرسوم البيانية ونسب التطور فور إنجاز أول تقييم أو اختبار.</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-end gap-3 h-28 border-b border-slate-200 pb-2 px-4">
-                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
-                            <div key={rep.id} className="flex-1 flex flex-col items-center gap-1">
-                              <span className="text-[10px] font-black text-teal-700">{rep.score}%</span>
-                              <div
-                                className="w-full rounded-t-lg bg-teal-600 transition-all duration-500"
-                                style={{ height: `${Math.max(rep.score, 15)}%` }}
-                              />
-                              <span className="text-[9px] font-bold text-slate-400 truncate max-w-[80px]">{rep.date}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
-                            <div key={rep.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex justify-between text-xs font-black">
-                              <div>
-                                <p className="text-slate-900">{rep.program}</p>
-                                <p className="text-slate-400 text-[10px]">{rep.date}</p>
+                      <div className="space-y-5">
+                        {/* Interactive Bar Chart */}
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                          <div className="flex items-end gap-4 h-44 border-b border-slate-300 pb-3 px-3">
+                            {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                              <div key={rep.id} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                                <span className="rounded-lg bg-white border border-teal-200 px-2.5 py-1 text-sm font-black text-teal-950 shadow-2xs group-hover:scale-110 transition-transform">
+                                  {rep.score}%
+                                </span>
+                                <div className="w-full max-w-[70px] flex-1 flex items-end">
+                                  <div
+                                    className="w-full rounded-t-xl bg-gradient-to-t from-teal-700 via-teal-600 to-teal-500 shadow-sm transition-all duration-500 hover:brightness-110"
+                                    style={{ height: `${Math.max(rep.score, 18)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-black text-slate-600 truncate max-w-[110px] text-center" title={rep.date || rep.program}>
+                                  {rep.date || 'اليوم'}
+                                </span>
                               </div>
-                              <span className="text-teal-700">{rep.score}%</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Breakdown Cards */}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                            <div key={rep.id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-black text-slate-950 truncate">{rep.program}</p>
+                                <p className="text-xs font-bold text-slate-500 mt-1">{rep.date || 'تاريخ الاختبار'}</p>
+                              </div>
+                              <div className="shrink-0 rounded-xl bg-white border border-teal-300 px-3.5 py-2 text-center shadow-2xs">
+                                <span className="block text-lg font-black text-teal-950 leading-none">{rep.score}%</span>
+                                <span className="text-[10px] font-bold text-teal-700">النتيجة</span>
+                              </div>
                             </div>
                           ))}
                         </div>
