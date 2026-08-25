@@ -21,6 +21,7 @@ export default function NewStudentPage() {
   const [existingStudentId, setExistingStudentId] = useState('');
   const [student, setStudent] = useState({
     fullName: '',
+    email: '',
     nationalId: '',
     dateOfBirth: '',
     grade: 'الصف الأول',
@@ -50,16 +51,16 @@ export default function NewStudentPage() {
         allStudents.find((s) => s.id === requestedStudentId) ??
         (session?.role === 'student'
           ? allStudents.find((s) =>
+              s.id === session.id ||
               s.fullName === session.name ||
-              s.parentPhone === session.phone ||
-              s.parentPhone === session.email ||
-              s.id === session.id,
+              s.email === session.email ||
+              s.parentPhone === session.phone,
             )
           : undefined) ??
         (session?.role === 'parent'
           ? allStudents.find((s) =>
               s.parentPhone === session.phone ||
-              s.parentPhone === session.email ||
+              s.parentEmail === session.email ||
               s.parentName === session.name,
             )
           : undefined);
@@ -69,12 +70,14 @@ export default function NewStudentPage() {
           setStudent((prev) => ({
             ...prev,
             fullName: session.name || prev.fullName,
+            email: session.email || prev.email,
             parentPhone: session.phone || prev.parentPhone,
           }));
         } else if (session?.role === 'parent') {
           setStudent((prev) => ({
             ...prev,
             parentName: session.name || prev.parentName,
+            email: session.email || prev.email,
             parentPhone: session.phone || prev.parentPhone,
           }));
         }
@@ -82,9 +85,18 @@ export default function NewStudentPage() {
       }
 
       setExistingStudentId(found.id);
+      if (found.dateOfBirth) {
+        const parts = found.dateOfBirth.split('-');
+        if (parts.length === 3) {
+          setBirthYear(parts[0]);
+          setBirthMonth(parts[1]);
+          setBirthDay(parts[2]);
+        }
+      }
       setStudent((prev) => ({
         ...prev,
         fullName: found.fullName || prev.fullName,
+        email: found.email || found.parentEmail || session?.email || prev.email,
         grade: found.grade || prev.grade,
         parentName: found.parentName || prev.parentName,
         parentPhone: found.parentPhone || prev.parentPhone,
@@ -106,39 +118,16 @@ export default function NewStudentPage() {
     setLoading(true);
     const dateOfBirth = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : '';
 
-    let savedStudent;
-    if (existingStudentId) {
-      // Update the student record that was already created at registration
-      savedStudent = updateStudent(existingStudentId, {
+    const session = getSession();
+    const params = new URLSearchParams(window.location.search);
+    const requestedStudentId = params.get('student');
+    const targetId = existingStudentId || requestedStudentId || session?.id || undefined;
+
+    let savedStudent: any = null;
+    if (targetId) {
+      savedStudent = updateStudent(targetId, {
         fullName: student.fullName.trim() || 'طالب جديد',
-        nationalId: student.nationalId,
-        dateOfBirth,
-        grade: student.grade,
-        parentName: student.parentName,
-        parentPhone: student.parentPhone,
-        photoUrl: student.photoUrl,
-        notes: student.notes,
-        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
-        source: 'student-wizard',
-      });
-      if (!savedStudent) {
-        // Fallback: create new
-        savedStudent = saveStudent({
-          fullName: student.fullName.trim() || 'طالب جديد',
-          nationalId: student.nationalId,
-          dateOfBirth,
-          grade: student.grade,
-          parentName: student.parentName,
-          parentPhone: student.parentPhone,
-          photoUrl: student.photoUrl,
-          notes: student.notes,
-          reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
-          source: 'student-wizard',
-        });
-      }
-    } else {
-      savedStudent = saveStudent({
-        fullName: student.fullName.trim() || 'طالب جديد',
+        email: student.email || session?.email || '',
         nationalId: student.nationalId,
         dateOfBirth,
         grade: student.grade,
@@ -151,8 +140,25 @@ export default function NewStudentPage() {
       });
     }
 
-    await syncDocToCloud('students', savedStudent!.id, savedStudent);
-    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent!.id}&flow=student` : `/survey?student=${savedStudent!.id}&flow=parent`);
+    if (!savedStudent) {
+      savedStudent = saveStudent({
+        id: targetId,
+        fullName: student.fullName.trim() || 'طالب جديد',
+        email: student.email || session?.email || '',
+        nationalId: student.nationalId,
+        dateOfBirth,
+        grade: student.grade,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        photoUrl: student.photoUrl,
+        notes: student.notes,
+        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
+        source: 'student-wizard',
+      });
+    }
+
+    await syncDocToCloud('students', savedStudent.id, savedStudent);
+    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent.id}&flow=student` : `/survey?student=${savedStudent.id}&flow=parent`);
   };
 
   return (
@@ -216,6 +222,7 @@ export default function NewStudentPage() {
                   {gradeOptions.map((grade) => <option key={grade}>{grade}</option>)}
                 </select>
               </label>
+              <Field label="البريد الإلكتروني" type="email" placeholder="example@masar.com" value={student.email} onChange={(value) => handleFieldChange('email', value)} />
               <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
               <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
             </div>

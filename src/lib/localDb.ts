@@ -25,6 +25,8 @@ export type StudentRecord = {
   nationalId?: string;
   dateOfBirth?: string;
   grade: string;
+  email?: string;
+  parentEmail?: string;
   parentName?: string;
   parentPhone?: string;
   photoUrl?: string;

@@ -7,7 +7,8 @@ import { useParams } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
-import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord, saveStudent } from '@/lib/localDb';
+import { getClassStudents } from '@/lib/classDb';
 import { pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 
 type StudentMediaItem = {
@@ -40,24 +41,43 @@ export default function StudentProfilePage() {
       const role = session?.role || 'parent';
       setUserRole(role);
 
-      // First: try to find the student in the current in-memory cache (set by assessment page)
-      let found = getStudents().find((item) => item.id === params.id) ?? null;
+      // 1. Try to find in localStorage (students or class students)
+      let allSt = getStudents();
+      let classSt = getClassStudents();
+      let found = allSt.find((item) => item.id === params.id) ?? (classSt.find((item) => item.id === params.id) as any) ?? null;
       let foundReports = getReports().filter((report) => report.studentId === params.id);
 
       if (found) {
-        // Student is in memory — use it immediately
         setStudent(found);
         setReports(foundReports);
         setLoading(false);
         return;
       }
 
-      // Not in memory — try fetching from server
-      await pullServerSnapshotToLocal(['students', 'reports']);
+      // 2. Not in memory — pull from server snapshot & firestore
+      await pullServerSnapshotToLocal(['students', 'reports', 'classStudents']).catch(() => {});
       if (cancelled) return;
 
-      found = getStudents().find((item) => item.id === params.id) ?? null;
+      allSt = getStudents();
+      classSt = getClassStudents();
+      found = allSt.find((item) => item.id === params.id) ?? (classSt.find((item) => item.id === params.id) as any) ?? null;
       foundReports = getReports().filter((report) => report.studentId === params.id);
+
+      // 3. Fallback: if user is logged in as this student/parent, reconstruct record
+      if (!found && session) {
+        if (session.id === params.id || session.name) {
+          found = saveStudent({
+            id: params.id,
+            fullName: session.name || 'طالب مسار',
+            grade: 'الصف الأول الابتدائي',
+            email: session.email || '',
+            parentPhone: session.phone || '',
+            reviewStatus: 'awaiting-doctor-review',
+            source: 'student-wizard',
+          });
+        }
+      }
+
       setStudent(found);
       setReports(foundReports);
       setLoading(false);

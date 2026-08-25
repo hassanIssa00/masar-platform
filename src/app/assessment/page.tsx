@@ -8,7 +8,9 @@ import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
-import { getStudents, saveReport, saveStudent, StudentRecord, updateStudent } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveReport, saveStudent, StudentRecord, updateStudent, createId } from '@/lib/localDb';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
+import { getClassStudents } from '@/lib/classDb';
 import { speakWithMasarVoice } from '@/lib/voicePackage';
 
 type ResponseRecord = {
@@ -398,6 +400,7 @@ function PlacementAssessmentContent() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [selectedDraft, setSelectedDraft] = useState<string>('');
   const [mediaAnswers, setMediaAnswers] = useState<Record<string, MediaAnswer>>({});
   const [manualScores, setManualScores] = useState<Record<string, number>>({});
   const [recordingQuestionId, setRecordingQuestionId] = useState('');
@@ -466,46 +469,74 @@ function PlacementAssessmentContent() {
   const decision = getDecisionFromScore(score);
 
   useEffect(() => {
-    const studentId = searchParams.get('student');
-    const timeout = window.setTimeout(() => {
+    if (current) {
+      setSelectedDraft(answers[current.id] ?? '');
+    }
+  }, [index, current?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAssessmentStudent = async () => {
+      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents']).catch(() => {});
+      if (cancelled) return;
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+
+      const studentId = searchParams.get('student');
       const all = getStudents();
+      const classAll = getClassStudents();
       setAllStudents(all);
 
-      const existingStudent = studentId ? all.find((item) => item.id === studentId) : null;
-      if (existingStudent) {
-        setStudent(existingStudent);
-        setStudentName(existingStudent.fullName);
-        if (existingStudent.dateOfBirth) {
-          setStudentAge(calculateAgeFromDob(existingStudent.dateOfBirth));
+      let found = studentId ? all.find((item) => item.id === studentId) : null;
+      if (!found && studentId) {
+        found = classAll.find((item) => item.id === studentId) as any;
+      }
+      if (!found && session) {
+        found = all.find((item) =>
+          item.id === session.id ||
+          item.fullName === session.name ||
+          item.email === session.email ||
+          item.parentPhone === session.phone
+        ) ?? null;
+      }
+
+      if (found) {
+        setStudent(found);
+        setStudentName(found.fullName);
+        if (found.dateOfBirth) {
+          setStudentAge(calculateAgeFromDob(found.dateOfBirth));
         }
-        setGradeKey(getGradeKeyFromStudentGrade(existingStudent.grade));
+        const gk = getGradeKeyFromStudentGrade(found.grade);
+        setGradeKey(gk);
         return;
       }
 
+      const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
+      if (fromUrl && placementAssessments.some((item) => item.key === fromUrl)) {
+        setGradeKey(fromUrl);
+      } else {
+        setGradeKey('g1');
+      }
+
       if (studentId) {
+        const name = session?.name || 'طالب جديد';
+        setStudentName(name);
         setStudent({
           id: studentId,
-          fullName: 'طالب الاختبار',
-          grade: 'عام',
+          fullName: name,
+          grade: 'الصف الأول',
           reviewStatus: 'awaiting-doctor-review',
           source: 'student-wizard',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        return;
       }
-
-      const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
-      const next = placementAssessments.some((item) => item.key === fromUrl)
-        ? fromUrl
-        : null;
-
-      if (next) {
-        setGradeKey(next);
-      }
-    }, 0);
-    return () => window.clearTimeout(timeout);
-  }, [searchParams, router]);
+    };
+    void loadAssessmentStudent();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const isStudentFlow = Boolean(studentIdParam);
 
@@ -730,22 +761,36 @@ function PlacementAssessmentContent() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const savedStudent = student
-      ? updateStudent(student.id, {
-        fullName: studentName.trim() || student.fullName,
-        grade: student.grade,
+    let savedStudent: StudentRecord;
+    const all = getStudents();
+    const targetStudentId = student?.id || studentIdParam;
+    const existing = all.find((s) => s.id === targetStudentId);
+
+    if (existing) {
+      savedStudent = updateStudent(existing.id, {
+        fullName: studentName.trim() || existing.fullName,
+        grade: existing.grade || student?.grade || assessment.shortTitle,
         reviewStatus: 'awaiting-doctor-review',
         media: studentMedia,
-      }) ?? student
-      : isStudentFlow
-        ? saveStudent(fallbackStudent)
-      : saveStudent({
-        fullName: studentName.trim() || 'طالب اختبار تحديد مستوى',
-        grade: assessment.shortTitle,
+      }) ?? existing;
+    } else {
+      savedStudent = saveStudent({
+        id: targetStudentId || createId('student'),
+        fullName: studentName.trim() || student?.fullName || 'طالب جديد',
+        grade: student?.grade || assessment.shortTitle,
         reviewStatus: 'awaiting-doctor-review',
         source: 'student-wizard',
         media: studentMedia,
+        photoUrl: student?.photoUrl || '',
+        parentName: student?.parentName || '',
+        parentPhone: student?.parentPhone || '',
+        email: student?.email || '',
+        dateOfBirth: student?.dateOfBirth || '',
+        nationalId: student?.nationalId || '',
+        notes: student?.notes || '',
       });
+    }
+    syncDocToCloud('students', savedStudent.id, savedStudent);
 
     const rep = saveReport({
       studentId: savedStudent.id,
@@ -975,14 +1020,14 @@ function PlacementAssessmentContent() {
                       <button
                         key={option}
                         type="button"
-                        onClick={() => choose(option)}
+                        onClick={() => setSelectedDraft(option)}
                         onPointerDown={(event) => {
                           event.preventDefault();
-                          choose(option);
+                          setSelectedDraft(option);
                         }}
-                        className={`min-h-16 rounded-lg border px-4 py-4 text-right text-base font-black transition ${
-                          selected === option
-                            ? 'border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-200'
+                        className={`min-h-16 rounded-xl border-2 px-4 py-4 text-right text-base font-black transition cursor-pointer ${
+                          selectedDraft === option
+                            ? 'border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-200 shadow-xs'
                             : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                         }`}
                       >
@@ -1124,6 +1169,9 @@ function PlacementAssessmentContent() {
                       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                         stopRecording();
                       }
+                      if (selectedDraft && current) {
+                        setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
+                      }
                       setIndex(Math.max(0, index - 1));
                     }}
                     disabled={index === 0}
@@ -1138,6 +1186,9 @@ function PlacementAssessmentContent() {
                         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                           stopRecording();
                         }
+                        if (selectedDraft && current) {
+                          setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
+                        }
                         setIndex(index + 1);
                       }}
                       className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-black text-white hover:bg-blue-800 transition cursor-pointer shadow-sm"
@@ -1150,6 +1201,9 @@ function PlacementAssessmentContent() {
                       onClick={() => {
                         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                           stopRecording();
+                        }
+                        if (selectedDraft && current) {
+                          setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
                         }
                         finish();
                       }}
@@ -1251,15 +1305,16 @@ function getRecommendedProgram(domains: Array<{ name: string; score: number }>) 
   return { href: '/programs/learning-difficulties', label: 'برنامج صعوبات التعلم والخطة الفردية' };
 }
 
-function getGradeKeyFromStudentGrade(grade: string): PlacementGradeKey {
-  if (!grade) return 'general';
+function getGradeKeyFromStudentGrade(grade?: string): PlacementGradeKey {
+  if (!grade) return 'g1';
   const g = grade.trim();
   if (g.includes('روضة') || g.includes('تمهيدي') || g.toUpperCase().includes('KG')) return 'kg';
-  if (g.includes('الأول') || g.includes('الاول') || g.includes('1')) return 'g1';
-  if (g.includes('الثاني') || g.includes('2')) return 'g2';
-  if (g.includes('الثالث') || g.includes('3')) return 'g3';
-  if (g.includes('الرابع') || g.includes('4')) return 'g4';
-  if (g.includes('الخامس') || g.includes('5')) return 'g5';
-  if (g.includes('السادس') || g.includes('6')) return 'g6';
-  return 'general';
+  if (g.includes('الأول') || g.includes('الاول') || g.includes('أول') || g.includes('اول') || g.includes('1')) return 'g1';
+  if (g.includes('الثاني') || g.includes('الثانى') || g.includes('ثاني') || g.includes('ثانى') || g.includes('2')) return 'g2';
+  if (g.includes('الثالث') || g.includes('ثالث') || g.includes('3')) return 'g3';
+  if (g.includes('الرابع') || g.includes('رابع') || g.includes('4')) return 'g4';
+  if (g.includes('الخامس') || g.includes('خامس') || g.includes('5')) return 'g5';
+  if (g.includes('السادس') || g.includes('سادس') || g.includes('6')) return 'g6';
+  if (g.includes('صعوبات')) return 'general';
+  return 'g1';
 }
