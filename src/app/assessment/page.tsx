@@ -510,7 +510,7 @@ function PlacementAssessmentContent() {
       } else {
         router.push('/students');
       }
-    }, 1400);
+    }, 3000);
 
     return () => window.clearTimeout(timeout);
   }, [finished, isStudentFlow, router, savedStudentId, student?.id, studentIdParam]);

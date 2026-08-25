@@ -25,6 +25,7 @@ export default function StudentProfilePage() {
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [userRole, setUserRole] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,12 +35,27 @@ export default function StudentProfilePage() {
       const role = session?.role || 'parent';
       setUserRole(role);
 
+      // First: try to find the student in the current in-memory cache (set by assessment page)
+      let found = getStudents().find((item) => item.id === params.id) ?? null;
+      let foundReports = getReports().filter((report) => report.studentId === params.id);
+
+      if (found) {
+        // Student is in memory — use it immediately
+        setStudent(found);
+        setReports(foundReports);
+        setLoading(false);
+        return;
+      }
+
+      // Not in memory — try fetching from server
       await pullServerSnapshotToLocal(['students', 'reports']);
       if (cancelled) return;
 
-      const found = getStudents().find((item) => item.id === params.id) ?? null;
+      found = getStudents().find((item) => item.id === params.id) ?? null;
+      foundReports = getReports().filter((report) => report.studentId === params.id);
       setStudent(found);
-      setReports(getReports().filter((report) => report.studentId === params.id));
+      setReports(foundReports);
+      setLoading(false);
     };
     void loadStudentProfile();
     return () => {
@@ -48,6 +64,7 @@ export default function StudentProfilePage() {
   }, [params.id]);
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist';
+  const isStudent = userRole === 'student';
 
   const mediaList = useMemo<StudentMediaItem[]>(() => {
     const list: StudentMediaItem[] = [];
@@ -84,7 +101,24 @@ export default function StudentProfilePage() {
     { id: 'progress', name: 'التقدم' },
   ];
 
+  // Show loading state while fetching
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] text-slate-950">
+        <Navbar />
+        <main className="mx-auto grid min-h-[70svh] max-w-2xl place-items-center px-4 py-8">
+          <div className="text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-teal-700" />
+            <p className="mt-4 text-sm font-black text-slate-600">جاري تحميل ملف الطالب...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (!student) {
+    const backHref = isStaff ? '/student/new' : isStudent ? '/assessment' : '/parent';
+    const backLabel = isStaff ? 'إضافة طالب' : isStudent ? 'العودة للاختبار' : 'العودة للرئيسية';
     return (
       <div className="min-h-screen bg-[var(--background)] text-slate-950">
         <Navbar />
@@ -93,8 +127,8 @@ export default function StudentProfilePage() {
             <UserRound className="mx-auto text-slate-400" size={44} />
             <h1 className="mt-4 text-2xl font-black text-slate-950">ملف الطالب غير موجود</h1>
             <p className="mt-2 text-sm font-bold leading-7 text-slate-600">لا توجد بيانات محفوظة لهذا الرابط.</p>
-            <Link href={isStaff ? "/student/new" : "/parent"} className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-              {isStaff ? 'إضافة طالب' : 'العودة لصفحة ولي الأمر'}
+            <Link href={backHref} className="mt-5 inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+              {backLabel}
             </Link>
           </section>
         </main>
@@ -109,11 +143,11 @@ export default function StudentProfilePage() {
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
         <Link
-          href={isStaff ? "/students" : "/parent"}
+          href={isStaff ? '/students' : isStudent ? '/assessment' : '/parent'}
           className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
         >
           <ArrowRight size={17} />
-          {isStaff ? 'العودة لقائمة الطلاب' : 'العودة للرئيسية'}
+          {isStaff ? 'العودة لقائمة الطلاب' : isStudent ? 'العودة للاختبار' : 'العودة للرئيسية'}
         </Link>
 
         <section className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
