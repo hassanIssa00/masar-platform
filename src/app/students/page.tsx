@@ -6,6 +6,8 @@ import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRou
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
+import { curriculaList, getCurriculumBySlug } from '@/data/curriculaData';
+import { BookOpen, FolderOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
@@ -31,6 +33,7 @@ export default function StudentsControlPage() {
 
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
+  const [trackCategoryFilter, setTrackCategoryFilter] = useState<'all' | 'curriculum' | 'program'>('all');
 
   const refresh = async () => {
     const session = getSession() ?? await hydrateSessionFromServer();
@@ -109,12 +112,68 @@ export default function StudentsControlPage() {
   );
   const reportSlots = getReportSlots(studentReports);
 
-  // Currently assigned programs for the student
+  // All selectable tracks (Therapeutic + Official Curricula)
+  const allSelectableTracks = useMemo(() => {
+    const list: Array<{
+      slug: string;
+      title: string;
+      shortTitle: string;
+      promise: string;
+      duration: string;
+      badge: string;
+      color: string;
+      category: 'curriculum' | 'program';
+    }> = [];
+
+    // Master Curricula Bundle
+    list.push({
+      slug: 'curricula-all',
+      title: 'مجلد المناهج التعليمية الكامل (1448هـ)',
+      shortTitle: 'المناهج التعليمية (جميع المواد)',
+      promise: 'إسناد حزمة المناهج الدراسية الرسمية كاملة (لغتي، رياضيات، إسلامية، علوم، إنجليزي، مهارات، فنية) للحل بالقلم التفاعلي.',
+      duration: '7 كتب دراسية معتمدة',
+      badge: 'المناهج المدرسية 1448هـ',
+      color: '#4338ca',
+      category: 'curriculum',
+    });
+
+    // 7 School Curricula
+    curriculaList.forEach((c) => {
+      list.push({
+        slug: `curriculum-${c.slug}`,
+        title: `كتاب ${c.title} التفاعلي`,
+        shortTitle: `منهج ${c.title}`,
+        promise: c.promise,
+        duration: `${c.pageCount} صفحة تدريبية`,
+        badge: c.badge,
+        color: c.color,
+        category: 'curriculum',
+      });
+    });
+
+    // 7 Therapeutic Programs
+    curriculumPrograms.forEach((p) => {
+      list.push({
+        slug: p.slug,
+        title: p.title,
+        shortTitle: p.shortTitle,
+        promise: p.promise,
+        duration: p.duration,
+        badge: p.tag,
+        color: p.color,
+        category: 'program',
+      });
+    });
+
+    return list;
+  }, []);
+
+  // Currently assigned tracks for the student
   const assignedPrograms = useMemo(() => {
     if (!selectedStudent) return [];
     const slugs = selectedStudent.assignedPrograms || (selectedStudent.assignedProgram ? [selectedStudent.assignedProgram] : []);
-    return curriculumPrograms.filter((p) => slugs.includes(p.slug));
-  }, [selectedStudent]);
+    return allSelectableTracks.filter((t) => slugs.includes(t.slug));
+  }, [selectedStudent, allSelectableTracks]);
 
   // System-recommended track suggestion
   const systemRecommendation = useMemo(() => {
@@ -169,10 +228,10 @@ export default function StudentsControlPage() {
     }
 
     const primarySlug = selectedTrackSlugs[0];
-    const programTitles = curriculumPrograms
+    const programTitles = allSelectableTracks
       .filter((p) => selectedTrackSlugs.includes(p.slug))
       .map((p) => p.shortTitle)
-      .join(' + ');
+      .join(' + ') || 'المسارات والمناهج المعتمدة';
 
     updateStudent(selectedStudent.id, {
       assignedProgram: primarySlug,
@@ -509,46 +568,90 @@ export default function StudentsControlPage() {
                     )}
 
                     {/* MULTI-SELECTABLE TRACK CARDS */}
-                    <div>
-                      <p className="mb-3 text-xs font-black text-slate-600 uppercase tracking-wider">
-                        اختر مساراً واحداً أو أكثر بالضغط على الكروت أدناه (يمكن دمج أكثر من مسار للطالب):
-                      </p>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {curriculumPrograms.map((program) => {
-                          const isSelected = selectedTrackSlugs.includes(program.slug);
-                          return (
-                            <div
-                              key={program.slug}
-                              onClick={() => toggleTrack(program.slug)}
-                              className={`cursor-pointer rounded-2xl border p-4 text-right transition flex flex-col justify-between select-none ${
-                                isSelected
-                                  ? 'border-2 border-teal-600 bg-teal-50/90 shadow-md ring-2 ring-teal-600/20'
-                                  : 'border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="h-2.5 w-12 rounded-full" style={{ backgroundColor: program.color }} />
-                                  {isSelected ? (
-                                    <span className="flex items-center gap-1 text-xs font-black text-teal-700">
-                                      <CheckSquare size={18} className="text-teal-600" />
-                                      <span>محدد</span>
-                                    </span>
-                                  ) : (
-                                    <Square size={18} className="text-slate-400" />
-                                  )}
-                                </div>
-                                <h3 className="font-black text-slate-950 text-sm sm:text-base">{program.shortTitle}</h3>
-                                <p className="mt-1 text-xs font-bold text-slate-500 leading-relaxed">{program.promise}</p>
-                              </div>
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <p className="text-xs font-black text-slate-700">
+                          اختر مساراً واحداً أو أكثر بالضغط على الكروت أدناه (يمكن دمج المناهج مع المسارات العلاجية):
+                        </p>
+                        
+                        {/* Category Filter Tabs */}
+                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-black">
+                          <button
+                            type="button"
+                            onClick={() => setTrackCategoryFilter('all')}
+                            className={`rounded-lg px-3 py-1.5 transition ${
+                              trackCategoryFilter === 'all' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            الكل ({allSelectableTracks.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrackCategoryFilter('curriculum')}
+                            className={`rounded-lg px-3 py-1.5 transition flex items-center gap-1 ${
+                              trackCategoryFilter === 'curriculum' ? 'bg-indigo-950 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <BookOpen size={13} />
+                            المناهج الدراسية (8)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrackCategoryFilter('program')}
+                            className={`rounded-lg px-3 py-1.5 transition flex items-center gap-1 ${
+                              trackCategoryFilter === 'program' ? 'bg-teal-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            المسارات العلاجية (7)
+                          </button>
+                        </div>
+                      </div>
 
-                              <div className="mt-3 border-t border-slate-200/60 pt-2 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                <span>{program.duration}</span>
-                                <span>{program.modules.length} أسابيع علاجية</span>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {allSelectableTracks
+                          .filter((track) => trackCategoryFilter === 'all' || track.category === trackCategoryFilter)
+                          .map((track) => {
+                            const isSelected = selectedTrackSlugs.includes(track.slug);
+                            return (
+                              <div
+                                key={track.slug}
+                                onClick={() => toggleTrack(track.slug)}
+                                className={`cursor-pointer rounded-2xl border p-4 text-right transition flex flex-col justify-between select-none ${
+                                  isSelected
+                                    ? 'border-2 border-teal-600 bg-teal-50/90 shadow-md ring-2 ring-teal-600/20'
+                                    : 'border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-8 rounded-full" style={{ backgroundColor: track.color }} />
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+                                        {track.badge}
+                                      </span>
+                                    </div>
+                                    {isSelected ? (
+                                      <span className="flex items-center gap-1 text-xs font-black text-teal-700">
+                                        <CheckSquare size={18} className="text-teal-600" />
+                                        <span>محدد</span>
+                                      </span>
+                                    ) : (
+                                      <Square size={18} className="text-slate-400" />
+                                    )}
+                                  </div>
+                                  <h3 className="font-black text-slate-950 text-sm sm:text-base">{track.shortTitle}</h3>
+                                  <p className="mt-1 text-xs font-bold text-slate-500 leading-relaxed line-clamp-2">{track.promise}</p>
+                                </div>
+
+                                <div className="mt-3 border-t border-slate-200/60 pt-2 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                  <span>{track.duration}</span>
+                                  <span className="text-teal-700 font-black">
+                                    {track.category === 'curriculum' ? 'كتاب تفاعلي' : 'مسار تأهيلي'}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
                     </div>
 

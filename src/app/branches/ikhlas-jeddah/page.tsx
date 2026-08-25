@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
+  LayoutDashboard,
   BookOpen, Clock, Users, Camera, BarChart3,
   Bell, Send, CheckCircle, XCircle, Plus, Video,
   AlertTriangle, Loader2, Star, MessageSquare,
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
-  Menu, X, ChevronRight, ChevronLeft,
+  Menu, X, ChevronRight, ChevronLeft, ClipboardList,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -71,6 +73,16 @@ export default function IkhlasJeddahPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    operation: true,
+    curriculum: true,
+    students: true,
+    schedule: true,
+  });
+
+  const toggleCategory = (id: string) => {
+    setOpenCategories((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
   const [schedule, setSchedule] = useState<Period[]>(() => getSavedSchedule());
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
@@ -577,24 +589,67 @@ export default function IkhlasJeddahPage() {
     setTimeout(() => setReportSent(false), 4000);
   };
 
-  const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
-    { key: 'overview',        label: 'نظرة عامة',              icon: BarChart3 },
-    { key: 'parents-chat',    label: 'شات أولياء الأمور 💬',   icon: MessageSquare },
-    { key: 'curriculum',      label: 'المناهج الدراسية 📚',     icon: BookOpen },
-    { key: 'correction',      label: 'تصحيح الواجبات 📝',      icon: CheckCircle },
-    { key: 'students',        label: 'إدارة الطلاب 👨‍🎓',        icon: Users },
-    { key: 'parents',         label: 'أولياء الأمور 👨‍👩‍👧',     icon: UserCheck },
-    { key: 'ai-chat',         label: 'مساعد المعلم الذكي 🤖',   icon: MessageSquare },
-    { key: 'smart-schedule',  label: 'الجدول الذكي 📅',         icon: Bell },
-    { key: 'quizzes',         label: 'الكويزات والاختبارات 📝', icon: HelpCircle },
-    { key: 'live',            label: 'البث المباشر 🔴',         icon: Radio },
-    { key: 'certificates',    label: 'شهادات التفوق 🏆',        icon: Award },
-    { key: 'schedule',        label: 'جدول الحصص',             icon: Clock },
-    { key: 'attendance',      label: 'الحضور',                  icon: Users },
-    { key: 'homework',        label: 'الواجبات',                icon: BookOpen, badge: homeworkList.filter(h => h.status === 'OPEN').length },
-    { key: 'meetings',        label: 'الاجتماعات',              icon: Video },
-    { key: 'photos',          label: 'الصور',                   icon: Camera },
-    { key: 'reports',         label: 'التقارير',                 icon: BarChart3 },
+  type NavItem = {
+    key: Tab;
+    label: string;
+    icon: any;
+    badge?: string | number;
+    badgeColor?: string;
+  };
+
+  type NavCategory = {
+    id: string;
+    title: string;
+    icon: any;
+    items: NavItem[];
+  };
+
+  const navCategories: NavCategory[] = [
+    {
+      id: 'operation',
+      title: 'التشغيل والمتابعة',
+      icon: BarChart3,
+      items: [
+        { key: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+        { key: 'ai-chat', label: 'مساعد المعلم الذكي', icon: Sparkles, badge: 'AI ⚡', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
+        { key: 'live', label: 'البث المباشر', icon: Radio, badge: 'مباشر', badgeColor: 'bg-rose-500 text-white font-black animate-pulse' },
+        { key: 'reports', label: 'التقارير وملفات الطلاب', icon: FileText },
+      ],
+    },
+    {
+      id: 'curriculum',
+      title: 'المناهج والواجبات',
+      icon: BookOpen,
+      items: [
+        { key: 'curriculum', label: 'المناهج التعليمية التفاعلية', icon: BookOpen, badge: '7 كتب 📚', badgeColor: 'bg-amber-400 text-slate-950 font-black shadow-xs' },
+        { key: 'correction', label: 'تصحيح الواجبات الذكي', icon: CheckCircle },
+        { key: 'homework', label: 'الواجبات المدرسية', icon: ClipboardList, badge: homeworkList.filter(h => h.status === 'OPEN').length || undefined, badgeColor: 'bg-rose-500 text-white font-black' },
+        { key: 'quizzes', label: 'الكويزات والاختبارات', icon: HelpCircle },
+      ],
+    },
+    {
+      id: 'students',
+      title: 'الطلاب والأسر',
+      icon: Users,
+      items: [
+        { key: 'students', label: 'إدارة طلاب الفصل', icon: Users, badge: classStudents.length || undefined, badgeColor: 'bg-amber-400 text-slate-950 font-black' },
+        { key: 'parents-chat', label: 'شات أولياء الأمور', icon: MessageSquare },
+        { key: 'parents', label: 'أولياء الأمور', icon: UserCheck },
+        { key: 'certificates', label: 'شهادات التفوق', icon: Award, badge: '🏆', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
+      ],
+    },
+    {
+      id: 'schedule',
+      title: 'الحصص والجدول',
+      icon: Clock,
+      items: [
+        { key: 'schedule', label: 'جدول الحصص اليومي', icon: Clock },
+        { key: 'smart-schedule', label: 'الجدول الذكي وإشعارات الأولياء', icon: Bell },
+        { key: 'attendance', label: 'الحضور والغياب', icon: Users },
+        { key: 'meetings', label: 'الاجتماعات المرئية', icon: Video },
+        { key: 'photos', label: 'ألبوم صور الفصل', icon: Camera },
+      ],
+    },
   ];
 
   const jsDay = new Date().getDay();
@@ -630,8 +685,16 @@ export default function IkhlasJeddahPage() {
             </div>
           </div>
 
-          {/* Current period + logout */}
-          <div className="flex items-center gap-2">
+          {/* Current period + Back to Dashboard + logout */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-l from-indigo-950 via-slate-900 to-blue-950 hover:from-indigo-900 hover:to-blue-900 text-white border border-indigo-700/50 px-3.5 py-2 text-xs font-black transition-all shadow-xs"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
+              <span>العودة إلى داشبورد مسار</span>
+            </Link>
+
             {currentPeriod && (
               <div className="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -639,8 +702,9 @@ export default function IkhlasJeddahPage() {
                 <span className="text-emerald-600 text-[11px]">{currentPeriod.startTime}–{currentPeriod.endTime}</span>
               </div>
             )}
+
             <button onClick={handleLogout}
-              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-black transition-all">
+              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer">
               <LogOut className="w-3.5 h-3.5" /> خروج
             </button>
           </div>
@@ -672,32 +736,68 @@ export default function IkhlasJeddahPage() {
               </button>
             </div>
 
-            {/* Menu Items */}
-            <nav className="space-y-1.5">
-              {tabs.map((t) => {
-                const Icon = t.icon;
-                const active = activeTab === t.key;
+            {/* Categorized Menu Groups */}
+            <nav className="space-y-3">
+              {navCategories.map((cat) => {
+                const CatIcon = cat.icon;
+                const isCatOpen = openCategories[cat.id] ?? true;
+                const hasActiveChild = cat.items.some((item) => item.key === activeTab);
+
                 return (
-                  <button
-                    key={t.key}
-                    onClick={() => setActiveTab(t.key)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-extrabold transition-all relative ${
-                      active
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                    title={!isSidebarOpen ? t.label : undefined}
-                  >
-                    <Icon className={`w-4.5 h-4.5 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
-                    {isSidebarOpen && <span className="truncate">{t.label}</span>}
-                    {!!t.badge && (
-                      <span className={`w-4.5 h-4.5 text-[9px] font-black rounded-full flex items-center justify-center shrink-0 ${
-                        active ? 'bg-white text-emerald-700' : 'bg-rose-500 text-white'
-                      } ${!isSidebarOpen ? 'absolute -top-1 -left-1' : 'mr-auto'}`}>
-                        {t.badge}
-                      </span>
+                  <div key={cat.id} className="space-y-1">
+                    {/* Category Accordion Header */}
+                    {isSidebarOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(cat.id)}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-black transition ${
+                          hasActiveChild ? 'text-emerald-800 bg-emerald-50/70' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <CatIcon className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>{cat.title}</span>
+                        </div>
+                        {isCatOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                      </button>
+                    ) : (
+                      <div className="h-px bg-slate-200 my-2 mx-1" />
                     )}
-                  </button>
+
+                    {/* Category Nav Items */}
+                    {(isCatOpen || !isSidebarOpen) && (
+                      <div className="space-y-1">
+                        {cat.items.map((item) => {
+                          const Icon = item.icon;
+                          const active = activeTab === item.key;
+                          return (
+                            <button
+                              key={item.key}
+                              onClick={() => setActiveTab(item.key)}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all relative ${
+                                active
+                                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              }`}
+                              title={!isSidebarOpen ? item.label : undefined}
+                            >
+                              <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
+                              {isSidebarOpen && <span className="truncate">{item.label}</span>}
+                              {!!item.badge && (
+                                <span
+                                  className={`text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0 shadow-2xs ${
+                                    item.badgeColor || (active ? 'bg-white text-emerald-700' : 'bg-rose-500 text-white')
+                                  } ${!isSidebarOpen ? 'absolute -top-1 -left-1 px-1' : 'mr-auto'}`}
+                                >
+                                  {item.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>
