@@ -347,7 +347,7 @@ export default function StudentsControlPage() {
                               type="button"
                               onClick={() => setShowCertData({
                                 studentName: selectedStudent.fullName,
-                                studentNameEn: selectedStudent.fullNameEn || selectedStudent.fullName,
+                                studentNameEn: selectedStudent.fullNameEn,
                                 programTitle: selectedStudent.assignedProgram ? (curriculumPrograms.find(p => p.slug === selectedStudent.assignedProgram)?.shortTitle || 'برنامج التأهيل الشامل') : 'برنامج التأهيل الشامل وصعوبات التعلم',
                                 completionDate: new Date().toISOString().slice(0, 10),
                                 score: 92,

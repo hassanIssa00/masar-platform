@@ -433,12 +433,29 @@ function BottomGoldMedal() {
 export default function CertificateModal({ data, onClose }: { data: CertificateData; onClose: () => void }) {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const [editingEnName, setEditingEnName] = useState(false);
-  const [nameEn, setNameEn] = useState(data.studentNameEn || '');
+
+  const getComputedEnName = () => {
+    if (data.studentNameEn && !/[\u0600-\u06FF]/.test(data.studentNameEn)) {
+      return data.studentNameEn.trim();
+    }
+    return toEnglishCertificateName(data.studentName);
+  };
+
+  const [nameEn, setNameEn] = useState(getComputedEnName());
   const [sigB64, setSigB64] = useState('');
+
+  useEffect(() => {
+    setNameEn(getComputedEnName());
+  }, [data.studentName, data.studentNameEn]);
 
   const isAr = lang === 'ar';
   const certNo = data.certNumber || `NSR-CERT-2026-${stableCertificateSuffix(data.studentName, data.programTitle, data.completionDate)}`;
-  const displayName = isAr ? data.studentName : (nameEn.trim() || toEnglishCertificateName(data.studentName));
+  
+  const displayName = isAr
+    ? data.studentName
+    : (nameEn.trim() && !/[\u0600-\u06FF]/.test(nameEn)
+        ? nameEn.trim()
+        : toEnglishCertificateName(data.studentName));
 
   const certRef = useRef<HTMLDivElement>(null);
 
