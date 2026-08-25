@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowLeft, ClipboardCheck, Clock, Layers3, Route, Target } from 'lucide-react';
+import { ArrowLeft, BookOpen, ClipboardCheck, Clock, FolderOpen, GraduationCap, Layers3, Route, Sparkles, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -44,6 +44,35 @@ export default function ProgramsPage() {
               </div>
             </div>
           </header>
+
+          {/* ══ المناهج التعليمية FEATURED SECTION ══ */}
+          <Link
+            href="/programs/curricula"
+            className="mt-6 group flex flex-col md:flex-row items-start md:items-center justify-between gap-5 rounded-3xl border-2 border-indigo-200 bg-gradient-to-l from-indigo-950 via-blue-900 to-slate-900 p-6 text-white shadow-xl hover:border-amber-400/50 transition-all lg:p-7"
+          >
+            <div className="flex items-center gap-5">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-amber-400/20 ring-2 ring-amber-400/40 shadow-sm">
+                <FolderOpen size={28} className="text-amber-300" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-0.5 text-[11px] font-black text-amber-300 ring-1 ring-amber-400/30">
+                    <Sparkles size={12} />
+                    مناهج الصف الأول الابتدائي 1448هـ · 7 مواد رسمية
+                  </span>
+                </div>
+                <h2 className="text-2xl font-black leading-tight md:text-3xl">مجلد المناهج التعليمية التفاعلية</h2>
+                <p className="mt-1.5 max-w-2xl text-sm font-bold leading-7 text-slate-300">
+                  جميع الكتب المدرسية الرسمية (لغتي، رياضيات، إسلامية، علوم، إنجليزي، مهارات حياتية، تربية فنية) مدمجة بنظام الكتابة التفاعلية وإسناد الواجبات مثل التهجي البسيط تماماً.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 inline-flex items-center gap-2 rounded-2xl bg-amber-400 hover:bg-amber-300 text-indigo-950 px-6 py-3.5 text-sm font-black shadow-md group-hover:shadow-amber-400/30 transition-all">
+              <GraduationCap size={18} />
+              فتح المناهج التعليمية
+              <ArrowLeft size={16} />
+            </div>
+          </Link>
 
           <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {curriculumPrograms.map((program) => (

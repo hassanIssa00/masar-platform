@@ -130,6 +130,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
       icon: Route,
       links: [
         { name: 'المسارات العلاجية', path: '/programs', icon: Route },
+        { name: 'المناهج التعليمية', path: '/programs/curricula', icon: BookOpen, badge: 'جديد', badgeColor: 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow-xs' },
         { name: 'خطط IEP الفردية', path: '/iep', icon: ClipboardList },
         { name: 'مكتبة الموارد', path: '/resources', icon: BookOpen },
       ],
