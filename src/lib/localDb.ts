@@ -8,6 +8,7 @@ export type AccountRecord = {
   id: string;
   name: string;
   email: string;
+  recoveryEmail?: string;
   phone?: string;
   role: UserRole;
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
@@ -26,6 +27,7 @@ export type StudentRecord = {
   dateOfBirth?: string;
   grade: string;
   email?: string;
+  recoveryEmail?: string;
   parentEmail?: string;
   parentName?: string;
   parentPhone?: string;

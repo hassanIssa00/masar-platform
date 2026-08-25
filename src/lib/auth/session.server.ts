@@ -235,6 +235,13 @@ async function findCredentialInCollection(
     .get();
   if (!emailMatch.empty) return emailMatch.docs[0].data() as StoredCredential;
 
+  const recoveryMatch = await adminDb
+    .collection(collectionName)
+    .where('recoveryEmail', '==', identifier)
+    .limit(1)
+    .get();
+  if (!recoveryMatch.empty) return recoveryMatch.docs[0].data() as StoredCredential;
+
   const phoneMatch = await adminDb
     .collection(collectionName)
     .where('phone', '==', identifier)
@@ -259,7 +266,16 @@ async function findAdminCredential(
     .where('email', '==', identifier)
     .limit(1)
     .get();
-  const accountDoc = !accountMatch.empty ? accountMatch.docs[0] : null;
+  let accountDoc = !accountMatch.empty ? accountMatch.docs[0] : null;
+
+  if (!accountDoc) {
+    const recoveryAccountMatch = await adminDb
+      .collection('accounts')
+      .where('recoveryEmail', '==', identifier)
+      .limit(1)
+      .get();
+    accountDoc = !recoveryAccountMatch.empty ? recoveryAccountMatch.docs[0] : null;
+  }
 
   if (accountDoc) {
     for (const collectionName of CREDENTIAL_COLLECTIONS) {
@@ -275,7 +291,8 @@ async function findAdminCredential(
       .find((entry) => {
         const email = normalizeIdentifier(entry.email || '');
         const phone = normalizeIdentifier(entry.phone || '');
-        return email === identifier || phone === identifier;
+        const recovery = normalizeIdentifier((entry as any).recoveryEmail || '');
+        return email === identifier || phone === identifier || recovery === identifier;
       });
 
     if (credentialDoc) return credentialDoc;

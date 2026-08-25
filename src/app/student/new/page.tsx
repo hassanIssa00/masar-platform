@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { getSession, getStudents, hydrateSessionFromServer, saveStudent, updateStudent } from '@/lib/localDb';
+import { getAccounts, getSession, getStudents, hydrateSessionFromServer, saveAccount, saveStudent, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
@@ -15,13 +15,19 @@ const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart
 const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
 const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFullYear() - 3 - index));
 
+function isGeneratedAlias(emailStr?: string): boolean {
+  if (!emailStr) return false;
+  const e = emailStr.toLowerCase().trim();
+  return e.includes('@masarplatform.org') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
+}
+
 export default function NewStudentPage() {
   const router = useRouter();
   const [nextFlow, setNextFlow] = useState<'parent-survey' | 'student-test'>('parent-survey');
   const [existingStudentId, setExistingStudentId] = useState('');
   const [student, setStudent] = useState({
     fullName: '',
-    email: '',
+    recoveryEmail: '',
     nationalId: '',
     dateOfBirth: '',
     grade: 'الصف الأول',
@@ -70,14 +76,14 @@ export default function NewStudentPage() {
           setStudent((prev) => ({
             ...prev,
             fullName: session.name || prev.fullName,
-            email: session.email || prev.email,
+            recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
             parentPhone: session.phone || prev.parentPhone,
           }));
         } else if (session?.role === 'parent') {
           setStudent((prev) => ({
             ...prev,
             parentName: session.name || prev.parentName,
-            email: session.email || prev.email,
+            recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
             parentPhone: session.phone || prev.parentPhone,
           }));
         }
@@ -93,10 +99,17 @@ export default function NewStudentPage() {
           setBirthDay(parts[2]);
         }
       }
+
+      const existingRecovery =
+        found.recoveryEmail ||
+        (!isGeneratedAlias(found.email) ? found.email : '') ||
+        (!isGeneratedAlias(session?.email) ? session?.email : '') ||
+        '';
+
       setStudent((prev) => ({
         ...prev,
         fullName: found.fullName || prev.fullName,
-        email: found.email || found.parentEmail || session?.email || prev.email,
+        recoveryEmail: existingRecovery || prev.recoveryEmail,
         grade: found.grade || prev.grade,
         parentName: found.parentName || prev.parentName,
         parentPhone: found.parentPhone || prev.parentPhone,
@@ -122,12 +135,14 @@ export default function NewStudentPage() {
     const params = new URLSearchParams(window.location.search);
     const requestedStudentId = params.get('student');
     const targetId = existingStudentId || requestedStudentId || session?.id || undefined;
+    const recoveryEmail = student.recoveryEmail.trim();
 
     let savedStudent: any = null;
     if (targetId) {
       savedStudent = updateStudent(targetId, {
         fullName: student.fullName.trim() || 'طالب جديد',
-        email: student.email || session?.email || '',
+        email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
+        recoveryEmail: recoveryEmail || undefined,
         nationalId: student.nationalId,
         dateOfBirth,
         grade: student.grade,
@@ -144,7 +159,8 @@ export default function NewStudentPage() {
       savedStudent = saveStudent({
         id: targetId,
         fullName: student.fullName.trim() || 'طالب جديد',
-        email: student.email || session?.email || '',
+        email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
+        recoveryEmail: recoveryEmail || undefined,
         nationalId: student.nationalId,
         dateOfBirth,
         grade: student.grade,
@@ -158,6 +174,19 @@ export default function NewStudentPage() {
     }
 
     await syncDocToCloud('students', savedStudent.id, savedStudent);
+
+    if (session?.id && recoveryEmail) {
+      const allAccounts = getAccounts();
+      const currentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email);
+      if (currentAcc) {
+        const updatedAcc = saveAccount({
+          ...currentAcc,
+          recoveryEmail,
+        });
+        await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
+      }
+    }
+
     router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent.id}&flow=student` : `/survey?student=${savedStudent.id}&flow=parent`);
   };
 
@@ -222,7 +251,26 @@ export default function NewStudentPage() {
                   {gradeOptions.map((grade) => <option key={grade}>{grade}</option>)}
                 </select>
               </label>
-              <Field label="البريد الإلكتروني" type="email" placeholder="example@masar.com" value={student.email} onChange={(value) => handleFieldChange('email', value)} />
+              <div className="block">
+                <label className="block">
+                  <span className="mb-2 flex items-center justify-between text-sm font-black text-slate-700">
+                    <span>البريد الإلكتروني الشخصي (لاسترجاع كلمة المرور)</span>
+                    <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+                      اختياري / بديل للدخول
+                    </span>
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="مثال: example@gmail.com"
+                    value={student.recoveryEmail}
+                    onChange={(event) => handleFieldChange('recoveryEmail', event.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700 focus:bg-white transition placeholder:text-slate-400"
+                  />
+                </label>
+                <p className="mt-1.5 text-xs font-bold leading-5 text-slate-500">
+                  ضع بريدك الشخصي (Gmail أو Outlook) لاسترجاع كلمة المرور في حال نسيانها، أو لتسجيل الدخول به بديلاً عن اسم المستخدم المولد.
+                </p>
+              </div>
               <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
               <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
             </div>
