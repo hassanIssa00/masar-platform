@@ -7,6 +7,7 @@ import {
   Phone, Calendar, Search, ShieldCheck
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import {
   getClassStudents, saveClassStudent, deleteClassStudent,
   ClassStudentRecord
@@ -51,6 +52,9 @@ export default function ClassroomStudentsTab() {
 
   useEffect(() => {
     refresh();
+    pullCloudDataToLocal(['classStudents', 'students', 'accounts']).then(() => {
+      refresh();
+    }).catch(() => {});
   }, []);
 
   const filteredStudents = useMemo(() => {

@@ -136,7 +136,55 @@ const CLOUD_COLLECTION = 'class_students';
 
 export function getClassStudents(): ClassStudentRecord[] {
   if (typeof window === 'undefined') return [];
-  return readCloudCache<ClassStudentRecord>(CLASS_STUDENTS_KEY);
+  const list = readCloudCache<ClassStudentRecord>(CLASS_STUDENTS_KEY);
+
+  // ☁️ Auto-sync: If there are students or accounts registered under IKHLAS_JEDDAH or classroom flow
+  try {
+    const mainStudents = readCloudCache<any>('masar.students.v1');
+    const existingNames = new Set(list.map((s) => s.fullName.trim().toLowerCase()));
+
+    let hasNew = false;
+    mainStudents.forEach((ms: any) => {
+      const isClassStudent =
+        ms.schoolBranch === 'IKHLAS_JEDDAH' ||
+        ms.branch === 'IKHLAS_JEDDAH' ||
+        (ms.grade && ms.grade.includes('فصل')) ||
+        (ms.fullName && ms.fullName.includes('ربيع')) ||
+        ms.source === 'ikhlas-jeddah';
+
+      const normName = (ms.fullName || '').trim().toLowerCase();
+      if (isClassStudent && normName && !existingNames.has(normName)) {
+        const clsRecord: ClassStudentRecord = {
+          id: ms.id || `cls-${Date.now()}`,
+          fullName: ms.fullName,
+          fullNameEn: ms.fullNameEn || '',
+          grade: ms.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+          nationalId: ms.nationalId || '',
+          dateOfBirth: ms.dateOfBirth || '',
+          parentName: ms.parentName || '',
+          parentPhone: ms.parentPhone || '',
+          photoUrl: ms.photoUrl || '',
+          notes: ms.notes || '',
+          assignedProgram: ms.assignedProgram || 'reading',
+          assignedPrograms: ms.assignedPrograms || ['reading'],
+          createdAt: ms.createdAt || new Date().toISOString(),
+          updatedAt: ms.updatedAt || new Date().toISOString(),
+        };
+        list.push(clsRecord);
+        existingNames.add(normName);
+        hasNew = true;
+        void syncDocToCloud(CLOUD_COLLECTION, clsRecord.id, clsRecord);
+      }
+    });
+
+    if (hasNew) {
+      writeCloudCache(CLASS_STUDENTS_KEY, list);
+    }
+  } catch (err) {
+    console.warn('classDb sync warning:', err);
+  }
+
+  return list;
 }
 
 export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[]> {

@@ -34,7 +34,9 @@ export type StudentRecord = {
   assignedPrograms?: string[];
   assignedBy?: string;
   assignedAt?: string;
-  source: 'student-wizard' | 'survey' | 'import';
+  source: 'student-wizard' | 'survey' | 'import' | 'ikhlas-jeddah';
+  schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH' | string;
+  branch?: string;
   media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
   createdAt: string;
   updatedAt: string;

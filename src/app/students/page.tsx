@@ -34,6 +34,7 @@ export default function StudentsControlPage() {
   // Multi-track selection state for the selected student
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
   const [trackCategoryFilter, setTrackCategoryFilter] = useState<'all' | 'curriculum' | 'program'>('all');
+  const [systemFilter, setSystemFilter] = useState<'all' | 'masar' | 'classroom'>('all');
 
   const refresh = async () => {
     const session = getSession() ?? await hydrateSessionFromServer();
@@ -324,7 +325,7 @@ export default function StudentsControlPage() {
               
               {/* Sidebar list of students */}
               <aside className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24 lg:self-start">
-                <div className="flex items-center justify-between px-1 pb-3 border-b border-slate-100">
+                <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
                   <h2 className="text-base font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
                   <button
                     type="button"
@@ -334,8 +335,50 @@ export default function StudentsControlPage() {
                     مسح الكل
                   </button>
                 </div>
+
+                {/* System Filter Pills */}
+                <div className="mt-2.5 flex items-center gap-1 rounded-xl bg-slate-100 p-1 border border-slate-200 text-[11px] font-black">
+                  <button
+                    type="button"
+                    onClick={() => setSystemFilter('all')}
+                    className={`flex-1 rounded-lg py-1 text-center transition ${
+                      systemFilter === 'all' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    الكل ({students.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSystemFilter('masar')}
+                    className={`flex-1 rounded-lg py-1 text-center transition ${
+                      systemFilter === 'masar' ? 'bg-teal-700 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    منصة مسار
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSystemFilter('classroom')}
+                    className={`flex-1 rounded-lg py-1 text-center transition ${
+                      systemFilter === 'classroom' ? 'bg-indigo-950 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    فصل د. إسماعيل
+                  </button>
+                </div>
                 <div className="mt-3.5 grid gap-2">
-                  {students.map((student) => {
+                  {students
+                    .filter((student) => {
+                      const isClassroom =
+                        student.schoolBranch === 'IKHLAS_JEDDAH' ||
+                        student.source === 'ikhlas-jeddah' ||
+                        (student.grade && student.grade.includes('فصل')) ||
+                        (student.fullName && student.fullName.includes('ربيع'));
+                      if (systemFilter === 'masar') return !isClassroom;
+                      if (systemFilter === 'classroom') return isClassroom;
+                      return true;
+                    })
+                    .map((student) => {
                     const count = (student.assignedPrograms?.length || (student.assignedProgram ? 1 : 0));
                     const isSelected = selectedStudent?.id === student.id;
                     return (
@@ -398,7 +441,17 @@ export default function StudentsControlPage() {
                       <div className="p-6">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
                           <div>
-                            <p className="text-xs font-black text-teal-700">ملف الطالب الحسابي الكامل</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-black text-teal-700">ملف الطالب الحسابي الكامل</p>
+                              {(selectedStudent.schoolBranch === 'IKHLAS_JEDDAH' ||
+                                selectedStudent.source === 'ikhlas-jeddah' ||
+                                selectedStudent.grade.includes('فصل') ||
+                                selectedStudent.fullName.includes('ربيع')) && (
+                                <span className="rounded-md bg-indigo-100 text-indigo-950 font-black text-[10px] px-2 py-0.5 border border-indigo-200">
+                                  🏫 طالب مسجل في فصل د. إسماعيل عيسى
+                                </span>
+                              )}
+                            </div>
                             <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedStudent.fullName}</h2>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
