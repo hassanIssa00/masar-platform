@@ -1,4 +1,4 @@
-﻿// Updated: 2026-08-12 - Real Dr. Ismail Stamp in Certificate
+// Updated: 2026-08-12 - Real Dr. Ismail Stamp in Certificate
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -14,37 +14,132 @@ function stableCertificateSuffix(...parts: string[]) {
   return String(hash + 10000).slice(0, 5);
 }
 
+function transliterateArabicWord(word: string): string {
+  const map: Record<string, string> = {
+    'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'aa', 'ء': '', 'ئ': 'e', 'ؤ': 'o',
+    'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'g', 'ح': 'h', 'خ': 'kh',
+    'د': 'd', 'ذ': 'z', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
+    'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh',
+    'ف': 'f', 'ق': 'k', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+    'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a',
+  };
+  let res = '';
+  for (let i = 0; i < word.length; i += 1) {
+    const ch = word[i];
+    res += map[ch] ?? ch;
+  }
+  if (!res) return word;
+  return res.charAt(0).toUpperCase() + res.slice(1).toLowerCase();
+}
+
 function toEnglishCertificateName(name: string) {
   const normalized = name.trim().replace(/\s+/g, ' ');
   if (!normalized) return 'Student Name';
 
+  // If already in English letters
+  if (/^[A-Za-z\s.'-]+$/.test(normalized)) {
+    return normalized;
+  }
+
   const words: Record<string, string> = {
-    'أحمد': 'Ahmed',
-    'احمد': 'Ahmed',
-    'محمد': 'Mohamed',
+    // Common first names
+    'أحمد': 'Ahmed', 'احمد': 'Ahmed',
+    'محمد': 'Mohamed', 'مُحمد': 'Mohamed',
     'محمود': 'Mahmoud',
-    'إبراهيم': 'Ibrahim',
-    'ابراهيم': 'Ibrahim',
-    'علي': 'Ali',
-    'على': 'Ali',
-    'إسماعيل': 'Ismail',
-    'اسماعيل': 'Ismail',
-    'أنس': 'Anas',
-    'انس': 'Anas',
-    'حسن': 'Hassan',
-    'حسين': 'Hussein',
+    'إبراهيم': 'Ibrahim', 'ابراهيم': 'Ibrahim',
+    'علي': 'Ali', 'على': 'Ali',
+    'إسماعيل': 'Ismail', 'اسماعيل': 'Ismail',
+    'أنس': 'Anas', 'انس': 'Anas',
+    'حسن': 'Hassan', 'حسان': 'Hassan',
+    'حسين': 'Hussein', 'حُسين': 'Hussein',
     'ربيع': 'Rabie',
-    'عيسى': 'Issa',
+    'عيسى': 'Issa', 'عيسي': 'Issa',
     'يوسف': 'Youssef',
     'عمر': 'Omar',
     'خالد': 'Khaled',
     'عبدالله': 'Abdullah',
     'عبد': 'Abdel',
+    'كريم': 'Karim',
+    'سالم': 'Salem',
+    'مصطفى': 'Mustafa', 'مصطفي': 'Mustafa',
+    'طارق': 'Tarek',
+    'هاني': 'Hany',
+    'ماهر': 'Maher',
+    'رامي': 'Ramy',
+    'سامي': 'Samy',
+    'وليد': 'Walid',
+    'فادي': 'Fady',
+    'ناصر': 'Nasser',
+    'بلال': 'Bilal',
+    'زياد': 'Ziad',
+    'أمير': 'Amir', 'امير': 'Amir',
+    'سيف': 'Seif',
+    'مارك': 'Mark',
+    'يحيى': 'Yahya', 'يحيي': 'Yahya',
+    'حمزة': 'Hamza', 'حمزه': 'Hamza',
+    'عبدالرحمن': 'Abdel-Rahman',
+    'عبدالعزيز': 'Abdel-Aziz',
+    'عبدالكريم': 'Abdel-Karim',
+    // Female names
+    'فاطمة': 'Fatima', 'فاطمه': 'Fatima',
+    'مريم': 'Mariam',
+    'سارة': 'Sara', 'ساره': 'Sara',
+    'نور': 'Nour',
+    'لينا': 'Lina',
+    'ريم': 'Reem',
+    'هند': 'Hend',
+    'منى': 'Mona', 'مني': 'Mona',
+    'دينا': 'Dina',
+    'رنا': 'Rana',
+    'رانيا': 'Rania',
+    'آية': 'Aya', 'أيه': 'Aya', 'آيه': 'Aya',
+    'نادية': 'Nadia', 'ناديه': 'Nadia',
+    'شيماء': 'Shimaa',
+    'إسراء': 'Israa', 'اسراء': 'Israa',
+    'سلمى': 'Salma', 'سلمي': 'Salma',
+    'شروق': 'Shorouk',
+    'ياسمين': 'Yasmine',
+    'هبة': 'Heba', 'هبه': 'Heba',
+    'ملك': 'Malek',
+    // Common last/family names
+    'كامل': 'Kamel',
+    'عمرو': 'Amr',
+    'جمال': 'Gamal',
+    'فوزي': 'Fawzy',
+    'رشاد': 'Rashad',
+    'رضا': 'Reda',
+    'فاروق': 'Farouk',
+    'زكي': 'Zaki',
+    'لطفي': 'Lotfy',
+    'شوقي': 'Shawky',
+    'شافعي': 'Shafei',
+    'القاضي': 'El-Kady',
+    'الشافعي': 'El-Shafei',
+    'السيد': 'El-Sayed',
+    'النجار': 'El-Naggar',
+    'عطية': 'Attia', 'عطيه': 'Attia',
+    'سليمان': 'Soliman',
+    'موسى': 'Moussa', 'موسي': 'Moussa',
+    'داوود': 'Daoud', 'داود': 'Daoud',
+    'صالح': 'Saleh',
+    'راشد': 'Rashed',
+    'مبارك': 'Mubarak',
+    'نصر': 'Nasr',
+    'حمد': 'Hamad',
+    'سعد': 'Saad',
+    'سعيد': 'Said',
+    'بكر': 'Bakr',
+    'شريف': 'Sherif',
+    'نجم': 'Nagm',
+    'ثروت': 'Tharwat',
+    'منصور': 'Mansour',
+    'حمدي': 'Hamdy',
+    'عادل': 'Adel',
   };
 
   const converted = normalized
     .split(' ')
-    .map((part) => words[part] ?? '')
+    .map((part) => words[part] || transliterateArabicWord(part))
     .filter(Boolean)
     .join(' ');
 
@@ -614,7 +709,9 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
               </div>
 
               {!isAr && !nameEn && !editingEnName && (
-                <p style={{ fontSize:9.5, color:'#a07030', margin:0 }} className="print:hidden">✏️ Click pencil to enter English name</p>
+                <p style={{ fontSize:9.5, color:'#a07030', margin:0 }} className="print:hidden">
+                  ✅ تمت الترجمة التلقائية للاسم — اضغط ✏️ لتعديلها يدوياً
+                </p>
               )}
 
               {/* Program */}
