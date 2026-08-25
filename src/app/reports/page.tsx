@@ -147,10 +147,40 @@ function ReportsContent() {
         <div className="flex">
           {!parentMode && <Sidebar desktopOnly />}
           <main className={`min-w-0 flex-1 px-4 py-6 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
-            {!parentMode && <button onClick={() => setSelectedId(null)} className="no-print mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
-              <ArrowRight size={17} />
-              العودة إلى التقارير
-            </button>}
+            {/* Top Action Toolbar (Above Report Frame) */}
+            <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-4">
+              {!parentMode && (
+                <button
+                  onClick={() => setSelectedId(null)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
+                >
+                  <ArrowRight size={18} />
+                  <span>العودة إلى التقارير</span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-3 mr-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setPrintReport(selected)}
+                  className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-indigo-950 px-6 py-3.5 text-base font-black transition-all shadow-md hover:shadow-lg ring-2 ring-amber-500/40 cursor-pointer"
+                >
+                  <Printer size={20} className="text-indigo-950 stroke-[2.5]" />
+                  <span>طباعة التقرير الرقمي / PDF</span>
+                </button>
+
+                {!parentMode && (
+                  <button
+                    type="button"
+                    onClick={removeSelectedReport}
+                    className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-black text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                  >
+                    <Trash2 size={17} />
+                    <span>حذف التقرير</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* ══ LUXURY FRAME WRAPPER ══ */}
             <div className="p-3 bg-slate-100 rounded-2xl border-2 border-slate-300 shadow-xl">
