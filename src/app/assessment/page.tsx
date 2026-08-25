@@ -43,6 +43,12 @@ function Dot({ className = 'bg-teal-600' }: { className?: string }) {
   return <span className={`block h-7 w-7 rounded-full ${className}`} />;
 }
 
+export function sanitizeAudioSrc(src?: string): string {
+  if (!src) return '';
+  // Remove any codecs=... parameters from data URL header that prevent HTML5 Audio playback in Chromium/Brave/Firefox
+  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
+}
+
 function calculateAgeFromDob(dob?: string): string {
   if (!dob) return '';
   const parsed = new Date(dob);
@@ -401,6 +407,10 @@ function PlacementAssessmentContent() {
   const [savedStudentId, setSavedStudentId] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingQuestionIdRef = useRef('');
+  const recordingPromptRef = useRef('');
+  const recordingCategoryRef = useRef('');
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const assessment = placementAssessments.find((item) => item.key === gradeKey) ?? placementAssessments[0];
 
@@ -604,14 +614,19 @@ function PlacementAssessmentContent() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
       audioChunksRef.current = [];
-      
+
+      recordingQuestionIdRef.current = current.id;
+      recordingPromptRef.current = current.prompt;
+      recordingCategoryRef.current = current.categoryLabel;
+
       // Determine best supported MIME type on mobile/desktop
       const candidateTypes = [
-        'audio/webm;codecs=opus',
         'audio/webm',
+        'audio/webm;codecs=opus',
         'audio/mp4',
-        'audio/ogg;codecs=opus',
+        'audio/ogg',
         'audio/aac',
       ];
       let selectedMime = '';
@@ -633,32 +648,43 @@ function PlacementAssessmentContent() {
       };
 
       recorder.onstop = () => {
-        const finalType = recorder.mimeType || selectedMime || 'audio/webm';
-        const blob = new Blob(audioChunksRef.current, { type: finalType });
+        const rawType = recorder.mimeType || selectedMime || 'audio/webm';
+        const cleanType = rawType.split(';')[0].trim() || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: cleanType });
         const reader = new FileReader();
+        const qId = recordingQuestionIdRef.current || current.id;
+        const qPrompt = recordingPromptRef.current || current.prompt;
+        const qCategory = recordingCategoryRef.current || current.categoryLabel;
+
         reader.onloadend = () => {
-          const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+          let dataUrl = typeof reader.result === 'string' ? reader.result : '';
           if (dataUrl) {
+            dataUrl = sanitizeAudioSrc(dataUrl);
             setMediaAnswers((currentMedia) => ({
               ...currentMedia,
-              [current.id]: {
+              [qId]: {
                 type: 'audio',
                 dataUrl,
-                label: current.prompt,
-                questionId: current.id,
-                categoryLabel: current.categoryLabel,
+                label: qPrompt,
+                questionId: qId,
+                categoryLabel: qCategory,
                 createdAt: new Date().toISOString(),
               },
             }));
-            setAnswers((currentAnswers) => ({ ...currentAnswers, [current.id]: 'تسجيل صوتي محفوظ للمراجعة' }));
+            setAnswers((currentAnswers) => ({ ...currentAnswers, [qId]: 'تسجيل صوتي محفوظ للمراجعة' }));
           }
         };
         reader.readAsDataURL(blob);
-        stream.getTracks().forEach((track) => track.stop());
+        if (recordingStreamRef.current) {
+          try {
+            recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+          } catch {}
+          recordingStreamRef.current = null;
+        }
         setRecordingQuestionId('');
       };
 
-      // Stream chunks every 500ms so data is flushed continuously
+      // Record chunks every 500ms
       recorder.start(500);
     } catch {
       setRecordingQuestionId('');
@@ -669,13 +695,17 @@ function PlacementAssessmentContent() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       try {
-        mediaRecorderRef.current.requestData();
-      } catch {}
-      mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.error('Error stopping recorder:', err);
+      }
     }
   };
 
   const resetForGrade = (key: PlacementGradeKey) => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      stopRecording();
+    }
     setGradeKey(key);
     setIndex(0);
     setAnswers({});
@@ -1031,7 +1061,7 @@ function PlacementAssessmentContent() {
                     )}
                     {mediaAnswers[current.id]?.type === 'audio' && (
                       <div className="mt-4 rounded-xl bg-slate-50 p-3">
-                        <audio controls className="w-full" src={mediaAnswers[current.id].dataUrl} />
+                        <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(mediaAnswers[current.id].dataUrl)} />
                         <p className="mt-2 text-xs font-bold text-emerald-700">تم حفظ التسجيل في تقرير الطالب.</p>
                       </div>
                     )}
@@ -1090,7 +1120,12 @@ function PlacementAssessmentContent() {
                 <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
                   <button
                     type="button"
-                    onClick={() => setIndex(Math.max(0, index - 1))}
+                    onClick={() => {
+                      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                        stopRecording();
+                      }
+                      setIndex(Math.max(0, index - 1));
+                    }}
                     disabled={index === 0}
                     className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
                   >
@@ -1099,7 +1134,12 @@ function PlacementAssessmentContent() {
                   {index < activeQuestions.length - 1 ? (
                     <button
                       type="button"
-                      onClick={() => setIndex(index + 1)}
+                      onClick={() => {
+                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                          stopRecording();
+                        }
+                        setIndex(index + 1);
+                      }}
                       className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-black text-white hover:bg-blue-800 transition cursor-pointer shadow-sm"
                     >
                       التالي
@@ -1107,7 +1147,12 @@ function PlacementAssessmentContent() {
                   ) : (
                     <button
                       type="button"
-                      onClick={finish}
+                      onClick={() => {
+                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                          stopRecording();
+                        }
+                        finish();
+                      }}
                       className="rounded-lg bg-teal-700 px-6 py-3 text-sm font-black text-white hover:bg-teal-800 transition cursor-pointer shadow-sm"
                     >
                       إنهاء وحفظ التقرير

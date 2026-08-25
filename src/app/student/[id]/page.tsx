@@ -19,6 +19,11 @@ type StudentMediaItem = {
   createdAt?: string;
 };
 
+function sanitizeAudioSrc(src?: string): string {
+  if (!src) return '';
+  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
+}
+
 export default function StudentProfilePage() {
   const params = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('profile');
@@ -228,7 +233,7 @@ export default function StudentProfilePage() {
                           )}
                         </div>
                         <p className="text-sm font-black text-slate-900 mb-3">{item.label}</p>
-                        <audio controls className="w-full" src={item.dataUrl} />
+                        <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(item.dataUrl)} />
                       </div>
                     ))}
                   </div>

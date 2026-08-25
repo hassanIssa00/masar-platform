@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -13,6 +13,11 @@ import { curriculumPrograms } from '@/data/curriculum';
 import { deleteReport, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+
+function sanitizeAudioSrc(src?: string): string {
+  if (!src) return '';
+  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
+}
 
 const filters = ['all', 'إجابات الاستبيان', 'إجابات اختبار الطالب', 'التقرير التحليلي', 'تحليل اختبار الطالب', 'اختبار قبول', 'القراءة', 'الرياضيات', 'التخاطب', 'طيف التوحد'];
 const REPORTS_SYNC_KEYS = ['students', 'reports', 'surveys'] as const;
@@ -400,6 +405,36 @@ function ReportsContent() {
                           <p className="mt-1 text-sm font-black leading-7 text-slate-950">{answer.answer}</p>
                         </article>
                       ))}
+                    </div>
+                  </ReportSection>
+                )}
+
+                {selected.media && Object.keys(selected.media).length > 0 && (
+                  <ReportSection number="7" title={`التسجيلات الصوتية ومرفقات الطالب (${Object.keys(selected.media).length})`}>
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {Object.entries(selected.media).map(([key, val]) => (
+                          <div key={key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">
+                                {val.type === 'audio' ? '🎙️ تسجيل صوتي' : '🎨 رسم / توصيل'}
+                              </span>
+                              {val.categoryLabel && (
+                                <span className="text-xs font-bold text-slate-400">
+                                  {val.categoryLabel}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-black text-slate-950 mb-3">{val.label}</p>
+                            {val.type === 'audio' ? (
+                              <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(val.dataUrl)} />
+                            ) : (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={val.dataUrl} alt={val.label} className="h-44 w-full rounded-lg object-contain bg-slate-50 border border-slate-200" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </ReportSection>
                 )}
