@@ -733,6 +733,35 @@ function PlacementAssessmentContent() {
     }
   };
 
+  // Stops the recorder and returns a Promise that resolves AFTER onstop+FileReader are done.
+  // This guarantees the audio is saved in mediaAnswers before we navigate away.
+  const stopRecordingAndWait = (): Promise<void> => {
+    const rec = mediaRecorderRef.current;
+    if (!rec || rec.state !== 'recording') return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const originalOnStop = rec.onstop;
+      rec.onstop = (event) => {
+        if (originalOnStop) (originalOnStop as EventListener).call(rec, event);
+        // Wait a tick so the FileReader inside the original handler has time to start,
+        // then poll until recordingQuestionId is cleared (set to '' after FileReader finishes).
+        const poll = () => {
+          if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+            // Give FileReader an extra 200ms to complete its async readAsDataURL
+            setTimeout(resolve, 200);
+          } else {
+            setTimeout(poll, 50);
+          }
+        };
+        setTimeout(poll, 50);
+      };
+      try {
+        rec.stop();
+      } catch {
+        resolve();
+      }
+    });
+  };
+
   const resetForGrade = (key: PlacementGradeKey) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       stopRecording();
@@ -1165,10 +1194,8 @@ function PlacementAssessmentContent() {
                 <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                        stopRecording();
-                      }
+                    onClick={async () => {
+                      await stopRecordingAndWait();
                       if (selectedDraft && current) {
                         setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
                       }
@@ -1182,10 +1209,8 @@ function PlacementAssessmentContent() {
                   {index < activeQuestions.length - 1 ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                          stopRecording();
-                        }
+                      onClick={async () => {
+                        await stopRecordingAndWait();
                         if (selectedDraft && current) {
                           setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
                         }
@@ -1198,10 +1223,8 @@ function PlacementAssessmentContent() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                          stopRecording();
-                        }
+                      onClick={async () => {
+                        await stopRecordingAndWait();
                         if (selectedDraft && current) {
                           setAnswers((prev) => ({ ...prev, [current.id]: selectedDraft }));
                         }
