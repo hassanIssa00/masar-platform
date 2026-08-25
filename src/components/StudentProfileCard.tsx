@@ -18,10 +18,6 @@ interface StudentProfileCardProps {
   student: StudentProfileData;
   /** Custom greeting above student name, e.g. "مرحباً بك يا بطل 👋" */
   greeting?: string;
-  /** Optional star count */
-  stars?: number;
-  /** Optional streak days */
-  streak?: number;
   /** Show parent info section (default: true) */
   showParent?: boolean;
   /** Variant: 'doctor' = dark sidebar, 'parent' = warm card, 'classroom' = teal theme, 'student' = emerald student theme */
@@ -32,8 +28,6 @@ interface StudentProfileCardProps {
 export default function StudentProfileCard({
   student,
   greeting,
-  stars,
-  streak,
   showParent = true,
   variant = 'doctor',
   className = '',
@@ -76,7 +70,7 @@ export default function StudentProfileCard({
           <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-white shadow" />
         </div>
 
-        {/* Name & Grade & Badges */}
+        {/* Name & Grade */}
         <div className="min-w-0 flex-1">
           {greeting && (
             <p className="text-xs font-black text-emerald-200 mb-0.5 flex items-center gap-1">
@@ -85,24 +79,14 @@ export default function StudentProfileCard({
           )}
           <h2 className="text-xl font-black text-white leading-tight">{student.fullName}</h2>
           
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            {student.grade && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-black text-white">
-                <GraduationCap size={12} />
+          {student.grade && (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-[11px] font-black text-white">
+                <GraduationCap size={13} />
                 {student.grade}
               </span>
-            )}
-            {typeof stars === 'number' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 text-amber-950 px-2.5 py-0.5 text-[11px] font-black shadow-xs">
-                ⭐ {stars} نجمة
-              </span>
-            )}
-            {typeof streak === 'number' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/90 text-white px-2.5 py-0.5 text-[11px] font-black shadow-xs">
-                🔥 {streak} أيام حماس
-              </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

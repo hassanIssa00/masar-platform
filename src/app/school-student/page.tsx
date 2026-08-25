@@ -31,7 +31,7 @@ import {
   GraduationCap,
   Calendar
 } from 'lucide-react';
-import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { DAY_NAMES, SUBJECT_COLORS, DEFAULT_SCHEDULE, Period } from '@/data/ikhlasSchedule';
 import { clearSession, getSession, getStudents, getIkhlasPosts, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
@@ -53,8 +53,6 @@ export default function StudentDashboard() {
   const [studentName, setStudentName] = useState('طالب');
   const [studentPhoto, setStudentPhoto] = useState<string>('');
   const [studentRecord, setStudentRecord] = useState<any>(null);
-  const [studentStars] = useState(12);
-  const [studentStreak] = useState(5);
 
   const [selectedHw, setSelectedHw] = useState<any | null>(null);
 
@@ -223,8 +221,6 @@ export default function StudentDashboard() {
             notes: studentRecord.notes,
           }}
           greeting="مرحباً بك يا بطل 👋"
-          stars={studentStars}
-          streak={studentStreak}
           variant="student"
           showParent={true}
         />
@@ -237,7 +233,7 @@ export default function StudentDashboard() {
             <BookOpen size={18} className="text-teal-600" />
             <h3 className="font-black text-sm text-slate-900">الواجبات المطلوبة منك 📋</h3>
           </div>
-          <button onClick={() => setActiveTab('homework')} className="text-xs font-black text-teal-700 hover:underline">
+          <button onClick={() => setActiveTab('homework')} className="text-xs font-black text-teal-700 hover:underline cursor-pointer">
             عرض الكل ({homeworks.length})
           </button>
         </div>
@@ -264,29 +260,43 @@ export default function StudentDashboard() {
       </div>
 
       {/* Today Schedule Summary */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-emerald-600" />
-            <h3 className="font-black text-sm text-slate-900">جدول الحصص اليوم 🕒</h3>
+      {(() => {
+        const jsDay = new Date().getDay();
+        const isSchoolDay = jsDay >= 0 && jsDay <= 4;
+        const todayPeriods = DEFAULT_SCHEDULE.filter((p) => p.dayOfWeek === jsDay).slice(0, 2);
+
+        return (
+          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Clock size={18} className="text-emerald-600" />
+                <h3 className="font-black text-sm text-slate-900">
+                  {isSchoolDay ? `جدول حصص اليوم (${DAY_NAMES[jsDay]}) 🕒` : 'جدول الحصص المدرسية 🕒'}
+                </h3>
+              </div>
+              <button onClick={() => setActiveTab('schedule')} className="text-xs font-black text-emerald-700 hover:underline cursor-pointer">
+                الجدول الكامل
+              </button>
+            </div>
+            {isSchoolDay && todayPeriods.length >= 2 ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                  <p className="text-[10px] font-black text-emerald-800">الحصة الأولى ({todayPeriods[0].startTime})</p>
+                  <p className="text-xs font-black text-slate-900 mt-0.5">{todayPeriods[0].subjectName}</p>
+                </div>
+                <div className="p-3 bg-teal-50 rounded-2xl border border-teal-200">
+                  <p className="text-[10px] font-black text-teal-800">الحصة الثانية ({todayPeriods[1].startTime})</p>
+                  <p className="text-xs font-black text-slate-900 mt-0.5">{todayPeriods[1].subjectName}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 rounded-2xl text-center text-xs font-bold text-slate-500">
+                🌴 اليوم إجازة نهاية الأسبوع — يبدأ اليوم الدراسي يوم الأحد القادم.
+              </div>
+            )}
           </div>
-          <button onClick={() => setActiveTab('schedule')} className="text-xs font-black text-emerald-700 hover:underline">
-            الجدول الكامل
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-            <p className="text-[10px] font-black text-emerald-800">الحصة الأولى</p>
-            <p className="text-xs font-black text-slate-900 mt-0.5">لغتي الجميلة 📖</p>
-            <p className="text-[10px] font-bold text-slate-500">07:30 - 08:15</p>
-          </div>
-          <div className="p-3 bg-teal-50 rounded-2xl border border-teal-200">
-            <p className="text-[10px] font-black text-teal-800">الحصة الثانية</p>
-            <p className="text-xs font-black text-slate-900 mt-0.5">الرياضيات 🔢</p>
-            <p className="text-[10px] font-bold text-slate-500">08:15 - 09:00</p>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 
@@ -348,50 +358,39 @@ export default function StudentDashboard() {
   );
 
   const renderScheduleTab = () => {
-    const mockSchedule = [
-      { id: 1, period: 'الحصة الأولى', time: '07:30 - 08:15', subject: 'قرآن', active: false },
-      { id: 2, period: 'الحصة الثانية', time: '08:15 - 09:00', subject: 'لغتي', active: true },
-      { id: 3, period: 'الحصة الثالثة', time: '09:00 - 09:45', subject: 'رياضيات', active: false },
-      { id: 4, period: 'فسحة', time: '09:45 - 10:15', subject: 'راحة', active: false },
-      { id: 5, period: 'الحصة الرابعة', time: '10:15 - 11:00', subject: 'علوم', active: false },
-      { id: 6, period: 'الحصة الخامسة', time: '11:00 - 11:45', subject: 'دراسات إسلامية', active: false },
-    ];
+    const jsDay = new Date().getDay(); // 0=Sunday... 4=Thursday
+    const activeDayIndex = (jsDay >= 0 && jsDay <= 4) ? jsDay : 0;
+    const dayPeriods = DEFAULT_SCHEDULE.filter((p) => p.dayOfWeek === activeDayIndex);
 
     return (
-      <div className="bg-white rounded-3xl shadow-sm p-6 relative overflow-hidden border border-slate-200">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-black text-slate-900 text-sm">جدول الحصص الأسبوعي — فصل د. إسماعيل</h3>
-            <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
-              اليوم: {new Date().toLocaleDateString('ar-SA', { weekday: 'long' })}
-            </span>
+      <div className="bg-white rounded-3xl shadow-sm p-6 relative overflow-hidden border border-slate-200 space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="font-black text-slate-900 text-sm">جدول الحصص المعتمد — فصل د. إسماعيل عيسى</h3>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">مدرج حسب الخطة الدراسية المعتمدة</p>
           </div>
+          <span className="text-xs font-black text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+            يوم {DAY_NAMES[activeDayIndex]}
+          </span>
+        </div>
 
-          <div className="space-y-2.5">
-            {mockSchedule.map((item) => (
-              <div key={item.id} className={`p-4 rounded-2xl border flex items-center justify-between transition ${
-                item.active ? 'border-emerald-500 bg-emerald-50/80 shadow-xs' : 'border-slate-100 bg-slate-50/70'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
-                    item.active ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {item.id}
-                  </div>
-                  <div>
-                    <h4 className="font-black text-xs text-slate-900">{item.subject}</h4>
-                    <p className="text-[10px] font-bold text-slate-500">{item.period}</p>
-                  </div>
+        <div className="space-y-2.5">
+          {dayPeriods.map((item) => (
+            <div key={`${item.dayOfWeek}-${item.periodNumber}`} className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 flex items-center justify-between transition">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                  {item.periodNumber}
                 </div>
-                <div className="text-left">
-                  <span className="text-[11px] font-mono font-bold text-slate-600">{item.time}</span>
-                  {item.active && (
-                    <span className="block text-[9px] font-black text-emerald-700">الحصة الحالية 🟢</span>
-                  )}
+                <div>
+                  <h4 className="font-black text-xs text-slate-900">{item.subjectName}</h4>
+                  <p className="text-[10px] font-bold text-slate-500">الحصة {item.periodNumber}</p>
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="text-left">
+                <span className="text-[11px] font-mono font-black text-slate-700">{item.startTime} - {item.endTime}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
