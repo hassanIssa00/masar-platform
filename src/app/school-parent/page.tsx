@@ -10,7 +10,9 @@ import {
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import Image from 'next/image';
 import { clearSession, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
+import StudentProfileCard from '@/components/StudentProfileCard';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -218,6 +220,24 @@ export default function SchoolParentPage() {
                 <ChevronLeft size={14} />
               </Link>
             </div>
+
+            {/* Child Profile Card */}
+            {studentRecord && (
+              <StudentProfileCard
+                student={{
+                  fullName: studentRecord.fullName,
+                  grade: studentRecord.grade,
+                  photoUrl: studentRecord.photoUrl,
+                  parentName: studentRecord.parentName,
+                  parentPhone: studentRecord.parentPhone,
+                  nationalId: studentRecord.nationalId,
+                  dateOfBirth: studentRecord.dateOfBirth,
+                  notes: studentRecord.notes,
+                }}
+                variant="parent"
+                showParent={false}
+              />
+            )}
 
             {/* تنبيه تأخر استلام الطفل العاجل */}
             {dashboard?.todayLog?.lateAlertSent && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import {
   UsersRound, Sparkles, BookOpenCheck, Award, FileText,
   UserRound, Plus, Trash2, CheckSquare, Square, CheckCircle2,
@@ -13,6 +14,7 @@ import {
   ClassStudentRecord
 } from '@/lib/classDb';
 import CertificateModal from './CertificateModal';
+import StudentProfileCard from './StudentProfileCard';
 import StudentProfileModal from './StudentProfileModal';
 
 export default function ClassroomStudentsTab() {
@@ -189,11 +191,19 @@ export default function ClassroomStudentsTab() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`grid h-10 w-10 place-items-center rounded-xl font-black text-sm ${
-                            active ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                          className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-xl ${
+                            active ? 'ring-2 ring-teal-500 ring-offset-1' : ''
                           }`}
                         >
-                          {s.fullName.charAt(0)}
+                          {s.photoUrl ? (
+                            <Image src={s.photoUrl} alt={s.fullName} fill unoptimized className="object-cover" />
+                          ) : (
+                            <div className={`flex h-full w-full items-center justify-center font-black text-sm ${
+                              active ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {s.fullName.charAt(0)}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <h3 className="text-sm font-black text-slate-900">{s.fullName}</h3>
@@ -220,24 +230,30 @@ export default function ClassroomStudentsTab() {
         {/* Right Column: Selected Student Control Dashboard */}
         <div className="lg:col-span-8 space-y-6">
           {selectedStudent ? (
+            <div className="space-y-6">
+              {/* Student Profile Card */}
+              <StudentProfileCard
+                student={{
+                  fullName: selectedStudent.fullName,
+                  grade: selectedStudent.grade,
+                  photoUrl: selectedStudent.photoUrl,
+                  parentName: selectedStudent.parentName,
+                  parentPhone: selectedStudent.parentPhone,
+                  nationalId: selectedStudent.nationalId,
+                  dateOfBirth: selectedStudent.dateOfBirth,
+                  notes: selectedStudent.notes,
+                }}
+                variant="classroom"
+              />
+
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-              {/* Selected Student Identity Bar */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
-                <div className="flex items-center gap-4">
-                  <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white font-black text-xl shadow-lg shadow-teal-600/20">
-                    {selectedStudent.fullName.charAt(0)}
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                      {selectedStudent.fullName}
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
-                        <CheckCircle2 size={12} /> حساب نشط بالفصل
-                      </span>
-                    </h2>
-                    <p className="text-xs font-bold text-slate-500 mt-0.5">
-                      {selectedStudent.grade} · ولي الأمر: {selectedStudent.parentName || 'مسجل'} ({selectedStudent.parentPhone || '—'})
-                    </p>
-                  </div>
+              {/* Selected Student Identity Bar — action buttons only */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
+                    <CheckCircle2 size={12} /> حساب نشط بالفصل
+                  </span>
+                </div>
                 </div>
 
                 <div className="flex items-center gap-2">

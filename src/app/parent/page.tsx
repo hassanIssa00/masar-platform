@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ import {
   saveMessage, StudentRecord, clearSession
 } from '@/lib/localDb';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
+import StudentProfileCard from '@/components/StudentProfileCard';
 
 export default function ParentDashboard() {
   const router = useRouter();
@@ -211,23 +212,24 @@ export default function ParentDashboard() {
                     <button
                       key={student.id}
                       onClick={() => setSelectedStudentId(student.id)}
-                      className={`flex items-center gap-3 rounded-xl border p-3.5 text-right transition cursor-pointer ${
-                        isSelected
-                          ? 'border-teal-700 bg-teal-50 shadow-2xs'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      className={`w-full text-right rounded-xl border transition cursor-pointer ${
+                        isSelected ? 'border-teal-700 shadow-sm' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
-                      <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-teal-100">
-                        {student.photoUrl ? (
-                          <Image src={student.photoUrl} alt={student.fullName} fill unoptimized className="object-cover" />
-                        ) : (
-                          <span className="grid h-full w-full place-items-center text-teal-800 font-black text-sm">👦</span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-black text-slate-950 text-sm truncate">{student.fullName}</p>
-                        <p className="mt-0.5 text-xs font-bold text-slate-500 truncate">{student.grade}</p>
-                      </div>
+                      <StudentProfileCard
+                        student={{
+                          fullName: student.fullName,
+                          grade: student.grade,
+                          photoUrl: student.photoUrl,
+                          parentName: student.parentName,
+                          parentPhone: student.parentPhone,
+                          nationalId: student.nationalId,
+                          dateOfBirth: student.dateOfBirth,
+                        }}
+                        variant="parent"
+                        showParent={false}
+                        className={`border-0 shadow-none rounded-xl ${isSelected ? 'ring-2 ring-teal-700' : ''}`}
+                      />
                     </button>
                   );
                 })}

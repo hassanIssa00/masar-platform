@@ -13,6 +13,7 @@ import { deleteStudent, getAccounts, getReports, getSession, getStudents, hydrat
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
+import StudentProfileCard from '@/components/StudentProfileCard';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
 import { Award, Mic } from 'lucide-react';
 
