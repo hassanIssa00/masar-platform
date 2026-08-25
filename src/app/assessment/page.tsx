@@ -43,6 +43,16 @@ function Dot({ className = 'bg-teal-600' }: { className?: string }) {
   return <span className={`block h-7 w-7 rounded-full ${className}`} />;
 }
 
+function calculateAgeFromDob(dob?: string): string {
+  if (!dob) return '';
+  const parsed = new Date(dob);
+  if (isNaN(parsed.getTime())) return '';
+  const diffMs = Date.now() - parsed.getTime();
+  if (diffMs <= 0) return '';
+  const ageYears = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
+  return ageYears > 0 ? String(ageYears) : '';
+}
+
 function PlacementVisual({ visual }: { visual: string }) {
   if (!visual.startsWith('draw:')) {
     return <span>{visual}</span>;
@@ -393,11 +403,17 @@ function PlacementAssessmentContent() {
   const audioChunksRef = useRef<Blob[]>([]);
 
   const assessment = placementAssessments.find((item) => item.key === gradeKey) ?? placementAssessments[0];
-  const current = assessment.questions[index];
-  const currentResponseType = current.responseType ?? (current.options.length ? 'choice' : 'text');
-  const selected = answers[current.id];
-  const isManualAssessment = assessment.questions.some((question) => ['oral', 'drawing', 'text'].includes(question.responseType ?? ''));
-  const responses: ResponseRecord[] = assessment.questions.map((question) => {
+
+  // Filter out committee observation items so student only takes appropriate tests
+  const activeQuestions = useMemo(() => {
+    return assessment.questions.filter((q) => q.countsForScore !== false && !q.prompt.startsWith('تقييم اللجنة'));
+  }, [assessment.questions]);
+
+  const current = activeQuestions[index] ?? activeQuestions[0];
+  const currentResponseType = current ? (current.responseType ?? (current.options.length ? 'choice' : 'text')) : 'choice';
+  const selected = current ? answers[current.id] : undefined;
+  const isManualAssessment = activeQuestions.some((question) => ['oral', 'drawing', 'text'].includes(question.responseType ?? ''));
+  const responses: ResponseRecord[] = activeQuestions.map((question) => {
     const answer = answers[question.id] ?? '';
     const hasMedia = Boolean(mediaAnswers[question.id]?.dataUrl);
     const answered = Boolean(answer.trim()) || hasMedia;
@@ -436,16 +452,22 @@ function PlacementAssessmentContent() {
   const earnedScore = correctedResponses.reduce((total, response) => total + (response.scoreValue ?? 0), 0);
   const correctCount = correctedResponses.filter((response) => response.scoreValue !== null && response.scoreValue > 0).length;
   const score = correctedMaxScore ? Math.round((earnedScore / correctedMaxScore) * 100) : 0;
-  const progress = Math.round((answeredCount / assessment.questions.length) * 100);
+  const progress = Math.round((answeredCount / activeQuestions.length) * 100);
   const decision = getDecisionFromScore(score);
 
   useEffect(() => {
     const studentId = searchParams.get('student');
     const timeout = window.setTimeout(() => {
-      const existingStudent = studentId ? getStudents().find((item) => item.id === studentId) : null;
+      const all = getStudents();
+      setAllStudents(all);
+
+      const existingStudent = studentId ? all.find((item) => item.id === studentId) : null;
       if (existingStudent) {
         setStudent(existingStudent);
         setStudentName(existingStudent.fullName);
+        if (existingStudent.dateOfBirth) {
+          setStudentAge(calculateAgeFromDob(existingStudent.dateOfBirth));
+        }
         setGradeKey(getGradeKeyFromStudentGrade(existingStudent.grade));
         return;
       }
@@ -471,10 +493,8 @@ function PlacementAssessmentContent() {
       if (next) {
         setGradeKey(next);
       }
-
-      // Load all registered students for the picker
-      setAllStudents(getStudents());
     }, 0);
+    return () => window.clearTimeout(timeout);
   }, [searchParams, router]);
 
   const isStudentFlow = Boolean(studentIdParam);
@@ -585,16 +605,36 @@ function PlacementAssessmentContent() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+      
+      // Determine best supported MIME type on mobile/desktop
+      const candidateTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/aac',
+      ];
+      let selectedMime = '';
+      for (const t of candidateTypes) {
+        if (MediaRecorder.isTypeSupported(t)) {
+          selectedMime = t;
+          break;
+        }
+      }
+
+      const recorder = selectedMime ? new MediaRecorder(stream, { mimeType: selectedMime }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       setRecordingQuestionId(current.id);
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size) audioChunksRef.current.push(event.data);
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        const finalType = recorder.mimeType || selectedMime || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: finalType });
         const reader = new FileReader();
         reader.onloadend = () => {
           const dataUrl = typeof reader.result === 'string' ? reader.result : '';
@@ -618,7 +658,8 @@ function PlacementAssessmentContent() {
         setRecordingQuestionId('');
       };
 
-      recorder.start();
+      // Stream chunks every 500ms so data is flushed continuously
+      recorder.start(500);
     } catch {
       setRecordingQuestionId('');
       setRecordingError('لم يتم السماح بالمايكروفون. اسمح للتسجيل من المتصفح ثم حاول مرة أخرى.');
@@ -626,7 +667,10 @@ function PlacementAssessmentContent() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current?.state === 'recording') {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch {}
       mediaRecorderRef.current.stop();
     }
   };
@@ -673,17 +717,19 @@ function PlacementAssessmentContent() {
         media: studentMedia,
       });
 
-    saveReport({
+    const rep = saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade: savedStudent.grade || assessment.shortTitle,
       program: 'إجابات اختبار الطالب التفصيلية',
       programColor: '#334155',
-      score: Math.round((answeredCount / assessment.questions.length) * 100),
+      score: Math.round((answeredCount / activeQuestions.length) * 100),
       status: 'pending',
       type: 'student-assessment-answers',
-      summary: 'تقرير إجابات تفصيلي يحتوي على إجابات الطالب في اختبار تحديد المستوى المباشر، مخصص لمراجعة د. إسماعيل قبل اعتماد المسار.',
+      media: mediaAnswers,
+      summary: 'تقرير إجابات تفصيلي يحتوي على إجابات الطالب والتسجيلات الصوتية في اختبار تحديد المستوى المباشر، مخصص لمراجعة د. إسماعيل.',
       recommendations: [
+        'الاستماع للتسجيلات الصوتية ومراجعة الرسومات المرفقة من الطالب.',
         'مراجعة الأسئلة غير الصحيحة بجانب إجابات ولي الأمر في الاستبيان.',
         'ملاحظة سرعة الاستجابة واحتياج الطالب للصوت أو الصورة قبل اعتماد المسار.',
       ],
@@ -701,7 +747,6 @@ function PlacementAssessmentContent() {
         ].filter(Boolean).join(' | '),
       })),
       domains,
-      media: mediaAnswers,
     });
 
     const report = saveReport({
@@ -799,6 +844,9 @@ function PlacementAssessmentContent() {
                           if (s) {
                             setStudent(s);
                             setStudentName(s.fullName);
+                            if (s.dateOfBirth) {
+                              setStudentAge(calculateAgeFromDob(s.dateOfBirth));
+                            }
                             const gk = getGradeKeyFromStudentGrade(s.grade);
                             resetForGrade(gk);
                           }
@@ -874,7 +922,7 @@ function PlacementAssessmentContent() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-sm font-black text-blue-700">{current.categoryLabel} · سؤال {index + 1} من {assessment.questions.length}</p>
+                      <p className="text-sm font-black text-blue-700">{current.categoryLabel} · سؤال {index + 1} من {activeQuestions.length}</p>
                       <h2 className="mt-3 text-2xl font-black leading-10 text-slate-950">{current.prompt}</h2>
                       <p className="mt-2 text-sm font-bold text-slate-500">المهارة: {current.skill}</p>
                     </div>
@@ -1039,15 +1087,6 @@ function PlacementAssessmentContent() {
                   </div>
                 ) : null}
 
-                {selected && (
-                  <div className="mt-5 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-2xs">
-                    <span className="flex items-center gap-2 text-sm font-black text-emerald-900">
-                      <CheckCircle2 size={18} className="text-emerald-600" />
-                      تم تسجيل الإجابة بنجاح
-                    </span>
-                  </div>
-                )}
-
                 <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
                   <button
                     type="button"
@@ -1057,7 +1096,7 @@ function PlacementAssessmentContent() {
                   >
                     السابق
                   </button>
-                  {index < assessment.questions.length - 1 ? (
+                  {index < activeQuestions.length - 1 ? (
                     <button
                       type="button"
                       onClick={() => setIndex(index + 1)}
@@ -1114,7 +1153,7 @@ function PlacementAssessmentContent() {
               <div className="mt-5 space-y-4">
                 <div className="rounded-lg bg-slate-950 p-5 text-center text-white">
                   <p className="text-4xl font-black">{answeredCount}</p>
-                  <p className="mt-2 text-sm font-bold text-white/70">من {assessment.questions.length} سؤال</p>
+                  <p className="mt-2 text-sm font-bold text-white/70">من {activeQuestions.length} سؤال</p>
                 </div>
                 <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
                   <p className="text-sm font-black leading-7 text-emerald-950">

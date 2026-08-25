@@ -82,11 +82,6 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireRole(req, ['doctor', 'specialist', 'teacher', 'parent', 'student']);
-  if (!auth.authorized || !auth.user) {
-    return NextResponse.json({ ok: false, error: 'غير مصرح بحفظ بيانات المنصة.' }, { status: 401 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const collectionName = typeof body.collectionName === 'string' ? body.collectionName.trim() : '';
   const docId = cleanDocId(body.docId);
@@ -96,7 +91,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'طلب حفظ غير صالح.' }, { status: 400 });
   }
 
-  if (!canMutate(auth.user.role, collectionName, 'write')) {
+  const auth = await requireRole(req, ['doctor', 'specialist', 'teacher', 'parent', 'student']);
+  
+  // Public collections allowed for guest / unregistered student assessments and surveys
+  const PUBLIC_SUBMISSION_COLLECTIONS = new Set([
+    'students',
+    'reports',
+    'surveys',
+    'waitlist',
+    'quiz_submissions',
+    'simple_spelling_drawings',
+  ]);
+
+  const isPublicAllowed = !auth.authorized && PUBLIC_SUBMISSION_COLLECTIONS.has(collectionName);
+
+  if (!auth.authorized && !isPublicAllowed) {
+    return NextResponse.json({ ok: false, error: 'غير مصرح بحفظ بيانات المنصة.' }, { status: 401 });
+  }
+
+  if (auth.authorized && auth.user && !canMutate(auth.user.role, collectionName, 'write')) {
     return NextResponse.json({ ok: false, error: 'غير مصرح بتعديل هذا النوع من البيانات.' }, { status: 403 });
   }
 

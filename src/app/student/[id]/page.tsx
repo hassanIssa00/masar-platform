@@ -8,6 +8,7 @@ import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
 import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 
 type StudentMediaItem = {
   id: string;
@@ -32,6 +33,9 @@ export default function StudentProfilePage() {
       if (cancelled) return;
       const role = session?.role || 'parent';
       setUserRole(role);
+
+      await pullServerSnapshotToLocal(['students', 'reports']);
+      if (cancelled) return;
 
       const found = getStudents().find((item) => item.id === params.id) ?? null;
       setStudent(found);

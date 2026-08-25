@@ -12,7 +12,7 @@ import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSy
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
-import { Award } from 'lucide-react';
+import { Award, Mic } from 'lucide-react';
 
 const STUDENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'studentNotes'] as const;
 
@@ -342,7 +342,15 @@ export default function StudentsControlPage() {
                             <p className="text-xs font-black text-teal-700">ملف الطالب الحسابي الكامل</p>
                             <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedStudent.fullName}</h2>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link
+                              href={`/student/${selectedStudent.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-300 bg-teal-50 px-3.5 py-2 text-xs font-black text-teal-900 hover:bg-teal-100 transition shadow-sm"
+                            >
+                              <Mic size={16} className="text-teal-700" />
+                              <span>التسجيلات وملف الطالب</span>
+                            </Link>
+
                             <button
                               type="button"
                               onClick={() => setShowCertData({
