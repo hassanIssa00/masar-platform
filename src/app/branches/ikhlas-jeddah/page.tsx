@@ -611,9 +611,9 @@ export default function IkhlasJeddahPage() {
       icon: BarChart3,
       items: [
         { key: 'overview', label: 'نظرة عامة', icon: BarChart3 },
-        { key: 'ai-chat', label: 'مساعد المعلم الذكي', icon: Sparkles, badge: 'AI ⚡', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
-        { key: 'live', label: 'البث المباشر', icon: Radio, badge: 'مباشر', badgeColor: 'bg-rose-500 text-white font-black animate-pulse' },
-        { key: 'reports', label: 'التقارير وملفات الطلاب', icon: FileText },
+        { key: 'ai-chat', label: 'مساعد المعلم AI', icon: Sparkles, badge: '⚡ AI', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
+        { key: 'live', label: 'البث المباشر', icon: Radio, badge: '🔴 مباشر', badgeColor: 'bg-rose-500 text-white font-black' },
+        { key: 'reports', label: 'التقارير وسجلات الطلاب', icon: FileText },
       ],
     },
     {
@@ -621,8 +621,8 @@ export default function IkhlasJeddahPage() {
       title: 'المناهج والواجبات',
       icon: BookOpen,
       items: [
-        { key: 'curriculum', label: 'المناهج التعليمية التفاعلية', icon: BookOpen, badge: '7 كتب 📚', badgeColor: 'bg-amber-400 text-slate-950 font-black shadow-xs' },
-        { key: 'correction', label: 'تصحيح الواجبات الذكي', icon: CheckCircle },
+        { key: 'curriculum', label: 'المناهج التعليمية', icon: BookOpen, badge: '7 كتب 📚', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
+        { key: 'correction', label: 'تصحيح الواجبات', icon: CheckCircle },
         { key: 'homework', label: 'الواجبات المدرسية', icon: ClipboardList, badge: homeworkList.filter(h => h.status === 'OPEN').length || undefined, badgeColor: 'bg-rose-500 text-white font-black' },
         { key: 'quizzes', label: 'الكويزات والاختبارات', icon: HelpCircle },
       ],
@@ -632,7 +632,7 @@ export default function IkhlasJeddahPage() {
       title: 'الطلاب والأسر',
       icon: Users,
       items: [
-        { key: 'students', label: 'إدارة طلاب الفصل', icon: Users, badge: classStudents.length || undefined, badgeColor: 'bg-amber-400 text-slate-950 font-black' },
+        { key: 'students', label: 'إدارة الطلاب', icon: Users, badge: classStudents.length || undefined, badgeColor: 'bg-amber-400 text-slate-950 font-black' },
         { key: 'parents-chat', label: 'شات أولياء الأمور', icon: MessageSquare },
         { key: 'parents', label: 'أولياء الأمور', icon: UserCheck },
         { key: 'certificates', label: 'شهادات التفوق', icon: Award, badge: '🏆', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
@@ -643,11 +643,11 @@ export default function IkhlasJeddahPage() {
       title: 'الحصص والجدول',
       icon: Clock,
       items: [
-        { key: 'schedule', label: 'جدول الحصص اليومي', icon: Clock },
-        { key: 'smart-schedule', label: 'الجدول الذكي وإشعارات الأولياء', icon: Bell },
+        { key: 'schedule', label: 'جدول الحصص', icon: Clock },
+        { key: 'smart-schedule', label: 'الجدول الذكي', icon: Bell },
         { key: 'attendance', label: 'الحضور والغياب', icon: Users },
         { key: 'meetings', label: 'الاجتماعات المرئية', icon: Video },
-        { key: 'photos', label: 'ألبوم صور الفصل', icon: Camera },
+        { key: 'photos', label: 'أرشيف الصور والفعاليات', icon: Camera },
       ],
     },
   ];
@@ -715,92 +715,162 @@ export default function IkhlasJeddahPage() {
       <div className="flex-1 flex w-full relative min-h-[calc(100vh-61px)]">
 
         {/* ── RIGHT SIDEBAR MENU BAR (FLUSH TO VERY RIGHT EDGE) ── */}
-        <aside className={`bg-white border-l border-slate-200 shadow-sm transition-all duration-300 ease-in-out shrink-0 z-30 ${
-          isSidebarOpen ? 'w-56 md:w-64' : 'w-16'
-        }`}>
-          <div className="sticky top-16 p-3 space-y-2">
+        <aside
+          className={`
+            bg-white border-l border-slate-200 shadow-lg text-slate-700 font-sans select-none
+            transition-all duration-300 ease-in-out shrink-0 z-30
+            sticky top-[61px] h-[calc(100vh-61px)] overflow-y-auto flex flex-col
+            [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-emerald-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent
+            ${isSidebarOpen ? 'w-76 xl:w-80' : 'w-20'}
+          `}
+        >
+          {/* Top Brand / Toggle Card */}
+          <div className="p-3">
+            {isSidebarOpen ? (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-700 p-3.5 border border-emerald-500/60 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 border border-white/30 text-white shadow-inner">
+                      <Sparkles className="h-5 w-5 text-amber-300" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-black text-white tracking-wide leading-tight">فصل د. إسماعيل</h2>
+                      <p className="text-[11px] font-bold text-emerald-100 leading-tight mt-0.5">اللوحة التعليمية والإدارية</p>
+                    </div>
+                  </div>
 
-            {/* Sidebar Title / Toggle Header */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 px-2 pt-1">
-              {isSidebarOpen && (
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-                  أقسام اللوحة
-                </span>
-              )}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition mr-auto"
-                title={isSidebarOpen ? 'طَي المنيو' : 'توسيع المنيو'}
-              >
-                {isSidebarOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
-            </div>
+                  <button
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="grid h-8 w-8 place-items-center rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 transition cursor-pointer"
+                    title="طي القائمة"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-1">
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-400 transition shadow-md cursor-pointer"
+                  title="توسيع القائمة"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
 
-            {/* Categorized Menu Groups */}
-            <nav className="space-y-3">
-              {navCategories.map((cat) => {
-                const CatIcon = cat.icon;
-                const isCatOpen = openCategories[cat.id] ?? true;
-                const hasActiveChild = cat.items.some((item) => item.key === activeTab);
+          {/* Links Navigation List */}
+          <div className="flex-1 overflow-y-auto px-3 py-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-emerald-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+            {navCategories.map((group) => {
+              const GroupIcon = group.icon;
+              const groupActive = group.items.some((item) => item.key === activeTab);
+              const isCatOpen = !isSidebarOpen ? false : Boolean(openCategories[group.id]);
 
-                return (
-                  <div key={cat.id} className="space-y-1">
-                    {/* Category Accordion Header */}
-                    {isSidebarOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleCategory(cat.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-black transition ${
-                          hasActiveChild ? 'text-emerald-800 bg-emerald-50/70' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <CatIcon className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{cat.title}</span>
-                        </div>
-                        {isCatOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
-                      </button>
-                    ) : (
-                      <div className="h-px bg-slate-200 my-2 mx-1" />
-                    )}
+              return (
+                <section
+                  key={group.id}
+                  className={`rounded-2xl transition-all duration-200 border ${
+                    groupActive
+                      ? 'border-emerald-300 bg-emerald-50/70 shadow-sm'
+                      : 'border-slate-200 bg-slate-50/80 hover:border-emerald-200 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  {/* Group Header Accordion Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isSidebarOpen) return;
+                      toggleCategory(group.id);
+                    }}
+                    title={!isSidebarOpen ? group.title : undefined}
+                    className={`
+                      flex w-full items-center font-black transition duration-200 select-none cursor-pointer rounded-2xl
+                      ${!isSidebarOpen ? 'justify-center p-2.5' : 'justify-between px-3.5 py-3 text-sm'}
+                      ${groupActive ? 'text-emerald-900' : 'text-slate-700 hover:text-emerald-800'}
+                    `}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`grid h-8 w-8 place-items-center rounded-xl border transition shrink-0 ${
+                        groupActive
+                          ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm'
+                          : 'bg-white border-slate-200 text-emerald-700'
+                      }`}>
+                        <GroupIcon className="h-4 w-4" />
+                      </div>
+                      {isSidebarOpen && (
+                        <span className="truncate text-right text-xs md:text-sm font-black tracking-wide">
+                          {group.title}
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Category Nav Items */}
-                    {(isCatOpen || !isSidebarOpen) && (
-                      <div className="space-y-1">
-                        {cat.items.map((item) => {
-                          const Icon = item.icon;
-                          const active = activeTab === item.key;
-                          return (
-                            <button
-                              key={item.key}
-                              onClick={() => setActiveTab(item.key)}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all relative ${
-                                active
-                                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                              }`}
-                              title={!isSidebarOpen ? item.label : undefined}
-                            >
-                              <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-emerald-600'}`} />
-                              {isSidebarOpen && <span className="truncate">{item.label}</span>}
-                              {!!item.badge && (
-                                <span
-                                  className={`text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0 shadow-2xs ${
-                                    item.badgeColor || (active ? 'bg-white text-emerald-700' : 'bg-rose-500 text-white')
-                                  } ${!isSidebarOpen ? 'absolute -top-1 -left-1 px-1' : 'mr-auto'}`}
-                                >
-                                  {item.badge}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                    {isSidebarOpen && (
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-black px-2 py-0.5 rounded-lg border shadow-xs ${
+                          groupActive
+                            ? 'bg-emerald-600 text-white border-emerald-500'
+                            : 'bg-white text-slate-500 border-slate-200'
+                        }`}>
+                          {group.items.length}
+                        </span>
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            groupActive ? 'text-emerald-700' : 'text-slate-400'
+                          } ${isCatOpen ? 'rotate-180' : ''}`}
+                        />
                       </div>
                     )}
-                  </div>
-                );
-              })}
-            </nav>
+                  </button>
+
+                  {/* Sub Items Grid */}
+                  {isSidebarOpen && (
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                        isCatOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="grid gap-1 px-2.5 pb-2.5 pt-1.5 border-t border-slate-200/80">
+                          {group.items.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.key;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => setActiveTab(item.key)}
+                                className={`group flex min-h-10 items-center justify-between rounded-xl px-3 py-2 text-xs md:text-sm font-bold transition-all duration-150 border cursor-pointer ${
+                                  isActive
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm font-black'
+                                    : 'border-transparent text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
+                                  <span className="truncate text-right">{item.label}</span>
+                                </div>
+
+                                {item.badge !== undefined && (
+                                  <span className={`text-[10px] font-black rounded-lg px-2 py-0.5 shrink-0 shadow-2xs border ${
+                                    isActive
+                                      ? 'bg-white text-emerald-900 border-white/40'
+                                      : (item.badgeColor || 'bg-amber-400 text-slate-950 border-amber-300')
+                                  }`}>
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         </aside>
 
