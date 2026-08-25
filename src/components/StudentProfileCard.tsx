@@ -16,15 +16,24 @@ export interface StudentProfileData {
 
 interface StudentProfileCardProps {
   student: StudentProfileData;
+  /** Custom greeting above student name, e.g. "مرحباً بك يا بطل 👋" */
+  greeting?: string;
+  /** Optional star count */
+  stars?: number;
+  /** Optional streak days */
+  streak?: number;
   /** Show parent info section (default: true) */
   showParent?: boolean;
-  /** Variant: 'doctor' = dark sidebar, 'parent' = warm card, 'classroom' = teal theme */
-  variant?: 'doctor' | 'parent' | 'classroom';
+  /** Variant: 'doctor' = dark sidebar, 'parent' = warm card, 'classroom' = teal theme, 'student' = emerald student theme */
+  variant?: 'doctor' | 'parent' | 'classroom' | 'student';
   className?: string;
 }
 
 export default function StudentProfileCard({
   student,
+  greeting,
+  stars,
+  streak,
   showParent = true,
   variant = 'doctor',
   className = '',
@@ -36,7 +45,9 @@ export default function StudentProfileCard({
     .join('');
 
   const bgClass =
-    variant === 'parent'
+    variant === 'student'
+      ? 'bg-gradient-to-br from-emerald-600 via-teal-600 to-teal-700'
+      : variant === 'parent'
       ? 'bg-gradient-to-br from-teal-700 to-emerald-800'
       : variant === 'classroom'
       ? 'bg-gradient-to-br from-teal-600 to-teal-800'
@@ -65,15 +76,33 @@ export default function StudentProfileCard({
           <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-white shadow" />
         </div>
 
-        {/* Name & Grade */}
+        {/* Name & Grade & Badges */}
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black text-white leading-tight">{student.fullName}</h2>
-          {student.grade && (
-            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-black text-white/90">
-              <GraduationCap size={12} />
-              {student.grade}
-            </span>
+          {greeting && (
+            <p className="text-xs font-black text-emerald-200 mb-0.5 flex items-center gap-1">
+              <span>{greeting}</span>
+            </p>
           )}
+          <h2 className="text-xl font-black text-white leading-tight">{student.fullName}</h2>
+          
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {student.grade && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-black text-white">
+                <GraduationCap size={12} />
+                {student.grade}
+              </span>
+            )}
+            {typeof stars === 'number' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 text-amber-950 px-2.5 py-0.5 text-[11px] font-black shadow-xs">
+                ⭐ {stars} نجمة
+              </span>
+            )}
+            {typeof streak === 'number' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/90 text-white px-2.5 py-0.5 text-[11px] font-black shadow-xs">
+                🔥 {streak} أيام حماس
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

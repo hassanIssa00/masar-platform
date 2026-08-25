@@ -168,69 +168,41 @@ export default function StudentDashboard() {
     { key: 'meetings',  label: 'الحصص',     icon: Video },
   ];
 
-  const renderHeader = () => (
-    <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 p-6 rounded-b-3xl text-white shadow-xl mb-6">
-      <div className="flex justify-between items-center mb-5">
-        <div className="flex items-center gap-3.5">
-          <div className="relative w-14 h-14 rounded-full bg-white/20 text-white flex items-center justify-center text-xl font-bold shadow-md overflow-hidden border-2 border-white/60">
-            {studentPhoto ? (
-              <Image src={studentPhoto} alt={studentName} fill unoptimized className="object-cover" />
-            ) : (
-              <span>{studentName.split(' ').slice(0, 2).map((n) => n[0]).join('')}</span>
-            )}
-          </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-black">مرحباً، {studentName} 👋</h1>
-            <p className="text-emerald-100 text-xs font-bold opacity-90 mt-0.5">
-              {new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
+  const renderNavbar = () => (
+    <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs px-4 py-3 mb-6">
+      <div className="max-w-2xl mx-auto flex items-center justify-between">
+        <div>
+          <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-1.5">
+            <span>منصة مَسَار الذكية</span>
+            <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+              فصل د. إسماعيل
+            </span>
+          </h1>
+          <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            بوابة الطالب التفاعلية — {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
         </div>
-        <button onClick={handleLogout} className="p-2.5 bg-white/20 hover:bg-white/30 rounded-2xl transition text-white" title="تسجيل الخروج">
-          <LogOut size={18} />
-        </button>
-      </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-white/20 rounded-2xl p-3.5 flex items-center gap-3 backdrop-blur-sm border border-white/10">
-          <div className="bg-amber-400 p-2 rounded-xl shadow-inner">
-            <Star className="text-white fill-white" size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-emerald-100">نجومك</p>
-            <p className="font-black text-lg text-white">{studentStars}</p>
-          </div>
-        </div>
-        <div className="bg-white/20 rounded-2xl p-3.5 flex items-center gap-3 backdrop-blur-sm border border-white/10">
-          <div className="bg-orange-500 p-2 rounded-xl shadow-inner">
-            <Flame className="text-white fill-white" size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-emerald-100">حماسك</p>
-            <p className="font-black text-lg text-white">{studentStreak} أيام</p>
-          </div>
-        </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/face-enroll"
+            className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
+            title="تسجيل الدخول بالوجه"
+          >
+            <ScanFace size={16} className="text-emerald-700" />
+            <span className="hidden sm:inline">تسجيل الوجه</span>
+          </Link>
 
-      {/* Biometric Face Enrollment Shortcut Banner */}
-      <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3.5 border border-white/20 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 shadow-md">
-            <ScanFace size={20} />
-          </div>
-          <div>
-            <h3 className="font-black text-xs text-white">تسجيل الوجه البيومتري 📷</h3>
-            <p className="text-[10px] font-bold text-emerald-100 opacity-90">الدخول السريع لمدرستك بمجرد النظر للكاميرا</p>
-          </div>
+          <button
+            onClick={handleLogout}
+            title="تسجيل الخروج"
+            className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer"
+          >
+            <LogOut size={16} />
+            <span>خروج</span>
+          </button>
         </div>
-        <Link
-          href="/face-enroll"
-          className="bg-white text-emerald-800 hover:bg-emerald-50 font-black text-xs px-3 py-2 rounded-xl shadow-md transition shrink-0 flex items-center gap-1 active:scale-95"
-        >
-          <span>سجّل وجهك</span>
-          <ChevronLeft size={14} />
-        </Link>
       </div>
     </div>
   );
@@ -250,7 +222,10 @@ export default function StudentDashboard() {
             dateOfBirth: studentRecord.dateOfBirth,
             notes: studentRecord.notes,
           }}
-          variant="classroom"
+          greeting="مرحباً بك يا بطل 👋"
+          stars={studentStars}
+          streak={studentStreak}
+          variant="student"
           showParent={true}
         />
       )}
@@ -457,7 +432,7 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-900" dir="rtl">
-      {renderHeader()}
+      {renderNavbar()}
 
       <div className="max-w-2xl mx-auto px-4">
         {loading ? (
