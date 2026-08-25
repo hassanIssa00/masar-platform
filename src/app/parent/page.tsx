@@ -7,6 +7,7 @@ import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
   Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace
 } from 'lucide-react';
+import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -14,6 +15,7 @@ import {
   getMessages, getReports, getSession, getStudents, hydrateSessionFromServer, MessageRecord, ReportRecord,
   saveMessage, StudentRecord, clearSession
 } from '@/lib/localDb';
+import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
 
 export default function ParentDashboard() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function ParentDashboard() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [replyText, setReplyText] = useState('');
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
+  const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
 
   const handleLogout = () => {
     clearSession();
@@ -80,6 +83,7 @@ export default function ParentDashboard() {
         const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
       }
+      setHomeworkList(getLocalHomework());
     };
     void loadParentPortal();
     return () => {
@@ -213,8 +217,12 @@ export default function ParentDashboard() {
                           : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}
                     >
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 font-black text-sm">
-                        👦
+                      <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-teal-100">
+                        {student.photoUrl ? (
+                          <Image src={student.photoUrl} alt={student.fullName} fill unoptimized className="object-cover" />
+                        ) : (
+                          <span className="grid h-full w-full place-items-center text-teal-800 font-black text-sm">👦</span>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-black text-slate-950 text-sm truncate">{student.fullName}</p>
@@ -427,100 +435,74 @@ export default function ParentDashboard() {
                 </div>
               </section>
 
-              {/* Interactive Home Assignments & Story Cards */}
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <p className="text-xs font-black text-teal-800">التدريب والتطبيق المنزلي</p>
-                    <h2 className="text-lg font-black text-slate-950 mt-0.5">واجب المنزل لهذا الأسبوع (مهام تفاعلية)</h2>
-                  </div>
-                  <span className="rounded-full bg-amber-100 text-amber-900 px-3 py-1 text-xs font-black">
-                    مهمة قصيرة 5 دقائق يومياً ⭐
-                  </span>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-
-                  {/* Task 1: Illustrated Story Task */}
-                  <article className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-sky-900">📖 القراءة المصورة</span>
-                        <span className="text-[10px] font-bold text-sky-700">5 دقائق</span>
+              {/* Real Homework Section — only shows assignments sent by Dr. Ismail */}
+              {(() => {
+                const studentHw = homeworkList.filter(
+                  (hw) => selectedStudent && (hw.studentId === selectedStudent.id || hw.studentName === selectedStudent.fullName)
+                );
+                if (studentHw.length === 0) return null;
+                return (
+                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <p className="text-xs font-black text-teal-800">الواجبات المنزلية</p>
+                        <h2 className="text-lg font-black text-slate-950 mt-0.5">الواجبات المرسلة من د. إسماعيل ({studentHw.length})</h2>
                       </div>
-                      <h3 className="font-black text-slate-950 text-sm">قصة الأسد الصغير الشجاع</h3>
-                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                        اقرأ مع الطفل القصة القصيرة المصورة مرة واحدة، ثم اسأله عن بطل القصة وكيف تصرف عند المواجهة.
-                      </p>
                     </div>
-
-                    <button
-                      onClick={() => toggleTaskCompleted('story_task')}
-                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                        completedTasks['story_task']
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-white border border-sky-300 text-sky-950 hover:bg-sky-100'
-                      }`}
-                    >
-                      <CheckCircle2 size={16} />
-                      <span>{completedTasks['story_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
-                    </button>
-                  </article>
-
-                  {/* Task 2: Audio & Phonetics Task */}
-                  <article className="rounded-xl border border-purple-200 bg-purple-50/70 p-4 space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-purple-900">🎵 التمييز السمعي</span>
-                        <span className="text-[10px] font-bold text-purple-700">3 دقائق</span>
-                      </div>
-                      <h3 className="font-black text-slate-950 text-sm">لعبة الأصوات المنزلية</h3>
-                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                        انطق حرفاً مستهدفاً (مثلاً: حرف "س")، واطلب من الطفل البحث عن شيء بالمنزل يبدأ بنفس الحرف.
-                      </p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {studentHw.map((hw) => (
+                        <article key={hw.id} className={`rounded-xl border p-4 space-y-3 flex flex-col justify-between ${
+                          hw.status === 'submitted' ? 'border-emerald-200 bg-emerald-50/60'
+                          : hw.status === 'reviewed' ? 'border-teal-200 bg-teal-50/60'
+                          : 'border-amber-200 bg-amber-50/60'
+                        }`}>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${
+                                hw.status === 'submitted' ? 'bg-emerald-600 text-white'
+                                : hw.status === 'reviewed' ? 'bg-teal-700 text-white'
+                                : 'bg-amber-500 text-white'
+                              }`}>
+                                {hw.status === 'assigned' ? '📋 مطلوب' : hw.status === 'submitted' ? '✅ تم الإرسال' : '⭐ تمت المراجعة'}
+                              </span>
+                              {hw.dueDate && (
+                                <span className="text-[10px] font-bold text-slate-500">
+                                  التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-EG')}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-black text-slate-950 text-sm">{hw.title}</h3>
+                            <p className="text-xs font-bold text-slate-600 leading-relaxed">{hw.description}</p>
+                            {hw.doctorFeedback && (
+                              <div className="rounded-lg bg-white border border-teal-200 p-2.5">
+                                <p className="text-[10px] font-black text-teal-700 mb-0.5">ملاحظة الدكتور:</p>
+                                <p className="text-xs font-bold text-slate-700">{hw.doctorFeedback}</p>
+                              </div>
+                            )}
+                          </div>
+                          {hw.status === 'assigned' && (
+                            <button
+                              onClick={() => {
+                                updateHomeworkStatus(hw.id, 'submitted');
+                                setHomeworkList(getLocalHomework());
+                              }}
+                              className="w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 bg-white border border-amber-300 text-amber-950 hover:bg-amber-100"
+                            >
+                              <CheckCircle2 size={16} />
+                              <span>تحديد كـ "تم الإنجاز"</span>
+                            </button>
+                          )}
+                          {hw.status === 'submitted' && (
+                            <div className="rounded-xl bg-emerald-600 text-white text-xs font-black text-center py-2">
+                              ✅ تم الإرسال — في انتظار مراجعة الدكتور
+                            </div>
+                          )}
+                        </article>
+                      ))}
                     </div>
-
-                    <button
-                      onClick={() => toggleTaskCompleted('audio_task')}
-                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                        completedTasks['audio_task']
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-white border border-purple-300 text-purple-950 hover:bg-purple-100'
-                      }`}
-                    >
-                      <CheckCircle2 size={16} />
-                      <span>{completedTasks['audio_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
-                    </button>
-                  </article>
-
-                  {/* Task 3: Observation Log */}
-                  <article className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-amber-900">📝 الملاحظة اليومية</span>
-                        <span className="text-[10px] font-bold text-amber-700">دقيقة واحدة</span>
-                      </div>
-                      <h3 className="font-black text-slate-950 text-sm">ملاحظة الانتباه والتركيز</h3>
-                      <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                        سجل ملاحظة بسيطة بالشات لدكتور إسماعيل عن مدى تركيز وقراءة الطفل أثناء الواجب المنزلي اليوم.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => toggleTaskCompleted('note_task')}
-                      className={`w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                        completedTasks['note_task']
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-white border border-amber-300 text-amber-950 hover:bg-amber-100'
-                      }`}
-                    >
-                      <CheckCircle2 size={16} />
-                      <span>{completedTasks['note_task'] ? 'تم الإنجاز اليوم ✓' : 'تحديد كـ "تم الإنجاز"'}</span>
-                    </button>
-                  </article>
-
-                </div>
-              </section>
+                  </section>
+                );
+              })()}
 
             </div>
           </section>

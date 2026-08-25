@@ -194,7 +194,7 @@ export default function NewStudentPage() {
               <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} />
               <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
               <div className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد</span>
+                <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد <span className="font-bold text-slate-400 text-xs">(اختياري)</span></span>
                 <div className="grid grid-cols-3 gap-2">
                   <select value={birthDay} onChange={(event) => setBirthDay(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
                     <option value="">اليوم</option>
@@ -228,44 +228,72 @@ export default function NewStudentPage() {
           <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-32 lg:self-start">
             <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
               {student.photoUrl ? (
-                <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-lg object-cover ring-2 ring-white" />
+                <>
+                  <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
+                  <p className="mt-2 text-xs font-black text-teal-700">✅ صورة الطالب محفوظة</p>
+                  <label className="mt-2 inline-flex cursor-pointer rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
+                    تغيير الصورة
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const img = document.createElement('img');
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxDim = 240;
+                            let w = img.width; let h = img.height;
+                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                          };
+                          img.src = String(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </>
               ) : (
-                <Camera className="mx-auto text-slate-500" size={32} />
+                <>
+                  <Camera className="mx-auto text-slate-400" size={32} />
+                  <p className="mt-2 text-xs font-bold text-slate-400">اختياري</p>
+                  <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
+                    رفع صورة الطالب (اختياري)
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const img = document.createElement('img');
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxDim = 240;
+                            let w = img.width; let h = img.height;
+                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                          };
+                          img.src = String(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </>
               )}
-              <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
-                رفع صورة الطالب
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const img = document.createElement('img');
-                      img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const maxDim = 240;
-                        let w = img.width;
-                        let h = img.height;
-                        if (w > h) {
-                          if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-                        } else {
-                          if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-                        }
-                        canvas.width = w;
-                        canvas.height = h;
-                        const ctx = canvas.getContext('2d');
-                        ctx?.drawImage(img, 0, 0, w, h);
-                        handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
-                      };
-                      img.src = String(reader.result);
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </label>
             </div>
             <div className="mt-5 rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
               <ClipboardList className="mb-2 text-teal-800" size={22} />
