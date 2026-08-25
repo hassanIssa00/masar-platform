@@ -23,7 +23,6 @@ import { writeCloudCache } from '@/lib/firestoreSync';
 import { getClassStudents } from '@/lib/classDb';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import MasarAIAgent from '@/components/MasarAIAgent';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
@@ -1224,9 +1223,6 @@ export default function IkhlasJeddahPage() {
           </div>
         </main>
       </div>
-
-      {/* 🤖 Masar Autonomous AI Agent — Floating Widget */}
-      <MasarAIAgent branch="IKHLAS_JEDDAH" />
     </div>
   );
 }
