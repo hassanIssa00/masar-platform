@@ -228,30 +228,39 @@ export default function NewStudentPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} />
               <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
-              <div className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد <span className="font-bold text-slate-400 text-xs">(اختياري)</span></span>
-                <div className="grid grid-cols-3 gap-2">
-                  <select value={birthDay} onChange={(event) => setBirthDay(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
-                    <option value="">اليوم</option>
-                    {days.map((day) => <option key={day} value={day}>{day}</option>)}
-                  </select>
-                  <select value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
-                    <option value="">الشهر</option>
-                    {months.map((month) => <option key={month} value={month}>{month}</option>)}
-                  </select>
-                  <select value={birthYear} onChange={(event) => setBirthYear(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
-                    <option value="">السنة</option>
-                    {years.map((year) => <option key={year} value={year}>{year}</option>)}
-                  </select>
-                </div>
-              </div>
-              <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">الصف أو المسار</span>
-                <select value={student.grade} onChange={(event) => handleFieldChange('grade', event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
-                  {gradeOptions.map((grade) => <option key={grade}>{grade}</option>)}
-                </select>
-              </label>
-              <div className="block">
+
+              {nextFlow === 'student-test' && (
+                <>
+                  <div className="block">
+                    <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد <span className="font-bold text-slate-400 text-xs">(اختياري)</span></span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <select value={birthDay} onChange={(event) => setBirthDay(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                        <option value="">اليوم</option>
+                        {days.map((day) => <option key={day} value={day}>{day}</option>)}
+                      </select>
+                      <select value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                        <option value="">الشهر</option>
+                        {months.map((month) => <option key={month} value={month}>{month}</option>)}
+                      </select>
+                      <select value={birthYear} onChange={(event) => setBirthYear(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                        <option value="">السنة</option>
+                        {years.map((year) => <option key={year} value={year}>{year}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-black text-slate-700">الصف أو المسار</span>
+                    <select value={student.grade} onChange={(event) => handleFieldChange('grade', event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700">
+                      {gradeOptions.map((grade) => <option key={grade}>{grade}</option>)}
+                    </select>
+                  </label>
+                </>
+              )}
+
+              <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
+              <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
+
+              <div className="block md:col-span-2">
                 <label className="block">
                   <span className="mb-2 flex items-center justify-between text-sm font-black text-slate-700">
                     <span>البريد الإلكتروني الشخصي (لاسترجاع كلمة المرور)</span>
@@ -271,8 +280,6 @@ export default function NewStudentPage() {
                   ضع بريدك الشخصي (Gmail أو Outlook) لاسترجاع كلمة المرور في حال نسيانها، أو لتسجيل الدخول به بديلاً عن اسم المستخدم المولد.
                 </p>
               </div>
-              <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
-              <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
             </div>
             <label className="mt-5 block">
               <span className="mb-2 block text-sm font-black text-slate-700">ملاحظات أولية</span>
@@ -281,76 +288,78 @@ export default function NewStudentPage() {
           </section>
 
           <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-32 lg:self-start">
-            <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-              {student.photoUrl ? (
-                <>
-                  <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
-                  <p className="mt-2 text-xs font-black text-teal-700">✅ صورة الطالب محفوظة</p>
-                  <label className="mt-2 inline-flex cursor-pointer rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
-                    تغيير الصورة
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const img = document.createElement('img');
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const maxDim = 240;
-                            let w = img.width; let h = img.height;
-                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
-                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
-                            canvas.width = w; canvas.height = h;
-                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+            {nextFlow === 'student-test' && (
+              <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center mb-5">
+                {student.photoUrl ? (
+                  <>
+                    <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
+                    <p className="mt-2 text-xs font-black text-teal-700">✅ صورة الطالب محفوظة</p>
+                    <label className="mt-2 inline-flex cursor-pointer rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
+                      تغيير الصورة
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              const maxDim = 240;
+                              let w = img.width; let h = img.height;
+                              if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                              else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                              canvas.width = w; canvas.height = h;
+                              canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                              handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                            };
+                            img.src = String(reader.result);
                           };
-                          img.src = String(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <Camera className="mx-auto text-slate-400" size={32} />
-                  <p className="mt-2 text-xs font-bold text-slate-400">اختياري</p>
-                  <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
-                    رفع صورة الطالب (اختياري)
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const img = document.createElement('img');
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const maxDim = 240;
-                            let w = img.width; let h = img.height;
-                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
-                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
-                            canvas.width = w; canvas.height = h;
-                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mx-auto text-slate-400" size={32} />
+                    <p className="mt-2 text-xs font-bold text-slate-400">اختياري</p>
+                    <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">
+                      رفع صورة الطالب (اختياري)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              const maxDim = 240;
+                              let w = img.width; let h = img.height;
+                              if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                              else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                              canvas.width = w; canvas.height = h;
+                              canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                              handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                            };
+                            img.src = String(reader.result);
                           };
-                          img.src = String(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
-            <div className="mt-5 rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
+            <div className="rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
               <ClipboardList className="mb-2 text-teal-800" size={22} />
               {nextFlow === 'student-test'
                 ? 'الخطوة التالية هي اختبار الطالب المباشر حسب الصف، ثم حفظ الإجابات والتحليل في لوحة د. إسماعيل.'
