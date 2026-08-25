@@ -2,7 +2,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
-import { getSession, getStudents, saveReport, saveStudent, saveSurvey, updateStudent } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveReport, saveStudent, saveSurvey, updateStudent, StudentRecord } from '@/lib/localDb';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const SECTIONS = [
   {
@@ -252,6 +253,7 @@ function SurveyContent() {
   const searchParams = useSearchParams();
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [student, setStudent] = useState<StudentRecord | null>(null);
   const [studentName, setStudentName] = useState('');
   const [grade, setGrade] = useState('الصف الأول');
   const [parentPhone, setParentPhone] = useState('');
@@ -265,41 +267,40 @@ function SurveyContent() {
   const isCurrentSectionComplete = sectionAnsweredCount === section.questions.length;
   const progress = Math.round((answeredCount / totalQuestions) * 100);
 
-  function resolveStudentId() {
-    const requested = searchParams.get('student');
-    if (requested) return requested;
-
-    const session = getSession();
-    const students = getStudents();
-    const matched =
-      session?.role === 'student'
-        ? students.find((student) =>
-            student.fullName === session.name ||
-            student.parentPhone === session.phone ||
-            student.parentPhone === session.email ||
-            student.id === session.id,
-          )
-        : session?.role === 'parent'
-          ? students.find((student) =>
-              student.parentPhone === session.phone ||
-              student.parentPhone === session.email ||
-              student.parentName === session.name,
-            )
-          : undefined;
-
-    return matched?.id;
-  }
-
   useEffect(() => {
-    queueMicrotask(() => {
-      const studentId = resolveStudentId();
-      const existing = getStudents().find((student) => student.id === studentId);
-      if (!existing) return;
+    let cancelled = false;
+    const loadSurveyStudent = async () => {
+      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents']).catch(() => {});
+      if (cancelled) return;
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
 
-      setStudentName(existing.fullName);
-      setGrade(existing.grade);
-      setParentPhone(existing.parentPhone ?? '');
-    });
+      const requested = searchParams.get('student');
+      const allStudents = getStudents();
+      let found = requested ? allStudents.find((s) => s.id === requested) : null;
+      if (!found && session) {
+        found = allStudents.find((s) =>
+          (session.id && s.id === session.id) ||
+          (session.phone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(session.phone.replace(/\D/g, ''))) ||
+          (session.name && s.parentName && s.parentName.trim().toLowerCase() === session.name.trim().toLowerCase()) ||
+          (session.email && s.email && s.email.trim().toLowerCase() === session.email.trim().toLowerCase())
+        ) ?? null;
+      }
+      if (!found && allStudents.length > 0) {
+        found = allStudents[0];
+      }
+
+      if (found) {
+        setStudent(found);
+        setStudentName(found.fullName);
+        setGrade(found.grade || 'الصف الأول');
+        setParentPhone(found.parentPhone ?? '');
+      }
+    };
+    void loadSurveyStudent();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   useEffect(() => {
@@ -312,31 +313,47 @@ function SurveyContent() {
     setAnswers(prev => ({ ...prev, [qid]: val }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const activeReportSections = getActiveSections(grade);
-    const analysis = getSurveyAnalysis(answers, grade);
     const clinicalDomains = getClinicalDomains(answers);
     const priorityDomains = [...clinicalDomains].sort((first, second) => first.score - second.score).slice(0, 3);
     const priorityText = priorityDomains.map((domain) => `${domain.name} (${domain.score}%)`).join('، ');
-    const studentId = resolveStudentId() ?? undefined;
-    const savedStudent = saveStudent({
-      id: studentId,
-      fullName: studentName.trim() || 'طالب من الاستبيان',
-      grade,
-      parentPhone,
-      reviewStatus: 'awaiting-doctor-review',
-      source: 'survey',
-    });
+    
+    const requestedId = searchParams.get('student');
+    const targetId = student?.id || requestedId || undefined;
+    const all = getStudents();
+    const existing = targetId ? all.find((s) => s.id === targetId) : student;
+
+    let savedStudent: StudentRecord;
+    if (existing) {
+      savedStudent = updateStudent(existing.id, {
+        fullName: existing.fullName,
+        grade: existing.grade || grade,
+        parentPhone: existing.parentPhone || parentPhone,
+        reviewStatus: 'awaiting-doctor-review',
+      }) ?? existing;
+    } else {
+      savedStudent = saveStudent({
+        id: targetId,
+        fullName: studentName.trim() || 'طالب جديد',
+        grade,
+        parentPhone,
+        reviewStatus: 'awaiting-doctor-review',
+        source: 'survey',
+      });
+    }
+
+    await syncDocToCloud('students', savedStudent.id, savedStudent).catch(() => {});
 
     saveSurvey({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
-      parentPhone,
+      parentPhone: savedStudent.parentPhone || parentPhone,
       answers,
     });
 
-    saveReport({
+    const rep1 = saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
@@ -358,8 +375,9 @@ function SurveyContent() {
       ),
       domains: [],
     });
+    await syncDocToCloud('reports', rep1.id, rep1).catch(() => {});
 
-    saveReport({
+    const rep2 = saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
@@ -416,50 +434,20 @@ function SurveyContent() {
           <p className="text-gray-500">هذه الأسئلة يجيب عنها ولي الأمر فقط، وتُحفظ للدكتور في تقرير منفصل عن اختبار الطالب.</p>
         </div>
 
-        <div className="mb-8 grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:grid-cols-3">
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-gray-700">اسم الطالب</span>
-            <input value={studentName} onChange={(event) => setStudentName(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]" placeholder="اسم الطالب" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-gray-700">الصف</span>
-            <select value={grade} onChange={(event) => setGrade(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]">
-              <option>الروضة</option>
-              <option>الصف الأول</option>
-              <option>الصف الثاني</option>
-              <option>الصف الثالث</option>
-              <option>الصف الرابع</option>
-              <option>الصف الخامس</option>
-              <option>الصف السادس</option>
-              <option>صعوبات التعلم</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-gray-700">هاتف ولي الأمر</span>
-            <input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-[#1E6FBF]" placeholder="01000000000" />
-          </label>
-        </div>
-
-        {/* Overall Progress */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
-            <span>التقدم الكلي</span>
-            <span>{answeredCount} / {totalQuestions}</span>
+        {/* Student Info Banner */}
+        <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-teal-100 bg-teal-50/70 p-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-700 text-white font-black text-sm shadow-xs">
+              {studentName ? studentName.slice(0, 2) : '📋'}
+            </span>
+            <div>
+              <p className="text-xs font-bold text-slate-500">بيانات الطفل المسجل:</p>
+              <h2 className="text-base font-black text-slate-950">{studentName || 'جاري التحميل...'}</h2>
+            </div>
           </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#1E6FBF] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="flex justify-between mt-3">
-            {activeSections.map((s, i) => (
-              <button key={s.id} onClick={() => setCurrentSection(i)}
-                className={`flex flex-col items-center gap-1 text-xs font-bold transition-all ${i === currentSection ? 'text-[#1E6FBF] scale-110' : i < currentSection ? 'text-[#2ECC71]' : 'text-gray-300'}`}>
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center ${i === currentSection ? 'bg-[#1E6FBF] text-white' : i < currentSection ? 'bg-[#2ECC71] text-white' : 'bg-gray-100'}`}>
-                  {i < currentSection ? 'تم' : s.icon}
-                </span>
-                <span className="hidden md:block">{s.title}</span>
-              </button>
-            ))}
-          </div>
+          <span className="rounded-full bg-white border border-teal-200 px-3.5 py-1 text-xs font-black text-teal-800 shadow-2xs">
+            {grade}
+          </span>
         </div>
 
         {/* Current Section */}

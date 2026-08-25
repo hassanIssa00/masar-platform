@@ -5,21 +5,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
-  Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace
+  Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace,
+  User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone
 } from 'lucide-react';
-import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
 import { curriculumPrograms } from '@/data/curriculum';
 import {
-  getMessages, getReports, getSession, getStudents, hydrateSessionFromServer, MessageRecord, ReportRecord,
-  saveMessage, StudentRecord, clearSession
+  getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
+  MessageRecord, ReportRecord, saveMessage, StudentRecord, updateStudent, clearSession
 } from '@/lib/localDb';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import StudentProfileCard from '@/components/StudentProfileCard';
+
+type ParentTab = 'home' | 'reports' | 'chat' | 'homework' | 'profile';
 
 export default function ParentDashboard() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<ParentTab>('home');
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -37,6 +41,9 @@ export default function ParentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadParentPortal = async () => {
+      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents', 'messages']).catch(() => {});
+      if (cancelled) return;
+
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
 
@@ -58,27 +65,62 @@ export default function ParentDashboard() {
         return;
       }
 
-      const allStudents = getStudents();
+      let allStudents = getStudents();
+      const allAccounts = getAccounts();
       const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
       const pName = session.name ? session.name.trim().toLowerCase() : '';
+      const pEmail = session.email ? session.email.trim().toLowerCase() : '';
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
 
+      // Auto-heal corrupted "طالب من الاستبيان" names using account data if available
+      allStudents = allStudents.map((s) => {
+        if (s.fullName === 'طالب من الاستبيان' || s.fullName === 'طالب جديد') {
+          // Find matching account or other student
+          const matchedAcc = allAccounts.find(
+            (a) =>
+              (a.role === 'student' && a.name && !a.name.includes('جديد')) ||
+              (a.phone && s.parentPhone && a.phone.includes(s.parentPhone))
+          ) as (typeof allAccounts[0] & { parentName?: string; photoUrl?: string }) | undefined;
+          if (matchedAcc?.name) {
+            const healed = updateStudent(s.id, {
+              fullName: matchedAcc.name,
+              parentName: matchedAcc.parentName || s.parentName,
+              parentPhone: matchedAcc.phone || s.parentPhone,
+              photoUrl: matchedAcc.photoUrl || s.photoUrl,
+            });
+            if (healed) void syncDocToCloud('students', healed.id, healed);
+            return healed || s;
+          }
+        }
+        return s;
+      });
+
       let myStudents = allStudents.filter((s) => {
+        const record = s as StudentRecord & { email?: string; parentEmail?: string };
+        if (activeId && s.id === activeId) return true;
+        if (session.id && s.id === session.id) return true;
         if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
         if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
-        if (activeId && s.id === activeId) return true;
+        if (pEmail && (record.email?.trim().toLowerCase() === pEmail || record.parentEmail?.trim().toLowerCase() === pEmail)) return true;
         return false;
       });
 
-      // Fallback: If no match found by phone/name, but activeId exists, use that single student
-      if (myStudents.length === 0 && activeId) {
-        myStudents = allStudents.filter((s) => s.id === activeId);
+      // Fallback: If no match found, use allStudents if present
+      if (myStudents.length === 0 && allStudents.length > 0) {
+        myStudents = activeId ? (allStudents.filter(s => s.id === activeId).length ? allStudents.filter(s => s.id === activeId) : [allStudents[0]]) : [allStudents[0]];
       }
 
       setStudents(myStudents);
       setReports(getReports());
       setMessages(getMessages());
-      setParentName(session.name ?? 'ولي الأمر');
+
+      const primary = myStudents[0];
+      const resolvedParentName =
+        (primary?.parentName && !primary.parentName.includes('جديد') ? primary.parentName : '') ||
+        (session.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' ? session.name : '') ||
+        'ولي الأمر';
+
+      setParentName(resolvedParentName);
 
       if (myStudents.length > 0) {
         const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
@@ -116,9 +158,7 @@ export default function ParentDashboard() {
   }, [assignedSlugs]);
 
   const latestReport = studentReports[0];
-  const isUnderDoctorReview = selectedStudent?.reviewStatus === 'awaiting-doctor-review' || latestReport?.status === 'pending';
 
-  // Doctor must explicitly dispatch a report via message for it to show in the parent portal!
   const isReportDispatchedByDoctor = (reportType: string) => {
     return studentMessages.some((m) => m.from === 'doctor' && (
       m.body.includes('تم إرسال وتحديد التقرير') ||
@@ -140,378 +180,444 @@ export default function ParentDashboard() {
     setMessages(getMessages());
   };
 
-  const toggleTaskCompleted = (taskId: string) => {
-    setCompletedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
-  };
+  const tabs: Array<{ key: ParentTab; label: string; icon: any }> = [
+    { key: 'home', label: 'الرئيسية', icon: Home },
+    { key: 'reports', label: 'التقارير الموثقة', icon: FileText },
+    { key: 'chat', label: 'محادثة الدكتور', icon: MessageSquare },
+    { key: 'homework', label: 'الواجبات', icon: BookOpen },
+    { key: 'profile', label: 'ملف الطفل', icon: User },
+  ];
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-slate-950" dir="rtl">
+    <div className="min-h-screen bg-slate-50 pb-28 text-slate-950" dir="rtl">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 space-y-6">
+      
+      <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         
-        {/* Header: Warm welcome to Parent */}
-        <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Welcome Header */}
+        <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-black text-teal-800 border border-teal-200">
                 <Sparkles size={14} className="text-teal-600" />
                 <span>بوابة ولي الأمر التفاعلية</span>
               </span>
               <h1 className="mt-2 text-2xl md:text-3xl font-black text-slate-950">
-                أهلاً بك أ. {parentName} في منصة مَسَار
+                أهلاً بك أ. {parentName} في منصة مَسَار 👋
               </h1>
-              <p className="mt-2 max-w-3xl text-xs md:text-sm font-bold leading-relaxed text-slate-600">
+              <p className="mt-1.5 text-xs md:text-sm font-bold text-slate-600">
                 متابعة الخطة التعليمية والتقارير الموثقة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex items-center gap-2">
               <Link
                 href="/face-enroll"
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
+                className="flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
               >
                 <ScanFace size={16} />
-                <span>تسجيل الوجه البيومتري</span>
+                <span>بصمة الوجه</span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
               >
                 <LogOut size={16} />
-                <span>تسجيل الخروج</span>
+                <span>خروج</span>
               </button>
-              {students.length === 0 && (
-                <Link href="/student/new" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm">إضافة طفل جديد</Link>
-              )}
             </div>
           </div>
         </header>
 
-        {students.length === 0 ? (
-          <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
-            <UserRoundPlus className="mx-auto text-slate-400" size={48} />
-            <h2 className="mt-4 text-2xl font-black text-slate-950">لا يوجد طالب محفوظ بعد</h2>
-            <p className="mx-auto mt-2 max-w-xl text-xs md:text-sm font-bold leading-relaxed text-slate-600">
-              أضف بيانات الطفل أولاً، ثم سيظهر استبيان ولي الأمر الشامل لتحديد المستوى وبدء التقييم.
-            </p>
-            <Link href="/student/new" className="mt-5 inline-flex rounded-xl bg-teal-700 px-5 py-3 text-xs font-black text-white">
-              إضافة بيانات الطالب
-            </Link>
+        {/* Prominent Hero Student Profile Card */}
+        {selectedStudent && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+            <StudentProfileCard
+              student={{
+                fullName: selectedStudent.fullName,
+                grade: selectedStudent.grade,
+                photoUrl: selectedStudent.photoUrl,
+                parentName: selectedStudent.parentName,
+                parentPhone: selectedStudent.parentPhone,
+                nationalId: selectedStudent.nationalId,
+                dateOfBirth: selectedStudent.dateOfBirth,
+              }}
+              greeting="بيانات طفلي المسجل في منصة مسار 🌟"
+              variant="parent"
+              showParent={true}
+              className="border-0 shadow-none rounded-2xl"
+            />
           </section>
-        ) : (
-          <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-            
-            {/* Sidebar Student Profile / Selection */}
-            <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-base font-black text-slate-950">
-                {students.length === 1 ? 'طفلي المسجل' : `الأبناء المسجلون (${students.length})`}
-              </h2>
-              <div className="grid gap-2">
-                {students.map((student) => {
-                  const isSelected = selectedStudent?.id === student.id;
+        )}
+
+        {/* Tab 1: Home Overview */}
+        {activeTab === 'home' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Status Overview Cards */}
+            <section className="grid gap-4 sm:grid-cols-3">
+              <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-teal-50 text-teal-700">
+                    <ClipboardCheck size={22} />
+                  </span>
+                  <span className="text-[11px] font-black text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+                    مباشر
+                  </span>
+                </div>
+                <p className="text-xs font-black text-slate-500">حالة التقييم والاستبيان</p>
+                <p className="text-lg font-black text-slate-950">
+                  {latestReport ? 'تم الحفظ والتقييم' : 'قيد المراجعة'}
+                </p>
+              </article>
+
+              <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+                    <FileText size={22} />
+                  </span>
+                  <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                    تقارير
+                  </span>
+                </div>
+                <p className="text-xs font-black text-slate-500">التقارير المتاحة</p>
+                <p className="text-lg font-black text-slate-950">
+                  {studentReports.length} تقارير تشخيصية
+                </p>
+              </article>
+
+              <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-50 text-amber-700">
+                    <Home size={22} />
+                  </span>
+                  <span className="text-[11px] font-black text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    الخطة
+                  </span>
+                </div>
+                <p className="text-xs font-black text-slate-500">المسار التعليمي المعتمد</p>
+                <p className="text-lg font-black text-slate-950">
+                  {assignedProgramsList.length > 0
+                    ? `${assignedProgramsList.length} مسارات معتمدة`
+                    : 'قيد مراجعة د. إسماعيل'}
+                </p>
+              </article>
+            </section>
+
+            {/* Quick Actions Card */}
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-950">الوصول السريع لخدمات الطفل</h3>
+                <span className="text-xs font-bold text-teal-800">بوابة د. إسماعيل عيسى</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className="flex flex-col items-start p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 transition text-right cursor-pointer"
+                >
+                  <FileText className="text-teal-700 mb-2" size={24} />
+                  <span className="text-sm font-black text-slate-950">عرض التقارير الموثقة</span>
+                  <span className="text-[11px] font-bold text-slate-500 mt-1">الاطلاع على تحليل الدكتور المعتمد</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className="flex flex-col items-start p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 transition text-right cursor-pointer"
+                >
+                  <MessageSquare className="text-blue-700 mb-2" size={24} />
+                  <span className="text-sm font-black text-slate-950">محادثة الشات المباشرة</span>
+                  <span className="text-[11px] font-bold text-slate-500 mt-1">تواصل فوري مع د. إسماعيل عيسى</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('homework')}
+                  className="flex flex-col items-start p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 transition text-right cursor-pointer"
+                >
+                  <BookOpen className="text-amber-700 mb-2" size={24} />
+                  <span className="text-sm font-black text-slate-950">الواجبات والمتابعة</span>
+                  <span className="text-[11px] font-bold text-slate-500 mt-1">الأنشطة والمهام المنزلية</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Tab 2: Reports */}
+        {activeTab === 'reports' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Multi-Track Display Card */}
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div>
+                <p className="text-xs font-black text-teal-800">المسار التعليمي والبرامج المعتمدة</p>
+                <h2 className="text-lg font-black text-slate-950 mt-0.5">
+                  {assignedProgramsList.length > 0
+                    ? `تم اعتماد المسارات: ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
+                    : latestReport
+                    ? 'ملف الطالب قيد مراجعة د. إسماعيل عيسى'
+                    : 'لم يتم استكمال التقييم بعد'}
+                </h2>
+              </div>
+
+              {assignedProgramsList.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {assignedProgramsList.map((program) => (
+                    <div key={program.slug} className="rounded-2xl border border-teal-200 bg-teal-50/70 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full bg-teal-700 text-white px-2.5 py-0.5 text-[10px] font-black">
+                          مسار معتمد ✓
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500">{program.modules.length} وحدات</span>
+                      </div>
+                      <h3 className="font-black text-slate-950 text-sm">{program.title}</h3>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{program.promise}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs font-bold leading-relaxed text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  سيظهر هنا تفاصيل المسارات التعليمية الموثقة فور قيام د. إسماعيل بمراجعة التقرير وتحديد الخطة المناسبة لطفلك.
+                </p>
+              )}
+            </section>
+
+            {/* Reports List */}
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div>
+                <p className="text-xs font-black text-teal-800">تقارير الطفل الموثقة</p>
+                <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المعتمدة من د. إسماعيل</h2>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  {
+                    title: 'إجابات ولي الأمر',
+                    description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها في الاستبيان.',
+                    report: studentReports.find((r) => r.type === 'survey-answers'),
+                  },
+                  {
+                    title: 'إجابات واختبار الطالب',
+                    description: 'نتيجة اختبار مهارات الطالب التفصيلية والتسجيلات.',
+                    report: studentReports.find((r) => r.type === 'student-assessment-answers' || r.type === 'student-assessment-analysis'),
+                  },
+                  {
+                    title: 'التقرير التحليلي الشامل',
+                    description: 'التقرير النهائي وتوصيات د. إسماعيل عيسى.',
+                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.type === 'placement'),
+                  },
+                ].map((slot) => {
+                  const isDispatched = slot.report && isReportDispatchedByDoctor(slot.report.type);
                   return (
-                    <button
-                      key={student.id}
-                      onClick={() => setSelectedStudentId(student.id)}
-                      className={`w-full text-right rounded-xl border transition cursor-pointer ${
-                        isSelected ? 'border-teal-700 shadow-sm' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <StudentProfileCard
-                        student={{
-                          fullName: student.fullName,
-                          grade: student.grade,
-                          photoUrl: student.photoUrl,
-                          parentName: student.parentName,
-                          parentPhone: student.parentPhone,
-                          nationalId: student.nationalId,
-                          dateOfBirth: student.dateOfBirth,
-                        }}
-                        variant="parent"
-                        showParent={false}
-                        className={`border-0 shadow-none rounded-xl ${isSelected ? 'ring-2 ring-teal-700' : ''}`}
-                      />
-                    </button>
+                    <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                      <div className="space-y-2">
+                        <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={26} />
+                        <h3 className="font-black text-slate-950 text-sm">{slot.title}</h3>
+                        <p className="text-xs font-bold text-slate-500 leading-relaxed min-h-[36px]">{slot.description}</p>
+                      </div>
+
+                      {isDispatched ? (
+                        <Link
+                          href={`/reports?report=${slot.report!.id}&mode=parent`}
+                          className="inline-flex w-full justify-center rounded-2xl bg-teal-700 py-3 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm"
+                        >
+                          فتح التقرير الموثق 📄
+                        </Link>
+                      ) : (
+                        <div className="rounded-2xl bg-white border border-slate-200 p-3 text-center text-xs font-black text-slate-400">
+                          قيد الاعتماد من الدكتور
+                        </div>
+                      )}
+                    </article>
                   );
                 })}
               </div>
-            </aside>
+            </section>
+          </div>
+        )}
 
-            <div className="space-y-6">
-
-              {/* Status Overview Cards */}
-              <section className="grid gap-4 sm:grid-cols-3">
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                  <ClipboardCheck className="text-teal-700" size={24} />
-                  <p className="text-xs font-black text-slate-500">حالة التقييم</p>
-                  <p className="text-lg font-black text-slate-950">
-                    {latestReport ? 'تم الحفظ والتقييم' : 'قيد الانتظار'}
-                  </p>
-                </article>
-
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                  <FileText className="text-blue-700" size={24} />
-                  <p className="text-xs font-black text-slate-500">التقارير المتاحة</p>
-                  <p className="text-lg font-black text-slate-950">
-                    {studentReports.length} تقارير تشخيصية
-                  </p>
-                </article>
-
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                  <Home className="text-amber-700" size={24} />
-                  <p className="text-xs font-black text-slate-500">المسارات التعليمية الموثقة</p>
-                  <p className="text-lg font-black text-slate-950">
-                    {assignedProgramsList.length > 0
-                      ? `${assignedProgramsList.length} مسارات موثقة`
-                      : 'قيد مراجعة د. إسماعيل'}
-                  </p>
-                </article>
-              </section>
-
-              {/* Multi-Track Display Card */}
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                  <div>
-                    <p className="text-xs font-black text-teal-800">حالة ملف الطالب والمسارات</p>
-                    <h2 className="text-lg font-black text-slate-950 mt-0.5">
-                      {assignedProgramsList.length > 0
-                        ? `تم تحديد المسارات التعليمية: ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
-                        : latestReport
-                        ? 'ملف الطالب قيد مراجعة د. إسماعيل عيسى'
-                        : 'لم يتم استكمال التقييم بعد'}
-                    </h2>
-                  </div>
-                </div>
-
-                {assignedProgramsList.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {assignedProgramsList.map((program) => (
-                      <div key={program.slug} className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="rounded-full bg-teal-700 text-white px-2.5 py-0.5 text-[10px] font-black">
-                            مسار موثق ✓
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-500">{program.modules.length} وحدات</span>
-                        </div>
-                        <h3 className="font-black text-slate-950 text-sm">{program.title}</h3>
-                        <p className="text-xs font-bold text-slate-600 leading-relaxed">{program.promise}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs font-bold leading-relaxed text-slate-600 bg-slate-50 p-4 rounded-xl">
-                    سيظهر هنا تفاصيل المسارات التعليمية الموثقة فور قيام د. إسماعيل بعرض التقرير وتحديد الخطة المناسبة لطفلك.
-                  </p>
-                )}
-              </section>
-
-              {/* Reports Section: Only displays if Doctor explicitly dispatched them */}
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        {/* Tab 3: Chat */}
+        {activeTab === 'chat' && (
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden animate-fade-in">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MessageSquare size={22} className="text-teal-400" />
                 <div>
-                  <p className="text-xs font-black text-teal-800">تقارير الطفل الموثقة</p>
-                  <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المرسلة من د. إسماعيل</h2>
+                  <h3 className="font-black text-base">محادثة الشات المباشرة مع د. إسماعيل عيسى</h3>
+                  <p className="text-xs font-bold text-slate-400">يمكنك الرد والتواصل المباشر بشأن متابعة الطفل</p>
                 </div>
+              </div>
+              <span className="rounded-full bg-teal-900/80 text-teal-300 border border-teal-700 px-3 py-1 text-xs font-black">
+                {studentMessages.length} رسالة
+              </span>
+            </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  {[
-                    {
-                      title: 'إجابات ولي الأمر',
-                      description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها.',
-                      report: studentReports.find((r) => r.type === 'survey-answers'),
-                    },
-                    {
-                      title: 'إجابات الطالب',
-                      description: 'نتيجة اختبار الطالب التفصيلية كما راجعها الدكتور.',
-                      report: studentReports.find((r) => r.type === 'student-assessment-answers'),
-                    },
-                    {
-                      title: 'التقرير التحليلي والخطة',
-                      description: 'التقرير النهائي وتوصيات د. إسماعيل عيسى.',
-                      report: studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'clinical-analysis'),
-                    },
-                  ].map((slot) => {
-                    const isDispatched = slot.report && isReportDispatchedByDoctor(slot.report.type);
-                    return (
-                      <article key={slot.title} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                        <div className="space-y-2">
-                          <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={24} />
-                          <h3 className="font-black text-slate-950 text-sm">{slot.title}</h3>
-                          <p className="text-xs font-bold text-slate-500 leading-relaxed min-h-[36px]">{slot.description}</p>
-                        </div>
-
-                        {isDispatched ? (
-                          <Link
-                            href={`/reports?report=${slot.report!.id}&mode=parent`}
-                            className="inline-flex w-full justify-center rounded-xl bg-slate-950 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition"
-                          >
-                            فتح التقرير الموثق 📄
-                          </Link>
-                        ) : (
-                          <div className="rounded-xl bg-white border border-slate-200 p-2.5 text-center text-xs font-black text-slate-400">
-                            لم يرسل بعد من الدكتور
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Live Interactive Chat Box with Dr. Ismail */}
-              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden space-y-0">
-                <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare size={20} className="text-teal-400" />
-                    <div>
-                      <h3 className="font-black text-sm">محادثة الشات المباشرة مع د. إسماعيل عيسى</h3>
-                      <p className="text-[11px] font-bold text-slate-400">يمكنك الرد والتواصل المباشر بشأن متابعة الطفل</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-teal-900/80 text-teal-300 border border-teal-700 px-3 py-1 text-xs font-black">
-                    {studentMessages.length} رسالة
-                  </span>
-                </div>
-
-                {/* Chat Message History */}
-                <div className="min-h-[260px] max-h-[360px] overflow-y-auto p-4 bg-slate-50 space-y-3">
-                  {studentMessages.length > 0 ? (
-                    studentMessages.map((msg) => {
-                      const isDoctor = msg.from === 'doctor';
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex flex-col max-w-[85%] ${
-                            isDoctor ? 'ml-auto items-start' : 'mr-auto items-end'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 mb-1 px-1">
-                            <span className={`text-[10px] font-black ${isDoctor ? 'text-teal-800' : 'text-slate-600'}`}>
-                              {isDoctor ? '👨‍⚕️ د. إسماعيل عيسى' : `👨‍👦 ولي الأمر (${parentName})`}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400">
-                              {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <div
-                            className={`rounded-2xl p-3.5 text-xs font-bold leading-relaxed shadow-2xs whitespace-pre-wrap ${
-                              isDoctor
-                                ? 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
-                                : 'bg-teal-700 text-white rounded-tr-none'
-                            }`}
-                          >
-                            {msg.body}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="grid place-items-center py-12 text-center text-slate-400">
-                      <MessageSquare size={36} className="text-slate-300 mb-2" />
-                      <p className="text-xs font-bold">لا توجد رسائل سابقة في الشات بعد.</p>
-                      <p className="text-[11px] text-slate-400 mt-1">اكتب ردك بالأسفل ليتواصل د. إسماعيل معك مباشرة.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Chat Reply Bar */}
-                <div className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendReply();
-                      }
-                    }}
-                    placeholder="اكتب ردك أو استفسارك للدكتور إسماعيل..."
-                    className="flex-1 min-h-[44px] max-h-[100px] rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 resize-none"
-                  />
-                  <button
-                    onClick={handleSendReply}
-                    disabled={!replyText.trim()}
-                    className="rounded-xl bg-teal-700 px-5 py-3 text-xs font-black text-white hover:bg-teal-800 transition disabled:opacity-40 shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
-                  >
-                    <Send size={15} />
-                    <span>إرسال الرد</span>
-                  </button>
-                </div>
-              </section>
-
-              {/* Real Homework Section — only shows assignments sent by Dr. Ismail */}
-              {(() => {
-                const studentHw = homeworkList.filter(
-                  (hw) => selectedStudent && (hw.studentId === selectedStudent.id || hw.studentName === selectedStudent.fullName)
-                );
-                if (studentHw.length === 0) return null;
-                return (
-                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div>
-                        <p className="text-xs font-black text-teal-800">الواجبات المنزلية</p>
-                        <h2 className="text-lg font-black text-slate-950 mt-0.5">الواجبات المرسلة من د. إسماعيل ({studentHw.length})</h2>
+            {/* Chat Messages */}
+            <div className="min-h-[300px] max-h-[450px] overflow-y-auto p-5 bg-slate-50 space-y-3">
+              {studentMessages.length > 0 ? (
+                studentMessages.map((msg) => {
+                  const isDoctor = msg.from === 'doctor';
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col max-w-[85%] ${
+                        isDoctor ? 'ml-auto items-start' : 'mr-auto items-end'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1 px-1">
+                        <span className={`text-[10px] font-black ${isDoctor ? 'text-teal-800' : 'text-slate-600'}`}>
+                          {isDoctor ? '👨‍⚕️ د. إسماعيل عيسى' : `👨‍👦 ولي الأمر (${parentName})`}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">
+                          {new Date(msg.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div
+                        className={`rounded-2xl p-4 text-xs font-bold leading-relaxed shadow-2xs whitespace-pre-wrap ${
+                          isDoctor
+                            ? 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                            : 'bg-teal-700 text-white rounded-tr-none'
+                        }`}
+                      >
+                        {msg.body}
                       </div>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {studentHw.map((hw) => (
-                        <article key={hw.id} className={`rounded-xl border p-4 space-y-3 flex flex-col justify-between ${
-                          hw.status === 'submitted' ? 'border-emerald-200 bg-emerald-50/60'
-                          : hw.status === 'reviewed' ? 'border-teal-200 bg-teal-50/60'
-                          : 'border-amber-200 bg-amber-50/60'
-                        }`}>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${
-                                hw.status === 'submitted' ? 'bg-emerald-600 text-white'
-                                : hw.status === 'reviewed' ? 'bg-teal-700 text-white'
-                                : 'bg-amber-500 text-white'
-                              }`}>
-                                {hw.status === 'assigned' ? '📋 مطلوب' : hw.status === 'submitted' ? '✅ تم الإرسال' : '⭐ تمت المراجعة'}
-                              </span>
-                              {hw.dueDate && (
-                                <span className="text-[10px] font-bold text-slate-500">
-                                  التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-EG')}
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="font-black text-slate-950 text-sm">{hw.title}</h3>
-                            <p className="text-xs font-bold text-slate-600 leading-relaxed">{hw.description}</p>
-                            {hw.doctorFeedback && (
-                              <div className="rounded-lg bg-white border border-teal-200 p-2.5">
-                                <p className="text-[10px] font-black text-teal-700 mb-0.5">ملاحظة الدكتور:</p>
-                                <p className="text-xs font-bold text-slate-700">{hw.doctorFeedback}</p>
-                              </div>
-                            )}
-                          </div>
-                          {hw.status === 'assigned' && (
-                            <button
-                              onClick={() => {
-                                updateHomeworkStatus(hw.id, 'submitted');
-                                setHomeworkList(getLocalHomework());
-                              }}
-                              className="w-full rounded-xl py-2.5 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 bg-white border border-amber-300 text-amber-950 hover:bg-amber-100"
-                            >
-                              <CheckCircle2 size={16} />
-                              <span>تحديد كـ "تم الإنجاز"</span>
-                            </button>
-                          )}
-                          {hw.status === 'submitted' && (
-                            <div className="rounded-xl bg-emerald-600 text-white text-xs font-black text-center py-2">
-                              ✅ تم الإرسال — في انتظار مراجعة الدكتور
-                            </div>
-                          )}
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })()}
+                  );
+                })
+              ) : (
+                <div className="grid place-items-center py-16 text-center text-slate-400">
+                  <MessageSquare size={40} className="text-slate-300 mb-2" />
+                  <p className="text-sm font-bold text-slate-600">لا توجد رسائل سابقة في الشات بعد.</p>
+                  <p className="text-xs text-slate-400 mt-1">اكتب رسالتك أو استفسارك للدكتور إسماعيل وسيرد عليك مباشرة.</p>
+                </div>
+              )}
+            </div>
 
+            {/* Chat Input */}
+            <div className="p-4 border-t border-slate-200 bg-white flex items-center gap-2">
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendReply();
+                  }
+                }}
+                placeholder="اكتب رسالتك أو استفسارك للدكتور إسماعيل..."
+                className="flex-1 min-h-[48px] max-h-[100px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 resize-none"
+              />
+              <button
+                onClick={handleSendReply}
+                disabled={!replyText.trim()}
+                className="rounded-2xl bg-teal-700 px-6 py-3.5 text-xs font-black text-white hover:bg-teal-800 transition disabled:opacity-40 shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Send size={15} />
+                <span>إرسال</span>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Tab 4: Homework */}
+        {activeTab === 'homework' && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 animate-fade-in">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-black text-slate-950">الواجبات والمهام المنزلية</h2>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">أنشطة وتمارين يومية موجهة لتعزيز المهارات</p>
+            </div>
+
+            {homeworkList.length === 0 ? (
+              <div className="py-16 text-center text-slate-400">
+                <BookOpen size={40} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm font-black text-slate-700">لا توجد واجبات مطلوبة حالياً</p>
+                <p className="text-xs font-bold text-slate-400 mt-1">ستظهر الواجبات المنزلية هنا فور تعيينها من د. إسماعيل عيسى.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {homeworkList.map((hw) => (
+                  <div key={hw.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-950">{hw.title}</h4>
+                      <p className="text-xs font-bold text-slate-500 mt-0.5">{hw.description || 'مهمة وتدريب منزلي'} • موعد التسليم: {hw.dueDate}</p>
+                    </div>
+                    <span className="rounded-full bg-teal-100 text-teal-800 px-3 py-1 text-xs font-black">
+                      {hw.status === 'submitted' ? 'تم التسليم ✓' : 'مطلوب'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab 5: Profile */}
+        {activeTab === 'profile' && selectedStudent && (
+          <section className="space-y-6 animate-fade-in">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <h2 className="text-base font-black text-slate-950 border-b border-slate-100 pb-3">بيانات ملف الطفل المسجل</h2>
+              <div className="grid gap-4 sm:grid-cols-2 text-sm font-bold text-slate-700">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">اسم الطالب الرباعي:</span>
+                  <span className="font-black text-slate-950 text-base">{selectedStudent.fullName}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">الصف / المستوى:</span>
+                  <span className="font-black text-teal-800 text-base">{selectedStudent.grade}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">رقم الهوية / الإقامة:</span>
+                  <span className="font-mono font-black text-slate-950 text-base">{selectedStudent.nationalId || 'غير مسجل'}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">تاريخ الميلاد:</span>
+                  <span className="font-mono font-black text-slate-950 text-base">{selectedStudent.dateOfBirth || 'غير مسجل'}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">اسم ولي الأمر:</span>
+                  <span className="font-black text-slate-950 text-base">{selectedStudent.parentName || parentName}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-400 block mb-1">هاتف ولي الأمر:</span>
+                  <span className="font-mono font-black text-slate-950 text-base">{selectedStudent.parentPhone || 'غير مسجل'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-black text-emerald-950">تسجيل بصمة الوجه البيومترية للطفل</h3>
+                <p className="text-xs font-bold text-emerald-800 mt-1">تتيح للطفل تسجيل الدخول السريع عبر الكاميرا بدون كتابة كلمات مرور.</p>
+              </div>
+              <Link
+                href="/face-enroll"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-6 py-3 text-xs font-black text-white hover:bg-emerald-800 transition shadow-sm shrink-0"
+              >
+                <ScanFace size={18} />
+                <span>فتح تسجيل الوجه</span>
+              </Link>
             </div>
           </section>
         )}
       </main>
+
+      {/* Floating Bottom Navigation Bar matching student & school-parent portals */}
+      <div className="fixed bottom-3 left-3 right-3 max-w-xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-teal-600/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-teal-600/10">
+        <div className="grid grid-cols-5 gap-1">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            const active = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-2xl transition-all duration-200 cursor-pointer ${
+                  active
+                    ? 'bg-gradient-to-br from-teal-700 to-emerald-700 text-white font-black shadow-lg shadow-teal-700/30 scale-105'
+                    : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-slate-100/80'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${active ? 'text-white stroke-[2.5]' : 'text-slate-600'}`} />
+                <span className="text-[10px] leading-none">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
-
-
