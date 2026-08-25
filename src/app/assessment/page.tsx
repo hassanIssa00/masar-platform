@@ -544,12 +544,17 @@ function PlacementAssessmentContent() {
     if (!finished) return;
 
     const timeout = window.setTimeout(() => {
-      // Route directly to the student's profile page in Masar
-      const targetStudentId = savedStudentId || student?.id || studentIdParam || '';
-      if (targetStudentId) {
-        router.push(`/student/${targetStudentId}`);
+      if (isStudentFlow) {
+        // Student completed their own assessment → go to the student portal
+        router.push('/school-student');
       } else {
-        router.push('/students');
+        // Doctor/admin flow → go to student profile
+        const targetStudentId = savedStudentId || student?.id || studentIdParam || '';
+        if (targetStudentId) {
+          router.push(`/student/${targetStudentId}`);
+        } else {
+          router.push('/students');
+        }
       }
     }, 3000);
 
@@ -1252,8 +1257,8 @@ function PlacementAssessmentContent() {
                   {!isStudentFlow && <Link href={`/reports?report=${savedReportId}`} className="inline-flex rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white">
                     عرض التقرير الموثق
                   </Link>}
-                  <Link href={isStudentFlow ? `/student/${savedStudentId || student?.id || studentIdParam || ''}` : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
-                    {isStudentFlow ? 'فتح صفحة الطالب في مسار' : `فتح ${recommendedProgram.label}`}
+                  <Link href={isStudentFlow ? '/school-student' : recommendedProgram.href} className="inline-flex rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white">
+                    {isStudentFlow ? 'انتقل لبوابة الطالب' : `فتح ${recommendedProgram.label}`}
                   </Link>
                 </div>
                 {!isStudentFlow && <p className="mt-3 text-xs font-bold text-slate-500">رقم التقرير: {savedReportId}</p>}
