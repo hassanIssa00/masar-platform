@@ -11,6 +11,8 @@ import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRe
 import { getClassStudents } from '@/lib/classDb';
 import { pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 
+import { getPlayableAudioUrl } from '@/app/assessment/page';
+
 type StudentMediaItem = {
   id: string;
   type: 'audio' | 'image';
@@ -22,7 +24,7 @@ type StudentMediaItem = {
 
 function sanitizeAudioSrc(src?: string): string {
   if (!src) return '';
-  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
+  return getPlayableAudioUrl(src);
 }
 
 export default function StudentProfilePage() {

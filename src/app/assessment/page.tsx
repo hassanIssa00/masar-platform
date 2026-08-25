@@ -26,11 +26,47 @@ type ResponseRecord = {
 type MediaAnswer = {
   type: 'audio' | 'image';
   dataUrl: string;
+  blobUrl?: string;
   label: string;
   questionId?: string;
   categoryLabel?: string;
   createdAt?: string;
 };
+
+const blobUrlCache = new Map<string, string>();
+
+export function getPlayableAudioUrl(src?: string): string {
+  if (!src) return '';
+  if (src.startsWith('blob:') || src.startsWith('http://') || src.startsWith('https://')) return src;
+  
+  if (blobUrlCache.has(src)) {
+    return blobUrlCache.get(src)!;
+  }
+
+  try {
+    const parts = src.split(',');
+    if (parts.length >= 2) {
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'audio/webm';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrlCache.set(src, blobUrl);
+      return blobUrl;
+    }
+  } catch {}
+  return sanitizeAudioSrc(src);
+}
+
+export function sanitizeAudioSrc(src?: string): string {
+  if (!src) return '';
+  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
+}
 
 function ShapeCard({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -43,12 +79,6 @@ function ShapeCard({ label, children }: { label: string; children: ReactNode }) 
 
 function Dot({ className = 'bg-teal-600' }: { className?: string }) {
   return <span className={`block h-7 w-7 rounded-full ${className}`} />;
-}
-
-export function sanitizeAudioSrc(src?: string): string {
-  if (!src) return '';
-  // Remove any codecs=... parameters from data URL header that prevent HTML5 Audio playback in Chromium/Brave/Firefox
-  return src.replace(/^(data:audio\/[^;]+);codecs=[^;,]+;base64,/i, '$1;base64,');
 }
 
 function calculateAgeFromDob(dob?: string): string {
@@ -410,6 +440,8 @@ function PlacementAssessmentContent() {
   const [savedStudentId, setSavedStudentId] = useState('');
   // Show a loading screen until student data is fetched so we don't flash the wrong grade
   const [loadingStudent, setLoadingStudent] = useState(Boolean(studentIdParam));
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingQuestionIdRef = useRef('');
@@ -653,7 +685,18 @@ function PlacementAssessmentContent() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      if (!stream.getAudioTracks().length) {
+        setRecordingError('لم يتم العثور على مايكروفون نشط. تأكد من توصيل المايكروفون والسماح به.');
+        return;
+      }
+
       recordingStreamRef.current = stream;
       audioChunksRef.current = [];
 
@@ -661,17 +704,17 @@ function PlacementAssessmentContent() {
       recordingPromptRef.current = current.prompt;
       recordingCategoryRef.current = current.categoryLabel;
 
-      // Determine best supported MIME type on mobile/desktop
       const candidateTypes = [
-        'audio/webm',
         'audio/webm;codecs=opus',
+        'audio/webm',
         'audio/mp4',
+        'audio/ogg;codecs=opus',
         'audio/ogg',
         'audio/aac',
       ];
       let selectedMime = '';
       for (const t of candidateTypes) {
-        if (MediaRecorder.isTypeSupported(t)) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
           selectedMime = t;
           break;
         }
@@ -680,6 +723,7 @@ function PlacementAssessmentContent() {
       const recorder = selectedMime ? new MediaRecorder(stream, { mimeType: selectedMime }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       setRecordingQuestionId(current.id);
+      setRecordingSeconds(0);
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -688,9 +732,28 @@ function PlacementAssessmentContent() {
       };
 
       recorder.onstop = () => {
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+
         const rawType = recorder.mimeType || selectedMime || 'audio/webm';
         const cleanType = rawType.split(';')[0].trim() || 'audio/webm';
+        const totalBytes = audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+
+        if (totalBytes === 0) {
+          setRecordingError('لم يتم التقاط أي صوت. تأكد من إعداد المايكروفون والتحدث بصوت واضح ثم أعد المحاولة.');
+          setRecordingQuestionId('');
+          setRecordingSeconds(0);
+          if (recordingStreamRef.current) {
+            try { recordingStreamRef.current.getTracks().forEach((track) => track.stop()); } catch {}
+            recordingStreamRef.current = null;
+          }
+          return;
+        }
+
         const blob = new Blob(audioChunksRef.current, { type: cleanType });
+        const blobUrl = URL.createObjectURL(blob);
         const reader = new FileReader();
         const qId = recordingQuestionIdRef.current || current.id;
         const qPrompt = recordingPromptRef.current || current.prompt;
@@ -700,11 +763,13 @@ function PlacementAssessmentContent() {
           let dataUrl = typeof reader.result === 'string' ? reader.result : '';
           if (dataUrl) {
             dataUrl = sanitizeAudioSrc(dataUrl);
+            blobUrlCache.set(dataUrl, blobUrl);
             setMediaAnswers((currentMedia) => ({
               ...currentMedia,
               [qId]: {
                 type: 'audio',
                 dataUrl,
+                blobUrl,
                 label: qPrompt,
                 questionId: qId,
                 categoryLabel: qCategory,
@@ -715,6 +780,7 @@ function PlacementAssessmentContent() {
           }
         };
         reader.readAsDataURL(blob);
+
         if (recordingStreamRef.current) {
           try {
             recordingStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -722,20 +788,36 @@ function PlacementAssessmentContent() {
           recordingStreamRef.current = null;
         }
         setRecordingQuestionId('');
+        setRecordingSeconds(0);
       };
 
-      // Record chunks every 500ms
-      recorder.start(500);
+      // Deliver chunks every 100ms for continuous streaming without data loss
+      recorder.start(100);
+
+      // Start elapsed timer
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
     } catch {
       setRecordingQuestionId('');
-      setRecordingError('لم يتم السماح بالمايكروفون. اسمح للتسجيل من المتصفح ثم حاول مرة أخرى.');
+      setRecordingSeconds(0);
+      setRecordingError('لم يتم السماح بالمايكروفون. يرجى الضغط على أيقونة القفل في شريط المتصفح والسماح بالمايكروفون ثم إعادة المحاولة.');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state === 'recording') {
       try {
-        mediaRecorderRef.current.stop();
+        rec.requestData();
+      } catch {}
+      try {
+        rec.stop();
       } catch (err) {
         console.error('Error stopping recorder:', err);
       }
@@ -748,26 +830,27 @@ function PlacementAssessmentContent() {
     const rec = mediaRecorderRef.current;
     if (!rec || rec.state !== 'recording') return Promise.resolve();
     return new Promise<void>((resolve) => {
-      const originalOnStop = rec.onstop;
-      rec.onstop = (event) => {
-        if (originalOnStop) (originalOnStop as EventListener).call(rec, event);
-        // Wait a tick so the FileReader inside the original handler has time to start,
-        // then poll until recordingQuestionId is cleared (set to '' after FileReader finishes).
-        const poll = () => {
-          if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
-            // Give FileReader an extra 200ms to complete its async readAsDataURL
-            setTimeout(resolve, 200);
-          } else {
-            setTimeout(poll, 50);
-          }
-        };
-        setTimeout(poll, 50);
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
       };
-      try {
-        rec.stop();
-      } catch {
-        resolve();
-      }
+
+      const checkInterval = setInterval(() => {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+          clearInterval(checkInterval);
+          setTimeout(done, 150);
+        }
+      }, 50);
+
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        done();
+      }, 2500);
+
+      stopRecording();
     });
   };
 
@@ -1114,49 +1197,70 @@ function PlacementAssessmentContent() {
                 ) : null}
 
                 {currentResponseType === 'oral' ? (
-                  <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-black text-slate-950">سجّل إجابة الطالب الصوتية</p>
+                        <p className="text-base font-black text-slate-950">سجّل إجابة الطالب الصوتية</p>
                         <p className="mt-1 text-xs font-bold leading-6 text-slate-500">
-                          اضغط بدء التسجيل، ثم اطلب من الطالب الإجابة أو التكرار، وبعدها اضغط إيقاف.
+                          اضغط بدء التسجيل، ثم اطلب من الطالب الإجابة، واضغط إيقاف لحفظ الصوت مباشرة.
                         </p>
                       </div>
-                      {recordingQuestionId === current.id ? (
-                        <button
-                          type="button"
-                          onClick={stopRecording}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm"
-                        >
-                          <Square size={16} />
-                          إيقاف التسجيل
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={startRecording}
-                          disabled={Boolean(recordingQuestionId)}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white shadow-sm disabled:opacity-50"
-                        >
-                          <Mic size={16} />
-                          بدء التسجيل
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {recordingQuestionId === current.id ? (
+                          <button
+                            type="button"
+                            onClick={stopRecording}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-md hover:bg-rose-700 transition cursor-pointer animate-pulse"
+                          >
+                            <Square size={16} />
+                            إيقاف وحفظ التسجيل
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            disabled={Boolean(recordingQuestionId)}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-800 transition cursor-pointer disabled:opacity-50"
+                          >
+                            <Mic size={17} />
+                            {mediaAnswers[current.id]?.type === 'audio' ? 'إعادة التسجيل' : 'بدء التسجيل'}
+                          </button>
+                        )}
+                      </div>
                     </div>
+
                     {recordingQuestionId === current.id && (
-                      <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-800">
-                        التسجيل يعمل الآن...
+                      <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-800">
+                        <span className="flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded-full bg-rose-600 animate-ping" />
+                          جاري تسجيل الصوت الآن...
+                        </span>
+                        <span className="font-mono text-base font-black text-rose-900 bg-white px-2.5 py-1 rounded-lg border border-rose-200 shadow-2xs">
+                          00:{String(recordingSeconds).padStart(2, '0')}
+                        </span>
                       </div>
                     )}
+
                     {recordingError && (
-                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-900">
-                        {recordingError}
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-950">
+                        ⚠️ {recordingError}
                       </div>
                     )}
+
                     {mediaAnswers[current.id]?.type === 'audio' && (
-                      <div className="mt-4 rounded-xl bg-slate-50 p-3">
-                        <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(mediaAnswers[current.id].dataUrl)} />
-                        <p className="mt-2 text-xs font-bold text-emerald-700">تم حفظ التسجيل في تقرير الطالب.</p>
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-black text-emerald-800">
+                            ✅ تم التقاط وحفظ الصوت بنجاح — يمكنك الاستماع إليه أدناه:
+                          </p>
+                        </div>
+                        <audio
+                          key={current.id + '_' + (mediaAnswers[current.id].createdAt || '')}
+                          controls
+                          preload="auto"
+                          className="w-full mt-1"
+                          src={getPlayableAudioUrl(mediaAnswers[current.id].blobUrl || mediaAnswers[current.id].dataUrl)}
+                        />
                       </div>
                     )}
                   </div>
