@@ -350,7 +350,9 @@ export default function NewStudentPage() {
 
               <Field label="اسم ولي الأمر" placeholder="الاسم ثلاثي أو رباعي" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} required />
               <Field label="هاتف ولي الأمر" type="tel" placeholder="05xxxxxxxx أو 01xxxxxxxxx" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} required />
-              <Field label="رقم الهوية / الإقامة" placeholder="رقم الهوية الوطنية أو الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
+              {nextFlow !== 'student-test' && (
+                <Field label="رقم الهوية / الإقامة" placeholder="رقم الهوية الوطنية أو الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
+              )}
 
               <div className="block md:col-span-2">
                 <label className="block">
