@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/authorization';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
+import { invalidateSnapshotCache } from '../snapshot/route';
 
 const ALLOWED_COLLECTIONS = new Set([
   'accounts',
@@ -64,6 +65,7 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
   }
   if (method === 'delete') return false;
   return [
+    'accounts',
     'students',
     'reports',
     'surveys',
@@ -130,6 +132,7 @@ export async function POST(req: NextRequest) {
       { merge: true },
     );
 
+  invalidateSnapshotCache();
   return NextResponse.json({ ok: true });
 }
 

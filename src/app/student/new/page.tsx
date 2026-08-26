@@ -251,6 +251,7 @@ export default function NewStudentPage() {
         const resolvedName = nextFlow === 'student-test'
           ? (student.fullName.trim() || currentAcc.name)
           : (student.parentName.trim() || currentAcc.name);
+        const linkedStudentId = nextFlow === 'parent-survey' ? savedStudent.id : undefined;
         const updatedAcc = saveAccount({
           ...currentAcc,
           name: resolvedName,
@@ -258,13 +259,10 @@ export default function NewStudentPage() {
           photoUrl: photoToSave || currentAcc.photoUrl,
           phone: student.parentPhone || currentAcc.phone,
           onboardingRequired: false,
+          ...(linkedStudentId ? { linkedStudentId } : {}),
         });
         setSession(updatedAcc);
         await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
-
-        if (savedStudent.id !== session.id) {
-          void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
-        }
       } else {
         void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
       }

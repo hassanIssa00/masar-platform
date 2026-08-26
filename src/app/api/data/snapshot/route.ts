@@ -71,9 +71,16 @@ type SnapshotCacheEntry = {
 
 const snapshotCache = new Map<string, SnapshotCacheEntry>();
 
+export function invalidateSnapshotCache() {
+  snapshotCache.clear();
+}
+
 function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string }) {
   const userEmail = user.email?.toLowerCase();
-  const userPhone = user.phone?.replace(/\s+/g, '');
+  const userPhone = user.phone?.replace(/\D/g, '');
+  const userName = user.name?.trim().toLowerCase();
+
+  // Direct ID / email / phone field checks
   const fields = [
     item?.id,
     item?.accountId,
@@ -88,19 +95,32 @@ function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; em
     item?.studentName,
     item?.fullName,
     item?.name,
+    item?.parentName,
   ]
     .filter(Boolean)
     .map((value) => String(value).trim().toLowerCase());
 
-  return fields.some((value) => {
-    const normalizedPhone = value.replace(/\s+/g, '');
+  const matched = fields.some((value) => {
+    const cleanPhone = value.replace(/\D/g, '');
     return (
       value === user.id.toLowerCase() ||
-      value === user.name.toLowerCase() ||
+      value === userName ||
       value === userEmail ||
-      (!!userPhone && normalizedPhone === userPhone)
+      (!!userPhone && cleanPhone.length >= 8 && (cleanPhone === userPhone || cleanPhone.endsWith(userPhone) || userPhone.endsWith(cleanPhone)))
     );
   });
+  if (matched) return true;
+
+  // Patronymic match: parent name is part of student's full name or vice versa
+  if (userName && userName.length > 3) {
+    const itemFullName = String(item?.fullName || '').trim().toLowerCase();
+    const itemParentName = String(item?.parentName || '').trim().toLowerCase();
+    if (itemFullName && itemFullName.includes(userName)) return true;
+    if (itemParentName && itemParentName === userName) return true;
+    if (userName.includes(itemFullName) && itemFullName.length > 5) return true;
+  }
+
+  return false;
 }
 
 export async function GET(req: NextRequest) {
