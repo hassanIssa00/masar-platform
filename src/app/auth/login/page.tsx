@@ -106,24 +106,11 @@ export default function LoginPage() {
       targetUrl = '/dashboard';
 
     } else if (account.role === 'student') {
-      if (branch === 'IKHLAS_JEDDAH') {
+      // Student portal for all students (MASAR & IKHLAS)
+      if (account.onboardingRequired === false) {
         targetUrl = '/school-student';
       } else {
-        // PRIMARY CHECK: Use server-side onboardingRequired flag.
-        // It is set to false in Firestore the moment the wizard is submitted.
-        // If false → student already completed onboarding → go to their portal.
-        // If true or missing → first time → go to wizard.
-        if (account.onboardingRequired === false) {
-          // Pull data so student page has records
-          await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
-          const allStudents = getStudents();
-          const linked = allStudents.find(
-            (s) => s.id === account.id || (account.email && s.email === account.email)
-          );
-          targetUrl = linked ? `/student/${linked.id}` : `/student/${account.id}`;
-        } else {
-          targetUrl = '/student/new?flow=student';
-        }
+        targetUrl = '/student/new?flow=student';
       }
 
     } else {
@@ -131,12 +118,8 @@ export default function LoginPage() {
       if (branch === 'IKHLAS_JEDDAH') {
         targetUrl = '/school-parent';
       } else {
-        // PRIMARY CHECK: Use server-side onboardingRequired flag.
         if (account.onboardingRequired === false) {
-          await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
-          const allStudents = getStudents();
-          const linked = findMatchingStudentForParent(account, allStudents);
-          targetUrl = linked ? `/parent?student=${linked.id}` : '/parent';
+          targetUrl = '/parent';
         } else {
           targetUrl = '/student/new?flow=parent';
         }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
@@ -29,6 +29,7 @@ function sanitizeAudioSrc(src?: string): string {
 
 export default function StudentProfilePage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [reports, setReports] = useState<ReportRecord[]>([]);
@@ -42,6 +43,15 @@ export default function StudentProfilePage() {
       if (cancelled) return;
       const role = session?.role || 'parent';
       setUserRole(role);
+
+      if (session?.role === 'student') {
+        router.replace('/school-student');
+        return;
+      }
+      if (session?.role === 'parent') {
+        router.replace(params?.id ? `/parent?student=${params.id}` : '/parent');
+        return;
+      }
 
       // 1. Try to find in localStorage (students or class students)
       let allSt = getStudents();
