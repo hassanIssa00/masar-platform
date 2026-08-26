@@ -48,15 +48,28 @@ export default function SyncStatus() {
   if (!isStaff) return null;
 
   const handleClearAll = async () => {
+    if (!window.confirm('هل أنت متأكد من رغبتك في تصفير وتفريغ جميع سجلات الطلاب والتقارير بالكامل من قاعدة البيانات السحابية؟')) return;
     setStatus('loading');
-    // 1️⃣ Wipe Firestore first
-    await purgeFirestore();
-    // 2️⃣ Wipe browser cloud cache and reset in-memory data
-    clearAllMockData();
-    // 3️⃣ Refresh counters
-    refreshSnapshot();
-    setStatus('done');
-    setTimeout(() => setStatus('idle'), 5000);
+    try {
+      // 1️⃣ Purge from Server Firebase Admin
+      await fetch('/api/data/purge', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      // 2️⃣ Wipe client-side Firestore directly as fallback
+      await purgeFirestore();
+      // 3️⃣ Wipe browser cloud cache and reset in-memory data
+      clearAllMockData();
+      // 4️⃣ Refresh counters and reload
+      refreshSnapshot();
+      setStatus('done');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (e) {
+      console.error('Purge error:', e);
+      setStatus('idle');
+    }
   };
 
   const lastSync = snapshot.lastSync ? new Date(snapshot.lastSync).toLocaleString('ar-SA') : 'لا توجد عمليات محفوظة بعد';

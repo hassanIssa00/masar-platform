@@ -182,25 +182,33 @@ export default function StudentsControlPage() {
     if (!selectedStudent) return null;
     const testReport = studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'initial-assessment');
     
-    if (selectedStudent.grade.includes('الأول') || selectedStudent.grade.includes('الثاني') || selectedStudent.grade.includes('عام')) {
-      return {
-        program: curriculumPrograms.find((p) => p.slug === 'reading')!,
-        reason: 'بناءً على المرحلة التأسيسية، يُقترح الاعتماد الأولي على مسار القراءة والتهجي الصريح.',
-      };
-    }
-    
-    if (testReport) {
-      const mathDomain = testReport.domains?.find((d) => d.name.includes('الرياضيات') || d.name.includes('الحساب'));
-      if (mathDomain && mathDomain.score < 65) {
+    const studentGrade = selectedStudent.grade || '';
+    if (studentGrade.includes('الأول') || studentGrade.includes('الثاني') || studentGrade.includes('عام')) {
+      const readingProg = curriculumPrograms.find((p) => p.slug === 'reading');
+      if (readingProg) {
         return {
-          program: curriculumPrograms.find((p) => p.slug === 'math')!,
-          reason: `درجة الرياضيات (${mathDomain.score}%) تشير لحاجة الطفل لمعمل العد التفاعلي.`,
+          program: readingProg,
+          reason: 'بناءً على المرحلة التأسيسية، يُقترح الاعتماد الأولي على مسار القراءة والتهجي الصريح.',
         };
       }
     }
+    
+    if (testReport && Array.isArray(testReport.domains)) {
+      const mathDomain = testReport.domains.find((d) => d?.name && (d.name.includes('الرياضيات') || d.name.includes('الحساب')));
+      if (mathDomain && typeof mathDomain.score === 'number' && mathDomain.score < 65) {
+        const mathProg = curriculumPrograms.find((p) => p.slug === 'math');
+        if (mathProg) {
+          return {
+            program: mathProg,
+            reason: `درجة الرياضيات (${mathDomain.score}%) تشير لحاجة الطفل لمعمل العد التفاعلي.`,
+          };
+        }
+      }
+    }
 
+    const ldProg = curriculumPrograms.find((p) => p.slug === 'learning-difficulties') || curriculumPrograms[0];
     return {
-      program: curriculumPrograms.find((p) => p.slug === 'learning-difficulties')!,
+      program: ldProg,
       reason: 'تقييم شامل يغطي المهارات الأكاديمية والنمائية المتعددة.',
     };
   }, [selectedStudent, studentReports]);
@@ -446,8 +454,8 @@ export default function StudentsControlPage() {
                               <p className="text-xs font-black text-teal-700">ملف الطالب الحسابي الكامل</p>
                               {(selectedStudent.schoolBranch === 'IKHLAS_JEDDAH' ||
                                 selectedStudent.source === 'ikhlas-jeddah' ||
-                                selectedStudent.grade.includes('فصل') ||
-                                selectedStudent.fullName.includes('ربيع')) && (
+                                (typeof selectedStudent.grade === 'string' && selectedStudent.grade.includes('فصل')) ||
+                                (typeof selectedStudent.fullName === 'string' && selectedStudent.fullName.includes('ربيع'))) && (
                                 <span className="rounded-md bg-indigo-100 text-indigo-950 font-black text-[10px] px-2 py-0.5 border border-indigo-200">
                                   🏫 طالب مسجل في فصل د. إسماعيل عيسى
                                 </span>
@@ -726,17 +734,17 @@ export default function StudentsControlPage() {
                         </h3>
                         <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">مقارنة التقييمات ومعدل التحسن عبر الأنشطة والاختبارات المنجزة</p>
                       </div>
-                      {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length > 0 && (
+                      {studentReports.length > 0 && (
                         <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-300 px-4 py-2 text-emerald-950 shadow-2xs self-start sm:self-auto">
                           <span className="text-xs font-black text-emerald-800">نسبة التحسن الفعلي:</span>
                           <span className="text-lg font-black text-emerald-950">
-                            {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName)[0].score}%
+                            {studentReports[0]?.score ?? 0}%
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).length === 0 ? (
+                    {studentReports.length === 0 ? (
                       <div className="py-10 text-center text-slate-400 space-y-2">
                         <BookOpenCheck className="mx-auto text-slate-300" size={36} />
                         <p className="text-sm font-black text-slate-600">لا توجد تقارير أو تقييمات سابقة لهذا الطالب بعد</p>
@@ -747,15 +755,15 @@ export default function StudentsControlPage() {
                         {/* Interactive Bar Chart */}
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
                           <div className="flex items-end gap-4 h-44 border-b border-slate-300 pb-3 px-3">
-                            {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                            {studentReports.map((rep) => (
                               <div key={rep.id} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                                 <span className="rounded-lg bg-white border border-teal-200 px-2.5 py-1 text-sm font-black text-teal-950 shadow-2xs group-hover:scale-110 transition-transform">
-                                  {rep.score}%
+                                  {rep.score ?? 0}%
                                 </span>
                                 <div className="w-full max-w-[70px] flex-1 flex items-end">
                                   <div
                                     className="w-full rounded-t-xl bg-gradient-to-t from-teal-700 via-teal-600 to-teal-500 shadow-sm transition-all duration-500 hover:brightness-110"
-                                    style={{ height: `${Math.max(rep.score, 18)}%` }}
+                                    style={{ height: `${Math.max(rep.score ?? 0, 18)}%` }}
                                   />
                                 </div>
                                 <span className="text-xs font-black text-slate-600 truncate max-w-[110px] text-center" title={rep.date || rep.program}>
@@ -768,14 +776,14 @@ export default function StudentsControlPage() {
 
                         {/* Breakdown Cards */}
                         <div className="grid gap-3 sm:grid-cols-2">
-                          {reports.filter(r => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName).map((rep) => (
+                          {studentReports.map((rep) => (
                             <div key={rep.id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition">
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-black text-slate-950 truncate">{rep.program}</p>
                                 <p className="text-xs font-bold text-slate-500 mt-1">{rep.date || 'تاريخ الاختبار'}</p>
                               </div>
                               <div className="shrink-0 rounded-xl bg-white border border-teal-300 px-3.5 py-2 text-center shadow-2xs">
-                                <span className="block text-lg font-black text-teal-950 leading-none">{rep.score}%</span>
+                                <span className="block text-lg font-black text-teal-950 leading-none">{rep.score ?? 0}%</span>
                                 <span className="text-[10px] font-bold text-teal-700">النتيجة</span>
                               </div>
                             </div>
@@ -957,22 +965,22 @@ function getReportSlots(reports: ReportRecord[]) {
 
 function AccountCredentialsBox({ student }: { student: StudentRecord }) {
   // Find the account registered for this student by matching parentPhone or parentName
-  const accounts = getAccounts();
+  const accounts = (getAccounts() || []).filter(Boolean);
   
   // Try to find account by phone number (most reliable)
   let linkedAccount = student.parentPhone
-    ? accounts.find((a) => a.phone && student.parentPhone && a.phone.includes(student.parentPhone.replace(/^\+\d{2,3}/, '').replace(/^0/, '')))
+    ? accounts.find((a) => a?.phone && student.parentPhone && a.phone.includes(student.parentPhone.replace(/^\+\d{2,3}/, '').replace(/^0/, '')))
     : null;
 
   // Fallback: match by parent name
   if (!linkedAccount && student.parentName) {
     const normalizedParent = student.parentName.trim().toLowerCase();
-    linkedAccount = accounts.find((a) => a.name.trim().toLowerCase() === normalizedParent && a.role === 'parent');
+    linkedAccount = accounts.find((a) => a?.name && typeof a.name === 'string' && a.name.trim().toLowerCase() === normalizedParent && a.role === 'parent');
   }
 
   // If still not found, show the most recent parent account
   if (!linkedAccount) {
-    linkedAccount = accounts.filter((a) => a.role === 'parent')[0] ?? null;
+    linkedAccount = accounts.filter((a) => a?.role === 'parent')[0] ?? null;
   }
 
   if (!linkedAccount) {
