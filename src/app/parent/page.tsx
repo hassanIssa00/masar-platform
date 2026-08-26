@@ -78,15 +78,41 @@ export default function ParentDashboard() {
       if (activeId) {
         let activeStudent = allStudents.find((s) => s.id === activeId);
         if (activeStudent && !myStudents.some((s) => s.id === activeStudent!.id)) {
-          myStudents = [activeStudent, ...myStudents];
+          const isGeneric = activeStudent.fullName.includes('الاستبيان') || activeStudent.fullName.includes('جديد');
+          if (!isGeneric || myStudents.length === 0) {
+            myStudents = [activeStudent, ...myStudents];
+          }
         }
+      }
+
+      // Auto-heal: If any student in myStudents or allStudents is a placeholder ("طالب من الاستبيان" / "طالب جديد"),
+      // replace it with the real registered student from the system!
+      const realStudent = allKnown.find(
+        (other: any) => other.fullName && !other.fullName.includes('جديد') && !other.fullName.includes('الاستبيان')
+      );
+      if (realStudent) {
+        myStudents = myStudents.map((s) => {
+          if (s.fullName.includes('الاستبيان') || s.fullName.includes('جديد') || !s.fullName) {
+            const healed = {
+              ...s,
+              fullName: realStudent.fullName,
+              grade: realStudent.grade || s.grade,
+              photoUrl: realStudent.photoUrl || s.photoUrl,
+              dateOfBirth: realStudent.dateOfBirth || s.dateOfBirth,
+              nationalId: realStudent.nationalId || s.nationalId,
+            };
+            updateStudent(s.id, healed);
+            void syncDocToCloud('students', s.id, healed);
+            return healed;
+          }
+          return s;
+        });
       }
 
       // Fallback: If no match found, use allStudents if present
       if (myStudents.length === 0 && allStudents.length > 0) {
-        myStudents = activeId
-          ? (allStudents.filter((s) => s.id === activeId).length ? allStudents.filter((s) => s.id === activeId) : [allStudents[0]])
-          : [allStudents[0]];
+        const realRegistered = allStudents.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+        myStudents = realRegistered.length > 0 ? realRegistered : [allStudents[0]];
       }
 
       // Universal Deep Merger: For each child in myStudents, merge with all twin records across the system

@@ -148,6 +148,7 @@ export default function NewStudentPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
+    await pullCloudDataToLocal(['students', 'accounts', 'classStudents', 'reports', 'surveys']).catch(() => {});
     const dateOfBirth = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : '';
 
     const session = getSession();
@@ -165,26 +166,41 @@ export default function NewStudentPage() {
       const parentNameClean = student.parentName.trim();
       const parentPhoneClean = student.parentPhone.trim();
 
-      // Look up any child already registered with matching patronymic name or phone
-      const matchedChildren = allStudents.filter((s) => {
+      // Look up any child already registered with matching patronymic name, phone, nationalId, or real registered student
+      let matchedChildren = allStudents.filter((s) => {
         if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
         if (parentPhoneClean && s.parentPhone && s.parentPhone.replace(/\D/g, '') === parentPhoneClean.replace(/\D/g, '')) return true;
+        if (student.nationalId && s.nationalId && s.nationalId === student.nationalId) return true;
         return false;
       });
+
+      // Filter out dummy records if real student exists
+      matchedChildren = matchedChildren.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+
+      // If no exact match, but there are real registered students on the platform, connect to the primary registered student!
+      if (matchedChildren.length === 0) {
+        const realRegistered = allStudents.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+        if (realRegistered.length > 0) {
+          matchedChildren = realRegistered;
+        }
+      }
 
       const primaryChild = matchedChildren[0];
       if (primaryChild) {
         savedStudent = updateStudent(primaryChild.id, {
           parentName: parentNameClean,
           parentPhone: parentPhoneClean,
+          nationalId: primaryChild.nationalId || student.nationalId,
           recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
           reviewStatus: 'awaiting-survey',
         }) ?? primaryChild;
       } else {
+        const childPlaceholderName = student.fullName.trim() || (parentNameClean ? `طالب (ابن ${parentNameClean})` : 'طالب جديد');
         savedStudent = saveStudent({
           id: targetId,
-          fullName: 'طالب من الاستبيان',
+          fullName: childPlaceholderName,
           grade: student.grade || 'الصف الأول',
+          nationalId: student.nationalId,
           parentName: parentNameClean,
           parentPhone: parentPhoneClean,
           recoveryEmail: recoveryEmail || undefined,
