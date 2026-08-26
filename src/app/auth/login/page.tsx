@@ -169,9 +169,7 @@ export default function LoginPage() {
       if (res.ok && data.ok && data.account) {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
         setSession(data.account, rememberMe, false);
-        setTimeout(() => {
-          void redirectAfterLogin(data.account);
-        }, 600);
+        await redirectAfterLogin(data.account);
         return;
       }
 

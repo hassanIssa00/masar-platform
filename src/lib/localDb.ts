@@ -215,6 +215,8 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & P
   return next;
 }
 
+const SESSION_STORAGE_KEY = 'masar_active_session_cache';
+
 export function setSession(
   account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>,
   rememberMe: boolean = false,
@@ -222,15 +224,26 @@ export function setSession(
 ) {
   void rememberMe;
   void _writeClientCookie;
-  activeSession = account;
+  activeSession = account as AccountRecord;
   if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(account));
+    } catch {}
     window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: account }));
   }
 }
 
 export function getSession() {
   if (typeof window === 'undefined') return null;
-  return activeSession;
+  if (activeSession) return activeSession;
+  try {
+    const cached = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (cached) {
+      activeSession = JSON.parse(cached);
+      return activeSession;
+    }
+  } catch {}
+  return null;
 }
 
 export async function hydrateSessionFromServer() {
@@ -255,6 +268,9 @@ export async function hydrateSessionFromServer() {
 export function clearSession() {
   if (typeof window !== 'undefined') {
     activeSession = null;
+    try {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {}
     document.cookie = `masar_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
     window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: null }));
   }
