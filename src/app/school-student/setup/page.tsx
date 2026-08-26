@@ -298,7 +298,7 @@ export default function StudentSetupPage() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: خالد ماجد عطيه موسي"
+                  placeholder="الاسم الرباعي كاملاً"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition"
                 />
               </label>
@@ -314,7 +314,7 @@ export default function StudentSetupPage() {
                     maxLength={10}
                     value={nationalId}
                     onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
-                    placeholder="مثال: 3000324615"
+                    placeholder="10 أرقام"
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-mono font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition"
                   />
                   <IdCard size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -429,7 +429,7 @@ export default function StudentSetupPage() {
                   type="text"
                   value={parentName}
                   onChange={(e) => setParentName(e.target.value)}
-                  placeholder="مثال: ماجد عطيه موسي"
+                  placeholder="اسم ولي الأمر الرباعي كاملاً"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition"
                 />
               </label>
@@ -445,7 +445,7 @@ export default function StudentSetupPage() {
                     required
                     value={parentPhone}
                     onChange={(e) => setParentPhone(e.target.value)}
-                    placeholder="مثال: 0501234567"
+                    placeholder="رقم الجوال"
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-mono font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition"
                   />
                   <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
