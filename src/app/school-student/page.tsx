@@ -152,7 +152,8 @@ export default function StudentDashboard() {
         ...(linked || {}),
         fullName: finalName,
         photoUrl,
-        grade: linked?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        grade: linked?.grade || ((linked as any)?.schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
+        schoolBranch: (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR',
         parentName: linked?.parentName || '',
         parentPhone: linked?.parentPhone || session.phone || '',
         nationalId: linked?.nationalId || (session as any)?.nationalId || '',
@@ -229,9 +230,15 @@ export default function StudentDashboard() {
         <div>
           <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-1.5">
             <span>منصة مَسَار الذكية</span>
-            <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
-              فصل د. إسماعيل
-            </span>
+            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? (
+              <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                فصل د. إسماعيل
+              </span>
+            ) : (
+              <span className="text-xs bg-teal-100 text-teal-800 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
+                منصة مسار التعليمية
+              </span>
+            )}
           </h1>
           <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -269,7 +276,7 @@ export default function StudentDashboard() {
         <StudentProfileCard
           student={{
             fullName: studentRecord.fullName || studentName,
-            grade: studentRecord.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+            grade: studentRecord.grade || (studentRecord.schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
             photoUrl: studentRecord.photoUrl || studentPhoto,
             parentName: studentRecord.parentName,
             parentPhone: studentRecord.parentPhone,
@@ -400,7 +407,9 @@ export default function StudentDashboard() {
       <div className="bg-white rounded-3xl shadow-sm p-6 relative overflow-hidden border border-slate-200 space-y-5">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 className="font-black text-slate-900 text-sm">جدول الحصص المعتمد — فصل د. إسماعيل عيسى</h3>
+            <h3 className="font-black text-slate-900 text-sm">
+              {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? 'جدول الحصص المعتمد — فصل د. إسماعيل عيسى' : 'جدول الحصص والأنشطة — منصة مسار'}
+            </h3>
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">مدرج حسب الخطة الدراسية المعتمدة</p>
           </div>
           <span className="text-xs font-black text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
