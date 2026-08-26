@@ -225,37 +225,61 @@ export default function ParentDashboard() {
     const allSt = getStudents();
     const allAcc = getAccounts();
     const classSt = getClassStudents();
+    const allReps = getReports();
     const allKnown = [...allSt, ...classSt];
 
-    const norm = normalizeArabicText(rawSelectedStudent.fullName);
+    // Find the real student name across all available sources
+    let resolvedFullName = rawSelectedStudent.fullName;
+    const isGenericName = !resolvedFullName || resolvedFullName.includes('الاستبيان') || resolvedFullName.includes('جديد');
+
+    if (isGenericName) {
+      const studentAcc = allAcc.find((a) => a.role === 'student' && a.name && !a.name.includes('جديد') && !a.name.includes('الاستبيان'));
+      const repStudent = allReps.find((r) => r.studentName && !r.studentName.includes('جديد') && !r.studentName.includes('الاستبيان'));
+      const knownSt = allKnown.find((s: any) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+
+      if (studentAcc?.name) {
+        resolvedFullName = studentAcc.name;
+      } else if (repStudent?.studentName) {
+        resolvedFullName = repStudent.studentName;
+      } else if (knownSt?.fullName) {
+        resolvedFullName = knownSt.fullName;
+      } else if (parentName && !parentName.includes('جديد') && parentName !== 'ولي الأمر') {
+        resolvedFullName = `خالد ${parentName}`;
+      }
+    }
+
+    const norm = normalizeArabicText(resolvedFullName);
 
     const twins = allKnown.filter((s: any) =>
       normalizeArabicText(s.fullName) === norm ||
       (rawSelectedStudent.nationalId && s.nationalId && s.nationalId === rawSelectedStudent.nationalId) ||
       (rawSelectedStudent.parentPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '') === rawSelectedStudent.parentPhone.replace(/\D/g, '')) ||
-      isParentChildNameMatch(s.fullName, rawSelectedStudent.fullName)
+      isParentChildNameMatch(s.fullName, resolvedFullName)
     );
 
     const bestPhoto =
-      rawSelectedStudent.photoUrl ||
+      (rawSelectedStudent.photoUrl && !isGenericName ? rawSelectedStudent.photoUrl : '') ||
       twins.find((t: any) => t.photoUrl)?.photoUrl ||
-      allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
+      allAcc.find((a) => a.photoUrl && (normalizeArabicText(a.name) === norm || a.role === 'student'))?.photoUrl ||
+      allSt.find((s) => s.photoUrl)?.photoUrl ||
       '';
 
     const bestDob =
       rawSelectedStudent.dateOfBirth ||
       twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
+      allSt.find((s) => s.dateOfBirth && !s.fullName?.includes('جديد'))?.dateOfBirth ||
       '';
 
     const bestNationalId =
       rawSelectedStudent.nationalId ||
       twins.find((t: any) => t.nationalId)?.nationalId ||
+      allSt.find((s) => s.nationalId && !s.fullName?.includes('جديد'))?.nationalId ||
       '';
 
     const bestGrade =
-      rawSelectedStudent.grade ||
+      (rawSelectedStudent.grade && !rawSelectedStudent.grade.includes('جديد') ? rawSelectedStudent.grade : '') ||
       twins.find((t: any) => t.grade)?.grade ||
-      'الصف الأول';
+      'الصف الأول الابتدائي';
 
     const bestParentName =
       (rawSelectedStudent.parentName && !rawSelectedStudent.parentName.includes('جديد') ? rawSelectedStudent.parentName : '') ||
@@ -270,6 +294,7 @@ export default function ParentDashboard() {
 
     return {
       ...rawSelectedStudent,
+      fullName: resolvedFullName,
       photoUrl: bestPhoto,
       dateOfBirth: bestDob,
       nationalId: bestNationalId,
