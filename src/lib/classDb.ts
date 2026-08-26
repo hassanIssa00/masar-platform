@@ -255,9 +255,9 @@ export function getClassParents(): ClassParentRecord[] {
   const students = getClassStudents();
   return students.map((s) => ({
     id: `prt-${s.id}`,
-    name: s.parentName || `ولي أمر ${s.fullName.split(' ')[0]}`,
-    phone: s.parentPhone || '0550000000',
-    email: `parent.${s.id}@masarplatform.org`,
+    name: s.parentName || '',
+    phone: s.parentPhone || '',
+    email: '',
     studentId: s.id,
     studentName: s.fullName,
     createdAt: s.createdAt,

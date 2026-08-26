@@ -106,7 +106,7 @@ export default function StudentSetupPage() {
         if (email && (record.email?.trim().toLowerCase() === email || record.parentEmail?.trim().toLowerCase() === email)) return true;
         if (phone && pPhone.includes(phone)) return true;
         return false;
-      }) || (students.length > 0 ? students[0] : null);
+      }) || null; // Never fall back to a random student
 
       if (linked) {
         setStudent(linked);
@@ -115,7 +115,10 @@ export default function StudentSetupPage() {
         setGrade(linked.grade || 'الصف الأول');
         setParentName(linked.parentName || '');
         setParentPhone(linked.parentPhone || session.phone || '');
-        setRecoveryEmail((linked as any).recoveryEmail || (linked as any).email || '');
+        // Only pre-fill recoveryEmail if it looks like a real human email (not auto-generated)
+        const rawEmail = (linked as any).recoveryEmail || (linked as any).email || '';
+        const isAutoGenEmail = rawEmail.includes('student.') || rawEmail.includes('student.ikhlas') || rawEmail.includes('@masarplatform.org');
+        setRecoveryEmail(isAutoGenEmail ? '' : rawEmail);
         setNotes((linked as any).notes || '');
 
         if (linked.dateOfBirth) {
@@ -135,9 +138,11 @@ export default function StudentSetupPage() {
           }
         }
       } else {
-        if (session.name && !session.name.includes('جديد')) setFullName(session.name);
+        // New user — only pre-fill from session if the name looks real (not "طالب جديد" etc.)
+        const nameIsReal = session.name && !session.name.includes('جديد') && !session.name.includes('طالب');
+        if (nameIsReal) setFullName(session.name!);
         if (session.phone) setParentPhone(session.phone);
-        if (session.email) setRecoveryEmail(session.email);
+        // Don't pre-fill email — let user enter it manually
       }
     };
     void loadSetup();
