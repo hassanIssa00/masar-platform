@@ -872,32 +872,30 @@ function PlacementAssessmentContent() {
 
   const finish = () => {
     const studentMedia = { ...(student?.media || {}), ...mediaAnswers };
-    const fallbackStudent: StudentRecord = {
-      id: studentIdParam ?? 'student_assessment',
-      fullName: studentName.trim() || 'طالب الاختبار',
-      grade: assessment.shortTitle,
-      reviewStatus: 'awaiting-doctor-review',
-      source: 'student-wizard',
-      media: studentMedia,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
     let savedStudent: StudentRecord;
     const all = getStudents();
     const targetStudentId = student?.id || studentIdParam;
     const existing = all.find((s) => s.id === targetStudentId);
 
+    const isGeneric = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاختبار') || n === 'طالب' || n === 'الطالب';
+    const validFullName = (!isGeneric(studentName) && studentName.trim()) || (!isGeneric(student?.fullName) && student?.fullName) || existing?.fullName || 'طالب جديد';
+
     if (existing) {
       savedStudent = updateStudent(existing.id, {
-        fullName: studentName.trim() || existing.fullName,
+        fullName: validFullName,
         grade: existing.grade || student?.grade || assessment.shortTitle,
+        photoUrl: existing.photoUrl || student?.photoUrl || undefined,
+        dateOfBirth: existing.dateOfBirth || student?.dateOfBirth || undefined,
+        nationalId: existing.nationalId || student?.nationalId || undefined,
+        parentName: existing.parentName || student?.parentName || undefined,
+        parentPhone: existing.parentPhone || student?.parentPhone || undefined,
         reviewStatus: 'awaiting-doctor-review',
         media: studentMedia,
       }) ?? existing;
     } else {
       savedStudent = saveStudent({
         id: targetStudentId || createId('student'),
-        fullName: studentName.trim() || student?.fullName || 'طالب جديد',
+        fullName: validFullName,
         grade: student?.grade || assessment.shortTitle,
         reviewStatus: 'awaiting-doctor-review',
         source: 'student-wizard',

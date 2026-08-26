@@ -82,25 +82,28 @@ export default function StudentDashboard() {
       // Look up student from both Classroom DB and Platform DB
       const classStudents = getClassStudents();
       const allStudents = getStudents();
+      const allAccounts = getAccounts();
       const combined = [...classStudents, ...allStudents];
 
       const email = session.email?.trim().toLowerCase() ?? '';
-      const phone = session.phone?.replace(/\D/g, '') ?? '';
-      const sName = session.name?.trim().toLowerCase() ?? '';
-
-      let linked = combined.find((s: any) => {
-        if (session.id && s.id === session.id) return true;
-        const fn = (s.fullName || '').trim().toLowerCase();
-        if (sName && !sName.includes('جديد') && (fn === sName || fn.includes(sName) || sName.includes(fn))) return true;
-        if (phone && (s.parentPhone || '').replace(/\D/g, '').includes(phone)) return true;
-        if (email && ((s.email || '').trim().toLowerCase() === email || (s.recoveryEmail || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
-        return false;
-      }) || null;
+      const phone = (session.phone || '').replace(/\D/g, '');
+      const sName = session.name ? normalizeArabicText(session.name) : '';
+      const linkedStudentId = (session as any)?.linkedStudentId;
 
       function isSyntheticOrGeneric(n?: string | null) {
         if (!n) return true;
-        return n.includes('ابن') || n.includes('الاستبيان') || n.includes('جديد') || n === 'طالب';
+        const norm = normalizeArabicText(n);
+        return norm === 'طالب' || norm === 'الطالب' || norm === 'طالب جديد' || norm.includes('الاستبيان') || norm.includes('الاختبار') || norm.includes('طالب من');
       }
+
+      let linked = combined.find((s: any) => {
+        if (linkedStudentId && s.id === linkedStudentId) return true;
+        if (session.id && s.id === session.id) return true;
+        if (sName && !isSyntheticOrGeneric(sName) && normalizeArabicText(s.fullName) === sName) return true;
+        if (phone && phone.length >= 8 && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(phone.slice(-8))) return true;
+        if (email && ((s.email || '').trim().toLowerCase() === email || (s.recoveryEmail || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
+        return false;
+      }) || null;
 
       // Fallback: If no match found by direct fields, pick the registered student with real name
       if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
@@ -112,52 +115,50 @@ export default function StudentDashboard() {
         }
       }
 
-      // Auto-heal photo if missing
-      let photoUrl = linked?.photoUrl || (session as any)?.photoUrl || '';
-      if (!photoUrl && linked) {
-        const withPhoto = allStudents.find((s) => s.photoUrl && normalizeArabicText(s.fullName) === normalizeArabicText(linked.fullName));
-        if (withPhoto?.photoUrl) photoUrl = withPhoto.photoUrl;
-      }
-
       // Determine real student name: prioritize real session/account name, then clean record name
-      let finalName = 'الطالب';
+      let finalName = '';
       if (session.name && !isSyntheticOrGeneric(session.name)) {
         finalName = session.name;
       } else if (linked?.fullName && !isSyntheticOrGeneric(linked.fullName)) {
         finalName = linked.fullName;
       } else {
-        const allAcc = getAccounts();
-        const studentAcc = allAcc.find((a) => a.role === 'student' && a.name && !isSyntheticOrGeneric(a.name));
+        const studentAcc = allAccounts.find((a) => a.role === 'student' && a.name && !isSyntheticOrGeneric(a.name));
         const realRec = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
-        finalName = studentAcc?.name || realRec?.fullName || (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : 'الطالب');
+        finalName = realRec?.fullName || studentAcc?.name || (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : 'طالب');
+      }
+
+      // Auto-heal photo if missing
+      let photoUrl =
+        linked?.photoUrl ||
+        (session as any)?.photoUrl ||
+        allStudents.find((s) => s.photoUrl && !isSyntheticOrGeneric(s.fullName))?.photoUrl ||
+        allAccounts.find((a) => a.photoUrl && (a.role === 'student' || normalizeArabicText(a.name) === normalizeArabicText(finalName)))?.photoUrl ||
+        '';
+
+      if (!photoUrl && linked) {
+        const withPhoto = allStudents.find((s) => s.photoUrl && normalizeArabicText(s.fullName) === normalizeArabicText(linked.fullName));
+        if (withPhoto?.photoUrl) photoUrl = withPhoto.photoUrl;
       }
 
       // Auto-heal stored record in local database and cloud
       if (linked && isSyntheticOrGeneric(linked.fullName) && !isSyntheticOrGeneric(finalName)) {
-        const cleaned = updateStudent(linked.id, { fullName: finalName });
+        const cleaned = updateStudent(linked.id, { fullName: finalName, photoUrl: photoUrl || linked.photoUrl });
         if (cleaned) void syncDocToCloud('students', cleaned.id, cleaned);
       }
 
       setStudentName(finalName);
       setStudentPhoto(photoUrl);
-      if (linked) {
-        setStudentRecord({
-          ...linked,
-          fullName: finalName,
-          photoUrl,
-          grade: linked.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        });
-      } else {
-        setStudentRecord({
-          fullName: finalName,
-          grade: 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-          photoUrl,
-          parentName: '',
-          parentPhone: session.phone || '',
-          nationalId: '',
-          dateOfBirth: '',
-        });
-      }
+      setStudentRecord({
+        ...(linked || {}),
+        fullName: finalName,
+        photoUrl,
+        grade: linked?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        parentName: linked?.parentName || '',
+        parentPhone: linked?.parentPhone || session.phone || '',
+        nationalId: linked?.nationalId || (session as any)?.nationalId || '',
+        dateOfBirth: linked?.dateOfBirth || '',
+        notes: linked?.notes || '',
+      });
 
       fetchData();
     };

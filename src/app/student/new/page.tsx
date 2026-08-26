@@ -251,25 +251,22 @@ export default function NewStudentPage() {
     if (session?.id) {
       const allAccounts = getAccounts();
       const currentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email);
-      if (currentAcc) {
-        const resolvedName = nextFlow === 'student-test'
-          ? (student.fullName.trim() || currentAcc.name)
-          : (student.parentName.trim() || currentAcc.name);
-        const linkedStudentId = nextFlow === 'parent-survey' ? savedStudent.id : undefined;
-        const updatedAcc = saveAccount({
-          ...currentAcc,
-          name: resolvedName,
-          recoveryEmail: recoveryEmail || currentAcc.recoveryEmail,
-          photoUrl: photoToSave || currentAcc.photoUrl,
-          phone: student.parentPhone || currentAcc.phone,
-          onboardingRequired: false,
-          ...(linkedStudentId ? { linkedStudentId } : {}),
-        });
-        setSession(updatedAcc);
-        await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
-      } else {
-        void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
-      }
+      const resolvedName = nextFlow === 'student-test'
+        ? (student.fullName.trim() || currentAcc?.name || session.name)
+        : (student.parentName.trim() || currentAcc?.name || session.name);
+      const linkedStudentId = nextFlow === 'parent-survey' ? savedStudent.id : undefined;
+      const updatedAcc = saveAccount({
+        ...(currentAcc || session),
+        id: session.id,
+        name: resolvedName,
+        recoveryEmail: recoveryEmail || currentAcc?.recoveryEmail || session.email,
+        photoUrl: photoToSave || currentAcc?.photoUrl || (session as any).photoUrl,
+        phone: student.parentPhone || currentAcc?.phone || session.phone,
+        onboardingRequired: false,
+        ...(linkedStudentId ? { linkedStudentId } : {}),
+      });
+      setSession(updatedAcc);
+      await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
     }
 
     router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent.id}&flow=student` : `/survey?student=${savedStudent.id}&flow=parent`);
