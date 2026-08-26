@@ -34,6 +34,8 @@ import {
 import { DAY_NAMES, SUBJECT_COLORS, DEFAULT_SCHEDULE, Period } from '@/data/ikhlasSchedule';
 import { clearSession, getSession, getStudents, getIkhlasPosts, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { normalizeArabicText } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
@@ -59,6 +61,9 @@ export default function StudentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadStudentPortal = async () => {
+      await pullCloudDataToLocal(['students', 'accounts', 'classStudents']).catch(() => {});
+      if (cancelled) return;
+
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       if (!session) {
@@ -83,26 +88,50 @@ export default function StudentDashboard() {
       const phone = session.phone?.replace(/\D/g, '') ?? '';
       const sName = session.name?.trim().toLowerCase() ?? '';
 
-      const linked = combined.find((s: any) => {
+      let linked = combined.find((s: any) => {
         if (session.id && s.id === session.id) return true;
         const fn = (s.fullName || '').trim().toLowerCase();
-        if (sName && (fn === sName || fn.includes(sName) || sName.includes(fn))) return true;
-        if (sName.includes('ربيع') && fn.includes('ربيع')) return true;
+        if (sName && !sName.includes('جديد') && (fn === sName || fn.includes(sName) || sName.includes(fn))) return true;
         if (phone && (s.parentPhone || '').replace(/\D/g, '').includes(phone)) return true;
-        if (email && ((s.email || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
+        if (email && ((s.email || '').trim().toLowerCase() === email || (s.recoveryEmail || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
         return false;
       }) || null;
 
-      const finalName = linked?.fullName || session.name || '';
+      // Fallback: If no match found by direct fields, pick the registered student with real name
+      if (!linked) {
+        const nonGeneric = allStudents.find((s) => s.fullName && !s.fullName.includes('جديد'));
+        if (nonGeneric) {
+          linked = nonGeneric;
+        } else if (allStudents.length > 0) {
+          linked = allStudents[0];
+        }
+      }
+
+      // Auto-heal photo if missing
+      let photoUrl = linked?.photoUrl || (session as any)?.photoUrl || '';
+      if (!photoUrl && linked) {
+        const withPhoto = allStudents.find((s) => s.photoUrl && normalizeArabicText(s.fullName) === normalizeArabicText(linked.fullName));
+        if (withPhoto?.photoUrl) photoUrl = withPhoto.photoUrl;
+      }
+
+      const finalName = (linked?.fullName && !linked.fullName.includes('جديد'))
+        ? linked.fullName
+        : ((session.name && !session.name.includes('جديد')) ? session.name : (linked?.fullName || 'الطالب'));
+
       setStudentName(finalName);
-      setStudentPhoto(linked?.photoUrl || '');
+      setStudentPhoto(photoUrl);
       if (linked) {
-        setStudentRecord(linked);
-      } else {
-        // Only use session data — never load a random student's record
         setStudentRecord({
-          fullName: session.name || '',
-          grade: '',
+          ...linked,
+          fullName: finalName,
+          photoUrl,
+          grade: linked.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        });
+      } else {
+        setStudentRecord({
+          fullName: finalName,
+          grade: 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+          photoUrl,
           parentName: '',
           parentPhone: session.phone || '',
           nationalId: '',

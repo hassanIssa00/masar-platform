@@ -211,6 +211,7 @@ type VerifiedAccount = {
   role: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
   phone?: string;
+  photoUrl?: string;
   providerId?: string;
   onboardingRequired?: boolean;
 };
@@ -377,19 +378,58 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
         schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
         providerId?: string;
         onboardingRequired?: boolean;
+        photoUrl?: string;
       };
 
       if (!data.email || !data.role) return null;
 
+      let resolvedName = data.name;
+      let resolvedPhoto = data.photoUrl;
+      let resolvedPhone = data.phone;
+      let onboardingReq = data.onboardingRequired;
+
+      // Look up student details from students collection if account has placeholder name
+      if (!resolvedName || resolvedName.includes('جديد') || resolvedName === 'ولي الأمر' || resolvedName === 'طالب') {
+        const studentDocs = await adminDb.collection('students').limit(100).get().catch(() => null);
+        if (studentDocs && !studentDocs.empty) {
+          const matched = studentDocs.docs.map((d) => d.data()).find((st: any) => {
+            const stEmail = (st.email || '').trim().toLowerCase();
+            const stRec = (st.recoveryEmail || '').trim().toLowerCase();
+            const stParentEmail = (st.parentEmail || '').trim().toLowerCase();
+            const accEmail = data.email?.trim().toLowerCase();
+            return (
+              stEmail === accEmail ||
+              stRec === accEmail ||
+              stParentEmail === accEmail ||
+              st.id === accountDoc.id ||
+              (resolvedPhone && st.parentPhone && st.parentPhone.replace(/\D/g, '') === resolvedPhone.replace(/\D/g, ''))
+            );
+          });
+
+          if (matched) {
+            if (data.role === 'student' && matched.fullName && !matched.fullName.includes('جديد')) {
+              resolvedName = matched.fullName;
+              onboardingReq = false;
+            } else if (data.role === 'parent' && matched.parentName && !matched.parentName.includes('جديد')) {
+              resolvedName = matched.parentName;
+              onboardingReq = false;
+            }
+            if (matched.photoUrl) resolvedPhoto = matched.photoUrl;
+            if (matched.parentPhone) resolvedPhone = matched.parentPhone;
+          }
+        }
+      }
+
       return {
         id: accountDoc.id,
-        name: data.name || 'مستخدم جديد',
+        name: resolvedName || 'مستخدم جديد',
         email: data.email.trim().toLowerCase(),
         role: data.role,
         schoolBranch: data.schoolBranch,
-        phone: data.phone,
+        phone: resolvedPhone,
+        photoUrl: resolvedPhoto,
         providerId: data.providerId,
-        onboardingRequired: data.onboardingRequired,
+        onboardingRequired: onboardingReq === false ? false : true,
       };
     }
 
@@ -432,15 +472,66 @@ async function verifySignedGeneratedCredential(identifier: string, password: str
     onboardingRequired?: boolean;
   };
 
+  let resolvedName = user?.displayName;
+  let resolvedPhoto: string | undefined = undefined;
+  let resolvedPhone = user?.phoneNumber || undefined;
+  let onboardingReq = claims.onboardingRequired === false ? false : true;
+
+  try {
+    const adminDb = getAdminDb();
+    if (adminDb) {
+      // 1. Check accounts collection in Firestore
+      const accMatch = await adminDb.collection('accounts').where('email', '==', email).limit(1).get().catch(() => null);
+      if (accMatch && !accMatch.empty) {
+        const accData = accMatch.docs[0].data() as any;
+        if (accData.name && !accData.name.includes('جديد')) resolvedName = accData.name;
+        if (accData.photoUrl) resolvedPhoto = accData.photoUrl;
+        if (accData.phone) resolvedPhone = accData.phone;
+        if (accData.onboardingRequired === false) onboardingReq = false;
+      }
+
+      // 2. Check students collection in Firestore
+      const studentDocs = await adminDb.collection('students').limit(100).get().catch(() => null);
+      if (studentDocs && !studentDocs.empty) {
+        const matched = studentDocs.docs.map((d) => d.data()).find((st: any) => {
+          const stEmail = (st.email || '').trim().toLowerCase();
+          const stRec = (st.recoveryEmail || '').trim().toLowerCase();
+          const stParentEmail = (st.parentEmail || '').trim().toLowerCase();
+          return (
+            stEmail === email ||
+            stRec === email ||
+            stParentEmail === email ||
+            (resolvedPhone && st.parentPhone && st.parentPhone.replace(/\D/g, '') === resolvedPhone.replace(/\D/g, ''))
+          );
+        });
+
+        if (matched) {
+          if (role === 'student' && matched.fullName && !matched.fullName.includes('جديد')) {
+            resolvedName = matched.fullName;
+            onboardingReq = false;
+          } else if (role === 'parent' && matched.parentName && !matched.parentName.includes('جديد')) {
+            resolvedName = matched.parentName;
+            onboardingReq = false;
+          }
+          if (matched.photoUrl) resolvedPhoto = matched.photoUrl;
+          if (matched.parentPhone) resolvedPhone = matched.parentPhone;
+        }
+      }
+    }
+  } catch {}
+
+  const finalName = resolvedName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد');
+
   return {
     id: user?.uid || `generated_${createHash('sha256').update(email).digest('hex').slice(0, 24)}`,
-    name: user?.displayName || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد'),
+    name: finalName,
     email,
     role: claims.role === 'parent' || claims.role === 'student' ? claims.role : role,
     schoolBranch: claims.schoolBranch || inferred.schoolBranch,
-    phone: user?.phoneNumber || undefined,
+    phone: resolvedPhone,
+    photoUrl: resolvedPhoto,
     providerId: claims.providerId || 'generated',
-    onboardingRequired: claims.onboardingRequired === false ? false : true,
+    onboardingRequired: onboardingReq,
   };
 }
 
