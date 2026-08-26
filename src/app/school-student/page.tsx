@@ -91,17 +91,24 @@ export default function StudentDashboard() {
         if (phone && (s.parentPhone || '').replace(/\D/g, '').includes(phone)) return true;
         if (email && ((s.email || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
         return false;
-      }) || combined[0] || null;
+      }) || null;
 
-      const finalName = linked?.fullName || session.name || 'طالب';
+      const finalName = linked?.fullName || session.name || '';
       setStudentName(finalName);
       setStudentPhoto(linked?.photoUrl || '');
-      setStudentRecord(linked || {
-        fullName: finalName,
-        grade: 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        parentName: 'ولي الأمر',
-        parentPhone: session.phone || '',
-      });
+      if (linked) {
+        setStudentRecord(linked);
+      } else {
+        // Only use session data — never load a random student's record
+        setStudentRecord({
+          fullName: session.name || '',
+          grade: '',
+          parentName: '',
+          parentPhone: session.phone || '',
+          nationalId: '',
+          dateOfBirth: '',
+        });
+      }
 
       fetchData();
     };
@@ -259,44 +266,21 @@ export default function StudentDashboard() {
         )}
       </div>
 
-      {/* Today Schedule Summary */}
-      {(() => {
-        const jsDay = new Date().getDay();
-        const isSchoolDay = jsDay >= 0 && jsDay <= 4;
-        const todayPeriods = DEFAULT_SCHEDULE.filter((p) => p.dayOfWeek === jsDay).slice(0, 2);
-
-        return (
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-emerald-600" />
-                <h3 className="font-black text-sm text-slate-900">
-                  {isSchoolDay ? `جدول حصص اليوم (${DAY_NAMES[jsDay]}) 🕒` : 'جدول الحصص المدرسية 🕒'}
-                </h3>
-              </div>
-              <button onClick={() => setActiveTab('schedule')} className="text-xs font-black text-emerald-700 hover:underline cursor-pointer">
-                الجدول الكامل
-              </button>
-            </div>
-            {isSchoolDay && todayPeriods.length >= 2 ? (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                  <p className="text-[10px] font-black text-emerald-800">الحصة الأولى ({todayPeriods[0].startTime})</p>
-                  <p className="text-xs font-black text-slate-900 mt-0.5">{todayPeriods[0].subjectName}</p>
-                </div>
-                <div className="p-3 bg-teal-50 rounded-2xl border border-teal-200">
-                  <p className="text-[10px] font-black text-teal-800">الحصة الثانية ({todayPeriods[1].startTime})</p>
-                  <p className="text-xs font-black text-slate-900 mt-0.5">{todayPeriods[1].subjectName}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 bg-slate-50 rounded-2xl text-center text-xs font-bold text-slate-500">
-                🌴 اليوم إجازة نهاية الأسبوع — يبدأ اليوم الدراسي يوم الأحد القادم.
-              </div>
-            )}
+      {/* Today Schedule Summary — only show if schedule data is available */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-emerald-600" />
+            <h3 className="font-black text-sm text-slate-900">جدول الحصص 🕒</h3>
           </div>
-        );
-      })()}
+          <button onClick={() => setActiveTab('schedule')} className="text-xs font-black text-emerald-700 hover:underline cursor-pointer">
+            الجدول الكامل
+          </button>
+        </div>
+        <div className="p-3 bg-slate-50 rounded-2xl text-center text-xs font-bold text-slate-500">
+          📋 سيظهر الجدول هنا فور إعداده من قِبَل د. إسماعيل عيسى.
+        </div>
+      </div>
     </div>
   );
 
