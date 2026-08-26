@@ -32,9 +32,9 @@ import {
   Calendar
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS, DEFAULT_SCHEDULE, Period } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents, getIkhlasPosts, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, getAccounts, updateStudent, getIkhlasPosts, hydrateSessionFromServer, StudentRecord, AccountRecord } from '@/lib/localDb';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
-import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { normalizeArabicText } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
 
@@ -97,9 +97,14 @@ export default function StudentDashboard() {
         return false;
       }) || null;
 
+      function isSyntheticOrGeneric(n?: string | null) {
+        if (!n) return true;
+        return n.includes('ابن') || n.includes('الاستبيان') || n.includes('جديد') || n === 'طالب';
+      }
+
       // Fallback: If no match found by direct fields, pick the registered student with real name
-      if (!linked) {
-        const nonGeneric = allStudents.find((s) => s.fullName && !s.fullName.includes('جديد'));
+      if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
+        const nonGeneric = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
         if (nonGeneric) {
           linked = nonGeneric;
         } else if (allStudents.length > 0) {
@@ -114,9 +119,24 @@ export default function StudentDashboard() {
         if (withPhoto?.photoUrl) photoUrl = withPhoto.photoUrl;
       }
 
-      const finalName = (linked?.fullName && !linked.fullName.includes('جديد'))
-        ? linked.fullName
-        : ((session.name && !session.name.includes('جديد')) ? session.name : (linked?.fullName || 'الطالب'));
+      // Determine real student name: prioritize real session/account name, then clean record name
+      let finalName = 'الطالب';
+      if (session.name && !isSyntheticOrGeneric(session.name)) {
+        finalName = session.name;
+      } else if (linked?.fullName && !isSyntheticOrGeneric(linked.fullName)) {
+        finalName = linked.fullName;
+      } else {
+        const allAcc = getAccounts();
+        const studentAcc = allAcc.find((a) => a.role === 'student' && a.name && !isSyntheticOrGeneric(a.name));
+        const realRec = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
+        finalName = studentAcc?.name || realRec?.fullName || (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : 'الطالب');
+      }
+
+      // Auto-heal stored record in local database and cloud
+      if (linked && isSyntheticOrGeneric(linked.fullName) && !isSyntheticOrGeneric(finalName)) {
+        const cleaned = updateStudent(linked.id, { fullName: finalName });
+        if (cleaned) void syncDocToCloud('students', cleaned.id, cleaned);
+      }
 
       setStudentName(finalName);
       setStudentPhoto(photoUrl);
