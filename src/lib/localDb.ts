@@ -283,19 +283,59 @@ export function getStudents() {
 export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
   const students = getStudents();
   const now = new Date().toISOString();
-  const existing = students.find((item) => item.id === student.id || (student.fullName && item.fullName === student.fullName));
-  const photoUrl = student.photoUrl || existing?.photoUrl || undefined;
+
+  // Normalize Arabic text for fuzzy name matching (inline to avoid circular import)
+  const norm = (t?: string | null) => (t || '').trim().toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ').trim();
+
+  const normName = norm(student.fullName);
+  const normPhone = (student.parentPhone || '').replace(/\D/g, '');
+
+  // Find existing by ID, normalized name, or phone
+  const existing = students.find((item) =>
+    item.id === student.id ||
+    (normName && normName.length > 3 && norm(item.fullName) === normName) ||
+    (normPhone && normPhone.length >= 8 && item.parentPhone && item.parentPhone.replace(/\D/g, '') === normPhone)
+  );
+
+  // Also find any OTHER duplicate that might exist (different ID, same name)
+  const duplicate = existing ? students.find((item) =>
+    item.id !== existing.id &&
+    normName && normName.length > 3 &&
+    norm(item.fullName) === normName
+  ) : null;
+
+  const photoUrl = student.photoUrl || existing?.photoUrl || duplicate?.photoUrl || undefined;
+  const dateOfBirth = student.dateOfBirth || existing?.dateOfBirth || duplicate?.dateOfBirth || undefined;
+  const nationalId = student.nationalId || existing?.nationalId || duplicate?.nationalId || undefined;
+
   const next: StudentRecord = {
+    ...(duplicate || {}),
     ...existing,
     ...student,
     photoUrl,
+    dateOfBirth,
+    nationalId,
     id: existing?.id ?? student.id ?? createId('student'),
-    createdAt: existing?.createdAt ?? now,
+    createdAt: existing?.createdAt ?? duplicate?.createdAt ?? now,
     updatedAt: now,
   };
 
-  writeList(KEYS.students, [next, ...students.filter((item) => item.id !== next.id)]);
+  // Remove duplicates from the list (keep only the merged record)
+  const cleanedList = students.filter((item) =>
+    item.id !== next.id && !(duplicate && item.id === duplicate.id)
+  );
+
+  writeList(KEYS.students, [next, ...cleanedList]);
   syncDocToCloud('students', next.id, next);
+
+  // If we found and merged a duplicate, delete it from cloud too
+  if (duplicate && duplicate.id !== next.id) {
+    void deleteDocFromCloud('students', duplicate.id);
+  }
+
   saveActivity({
     type: 'student',
     refId: next.id,
