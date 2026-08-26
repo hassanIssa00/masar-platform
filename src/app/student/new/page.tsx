@@ -156,7 +156,7 @@ export default function NewStudentPage() {
     const requestedStudentId = params.get('student');
     const allStudents = getStudents();
     const matchedExisting = existingStudentId ? allStudents.find((s) => s.id === existingStudentId) : null;
-    const targetId = existingStudentId || requestedStudentId || session?.id || undefined;
+    const targetId = existingStudentId || requestedStudentId || (session?.role === 'student' ? session.id : undefined);
     const recoveryEmail = student.recoveryEmail.trim();
     const photoToSave = student.photoUrl || matchedExisting?.photoUrl || undefined;
 
@@ -166,13 +166,17 @@ export default function NewStudentPage() {
       const parentNameClean = student.parentName.trim();
       const parentPhoneClean = student.parentPhone.trim();
       const childNameClean = student.fullName.trim() || 'طالب جديد';
+      const cleanDigits = (p?: string) => (p || '').replace(/\D/g, '');
+      const pSuffix = cleanDigits(parentPhoneClean).slice(-8);
 
-      // Look up any child already registered with matching name, patronymic name, phone, nationalId
+      // Look up any child already registered with matching name, nationalId, phone suffix, or patronymic
       let matchedChildren = allStudents.filter((s) => {
-        if (childNameClean && childNameClean !== 'طالب جديد' && normalizeArabicText(s.fullName) === normalizeArabicText(childNameClean)) return true;
-        if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
-        if (parentPhoneClean && s.parentPhone && s.parentPhone.replace(/\D/g, '') === parentPhoneClean.replace(/\D/g, '')) return true;
+        const sNorm = normalizeArabicText(s.fullName);
+        const cNorm = normalizeArabicText(childNameClean);
+        if (cNorm && cNorm.length > 2 && cNorm !== 'طالب جديد' && sNorm === cNorm) return true;
         if (student.nationalId && s.nationalId && s.nationalId === student.nationalId) return true;
+        if (pSuffix && pSuffix.length >= 8 && s.parentPhone && cleanDigits(s.parentPhone).includes(pSuffix)) return true;
+        if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
         return false;
       });
 
@@ -183,15 +187,15 @@ export default function NewStudentPage() {
       if (primaryChild) {
         savedStudent = updateStudent(primaryChild.id, {
           fullName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
-          parentName: parentNameClean,
-          parentPhone: parentPhoneClean,
+          parentName: parentNameClean || primaryChild.parentName,
+          parentPhone: parentPhoneClean || primaryChild.parentPhone,
           nationalId: primaryChild.nationalId || student.nationalId,
           recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
           reviewStatus: 'awaiting-survey',
         }) ?? primaryChild;
       } else {
         savedStudent = saveStudent({
-          id: targetId,
+          id: existingStudentId || requestedStudentId || undefined,
           fullName: childNameClean,
           grade: student.grade || 'الصف الأول',
           nationalId: student.nationalId,

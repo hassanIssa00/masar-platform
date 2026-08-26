@@ -50,13 +50,32 @@ const COLLECTIONS = [
 ] as const;
 
 const MAX_DOCS_PER_COLLECTION = 800;
-const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
-const STALE_SNAPSHOT_TTL_MS = 60 * 60 * 1000;
-const PARTIAL_RETRY_AFTER_MS = 2 * 60 * 1000;
-const EXHAUSTED_RETRY_AFTER_MS = 10 * 60 * 1000;
+const SNAPSHOT_CACHE_TTL_MS = 5 * 1000; // 5 seconds fresh cache
+const STALE_SNAPSHOT_TTL_MS = 30 * 1000;
+const PARTIAL_RETRY_AFTER_MS = 1000;
+const EXHAUSTED_RETRY_AFTER_MS = 5000;
 
 function isStaff(role: string) {
   return role === 'doctor' || role === 'specialist' || role === 'teacher';
+}
+
+function normalizeArabic(text?: string | null): string {
+  if (!text) return '';
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/^(أ\.|د\.|أستاذ|استاذ|دكتور|دكتوره|الدكتور|الدكتورة|السيد|السيدة|الشيخ|والد الطالب|والد|والدة|أم|ام|أبو|ابو|ولي أمر|ولي امر)\s+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanDigits(phone?: string | null): string {
+  if (!phone) return '';
+  return String(phone).replace(/\D/g, '');
 }
 
 type SnapshotItem = Record<string, unknown>;
@@ -75,49 +94,76 @@ export function invalidateSnapshotCache() {
   snapshotCache.clear();
 }
 
-function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string }) {
-  const userEmail = user.email?.toLowerCase();
-  const userPhone = user.phone?.replace(/\D/g, '');
-  const userName = user.name?.trim().toLowerCase();
+function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string; linkedStudentId?: string }) {
+  const userEmail = (user.email || '').trim().toLowerCase();
+  const userPhone = cleanDigits(user.phone);
+  const userName = normalizeArabic(user.name);
+  const userLinkedStudentId = user.linkedStudentId || '';
 
-  // Direct ID / email / phone field checks
-  const fields = [
-    item?.id,
-    item?.accountId,
-    item?.studentId,
-    item?.createdBy,
-    item?.firebaseUid,
+  // Direct ID check
+  if (item?.id && (item.id === user.id || (userLinkedStudentId && item.id === userLinkedStudentId))) return true;
+  if (item?.studentId && (item.studentId === user.id || (userLinkedStudentId && item.studentId === userLinkedStudentId))) return true;
+  if (item?.accountId && (item.accountId === user.id || (userLinkedStudentId && item.accountId === userLinkedStudentId))) return true;
+  if (item?.createdBy && item.createdBy === user.id) return true;
+  if (item?.firebaseUid && item.firebaseUid === user.id) return true;
+
+  // Direct email checks
+  const emailFields = [
     item?.email,
     item?.parentEmail,
-    item?.parentPhone,
-    item?.phone,
+    item?.recoveryEmail,
     item?.linkedStudentEmail,
-    item?.studentName,
-    item?.fullName,
-    item?.name,
-    item?.parentName,
-  ]
-    .filter(Boolean)
-    .map((value) => String(value).trim().toLowerCase());
+  ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
 
-  const matched = fields.some((value) => {
-    const cleanPhone = value.replace(/\D/g, '');
-    return (
-      value === user.id.toLowerCase() ||
-      value === userName ||
-      value === userEmail ||
-      (!!userPhone && cleanPhone.length >= 8 && (cleanPhone === userPhone || cleanPhone.endsWith(userPhone) || userPhone.endsWith(cleanPhone)))
-    );
-  });
-  if (matched) return true;
+  if (userEmail && emailFields.some((e) => e === userEmail)) return true;
 
-  // Patronymic match: parent name is part of student's full name or vice versa
-  if (userName && userName.length > 3) {
-    const itemFullName = String(item?.fullName || '').trim().toLowerCase();
-    const itemParentName = String(item?.parentName || '').trim().toLowerCase();
-    if (itemFullName && itemFullName.includes(userName)) return true;
-    if (itemParentName && itemParentName === userName) return true;
-    if (userName.includes(itemFullName) && itemFullName.length > 5) return true;
+  // Phone number matching (match if last 8 digits match)
+  const phoneFields = [
+    item?.phone,
+    item?.parentPhone,
+    item?.whatsapp,
+  ].filter(Boolean).map((p) => cleanDigits(String(p)));
+
+  if (userPhone && userPhone.length >= 8) {
+    const userPhoneSuffix = userPhone.slice(-8);
+    for (const pf of phoneFields) {
+      if (pf.length >= 8) {
+        const pfSuffix = pf.slice(-8);
+        if (pfSuffix === userPhoneSuffix || pf.includes(userPhoneSuffix) || userPhone.includes(pfSuffix)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  // Name and Patronymic matching
+  if (userName && userName.length >= 2 && !userName.includes('جديد') && userName !== 'ولي الامر') {
+    const itemParentName = normalizeArabic(String(item?.parentName || ''));
+    const itemFullName = normalizeArabic(String(item?.fullName || item?.name || item?.studentName || ''));
+
+    // Parent name matches user name exactly or contains it
+    if (itemParentName && (itemParentName === userName || itemParentName.includes(userName) || userName.includes(itemParentName))) {
+      return true;
+    }
+
+    // Patronymic: child's full name contains parent's name (e.g. "ربيع اسماعيل محمد كامل عيسي" contains "اسماعيل محمد كامل عيسي")
+    if (itemFullName && (itemFullName.includes(userName) || userName.includes(itemFullName))) {
+      return true;
+    }
+
+    // Split words patronymic match
+    const userWords = userName.split(' ').filter(Boolean);
+    const itemWords = itemFullName.split(' ').filter(Boolean);
+    if (itemWords.length >= 2 && userWords.length >= 1) {
+      const childFatherPart = itemWords.slice(1).join(' ');
+      const userFull = userWords.join(' ');
+      if (childFatherPart.includes(userFull) || userFull.includes(childFatherPart)) {
+        return true;
+      }
+      if (itemWords[1] === userWords[0]) {
+        return true;
+      }
+    }
   }
 
   return false;

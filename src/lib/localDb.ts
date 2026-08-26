@@ -293,18 +293,18 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   const normName = norm(student.fullName);
   const normPhone = (student.parentPhone || '').replace(/\D/g, '');
 
-  // Find existing by ID, normalized name, or phone
+  // Find existing by ID, national ID, or normalized name
   const existing = students.find((item) =>
-    item.id === student.id ||
-    (normName && normName.length > 3 && norm(item.fullName) === normName) ||
-    (normPhone && normPhone.length >= 8 && item.parentPhone && item.parentPhone.replace(/\D/g, '') === normPhone)
+    (student.id && item.id === student.id) ||
+    (student.nationalId && item.nationalId && item.nationalId === student.nationalId) ||
+    (normName && normName.length > 3 && norm(item.fullName) === normName)
   );
 
-  // Also find any OTHER duplicate that might exist (different ID, same name)
+  // Also find any OTHER duplicate that might exist (different ID, same normalized name or same national ID)
   const duplicate = existing ? students.find((item) =>
     item.id !== existing.id &&
-    normName && normName.length > 3 &&
-    norm(item.fullName) === normName
+    ((normName && normName.length > 3 && norm(item.fullName) === normName) ||
+     (student.nationalId && item.nationalId && item.nationalId === student.nationalId))
   ) : null;
 
   const photoUrl = student.photoUrl || existing?.photoUrl || duplicate?.photoUrl || undefined;

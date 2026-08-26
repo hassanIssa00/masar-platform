@@ -181,6 +181,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  try {
+    const { invalidateSnapshotCache } = await import('../../data/snapshot/route');
+    invalidateSnapshotCache();
+  } catch {}
+
   const token = await createSessionToken(account);
   if (!token) {
     return NextResponse.json({ ok: false, error: 'تعذر إنشاء جلسة آمنة للحساب.' }, { status: 500 });
