@@ -307,6 +307,9 @@ function SurveyContent() {
     if (currentSection >= activeSections.length) {
       setCurrentSection(Math.max(0, activeSections.length - 1));
     }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, [activeSections.length, currentSection]);
 
   const setAnswer = (qid: string, val: string | number) => {

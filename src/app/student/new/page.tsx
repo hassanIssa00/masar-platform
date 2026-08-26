@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
-import { findMatchingStudentForParent } from '@/lib/nameMatching';
+import { findMatchingStudentForParent, isParentChildNameMatch } from '@/lib/nameMatching';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
@@ -160,39 +160,75 @@ export default function NewStudentPage() {
     const photoToSave = student.photoUrl || matchedExisting?.photoUrl || undefined;
 
     let savedStudent: any = null;
-    if (targetId) {
-      savedStudent = updateStudent(targetId, {
-        fullName: student.fullName.trim() || matchedExisting?.fullName || 'طالب جديد',
-        email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
-        recoveryEmail: recoveryEmail || undefined,
-        nationalId: student.nationalId,
-        dateOfBirth,
-        grade: student.grade,
-        parentName: student.parentName,
-        parentPhone: student.parentPhone,
-        photoUrl: photoToSave,
-        notes: student.notes,
-        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
-        source: 'student-wizard',
-      });
-    }
 
-    if (!savedStudent) {
-      savedStudent = saveStudent({
-        id: targetId,
-        fullName: student.fullName.trim() || 'طالب جديد',
-        email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
-        recoveryEmail: recoveryEmail || undefined,
-        nationalId: student.nationalId,
-        dateOfBirth,
-        grade: student.grade,
-        parentName: student.parentName,
-        parentPhone: student.parentPhone,
-        photoUrl: photoToSave,
-        notes: student.notes,
-        reviewStatus: nextFlow === 'student-test' ? 'awaiting-doctor-review' : 'awaiting-survey',
-        source: 'student-wizard',
+    if (nextFlow === 'parent-survey') {
+      const parentNameClean = student.parentName.trim();
+      const parentPhoneClean = student.parentPhone.trim();
+
+      // Look up any child already registered with matching patronymic name or phone
+      const matchedChildren = allStudents.filter((s) => {
+        if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
+        if (parentPhoneClean && s.parentPhone && s.parentPhone.replace(/\D/g, '') === parentPhoneClean.replace(/\D/g, '')) return true;
+        return false;
       });
+
+      const primaryChild = matchedChildren[0];
+      if (primaryChild) {
+        savedStudent = updateStudent(primaryChild.id, {
+          parentName: parentNameClean,
+          parentPhone: parentPhoneClean,
+          recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
+          reviewStatus: 'awaiting-survey',
+        }) ?? primaryChild;
+      } else {
+        savedStudent = saveStudent({
+          id: targetId,
+          fullName: 'طالب من الاستبيان',
+          grade: student.grade || 'الصف الأول',
+          parentName: parentNameClean,
+          parentPhone: parentPhoneClean,
+          recoveryEmail: recoveryEmail || undefined,
+          notes: student.notes,
+          reviewStatus: 'awaiting-survey',
+          source: 'student-wizard',
+        });
+      }
+    } else {
+      // Student flow
+      if (targetId) {
+        savedStudent = updateStudent(targetId, {
+          fullName: student.fullName.trim() || matchedExisting?.fullName || 'طالب جديد',
+          email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
+          recoveryEmail: recoveryEmail || undefined,
+          nationalId: student.nationalId,
+          dateOfBirth,
+          grade: student.grade,
+          parentName: student.parentName,
+          parentPhone: student.parentPhone,
+          photoUrl: photoToSave,
+          notes: student.notes,
+          reviewStatus: 'awaiting-doctor-review',
+          source: 'student-wizard',
+        });
+      }
+
+      if (!savedStudent) {
+        savedStudent = saveStudent({
+          id: targetId,
+          fullName: student.fullName.trim() || 'طالب جديد',
+          email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
+          recoveryEmail: recoveryEmail || undefined,
+          nationalId: student.nationalId,
+          dateOfBirth,
+          grade: student.grade,
+          parentName: student.parentName,
+          parentPhone: student.parentPhone,
+          photoUrl: photoToSave,
+          notes: student.notes,
+          reviewStatus: 'awaiting-doctor-review',
+          source: 'student-wizard',
+        });
+      }
     }
 
     await syncDocToCloud('students', savedStudent.id, savedStudent);
@@ -202,7 +238,7 @@ export default function NewStudentPage() {
       const allAccounts = getAccounts();
       const currentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email);
       if (currentAcc) {
-        const resolvedName = session.role === 'student'
+        const resolvedName = nextFlow === 'student-test'
           ? (student.fullName.trim() || currentAcc.name)
           : (student.parentName.trim() || currentAcc.name);
         const updatedAcc = saveAccount({
@@ -211,18 +247,15 @@ export default function NewStudentPage() {
           recoveryEmail: recoveryEmail || currentAcc.recoveryEmail,
           photoUrl: photoToSave || currentAcc.photoUrl,
           phone: student.parentPhone || currentAcc.phone,
-          onboardingRequired: false, // ← KEY FIX: mark wizard as completed so login won't redirect here again
+          onboardingRequired: false,
         });
         setSession(updatedAcc);
-        // Sync to Firestore so the server reads onboardingRequired=false on next login
         await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
 
-        // Also link the student record to this account ID for easy lookup
         if (savedStudent.id !== session.id) {
           void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
         }
       } else {
-        // If no account found locally, at least push the flag to Firestore directly
         void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
       }
     }
@@ -236,7 +269,7 @@ export default function NewStudentPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:px-8">
           <BrandMark size="sm" />
           <div className="rounded-full bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
-            تسجيل بيانات الطفل
+            {nextFlow === 'student-test' ? 'تسجيل بيانات الطالب' : 'تسجيل بيانات ولي الأمر'}
           </div>
         </div>
       </header>
@@ -247,14 +280,14 @@ export default function NewStudentPage() {
               <UserRound size={24} />
             </span>
             <div>
-              <p className="text-sm font-black text-teal-800">بداية مسار الطالب</p>
+              <p className="text-sm font-black text-teal-800">{nextFlow === 'student-test' ? 'بداية مسار الطالب' : 'بوابة أولياء الأمور'}</p>
               <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">
-                {nextFlow === 'student-test' ? 'تسجيل بيانات الطالب قبل الاختبار' : 'تسجيل بيانات الطفل قبل الاستبيان'}
+                {nextFlow === 'student-test' ? 'تسجيل بيانات الطالب قبل الاختبار' : 'تسجيل بيانات ولي الأمر قبل الاستبيان'}
               </h1>
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
                 {nextFlow === 'student-test'
                   ? 'بعد حفظ البيانات ينتقل الطالب مباشرة إلى اختبار مناسب للصف. لا تظهر أي درجة أو تشخيص داخل تجربة الطالب.'
-                  : 'بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل. لن يظهر للطالب أي تشخيص أو نتيجة قبل مراجعة د. إسماعيل.'}
+                  : 'بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل. يتعرف النظام تلقائياً على أبنائك المسجلين ويربط بياناتهم وصورهم بحسابك.'}
               </p>
             </div>
           </div>
@@ -264,13 +297,15 @@ export default function NewStudentPage() {
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-7">
-            <h2 className="mb-5 text-xl font-black text-slate-950">بيانات الطفل وولي الأمر</h2>
+            <h2 className="mb-5 text-xl font-black text-slate-950">
+              {nextFlow === 'student-test' ? 'بيانات الطالب وولي الأمر' : 'بيانات ولي الأمر'}
+            </h2>
             <div className="grid gap-5 md:grid-cols-2">
-              <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} />
-              <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
-
               {nextFlow === 'student-test' && (
                 <>
+                  <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} required />
+                  <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
+
                   <div className="block">
                     <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد <span className="font-bold text-slate-400 text-xs">(اختياري)</span></span>
                     <div className="grid grid-cols-3 gap-2">
@@ -297,8 +332,8 @@ export default function NewStudentPage() {
                 </>
               )}
 
-              <Field label="اسم ولي الأمر" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} />
-              <Field label="هاتف ولي الأمر" type="tel" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} />
+              <Field label="اسم ولي الأمر" placeholder="الاسم ثلاثي أو رباعي" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} required />
+              <Field label="هاتف ولي الأمر" type="tel" placeholder="05xxxxxxxx أو 01xxxxxxxxx" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} required />
 
               <div className="block md:col-span-2">
                 <label className="block">
@@ -328,82 +363,95 @@ export default function NewStudentPage() {
           </section>
 
           <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-32 lg:self-start">
-            <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center mb-5">
-              {student.photoUrl ? (
-                <>
-                  <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
-                  <p className="mt-2 text-xs font-black text-teal-700">✅ صورة الطالب محفوظة وموثقة</p>
-                  <label className="mt-2 inline-flex cursor-pointer rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 transition shadow-2xs">
-                    تغيير الصورة
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const img = document.createElement('img');
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const maxDim = 240;
-                            let w = img.width; let h = img.height;
-                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
-                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
-                            canvas.width = w; canvas.height = h;
-                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+            {nextFlow === 'student-test' ? (
+              <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center mb-5">
+                {student.photoUrl ? (
+                  <>
+                    <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
+                    <p className="mt-2 text-xs font-black text-teal-700">✅ صورة الطالب محفوظة وموثقة</p>
+                    <label className="mt-2 inline-flex cursor-pointer rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 transition shadow-2xs">
+                      تغيير الصورة
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              const maxDim = 240;
+                              let w = img.width; let h = img.height;
+                              if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                              else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                              canvas.width = w; canvas.height = h;
+                              canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                              handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                            };
+                            img.src = String(reader.result);
                           };
-                          img.src = String(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <Camera className="mx-auto text-slate-400" size={32} />
-                  <p className="mt-2 text-xs font-bold text-slate-400">صورة الطالب الشخصية</p>
-                  <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 transition shadow-2xs">
-                    رفع صورة الطالب (اختياري)
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const img = document.createElement('img');
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const maxDim = 240;
-                            let w = img.width; let h = img.height;
-                            if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
-                            else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
-                            canvas.width = w; canvas.height = h;
-                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-                            handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mx-auto text-slate-400" size={32} />
+                    <p className="mt-2 text-xs font-bold text-slate-400">صورة الطالب الشخصية</p>
+                    <label className="mt-3 inline-flex cursor-pointer rounded-lg bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 transition shadow-2xs">
+                      رفع صورة الطالب (اختياري)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              const maxDim = 240;
+                              let w = img.width; let h = img.height;
+                              if (w > h) { if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; } }
+                              else { if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; } }
+                              canvas.width = w; canvas.height = h;
+                              canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                              handleFieldChange('photoUrl', canvas.toDataURL('image/jpeg', 0.8));
+                            };
+                            img.src = String(reader.result);
                           };
-                          img.src = String(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-teal-200 bg-teal-50/90 p-5 text-right mb-5 shadow-2xs">
+                <div className="flex items-center gap-2 mb-2 text-teal-900 font-black text-sm">
+                  <span>🔗</span>
+                  <h4>مزامنة عائلية ذكية</h4>
+                </div>
+                <p className="text-xs font-bold leading-6 text-teal-800">
+                  يتعرف النظام تلقائياً على أبنائك المسجلين عبر الاسم ورقم الهاتف، ويربط كافة الصور والجداول والتقارير بحسابك تلقائياً دون الحاجة لرفع صورة أو تكرار التسجيل.
+                </p>
+              </div>
+            )}
+
             <div className="rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
               <ClipboardList className="mb-2 text-teal-800" size={22} />
               {nextFlow === 'student-test'
                 ? 'الخطوة التالية هي اختبار الطالب المباشر حسب الصف، ثم حفظ الإجابات والتحليل في لوحة د. إسماعيل.'
                 : 'الخطوة التالية هي الاستبيان الشامل لتحديد مؤشرات القراءة، الكتابة، الرياضيات، السمع والنطق، التواصل، الانتباه، والسلوك.'}
             </div>
-            <button type="submit" disabled={loading} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60">
+            <button type="submit" disabled={loading} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60 cursor-pointer shadow-sm">
               <Save size={17} />
               {loading
                 ? nextFlow === 'student-test' ? 'جاري فتح الاختبار...' : 'جاري فتح الاستبيان...'
@@ -433,17 +481,19 @@ function Field({
   type = 'text',
   value,
   onChange,
+  required = false,
 }: {
   label: string;
   placeholder?: string;
   type?: string;
   value: string;
   onChange: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder={placeholder} required={label === 'اسم الطالب'} />
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder={placeholder} required={required} />
     </label>
   );
 }

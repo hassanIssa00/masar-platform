@@ -160,12 +160,35 @@ export default function ParentDashboard() {
         }
       }
 
-      // Fallback: If no match found, use allStudents if present
-      if (myStudents.length === 0 && allStudents.length > 0) {
-        myStudents = activeId
-          ? (allStudents.filter((s) => s.id === activeId).length ? allStudents.filter((s) => s.id === activeId) : [allStudents[0]])
-          : [allStudents[0]];
+      // Deduplicate and enrich myStudents list
+      const deduplicated: StudentRecord[] = [];
+      for (const st of myStudents) {
+        const normName = normalizeArabicText(st.fullName);
+        const existingIdx = deduplicated.findIndex((d) => normalizeArabicText(d.fullName) === normName);
+        const anyPhoto =
+          st.photoUrl ||
+          allStudents.find((other) => other.photoUrl && (normalizeArabicText(other.fullName) === normName || (st.nationalId && other.nationalId === st.nationalId)))?.photoUrl ||
+          allAccounts.find((acc) => acc.photoUrl && normalizeArabicText(acc.name) === normName)?.photoUrl;
+
+        if (existingIdx === -1) {
+          deduplicated.push({
+            ...st,
+            photoUrl: anyPhoto,
+          });
+        } else {
+          const ex = deduplicated[existingIdx];
+          deduplicated[existingIdx] = {
+            ...ex,
+            photoUrl: ex.photoUrl || anyPhoto || st.photoUrl,
+            nationalId: ex.nationalId || st.nationalId,
+            dateOfBirth: ex.dateOfBirth || st.dateOfBirth,
+            grade: ex.grade || st.grade,
+            parentName: ex.parentName || st.parentName,
+            parentPhone: ex.parentPhone || st.parentPhone,
+          };
+        }
       }
+      myStudents = deduplicated.length > 0 ? deduplicated : myStudents;
 
       setStudents(myStudents);
       setReports(getReports());
@@ -192,6 +215,34 @@ export default function ParentDashboard() {
   }, [router]);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
+
+  const resolvedChildPhoto = useMemo(() => {
+    if (!selectedStudent) return '';
+    if (selectedStudent.photoUrl) return selectedStudent.photoUrl;
+
+    const allSt = getStudents();
+    const allAcc = getAccounts();
+    const norm = normalizeArabicText(selectedStudent.fullName);
+
+    const stMatch = allSt.find(
+      (s) => s.photoUrl && (
+        normalizeArabicText(s.fullName) === norm ||
+        (selectedStudent.nationalId && s.nationalId && s.nationalId === selectedStudent.nationalId) ||
+        (selectedStudent.parentPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '') === selectedStudent.parentPhone.replace(/\D/g, ''))
+      )
+    );
+    if (stMatch?.photoUrl) return stMatch.photoUrl;
+
+    const accMatch = allAcc.find(
+      (a) => a.photoUrl && (
+        normalizeArabicText(a.name) === norm ||
+        (selectedStudent.parentPhone && a.phone && a.phone.replace(/\D/g, '') === selectedStudent.parentPhone.replace(/\D/g, ''))
+      )
+    );
+    if (accMatch?.photoUrl) return accMatch.photoUrl;
+
+    return '';
+  }, [selectedStudent, students]);
   
   const studentReports = useMemo(
     () => reports.filter((report) => !selectedStudent || report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName),
@@ -327,9 +378,9 @@ export default function ParentDashboard() {
               student={{
                 fullName: selectedStudent.fullName,
                 grade: selectedStudent.grade,
-                photoUrl: selectedStudent.photoUrl,
-                parentName: selectedStudent.parentName,
-                parentPhone: selectedStudent.parentPhone,
+                photoUrl: resolvedChildPhoto || selectedStudent.photoUrl,
+                parentName: selectedStudent.parentName || parentName,
+                parentPhone: selectedStudent.parentPhone || undefined,
                 nationalId: selectedStudent.nationalId,
                 dateOfBirth: selectedStudent.dateOfBirth,
               }}
