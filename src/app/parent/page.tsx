@@ -17,6 +17,7 @@ import {
 } from '@/lib/localDb';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
+import { getClassStudents } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
@@ -28,10 +29,9 @@ export default function ParentDashboard() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
-  const [parentName, setParentName] = useState('ولي الأمر');
-  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [parentName, setParentName] = useState<string>('');
   const [replyText, setReplyText] = useState('');
-  const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
 
   const handleLogout = () => {
@@ -68,123 +68,101 @@ export default function ParentDashboard() {
 
       let allStudents = getStudents();
       const allAccounts = getAccounts();
+      const classStudents = getClassStudents();
+      const allKnown = [...allStudents, ...classStudents];
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
-
-      // Auto-heal photos or missing student data across all students and matching accounts
-      allStudents = allStudents.map((s) => {
-        let needsUpdate = false;
-        let photoUrl = s.photoUrl;
-        let parentName = s.parentName;
-        let parentPhone = s.parentPhone;
-
-        // 1. Auto-heal photo from ANY student record with same name/nationalId/phone
-        if (!photoUrl) {
-          const studentWithPhoto = allStudents.find(
-            (other) => other.photoUrl && (
-              normalizeArabicText(other.fullName) === normalizeArabicText(s.fullName) ||
-              (s.nationalId && other.nationalId && other.nationalId === s.nationalId) ||
-              (s.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '') === s.parentPhone.replace(/\D/g, ''))
-            )
-          );
-          if (studentWithPhoto?.photoUrl) {
-            photoUrl = studentWithPhoto.photoUrl;
-            needsUpdate = true;
-          }
-        }
-
-        // 2. Auto-heal photo from accounts if still missing
-        if (!photoUrl) {
-          const matchedAcc = allAccounts.find(
-            (a) =>
-              (a.role === 'student' && normalizeArabicText(a.name) === normalizeArabicText(s.fullName) && a.photoUrl) ||
-              (a.phone && s.parentPhone && a.phone.replace(/\D/g, '') === s.parentPhone.replace(/\D/g, '') && a.photoUrl) ||
-              (a.photoUrl && (a.id === s.id || a.email === s.email))
-          );
-          if (matchedAcc?.photoUrl) {
-            photoUrl = matchedAcc.photoUrl;
-            needsUpdate = true;
-          }
-        }
-
-        // 3. Auto-heal "طالب من الاستبيان" / "طالب جديد" names using account data
-        if (s.fullName === 'طالب من الاستبيان' || s.fullName === 'طالب جديد') {
-          const matchedAcc = allAccounts.find(
-            (a) =>
-              (a.role === 'student' && a.name && !a.name.includes('جديد')) ||
-              (a.phone && s.parentPhone && a.phone.includes(s.parentPhone))
-          );
-          if (matchedAcc?.name) {
-            s = { ...s, fullName: matchedAcc.name };
-            needsUpdate = true;
-          }
-        }
-
-        // 4. If student is patronymically linked to the current parent session, ensure parent details are linked
-        if (session.name && isParentChildNameMatch(s.fullName, session.name)) {
-          if (!parentName || parentName.includes('جديد') || parentName === 'ولي الأمر') {
-            parentName = session.name;
-            needsUpdate = true;
-          }
-          if (!parentPhone && session.phone) {
-            parentPhone = session.phone;
-            needsUpdate = true;
-          }
-        }
-
-        if (needsUpdate) {
-          const healed = updateStudent(s.id, { photoUrl, parentName, parentPhone, fullName: s.fullName });
-          if (healed) {
-            void syncDocToCloud('students', healed.id, healed);
-            return healed;
-          }
-        }
-        return s;
-      });
 
       // Find all students for this parent using comprehensive matching (patronymic, phone, email, id)
       let myStudents = findStudentsForParent(session, allStudents);
 
       if (activeId) {
         let activeStudent = allStudents.find((s) => s.id === activeId);
-        // If activeStudent has a twin record with more complete data (e.g. photo), use the twin!
-        if (activeStudent) {
-          const richerTwin = allStudents.find(
-            (s) => s.id !== activeId && normalizeArabicText(s.fullName) === normalizeArabicText(activeStudent!.fullName) && s.photoUrl
-          );
-          if (richerTwin) {
-            activeStudent = richerTwin;
-          }
-        }
         if (activeStudent && !myStudents.some((s) => s.id === activeStudent!.id)) {
           myStudents = [activeStudent, ...myStudents];
         }
       }
 
-      // Deduplicate and enrich myStudents list
+      // Fallback: If no match found, use allStudents if present
+      if (myStudents.length === 0 && allStudents.length > 0) {
+        myStudents = activeId
+          ? (allStudents.filter((s) => s.id === activeId).length ? allStudents.filter((s) => s.id === activeId) : [allStudents[0]])
+          : [allStudents[0]];
+      }
+
+      // Universal Deep Merger: For each child in myStudents, merge with all twin records across the system
       const deduplicated: StudentRecord[] = [];
       for (const st of myStudents) {
         const normName = normalizeArabicText(st.fullName);
         const existingIdx = deduplicated.findIndex((d) => normalizeArabicText(d.fullName) === normName);
-        const anyPhoto =
+
+        // Find all twin records across all known sources
+        const twins = allKnown.filter((other: any) =>
+          normalizeArabicText(other.fullName) === normName ||
+          (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
+          (st.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '') === st.parentPhone.replace(/\D/g, '')) ||
+          isParentChildNameMatch(other.fullName, st.fullName)
+        );
+
+        const bestPhoto =
           st.photoUrl ||
-          allStudents.find((other) => other.photoUrl && (normalizeArabicText(other.fullName) === normName || (st.nationalId && other.nationalId === st.nationalId)))?.photoUrl ||
-          allAccounts.find((acc) => acc.photoUrl && normalizeArabicText(acc.name) === normName)?.photoUrl;
+          twins.find((t: any) => t.photoUrl)?.photoUrl ||
+          allAccounts.find((acc) => acc.photoUrl && normalizeArabicText(acc.name) === normName)?.photoUrl ||
+          '';
+
+        const bestDob =
+          st.dateOfBirth ||
+          twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
+          '';
+
+        const bestNationalId =
+          st.nationalId ||
+          twins.find((t: any) => t.nationalId)?.nationalId ||
+          '';
+
+        const bestGrade =
+          st.grade ||
+          twins.find((t: any) => t.grade)?.grade ||
+          'الصف الأول';
+
+        const bestParentName =
+          (st.parentName && !st.parentName.includes('جديد') ? st.parentName : '') ||
+          twins.find((t: any) => t.parentName && !t.parentName.includes('جديد'))?.parentName ||
+          (session.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' ? session.name : '') ||
+          'ولي الأمر';
+
+        const bestParentPhone =
+          st.parentPhone ||
+          twins.find((t: any) => t.parentPhone)?.parentPhone ||
+          session.phone ||
+          '';
+
+        const mergedChild: StudentRecord = {
+          ...st,
+          photoUrl: bestPhoto,
+          dateOfBirth: bestDob,
+          nationalId: bestNationalId,
+          grade: bestGrade,
+          parentName: bestParentName,
+          parentPhone: bestParentPhone,
+        };
+
+        // Self-heal local database record and cloud
+        if (bestPhoto !== st.photoUrl || bestDob !== st.dateOfBirth || bestNationalId !== st.nationalId || bestParentName !== st.parentName) {
+          const healed = updateStudent(st.id, mergedChild);
+          if (healed) void syncDocToCloud('students', healed.id, healed);
+        }
 
         if (existingIdx === -1) {
-          deduplicated.push({
-            ...st,
-            photoUrl: anyPhoto,
-          });
+          deduplicated.push(mergedChild);
         } else {
-          const ex = deduplicated[existingIdx];
           deduplicated[existingIdx] = {
-            ...ex,
-            photoUrl: ex.photoUrl || anyPhoto || st.photoUrl,
-            nationalId: ex.nationalId || st.nationalId,
-            dateOfBirth: ex.dateOfBirth || st.dateOfBirth,
-            grade: ex.grade || st.grade,
-            parentName: ex.parentName || st.parentName,
-            parentPhone: ex.parentPhone || st.parentPhone,
+            ...deduplicated[existingIdx],
+            photoUrl: deduplicated[existingIdx].photoUrl || bestPhoto,
+            dateOfBirth: deduplicated[existingIdx].dateOfBirth || bestDob,
+            nationalId: deduplicated[existingIdx].nationalId || bestNationalId,
+            grade: deduplicated[existingIdx].grade || bestGrade,
+            parentName: deduplicated[existingIdx].parentName || bestParentName,
+            parentPhone: deduplicated[existingIdx].parentPhone || bestParentPhone,
           };
         }
       }
@@ -214,35 +192,68 @@ export default function ParentDashboard() {
     };
   }, [router]);
 
-  const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
+  const rawSelectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
 
-  const resolvedChildPhoto = useMemo(() => {
-    if (!selectedStudent) return '';
-    if (selectedStudent.photoUrl) return selectedStudent.photoUrl;
-
+  const selectedStudent = useMemo<StudentRecord | null>(() => {
+    if (!rawSelectedStudent) return null;
     const allSt = getStudents();
     const allAcc = getAccounts();
-    const norm = normalizeArabicText(selectedStudent.fullName);
+    const classSt = getClassStudents();
+    const allKnown = [...allSt, ...classSt];
 
-    const stMatch = allSt.find(
-      (s) => s.photoUrl && (
-        normalizeArabicText(s.fullName) === norm ||
-        (selectedStudent.nationalId && s.nationalId && s.nationalId === selectedStudent.nationalId) ||
-        (selectedStudent.parentPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '') === selectedStudent.parentPhone.replace(/\D/g, ''))
-      )
+    const norm = normalizeArabicText(rawSelectedStudent.fullName);
+
+    const twins = allKnown.filter((s: any) =>
+      normalizeArabicText(s.fullName) === norm ||
+      (rawSelectedStudent.nationalId && s.nationalId && s.nationalId === rawSelectedStudent.nationalId) ||
+      (rawSelectedStudent.parentPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '') === rawSelectedStudent.parentPhone.replace(/\D/g, '')) ||
+      isParentChildNameMatch(s.fullName, rawSelectedStudent.fullName)
     );
-    if (stMatch?.photoUrl) return stMatch.photoUrl;
 
-    const accMatch = allAcc.find(
-      (a) => a.photoUrl && (
-        normalizeArabicText(a.name) === norm ||
-        (selectedStudent.parentPhone && a.phone && a.phone.replace(/\D/g, '') === selectedStudent.parentPhone.replace(/\D/g, ''))
-      )
-    );
-    if (accMatch?.photoUrl) return accMatch.photoUrl;
+    const bestPhoto =
+      rawSelectedStudent.photoUrl ||
+      twins.find((t: any) => t.photoUrl)?.photoUrl ||
+      allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
+      '';
 
-    return '';
-  }, [selectedStudent, students]);
+    const bestDob =
+      rawSelectedStudent.dateOfBirth ||
+      twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
+      '';
+
+    const bestNationalId =
+      rawSelectedStudent.nationalId ||
+      twins.find((t: any) => t.nationalId)?.nationalId ||
+      '';
+
+    const bestGrade =
+      rawSelectedStudent.grade ||
+      twins.find((t: any) => t.grade)?.grade ||
+      'الصف الأول';
+
+    const bestParentName =
+      (rawSelectedStudent.parentName && !rawSelectedStudent.parentName.includes('جديد') ? rawSelectedStudent.parentName : '') ||
+      twins.find((t: any) => t.parentName && !t.parentName.includes('جديد'))?.parentName ||
+      parentName ||
+      'ولي الأمر';
+
+    const bestParentPhone =
+      rawSelectedStudent.parentPhone ||
+      twins.find((t: any) => t.parentPhone)?.parentPhone ||
+      '';
+
+    return {
+      ...rawSelectedStudent,
+      photoUrl: bestPhoto,
+      dateOfBirth: bestDob,
+      nationalId: bestNationalId,
+      grade: bestGrade,
+      parentName: bestParentName,
+      parentPhone: bestParentPhone,
+    };
+  }, [rawSelectedStudent, students, parentName]);
+
+  const resolvedChildPhoto = selectedStudent?.photoUrl || '';
   
   const studentReports = useMemo(
     () => reports.filter((report) => !selectedStudent || report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName),
