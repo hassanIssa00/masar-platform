@@ -279,8 +279,6 @@ export default function ParentDashboard() {
         resolvedFullName = repStudent.studentName;
       } else if (knownSt?.fullName) {
         resolvedFullName = knownSt.fullName;
-      } else if (parentName && !parentName.includes('جديد') && parentName !== 'ولي الأمر') {
-        resolvedFullName = `خالد ${parentName}`;
       }
     }
 

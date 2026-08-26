@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
-import { findMatchingStudentForParent, isParentChildNameMatch } from '@/lib/nameMatching';
+import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
@@ -165,9 +165,11 @@ export default function NewStudentPage() {
     if (nextFlow === 'parent-survey') {
       const parentNameClean = student.parentName.trim();
       const parentPhoneClean = student.parentPhone.trim();
+      const childNameClean = student.fullName.trim() || 'طالب جديد';
 
-      // Look up any child already registered with matching patronymic name, phone, nationalId, or real registered student
+      // Look up any child already registered with matching name, patronymic name, phone, nationalId
       let matchedChildren = allStudents.filter((s) => {
+        if (childNameClean && childNameClean !== 'طالب جديد' && normalizeArabicText(s.fullName) === normalizeArabicText(childNameClean)) return true;
         if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
         if (parentPhoneClean && s.parentPhone && s.parentPhone.replace(/\D/g, '') === parentPhoneClean.replace(/\D/g, '')) return true;
         if (student.nationalId && s.nationalId && s.nationalId === student.nationalId) return true;
@@ -177,17 +179,10 @@ export default function NewStudentPage() {
       // Filter out dummy records if real student exists
       matchedChildren = matchedChildren.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
 
-      // If no exact match, but there are real registered students on the platform, connect to the primary registered student!
-      if (matchedChildren.length === 0) {
-        const realRegistered = allStudents.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
-        if (realRegistered.length > 0) {
-          matchedChildren = realRegistered;
-        }
-      }
-
       const primaryChild = matchedChildren[0];
       if (primaryChild) {
         savedStudent = updateStudent(primaryChild.id, {
+          fullName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
           parentName: parentNameClean,
           parentPhone: parentPhoneClean,
           nationalId: primaryChild.nationalId || student.nationalId,
@@ -195,10 +190,9 @@ export default function NewStudentPage() {
           reviewStatus: 'awaiting-survey',
         }) ?? primaryChild;
       } else {
-        const childPlaceholderName = student.fullName.trim() || (parentNameClean ? `طالب (ابن ${parentNameClean})` : 'طالب جديد');
         savedStudent = saveStudent({
           id: targetId,
-          fullName: childPlaceholderName,
+          fullName: childNameClean,
           grade: student.grade || 'الصف الأول',
           nationalId: student.nationalId,
           parentName: parentNameClean,
@@ -317,11 +311,22 @@ export default function NewStudentPage() {
               {nextFlow === 'student-test' ? 'بيانات الطالب وولي الأمر' : 'بيانات ولي الأمر'}
             </h2>
             <div className="grid gap-5 md:grid-cols-2">
+              <Field
+                label={nextFlow === 'student-test' ? 'اسم الطالب' : 'اسم الطالب / الطفل'}
+                placeholder="الاسم الرباعي"
+                value={student.fullName}
+                onChange={(value) => handleFieldChange('fullName', value)}
+                required
+              />
+              <Field
+                label="رقم الهوية / الإقامة"
+                placeholder="رقم الهوية الوطنية أو الإقامة"
+                value={student.nationalId}
+                onChange={(value) => handleFieldChange('nationalId', value)}
+              />
+
               {nextFlow === 'student-test' && (
                 <>
-                  <Field label="اسم الطالب" placeholder="الاسم الرباعي" value={student.fullName} onChange={(value) => handleFieldChange('fullName', value)} required />
-                  <Field label="رقم الهوية / الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
-
                   <div className="block">
                     <span className="mb-2 block text-sm font-black text-slate-700">تاريخ الميلاد <span className="font-bold text-slate-400 text-xs">(اختياري)</span></span>
                     <div className="grid grid-cols-3 gap-2">
@@ -350,9 +355,6 @@ export default function NewStudentPage() {
 
               <Field label="اسم ولي الأمر" placeholder="الاسم ثلاثي أو رباعي" value={student.parentName} onChange={(value) => handleFieldChange('parentName', value)} required />
               <Field label="هاتف ولي الأمر" type="tel" placeholder="05xxxxxxxx أو 01xxxxxxxxx" value={student.parentPhone} onChange={(value) => handleFieldChange('parentPhone', value)} required />
-              {nextFlow !== 'student-test' && (
-                <Field label="رقم الهوية / الإقامة" placeholder="رقم الهوية الوطنية أو الإقامة" value={student.nationalId} onChange={(value) => handleFieldChange('nationalId', value)} />
-              )}
 
               <div className="block md:col-span-2">
                 <label className="block">
