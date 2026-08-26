@@ -22,6 +22,7 @@ import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWi
 import { getReports, getStudents, setSession } from '@/lib/localDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
+import { findMatchingStudentForParent, normalizeArabicText } from '@/lib/nameMatching';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
 const LOGIN_SYNC_KEYS = ['accounts', 'students', 'reports'] as const;
@@ -94,41 +95,51 @@ export default function LoginPage() {
   }, []);
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
-  async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string }) {
-    await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
-
+  async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string; phone?: string; onboardingRequired?: boolean }) {
     const branch = account.schoolBranch ?? 'MASAR';
 
     trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
 
     let targetUrl = '/dashboard';
+
     if (account.role === 'doctor' || account.role === 'specialist' || account.role === 'teacher') {
       targetUrl = '/dashboard';
+
     } else if (account.role === 'student') {
       if (branch === 'IKHLAS_JEDDAH') {
-        const allStudents = getStudents();
-        const linked = allStudents.find(
-          (s) => s.fullName === account.name || s.parentPhone === account.email,
-        );
-        const needsSetup = !linked?.dateOfBirth;
-        targetUrl = needsSetup ? '/school-student/setup' : '/school-student';
+        targetUrl = '/school-student';
       } else {
-        const linked = getStudents().find((s) => s.fullName === account.name || s.parentPhone === account.email);
-        const hasStudentTest = linked
-          ? getReports().some(
-              (report) =>
-                (report.studentId === linked.id || report.studentName === linked.fullName) &&
-                (report.type === 'student-assessment-analysis' || report.type === 'student-assessment-answers'),
-            )
-          : false;
-        targetUrl = linked && hasStudentTest ? `/student/${linked.id}` : '/student/new?flow=student';
+        // PRIMARY CHECK: Use server-side onboardingRequired flag.
+        // It is set to false in Firestore the moment the wizard is submitted.
+        // If false → student already completed onboarding → go to their portal.
+        // If true or missing → first time → go to wizard.
+        if (account.onboardingRequired === false) {
+          // Pull data so student page has records
+          await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
+          const allStudents = getStudents();
+          const linked = allStudents.find(
+            (s) => s.id === account.id || (account.email && s.email === account.email)
+          );
+          targetUrl = linked ? `/student/${linked.id}` : `/student/${account.id}`;
+        } else {
+          targetUrl = '/student/new?flow=student';
+        }
       }
+
     } else {
+      // Parent role
       if (branch === 'IKHLAS_JEDDAH') {
         targetUrl = '/school-parent';
       } else {
-        const students = getStudents();
-        targetUrl = account.providerId === 'generated' || students.length === 0 ? '/student/new?flow=parent' : '/parent';
+        // PRIMARY CHECK: Use server-side onboardingRequired flag.
+        if (account.onboardingRequired === false) {
+          await pullCloudDataToLocal([...LOGIN_SYNC_KEYS]).catch(() => {});
+          const allStudents = getStudents();
+          const linked = findMatchingStudentForParent(account, allStudents);
+          targetUrl = linked ? `/parent?student=${linked.id}` : '/parent';
+        } else {
+          targetUrl = '/student/new?flow=parent';
+        }
       }
     }
 

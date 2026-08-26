@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Clock, BookOpen, Video, MessageSquare, Camera,
@@ -13,6 +13,8 @@ import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
 import { clearSession, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import { findMatchingStudentForParent } from '@/lib/nameMatching';
+import { getLocalHomework } from '@/lib/homework';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -60,20 +62,9 @@ export default function SchoolParentPage() {
     // Set parent name from session directly
     setParentName(session.name || 'ولي الأمر');
 
-    // Retrieve linked student record
+    // Retrieve linked student record using intelligent patronymic and credentials matching
     const allStudents = getStudents();
-    const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
-    const pName = session.name ? session.name.trim().toLowerCase() : '';
-    const pEmail = session.email ? session.email.trim().toLowerCase() : '';
-
-    const linked = allStudents.find((s) => {
-      const record = s as StudentRecord & { email?: string; parentEmail?: string };
-      if (session.id && s.id === session.id) return true;
-      if (pEmail && (record.email?.trim().toLowerCase() === pEmail || record.parentEmail?.trim().toLowerCase() === pEmail)) return true;
-      if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
-      if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
-      return false;
-    }) || allStudents[0] || null;
+    const linked = findMatchingStudentForParent(session, allStudents) || allStudents[0] || null;
 
     if (linked) {
       setStudentRecord(linked);
@@ -115,6 +106,25 @@ export default function SchoolParentPage() {
 
   const jsDay = new Date().getDay();
   const todayName = jsDay >= 0 && jsDay <= 4 ? DAY_NAMES[jsDay] : 'إجازة';
+
+  const allCombinedHomework = useMemo(() => {
+    const local = getLocalHomework();
+    const apiHw = dashboard?.openHomework || [];
+    const map = new Map<string, any>();
+    apiHw.forEach((h: any) => map.set(h.id, h));
+    local.forEach((h: any) => {
+      if (!map.has(h.id)) {
+        map.set(h.id, {
+          id: h.id,
+          title: h.title,
+          description: h.description,
+          dueDate: h.dueDate,
+          type: 'TEXT',
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [dashboard?.openHomework]);
 
   const tabs = [
     { key: 'home' as Tab,      label: 'الرئيسية',  icon: Home },
@@ -288,18 +298,18 @@ export default function SchoolParentPage() {
             )}
 
             {/* واجبات مطلوبة */}
-            {dashboard?.openHomework?.length > 0 && (
+            {allCombinedHomework.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-amber-900 font-black flex items-center gap-1.5">
-                    <Bell className="w-4 h-4 text-amber-600" /> {dashboard.openHomework.length} واجبات إلكترونية مطلوبة
+                    <Bell className="w-4 h-4 text-amber-600" /> {allCombinedHomework.length} واجبات إلكترونية مطلوبة
                   </p>
                   <button onClick={() => setTab('homework')} className="text-xs text-amber-700 font-bold hover:underline flex items-center gap-0.5">
                     عرض الكل <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {dashboard.openHomework.slice(0, 2).map((hw: any) => (
+                  {allCombinedHomework.slice(0, 2).map((hw: any) => (
                     <div key={hw.id} className="bg-white border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">{hw.title}</span>
                       <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
@@ -430,7 +440,7 @@ export default function SchoolParentPage() {
               </div>
             ) : (
               <>
-                {dashboard?.openHomework?.map((hw: any) => {
+                {allCombinedHomework.map((hw: any) => {
                   const done = submitted.includes(hw.id);
                   return (
                     <div key={hw.id} onClick={() => !done && setOpenHw(hw)}
@@ -452,7 +462,7 @@ export default function SchoolParentPage() {
                     </div>
                   );
                 })}
-                {!dashboard?.openHomework?.length && (
+                {!allCombinedHomework.length && (
                   <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
                     ✅ لا توجد واجبات مطلوبة حالياً
                   </div>

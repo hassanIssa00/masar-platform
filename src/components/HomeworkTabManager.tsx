@@ -4,8 +4,9 @@ import { useState, useRef } from 'react';
 import {
   BookOpen, Plus, Sparkles, Image as ImageIcon, FileText, Send,
   Loader2, Trash2, CheckCircle2, Clock, Upload, HelpCircle, AlertCircle,
-  ChevronDown, ChevronUp, Star, Lightbulb, Bot, Paperclip
+  ChevronDown, ChevronUp, Star, Lightbulb, Bot, Paperclip, BellRing
 } from 'lucide-react';
+import { broadcastHomeworkToParents } from '@/lib/broadcastService';
 
 interface Student {
   id: string;
@@ -69,6 +70,8 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
   const [loading, setLoading] = useState(false);
   const [openSubmissionsHw, setOpenSubmissionsHw] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Record<string, any[]>>({});
+  const [broadcastFeedback, setBroadcastFeedback] = useState('');
+  const [broadcastingId, setBroadcastingId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,11 +140,22 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
     }, 1200);
   };
 
-  /* ── CREATE HOMEWORK SUBMIT ── */
+  /* ── CREATE HOMEWORK & ONE-CLICK BROADCAST TO ALL PARENTS ── */
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) return;
     setLoading(true);
     try {
+      // 1. Broadcast homework directly to all parents via messaging and parent portal
+      const bRes = await broadcastHomeworkToParents({
+        title,
+        description,
+        notes,
+        images,
+        dueDate,
+        subject,
+      });
+
+      // 2. Register in branch manager
       await onCreateHomework({
         title,
         description,
@@ -150,6 +164,10 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
         dueDate,
         subject,
       });
+
+      setBroadcastFeedback(bRes.message || 'تم نشر وتوزيع الواجب على جميع أولياء الأمور بنجاح! 🚀');
+      setTimeout(() => setBroadcastFeedback(''), 5000);
+
       // Reset form
       setTitle('');
       setDescription('');
@@ -157,6 +175,27 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
       setImages([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /* ── BROADCAST EXISTING HOMEWORK ITEM ── */
+  const handleBroadcastItem = async (hw: HomeworkItem) => {
+    setBroadcastingId(hw.id);
+    try {
+      const bRes = await broadcastHomeworkToParents({
+        title: hw.title,
+        description: hw.description,
+        notes: hw.notes,
+        images: hw.images,
+        dueDate: hw.dueDate,
+        subject: hw.subject,
+      });
+      setBroadcastFeedback(bRes.message || `تم إرسال تذكير بالواجب (${hw.title}) لجميع أولياء الأمور! 📲`);
+      setTimeout(() => setBroadcastFeedback(''), 5000);
+    } catch {
+      setBroadcastFeedback('حدث خطأ أثناء إرسال الواجب.');
+    } finally {
+      setBroadcastingId(null);
     }
   };
 
@@ -334,14 +373,21 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
           <button
             onClick={handleSubmit}
             disabled={loading || !title.trim() || !description.trim()}
-            className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 text-xs font-black transition shadow-md active:scale-95 disabled:opacity-40"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white px-6 py-3 text-xs font-black transition shadow-md active:scale-95 disabled:opacity-40 cursor-pointer"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            نشر الواجب لجميع الطلاب 🚀
+            نشر وإرسال الواجب لجميع أولياء الأمور 📤
           </button>
         </div>
 
       </div>
+
+      {broadcastFeedback && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 flex items-center gap-3 animate-fade-in shadow-sm">
+          <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
+          <p className="text-xs sm:text-sm font-black">{broadcastFeedback}</p>
+        </div>
+      )}
 
       {/* ── PUBLISHED HOMEWORK LIST ── */}
       <div className="space-y-4">
@@ -376,11 +422,23 @@ export default function HomeworkTabManager({ students, homeworkList, onCreateHom
                       <h4 className="font-black text-base text-slate-900">{hw.title}</h4>
                     </div>
 
-                    <span className={`text-xs px-3 py-1 rounded-full font-black shrink-0 border ${
-                      hw.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
-                    }`}>
-                      {hw.status === 'OPEN' ? '✅ مفتوح لاستقبال الإجابات' : '🔒 مغلق'}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleBroadcastItem(hw)}
+                        disabled={broadcastingId === hw.id}
+                        className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1.5 rounded-xl text-xs font-black transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
+                        title="إرسال هذا الواجب لجميع أولياء الأمور وتنبيههم في الشات"
+                      >
+                        {broadcastingId === hw.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                        <span>إرسال للجميع 📤</span>
+                      </button>
+
+                      <span className={`text-xs px-3 py-1 rounded-full font-black shrink-0 border ${
+                        hw.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                        {hw.status === 'OPEN' ? '✅ مفتوح' : '🔒 مغلق'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Description / Content */}

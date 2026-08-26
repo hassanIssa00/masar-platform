@@ -16,6 +16,8 @@ export type AccountRecord = {
   providerId?: string;
   firebaseUid?: string;
   lastLoginAt?: string;
+  photoUrl?: string;
+  onboardingRequired?: boolean;
   createdAt: string;
 };
 
@@ -76,7 +78,9 @@ export type SurveySubmission = {
   studentId?: string;
   studentName: string;
   grade: string;
+  parentName?: string;
   parentPhone?: string;
+  parentEmail?: string;
   answers: Record<string, string | number>;
   submittedAt: string;
 };
@@ -162,7 +166,7 @@ function writeList<T>(key: string, value: T[]) {
   writeCloudCache<T>(key, value);
 }
 
-function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {
+export function saveActivity(activity: Omit<ActivityRecord, 'id' | 'createdAt'>) {
   const activities = getActivities();
   const next: ActivityRecord = {
     ...activity,
@@ -182,7 +186,7 @@ export function createId(prefix: string) {
 
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-export function getAccounts() {
+export function getAccounts() {
   return readList<AccountRecord>(KEYS.accounts);
 }
 
@@ -263,10 +267,12 @@ export function getStudents() {
 export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
   const students = getStudents();
   const now = new Date().toISOString();
-  const existing = students.find((item) => item.id === student.id);
+  const existing = students.find((item) => item.id === student.id || (student.fullName && item.fullName === student.fullName));
+  const photoUrl = student.photoUrl || existing?.photoUrl || undefined;
   const next: StudentRecord = {
     ...existing,
     ...student,
+    photoUrl,
     id: existing?.id ?? student.id ?? createId('student'),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -288,9 +294,15 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   const existing = students.find((item) => item.id === studentId);
   if (!existing) return null;
 
+  const cleanUpdates = { ...updates };
+  // Never overwrite an existing photoUrl with an empty string or undefined unless explicitly intended
+  if ((cleanUpdates.photoUrl === '' || cleanUpdates.photoUrl === undefined) && existing.photoUrl) {
+    cleanUpdates.photoUrl = existing.photoUrl;
+  }
+
   const next: StudentRecord = {
     ...existing,
-    ...updates,
+    ...cleanUpdates,
     id: existing.id,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),

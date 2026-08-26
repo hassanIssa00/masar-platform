@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, Calendar, Printer, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Sun } from 'lucide-react';
+import { Clock, Calendar, Printer, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Sun, Send, Loader2 } from 'lucide-react';
 import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
+import { broadcastScheduleToParents } from '@/lib/broadcastService';
 
 interface Props {
   schedule: Period[];
@@ -114,6 +115,21 @@ export default function ProfessionalScheduleTab({
 }: Props) {
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'all'>('all');
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+
+  const handleBroadcastSchedule = async () => {
+    setBroadcasting(true);
+    try {
+      const res = await broadcastScheduleToParents(schedule);
+      setBroadcastMsg(res.message);
+      setTimeout(() => setBroadcastMsg(''), 5000);
+    } catch {
+      setBroadcastMsg('حدث خطأ أثناء إرسال الجدول لأولياء الأمور.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   // Dynamically extract period slots & timings from the active schedule
   const dynamicPeriodSlots = (function() {
@@ -411,6 +427,16 @@ export default function ProfessionalScheduleTab({
 
         {/* Actions Toolbar */}
         <div className="flex items-center gap-2">
+          {/* One-Click Broadcast Schedule to All Parents */}
+          <button
+            onClick={handleBroadcastSchedule}
+            disabled={broadcasting}
+            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-black transition shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {broadcasting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            <span>إرسال الجدول للجميع 📤</span>
+          </button>
+
           {onNavigateToSmartSchedule && (
             <button
               onClick={onNavigateToSmartSchedule}
@@ -429,6 +455,13 @@ export default function ProfessionalScheduleTab({
           </button>
         </div>
       </div>
+
+      {broadcastMsg && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 flex items-center gap-3 animate-fade-in shadow-sm">
+          <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
+          <p className="text-xs sm:text-sm font-black">{broadcastMsg}</p>
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════════════════
          MODE 1: PROFESSIONAL MATRIX TABLE (GRID VIEW)

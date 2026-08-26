@@ -3,12 +3,13 @@
 import { FormEvent, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
 import { getAccounts, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
+import { normalizeArabicText, findMatchingStudentForParent, isParentChildNameMatch } from '@/lib/nameMatching';
 
 // Google icon SVG (official brand colors)
 function GoogleIcon({ size = 20 }: { size?: number }) {
@@ -231,17 +232,32 @@ export default function RegisterPage() {
   const countWords = (str: string) => str.trim().split(/\s+/).filter(Boolean).length;
 
   // Live Evaluated Errors
+  const detectedStudent = useMemo(() => {
+    if (accountType !== 'parent' || !parentName.trim()) return null;
+    const allStudents = getStudents();
+    return findMatchingStudentForParent({ name: parentName, phone, email }, allStudents);
+  }, [accountType, parentName, phone, email]);
+
   const getParentNameError = (): string => {
     if (accountType !== 'parent') return '';
     if (!parentName.trim()) return 'اسم ولي الأمر مطلوب';
-    if (countWords(parentName) < 3) return 'اسم ولي الأمر غير مكتمل، يجب كتابة 3 أسماء على الأقل (مثال: أحمد محمد علي)';
+    if (countWords(parentName) < 3) return 'اسم ولي الأمر غير مكتمل، يجب كتابة 3 أسماء على الأقل (مثال: ماجد عطيه موسي)';
     return '';
   };
 
   const getChildNameError = (): string => {
     if (accountType === 'teacher') return '';
-    if (!childName.trim()) return accountType === 'parent' ? 'اسم الطالب مطلوب' : 'اسم الطالب الكامل مطلوب';
-    if (countWords(childName) < 4) return 'اسم الطالب غير مكتمل، يجب كتابة 4 أسماء على الأقل (مثال: يوسف أحمد محمد علي)';
+    if (accountType === 'parent') {
+      // If a student is detected from father's name/phone, child name is completely optional
+      if (detectedStudent) return '';
+      if (!childName.trim()) return '';
+      if (countWords(childName) < 2) {
+        return 'اسم الطالب قصير، يرجى كتابة الاسمين على الأقل أو تركه فارغاً للتعرف التلقائي';
+      }
+      return '';
+    }
+    if (!childName.trim()) return 'اسم الطالب الكامل مطلوب';
+    if (countWords(childName) < 3) return 'اسم الطالب غير مكتمل، يجب كتابة 3 أسماء على الأقل (مثال: خالد ماجد عطيه موسي)';
     return '';
   };
 
@@ -289,7 +305,7 @@ export default function RegisterPage() {
       phone: getPhoneError(),
       password: getPasswordError(),
     };
-  }, [parentName, childName, email, phone, password, accountType, selectedCountry]);
+  }, [parentName, childName, email, phone, password, accountType, selectedCountry, detectedStudent]);
 
   const hasErrors = useMemo(() => {
     if (accountType === 'parent' && errors.parentName) return true;
@@ -350,28 +366,34 @@ export default function RegisterPage() {
     setSession(account, false, false);
 
     const allStudents = getStudents();
-    const normalizedParentName = parentName.trim().toLowerCase();
-    const normalizedChildName = childName.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
 
-    let matchingStudent = allStudents.find((s) => {
-      if (phone && s.parentPhone && s.parentPhone.includes(phone)) return true;
-      if (normalizedParentName && s.parentName && s.parentName.trim().toLowerCase() === normalizedParentName) return true;
-      if (normalizedChildName && s.fullName && s.fullName.trim().toLowerCase() === normalizedChildName) return true;
-      return false;
-    });
+    let matchingStudent = findMatchingStudentForParent(
+      { name: parentName, phone: fullPhone, email: cleanEmail },
+      allStudents
+    );
+
+    if (!matchingStudent && childName.trim()) {
+      const normChild = normalizeArabicText(childName);
+      matchingStudent = allStudents.find((s) => normalizeArabicText(s.fullName) === normChild);
+    }
 
     if (matchingStudent) {
       updateStudent(matchingStudent.id, {
         parentName: parentName || matchingStudent.parentName,
         parentPhone: fullPhone || matchingStudent.parentPhone,
+        parentEmail: cleanEmail || matchingStudent.parentEmail,
+        schoolBranch: schoolBranch === 'IKHLAS_JEDDAH' ? 'IKHLAS_JEDDAH' : matchingStudent.schoolBranch || 'MASAR',
       });
     } else if (accountType !== 'teacher') {
       matchingStudent = saveStudent({
-        fullName: childName || `طالب ${parentName}`,
-        grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي' : grade,
+        fullName: childName.trim() || `طالب ${parentName}`,
+        grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : grade,
         parentName: parentName,
         parentPhone: fullPhone,
-        source: 'student-wizard',
+        parentEmail: cleanEmail,
+        schoolBranch,
+        source: schoolBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         reviewStatus: 'awaiting-survey',
       });
     }
@@ -528,28 +550,50 @@ export default function RegisterPage() {
           {accountType === 'parent' ? (
             <>
               <Field
-                label="اسم ولي الأمر (الكامل الثلاثي)"
+                label="اسم ولي الأمر (الكامل الثلاثي أو الرباعي)"
                 value={parentName}
                 onChange={(val) => {
                   setParentName(val);
                   markTouched('parentName');
                 }}
                 onBlur={() => markTouched('parentName')}
-                placeholder="مثال: أحمد محمد علي"
+                placeholder="مثال: ماجد عطيه موسي"
                 error={(touched.parentName || submitted) ? errors.parentName : ''}
               />
 
-              <Field
-                label="اسم الطالب / الطفل (الكامل الرباعي)"
-                value={childName}
-                onChange={(val) => {
-                  setChildName(val);
-                  markTouched('childName');
-                }}
-                onBlur={() => markTouched('childName')}
-                placeholder="مثال: يوسف أحمد محمد علي"
-                error={(touched.childName || submitted) ? errors.childName : ''}
-              />
+              {detectedStudent ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 flex items-start gap-3 text-emerald-950 animate-fade-in shadow-2xs">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-600 text-white shrink-0">
+                    <Sparkles size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-emerald-900">
+                      ✨ تم التعرف تلقائياً على طفلك المسجل:
+                    </p>
+                    <p className="mt-0.5 text-sm font-black text-emerald-800">
+                      {detectedStudent.fullName}
+                      {detectedStudent.grade && (
+                        <span className="text-xs font-bold text-emerald-600 mr-2">({detectedStudent.grade})</span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[11px] font-bold text-emerald-700 leading-relaxed">
+                      تم ربط حسابك بملف طفلك وصورته تلقائياً ولست بحاجة لإعادة كتابة اسمه.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <Field
+                  label="اسم الطالب / الطفل (اختياري - يتم التعرف عليه تلقائياً من اسمك)"
+                  value={childName}
+                  onChange={(val) => {
+                    setChildName(val);
+                    markTouched('childName');
+                  }}
+                  onBlur={() => markTouched('childName')}
+                  placeholder="مثال: خالد ماجد عطيه موسي (أو اتركه فارغاً)"
+                  error={(touched.childName || submitted) ? errors.childName : ''}
+                />
+              )}
             </>
           ) : (
             <Field
@@ -560,7 +604,7 @@ export default function RegisterPage() {
                 markTouched('childName');
               }}
               onBlur={() => markTouched('childName')}
-              placeholder="مثال: يوسف أحمد محمد علي"
+              placeholder="مثال: خالد ماجد عطيه موسي"
               error={(touched.childName || submitted) ? errors.childName : ''}
             />
           )}

@@ -53,7 +53,7 @@ export default function StudentProfileCard({
       <div className={`${bgClass} p-5 flex items-center gap-4`}>
         {/* Avatar */}
         <div className="relative h-20 w-20 shrink-0">
-          {student.photoUrl ? (
+          {student.photoUrl && (student.photoUrl.startsWith('data:') || student.photoUrl.startsWith('http') || student.photoUrl.startsWith('/')) ? (
             <Image
               src={student.photoUrl}
               alt={student.fullName}
@@ -61,6 +61,10 @@ export default function StudentProfileCard({
               unoptimized
               className="rounded-full object-cover ring-4 ring-white/30 shadow-xl"
             />
+          ) : student.photoUrl && student.photoUrl.length <= 4 ? (
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 ring-4 ring-white/20 text-white text-3xl shadow-inner select-none">
+              {student.photoUrl}
+            </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 ring-4 ring-white/20 text-white font-black text-2xl shadow-inner">
               {initials}

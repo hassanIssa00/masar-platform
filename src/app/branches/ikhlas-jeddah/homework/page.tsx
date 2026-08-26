@@ -7,6 +7,8 @@ import {
   ArrowRight, FileText, Award, User, Loader2, Sparkles
 } from 'lucide-react';
 
+import { broadcastHomeworkToParents } from '@/lib/broadcastService';
+
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
@@ -27,6 +29,7 @@ export default function IkhlasHomeworkPage() {
   const [options, setOptions] = useState(['أ', 'ب', 'ج', 'د']);
   const [dueDate, setDueDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [broadcastFeedback, setBroadcastFeedback] = useState('');
 
   // Grading modal state
   const [selectedHw, setSelectedHw] = useState<any>(null);
@@ -51,6 +54,17 @@ export default function IkhlasHomeworkPage() {
     if (!title || !description || !dueDate) return;
     setSubmitting(true);
     try {
+      // 1. Broadcast homework to all parents
+      const bRes = await broadcastHomeworkToParents({
+        title,
+        description,
+        dueDate,
+        subject: 'واجب صفي',
+      });
+      setBroadcastFeedback(bRes.message);
+      setTimeout(() => setBroadcastFeedback(''), 5000);
+
+      // 2. Post to API if reachable
       const r = await fetch(`${API}/school/homework`, {
         method: 'POST',
         headers: authHeaders(),

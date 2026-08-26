@@ -9,6 +9,7 @@ import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
 import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/localDb';
+import { findStudentsForParent, findMatchingStudentForParent } from '@/lib/nameMatching';
 
 export default function Navbar() {
   const router = useRouter();
@@ -31,29 +32,34 @@ export default function Navbar() {
     const loadHeaderState = async () => {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
-      const name = session?.name || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
       const role = session?.role || 'parent';
       const resolvedMode: 'parent' | 'student' = role === 'student' ? 'student' : 'parent';
+
+      const allStudents = getStudents();
+      let filteredStudents = allStudents;
+      let resolvedName = '';
+
+      if (session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر') {
+        resolvedName = session.name;
+      }
+
+      if (session && session.role === 'parent') {
+        filteredStudents = findStudentsForParent(session, allStudents);
+        if (!resolvedName && filteredStudents[0]?.parentName && !filteredStudents[0].parentName.includes('جديد')) {
+          resolvedName = filteredStudents[0].parentName;
+        }
+      } else if (session && session.role === 'student') {
+        filteredStudents = allStudents.filter((s) => s.fullName === session.name || s.id === session.id);
+        if (!resolvedName && filteredStudents[0]?.fullName) {
+          resolvedName = filteredStudents[0].fullName;
+        }
+      }
+
+      const name = resolvedName || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
 
       setUserName(name);
       setUserRole(role);
       setMode(resolvedMode);
-
-      const allStudents = getStudents();
-      let filteredStudents = allStudents;
-      if (session && session.role === 'parent') {
-        const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
-        const pName = session.name ? session.name.trim().toLowerCase() : '';
-
-        filteredStudents = allStudents.filter((s) => {
-          if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
-          if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
-          return false;
-        });
-      } else if (session && session.role === 'student') {
-        filteredStudents = allStudents.filter((s) => s.fullName === session.name || s.id === session.id);
-      }
-
       setStudents(filteredStudents);
       setActiveStudentId(filteredStudents[0]?.id ?? '');
     };

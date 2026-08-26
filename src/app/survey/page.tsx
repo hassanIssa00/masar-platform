@@ -393,8 +393,15 @@ function SurveyContent() {
     });
 
     updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
+
+    // Mark parent onboarding as COMPLETE so next login goes directly to /parent
+    const session = getSession();
+    if (session?.id) {
+      void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
+    }
+
     setSubmitted(true);
-    const flow = searchParams.get('flow') ?? getSession()?.role ?? 'parent';
+    const flow = searchParams.get('flow') ?? session?.role ?? 'parent';
     if (flow === 'student') {
       router.push(`/assessment?student=${savedStudent.id}&flow=student`);
     } else {

@@ -968,6 +968,13 @@ function PlacementAssessmentContent() {
 
     setSavedReportId(report.id);
     setSavedStudentId(savedStudent.id);
+
+    // Mark student onboarding as COMPLETE so next login goes to student portal, not wizard
+    const currentSession = getSession();
+    if (currentSession?.id) {
+      void syncDocToCloud('accounts', currentSession.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
+    }
+
     setFinished(true);
   };
 

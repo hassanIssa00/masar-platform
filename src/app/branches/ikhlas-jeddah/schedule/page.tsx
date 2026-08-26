@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Clock, Calendar, Save, ArrowRight, Bell, AlertTriangle,
-  CheckCircle, Plus, Sparkles, RefreshCw, Loader2, BookOpen
+  CheckCircle, Plus, Sparkles, RefreshCw, Loader2, BookOpen, Send
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -12,6 +12,7 @@ import {
   getSavedSchedule, parseSlotsToPeriods,
   type Period,
 } from '@/data/ikhlasSchedule';
+import { broadcastScheduleToParents } from '@/lib/broadcastService';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -33,6 +34,21 @@ export default function IkhlasScheduleManagerPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activePeriod, setActivePeriod] = useState<Period | null>(null);
   const [minsDismissal, setMinsDismissal] = useState<number>(-1);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+
+  const handleBroadcast = async () => {
+    setBroadcasting(true);
+    try {
+      const res = await broadcastScheduleToParents(schedule);
+      setBroadcastMessage(res.message);
+      setTimeout(() => setBroadcastMessage(''), 5000);
+    } catch {
+      setBroadcastMessage('حدث خطأ أثناء الإرسال.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   // Fetch custom schedule from API or local storage if exists
   useEffect(() => {
@@ -125,12 +141,30 @@ export default function IkhlasScheduleManagerPage() {
               </p>
             </div>
           </div>
-          <button onClick={saveSchedule} disabled={saving}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saveSuccess ? 'تم الحفظ بنجاح! ✅' : 'حفظ الجدول الأسبوعي 💾'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBroadcast}
+              disabled={broadcasting}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 cursor-pointer text-xs"
+            >
+              {broadcasting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <span>إرسال الجدول للجميع 📤</span>
+            </button>
+
+            <button onClick={saveSchedule} disabled={saving}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 cursor-pointer text-xs">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saveSuccess ? 'تم الحفظ بنجاح! ✅' : 'حفظ الجدول الأسبوعي 💾'}
+            </button>
+          </div>
         </div>
+
+        {broadcastMessage && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/60 p-4 text-emerald-200 flex items-center gap-3 animate-fade-in shadow-sm">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+            <p className="text-xs sm:text-sm font-black">{broadcastMessage}</p>
+          </div>
+        )}
 
         {/* Live Status Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

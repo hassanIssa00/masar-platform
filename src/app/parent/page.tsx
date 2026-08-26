@@ -18,6 +18,7 @@ import {
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
 type ParentTab = 'home' | 'reports' | 'chat' | 'homework' | 'profile';
 
@@ -67,47 +68,103 @@ export default function ParentDashboard() {
 
       let allStudents = getStudents();
       const allAccounts = getAccounts();
-      const pPhone = session.phone ? session.phone.replace(/\D/g, '') : '';
-      const pName = session.name ? session.name.trim().toLowerCase() : '';
-      const pEmail = session.email ? session.email.trim().toLowerCase() : '';
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
 
-      // Auto-heal corrupted "طالب من الاستبيان" names using account data if available
+      // Auto-heal photos or missing student data across all students and matching accounts
       allStudents = allStudents.map((s) => {
+        let needsUpdate = false;
+        let photoUrl = s.photoUrl;
+        let parentName = s.parentName;
+        let parentPhone = s.parentPhone;
+
+        // 1. Auto-heal photo from ANY student record with same name/nationalId/phone
+        if (!photoUrl) {
+          const studentWithPhoto = allStudents.find(
+            (other) => other.photoUrl && (
+              normalizeArabicText(other.fullName) === normalizeArabicText(s.fullName) ||
+              (s.nationalId && other.nationalId && other.nationalId === s.nationalId) ||
+              (s.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '') === s.parentPhone.replace(/\D/g, ''))
+            )
+          );
+          if (studentWithPhoto?.photoUrl) {
+            photoUrl = studentWithPhoto.photoUrl;
+            needsUpdate = true;
+          }
+        }
+
+        // 2. Auto-heal photo from accounts if still missing
+        if (!photoUrl) {
+          const matchedAcc = allAccounts.find(
+            (a) =>
+              (a.role === 'student' && normalizeArabicText(a.name) === normalizeArabicText(s.fullName) && a.photoUrl) ||
+              (a.phone && s.parentPhone && a.phone.replace(/\D/g, '') === s.parentPhone.replace(/\D/g, '') && a.photoUrl) ||
+              (a.photoUrl && (a.id === s.id || a.email === s.email))
+          );
+          if (matchedAcc?.photoUrl) {
+            photoUrl = matchedAcc.photoUrl;
+            needsUpdate = true;
+          }
+        }
+
+        // 3. Auto-heal "طالب من الاستبيان" / "طالب جديد" names using account data
         if (s.fullName === 'طالب من الاستبيان' || s.fullName === 'طالب جديد') {
-          // Find matching account or other student
           const matchedAcc = allAccounts.find(
             (a) =>
               (a.role === 'student' && a.name && !a.name.includes('جديد')) ||
               (a.phone && s.parentPhone && a.phone.includes(s.parentPhone))
-          ) as (typeof allAccounts[0] & { parentName?: string; photoUrl?: string }) | undefined;
+          );
           if (matchedAcc?.name) {
-            const healed = updateStudent(s.id, {
-              fullName: matchedAcc.name,
-              parentName: matchedAcc.parentName || s.parentName,
-              parentPhone: matchedAcc.phone || s.parentPhone,
-              photoUrl: matchedAcc.photoUrl || s.photoUrl,
-            });
-            if (healed) void syncDocToCloud('students', healed.id, healed);
-            return healed || s;
+            s = { ...s, fullName: matchedAcc.name };
+            needsUpdate = true;
+          }
+        }
+
+        // 4. If student is patronymically linked to the current parent session, ensure parent details are linked
+        if (session.name && isParentChildNameMatch(s.fullName, session.name)) {
+          if (!parentName || parentName.includes('جديد') || parentName === 'ولي الأمر') {
+            parentName = session.name;
+            needsUpdate = true;
+          }
+          if (!parentPhone && session.phone) {
+            parentPhone = session.phone;
+            needsUpdate = true;
+          }
+        }
+
+        if (needsUpdate) {
+          const healed = updateStudent(s.id, { photoUrl, parentName, parentPhone, fullName: s.fullName });
+          if (healed) {
+            void syncDocToCloud('students', healed.id, healed);
+            return healed;
           }
         }
         return s;
       });
 
-      let myStudents = allStudents.filter((s) => {
-        const record = s as StudentRecord & { email?: string; parentEmail?: string };
-        if (activeId && s.id === activeId) return true;
-        if (session.id && s.id === session.id) return true;
-        if (pPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) return true;
-        if (pName && s.parentName && s.parentName.trim().toLowerCase() === pName) return true;
-        if (pEmail && (record.email?.trim().toLowerCase() === pEmail || record.parentEmail?.trim().toLowerCase() === pEmail)) return true;
-        return false;
-      });
+      // Find all students for this parent using comprehensive matching (patronymic, phone, email, id)
+      let myStudents = findStudentsForParent(session, allStudents);
+
+      if (activeId) {
+        let activeStudent = allStudents.find((s) => s.id === activeId);
+        // If activeStudent has a twin record with more complete data (e.g. photo), use the twin!
+        if (activeStudent) {
+          const richerTwin = allStudents.find(
+            (s) => s.id !== activeId && normalizeArabicText(s.fullName) === normalizeArabicText(activeStudent!.fullName) && s.photoUrl
+          );
+          if (richerTwin) {
+            activeStudent = richerTwin;
+          }
+        }
+        if (activeStudent && !myStudents.some((s) => s.id === activeStudent!.id)) {
+          myStudents = [activeStudent, ...myStudents];
+        }
+      }
 
       // Fallback: If no match found, use allStudents if present
       if (myStudents.length === 0 && allStudents.length > 0) {
-        myStudents = activeId ? (allStudents.filter(s => s.id === activeId).length ? allStudents.filter(s => s.id === activeId) : [allStudents[0]]) : [allStudents[0]];
+        myStudents = activeId
+          ? (allStudents.filter((s) => s.id === activeId).length ? allStudents.filter((s) => s.id === activeId) : [allStudents[0]])
+          : [allStudents[0]];
       }
 
       setStudents(myStudents);
@@ -123,7 +180,7 @@ export default function ParentDashboard() {
       setParentName(resolvedParentName);
 
       if (myStudents.length > 0) {
-        const targetId = (activeId && myStudents.some(s => s.id === activeId)) ? activeId : myStudents[0].id;
+        const targetId = (activeId && myStudents.some((s) => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
       }
       setHomeworkList(getLocalHomework());
@@ -143,9 +200,23 @@ export default function ParentDashboard() {
 
   const studentMessages = useMemo(
     () => messages
-      .filter((message) => selectedStudent && (message.studentId === selectedStudent.id || message.studentId === 'student_assessment'))
+      .filter((message) => {
+        if (!selectedStudent) return true;
+        return (
+          message.studentId === selectedStudent.id ||
+          message.studentId === 'student_assessment' ||
+          message.studentId === 'all'
+        );
+      })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [messages, selectedStudent]
+  );
+
+  const studentHomework = useMemo(
+    () => homeworkList.filter(
+      (hw) => !selectedStudent || !hw.studentId || hw.studentId === selectedStudent.id || hw.studentId === 'all' || hw.studentName === selectedStudent.fullName
+    ),
+    [homeworkList, selectedStudent]
   );
 
   const assignedSlugs = useMemo(() => {
@@ -227,6 +298,27 @@ export default function ParentDashboard() {
             </div>
           </div>
         </header>
+
+        {/* Multiple Children Switcher Bar if parent has multiple kids */}
+        {students.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 animate-fade-in">
+            <span className="text-xs font-black text-slate-500 whitespace-nowrap">أطفالي المسجلين:</span>
+            {students.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedStudentId(s.id)}
+                className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-black transition cursor-pointer ${
+                  selectedStudent?.id === s.id
+                    ? 'bg-teal-700 text-white shadow-md'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span>{s.fullName}</span>
+                {s.grade && <span className="opacity-80 text-[10px]">({s.grade})</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Prominent Hero Student Profile Card */}
         {selectedStudent && (
@@ -521,7 +613,7 @@ export default function ParentDashboard() {
               <p className="text-xs font-bold text-slate-500 mt-0.5">أنشطة وتمارين يومية موجهة لتعزيز المهارات</p>
             </div>
 
-            {homeworkList.length === 0 ? (
+            {studentHomework.length === 0 ? (
               <div className="py-16 text-center text-slate-400">
                 <BookOpen size={40} className="mx-auto text-slate-300 mb-2" />
                 <p className="text-sm font-black text-slate-700">لا توجد واجبات مطلوبة حالياً</p>
@@ -529,7 +621,7 @@ export default function ParentDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {homeworkList.map((hw) => (
+                {studentHomework.map((hw) => (
                   <div key={hw.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-black text-slate-950">{hw.title}</h4>
