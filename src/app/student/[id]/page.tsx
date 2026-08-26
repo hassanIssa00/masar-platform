@@ -7,9 +7,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
-import { getReports, getStudents, getSession, hydrateSessionFromServer, ReportRecord, StudentRecord, saveStudent } from '@/lib/localDb';
+import { getReports, getStudents, getSession, getAccounts, hydrateSessionFromServer, ReportRecord, StudentRecord, saveStudent } from '@/lib/localDb';
 import { getClassStudents } from '@/lib/classDb';
-import { pullServerSnapshotToLocal } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { normalizeArabicText, isParentChildNameMatch } from '@/lib/nameMatching';
 
 import { getPlayableAudioUrl } from '@/app/assessment/page';
 
@@ -39,6 +40,9 @@ export default function StudentProfilePage() {
   useEffect(() => {
     let cancelled = false;
     const loadStudentProfile = async () => {
+      await pullCloudDataToLocal(['students', 'reports', 'classStudents', 'accounts']).catch(() => {});
+      if (cancelled) return;
+
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       const role = session?.role || 'parent';
@@ -53,59 +57,99 @@ export default function StudentProfilePage() {
         return;
       }
 
-      // 1. Try to find in localStorage (students or class students)
-      let allSt = getStudents();
-      let classSt = getClassStudents();
-      let found = allSt.find((item) => item.id === params.id) ?? (classSt.find((item) => item.id === params.id) as any) ?? null;
-      let foundReports = getReports().filter((report) => report.studentId === params.id);
+      const allSt = getStudents();
+      const classSt = getClassStudents();
+      const allAcc = getAccounts();
+      const allKnown = [...allSt, ...classSt];
 
-      if (found) {
-        setStudent(found);
-        setReports(foundReports);
-        setLoading(false);
-        return;
-      }
+      // 1. Find student by direct ID
+      let found = allKnown.find((item) => item.id === params.id) ?? null;
 
-      // 2. Not in memory — pull from server snapshot & firestore
-      await pullServerSnapshotToLocal(['students', 'reports', 'classStudents']).catch(() => {});
-      if (cancelled) return;
-
-      allSt = getStudents();
-      classSt = getClassStudents();
-      found = allSt.find((item) => item.id === params.id) ?? (classSt.find((item) => item.id === params.id) as any) ?? null;
-      foundReports = getReports().filter((report) => report.studentId === params.id);
-
-      // 3. Fallback: if user is logged in as this student/parent, reconstruct record
-      if (!found && session) {
-        if (session.id === params.id || session.name) {
-          found = saveStudent({
-            id: params.id,
-            fullName: session.name || 'طالب مسار',
-            grade: 'الصف الأول الابتدائي',
-            email: session.email || '',
-            parentPhone: session.phone || '',
-            reviewStatus: 'awaiting-doctor-review',
-            source: 'student-wizard',
-          });
+      // 2. If not found by direct ID, check if params.id is an account ID
+      if (!found) {
+        const acc = allAcc.find((a) => a.id === params.id);
+        if (acc && acc.name && !acc.name.includes('جديد')) {
+          found = allKnown.find((st) => normalizeArabicText(st.fullName) === normalizeArabicText(acc.name)) ?? null;
         }
       }
 
-      setStudent(found);
+      // 3. Find any matching reports by ID or student name
+      const allReports = getReports();
+      let foundReports = allReports.filter((report) => {
+        if (report.studentId === params.id) return true;
+        if (found) {
+          if (report.studentId === found.id) return true;
+          if (normalizeArabicText(report.studentName) === normalizeArabicText(found.fullName)) return true;
+          if (isParentChildNameMatch(report.studentName, found.fullName)) return true;
+        }
+        return false;
+      });
+
+      // 4. If student was not found in students table but reports exist with this ID/name, reconstruct
+      if (!found && foundReports.length > 0) {
+        const primaryRep = foundReports[0];
+        found = allKnown.find((st) => normalizeArabicText(st.fullName) === normalizeArabicText(primaryRep.studentName)) ?? {
+          id: params.id,
+          fullName: primaryRep.studentName || 'طالب مسار',
+          grade: primaryRep.grade || 'الصف الأول الابتدائي',
+          reviewStatus: 'awaiting-doctor-review',
+          source: 'student-wizard',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as StudentRecord;
+      }
+
+      // 5. Deeply enrich student with twin data (photo, dateOfBirth, nationalId)
+      if (found) {
+        const norm = normalizeArabicText(found.fullName);
+        const twins = allKnown.filter((s: any) =>
+          normalizeArabicText(s.fullName) === norm ||
+          (found!.nationalId && s.nationalId && s.nationalId === found!.nationalId)
+        );
+
+        const bestPhoto =
+          found.photoUrl ||
+          twins.find((t: any) => t.photoUrl)?.photoUrl ||
+          allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
+          '';
+
+        const bestDob =
+          found.dateOfBirth ||
+          twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
+          '';
+
+        const bestNationalId =
+          found.nationalId ||
+          twins.find((t: any) => t.nationalId)?.nationalId ||
+          '';
+
+        found = {
+          ...found,
+          photoUrl: bestPhoto,
+          dateOfBirth: bestDob,
+          nationalId: bestNationalId,
+        };
+      }
+
+      setStudent(found as StudentRecord | null);
       setReports(foundReports);
       setLoading(false);
     };
+
     void loadStudentProfile();
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, router]);
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist';
   const isStudent = userRole === 'student';
 
   const mediaList = useMemo<StudentMediaItem[]>(() => {
     const list: StudentMediaItem[] = [];
+    const norm = normalizeArabicText(student?.fullName);
 
+    // 1. From student's own media
     if (student?.media) {
       Object.entries(student.media).forEach(([key, val]) => {
         if (val?.dataUrl) {
@@ -114,7 +158,15 @@ export default function StudentProfilePage() {
       });
     }
 
-    reports.forEach((rep) => {
+    // 2. From all matching reports
+    const allReports = getReports();
+    const matchingReports = allReports.filter(
+      (rep) =>
+        (student && (rep.studentId === student.id || normalizeArabicText(rep.studentName) === norm)) ||
+        rep.studentId === params.id
+    );
+
+    matchingReports.forEach((rep) => {
       if (rep.media) {
         Object.entries(rep.media).forEach(([key, val]) => {
           if (val?.dataUrl && !list.some((item) => item.dataUrl === val.dataUrl)) {
@@ -124,8 +176,21 @@ export default function StudentProfilePage() {
       }
     });
 
+    // 3. From twin records
+    const allSt = getStudents();
+    const twins = allSt.filter((s) => normalizeArabicText(s.fullName) === norm);
+    twins.forEach((t) => {
+      if (t.media) {
+        Object.entries(t.media).forEach(([key, val]) => {
+          if (val?.dataUrl && !list.some((item) => item.dataUrl === val.dataUrl)) {
+            list.push({ id: `twin_${key}`, ...val });
+          }
+        });
+      }
+    });
+
     return list;
-  }, [student, reports]);
+  }, [student, reports, params.id]);
 
   const audioList = mediaList.filter((item: StudentMediaItem) => item.type === 'audio');
   const imageList = mediaList.filter((item: StudentMediaItem) => item.type === 'image');
