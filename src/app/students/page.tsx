@@ -43,11 +43,37 @@ export default function StudentsControlPage() {
       router.replace('/login');
       return;
     }
-    const nextStudents = getStudents();
+    const rawStudents = getStudents();
+    // Deduplicate students by national ID or normalized real name
+    const dedupMap = new Map<string, StudentRecord>();
+    for (const s of rawStudents) {
+      const norm = (s.fullName || '').trim().toLowerCase()
+        .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+        .replace(/\s+/g, ' ').trim();
+      const isPlaceholder = !norm || norm.includes('جديد') || norm.includes('الاستبيان') || norm === 'طالب' || norm === 'الطالب';
+      const key = s.nationalId || (!isPlaceholder && norm.length > 2 ? norm : s.id);
+      if (!dedupMap.has(key)) {
+        dedupMap.set(key, s);
+      } else {
+        const existing = dedupMap.get(key)!;
+        dedupMap.set(key, {
+          ...existing,
+          ...s,
+          fullName: !isPlaceholder ? s.fullName : existing.fullName,
+          photoUrl: existing.photoUrl || s.photoUrl,
+          dateOfBirth: existing.dateOfBirth || s.dateOfBirth,
+          nationalId: existing.nationalId || s.nationalId,
+          parentName: existing.parentName || s.parentName,
+          parentPhone: existing.parentPhone || s.parentPhone,
+        });
+      }
+    }
+    const nextStudents = Array.from(dedupMap.values());
     setStudents(nextStudents);
     setReports(getReports());
     
-    const initialStudentId = selectedId || nextStudents[0]?.id || '';
+    const initialStudentId = selectedId && nextStudents.some((s) => s.id === selectedId) ? selectedId : (nextStudents[0]?.id || '');
     setSelectedId(initialStudentId);
     
     const targetStudent = nextStudents.find((s) => s.id === initialStudentId);
@@ -255,28 +281,23 @@ export default function StudentsControlPage() {
     setMessage(`تم اعتماد المسارات (${programTitles}) للطالب ${selectedStudent.fullName} بنجاح ✅.`);
   };
 
-  const handleDeleteStudent = (studentId: string) => {
-    deleteStudent(studentId);
+  const handleDeleteStudent = async (studentId: string) => {
     setConfirmDeleteId(null);
-    const remaining = getStudents();
-    setStudents(remaining);
-    if (selectedId === studentId) {
-      setSelectedId(remaining[0]?.id || '');
-    }
-    refresh();
+    await deleteStudent(studentId);
+    await refresh();
     setMessage('تم حذف ملف الطالب وكافة بياناته وسجلاته بنجاح.');
     setTimeout(() => setMessage(''), 4000);
   };
 
-  const handleDeleteAllStudents = () => {
+  const handleDeleteAllStudents = async () => {
     if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل؟ سيتم مسح ملفاتهم وسجلاتهم.')) return;
     const currentStudents = getStudents();
     for (const s of currentStudents) {
-      deleteStudent(s.id);
+      await deleteStudent(s.id);
     }
     setStudents([]);
     setSelectedId('');
-    refresh();
+    await refresh();
     setMessage('تم حذف جميع الطلاب بالكامل وتفريغ القائمة.');
     setTimeout(() => setMessage(''), 4000);
   };

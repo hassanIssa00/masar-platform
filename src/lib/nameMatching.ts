@@ -114,7 +114,7 @@ export function isParentChildNameMatch(studentFullName?: string | null, parentNa
  * Finds all students that belong to a given parent.
  */
 export function findStudentsForParent(
-  parent: { id?: string; name?: string; phone?: string; email?: string } | null | undefined,
+  parent: { id?: string; name?: string; phone?: string; email?: string; linkedStudentId?: string } | null | undefined,
   allStudents: StudentRecord[]
 ): StudentRecord[] {
   if (!parent || !Array.isArray(allStudents) || allStudents.length === 0) {
@@ -122,35 +122,47 @@ export function findStudentsForParent(
   }
 
   const pPhone = parent.phone ? parent.phone.replace(/\D/g, '') : '';
+  const pPhoneSuffix = pPhone.length >= 8 ? pPhone.slice(-8) : '';
   const pName = parent.name ? normalizeArabicText(parent.name) : '';
   const pEmail = parent.email ? parent.email.trim().toLowerCase() : '';
   const pId = parent.id || '';
+  const linkedId = parent.linkedStudentId || (parent as any)?.linkedStudentId || '';
+
+  // Direct linkedStudentId match
+  if (linkedId) {
+    const linked = allStudents.find((s) => s.id === linkedId);
+    if (linked && !linked.fullName.includes('جديد') && !linked.fullName.includes('الاستبيان')) {
+      return [linked];
+    }
+  }
 
   const matched = allStudents.filter((s) => {
-    const record = s as StudentRecord & { email?: string; parentEmail?: string };
+    const record = s as StudentRecord & { email?: string; parentEmail?: string; recoveryEmail?: string };
     
     // Direct ID match
+    if (linkedId && s.id === linkedId) return true;
     if (pId && s.id === pId) return true;
 
-    // Phone match (clean non-digits)
-    if (pPhone && s.parentPhone) {
+    // Phone match by last 8 digits (handles country code variants +20, 0020, 010...)
+    if (s.parentPhone) {
       const sPhone = s.parentPhone.replace(/\D/g, '');
-      if (sPhone && (sPhone.includes(pPhone) || pPhone.includes(sPhone))) {
+      const sPhoneSuffix = sPhone.length >= 8 ? sPhone.slice(-8) : '';
+      if (pPhoneSuffix && sPhoneSuffix && (sPhoneSuffix === pPhoneSuffix || sPhone.includes(pPhoneSuffix) || pPhone.includes(sPhoneSuffix))) {
         return true;
       }
     }
 
     // Email match
-    if (pEmail) {
+    if (pEmail && !pEmail.includes('generated') && !pEmail.includes('@masar.local')) {
       if (record.parentEmail && record.parentEmail.trim().toLowerCase() === pEmail) return true;
+      if (record.recoveryEmail && record.recoveryEmail.trim().toLowerCase() === pEmail) return true;
       if (record.email && record.email.trim().toLowerCase() === pEmail) return true;
     }
 
-    // Parent name match
-    if (pName && !pName.includes('جديد') && pName !== 'ولي الامر') {
+    // Parent name match & Patronymic match
+    if (pName && pName.length >= 2 && !pName.includes('جديد') && pName !== 'ولي الامر') {
       if (s.parentName && normalizeArabicText(s.parentName) === pName) return true;
       if (s.parentName && isParentChildNameMatch(s.parentName, pName)) return true;
-      // Patronymic match: student's full name contains parent's name
       if (s.fullName && isParentChildNameMatch(s.fullName, pName)) return true;
     }
 
@@ -163,15 +175,7 @@ export function findStudentsForParent(
     return realMatches.length > 0 ? realMatches : matched;
   }
 
-  // Fallback: If non-generic real registered students exist in system, connect them!
-  const realStudents = allStudents.filter(
-    (s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان')
-  );
-  if (realStudents.length > 0) {
-    return realStudents;
-  }
-
-  return allStudents;
+  return [];
 }
 
 /**

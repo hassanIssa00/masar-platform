@@ -285,41 +285,79 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   const students = getStudents();
   const now = new Date().toISOString();
 
-  // Normalize Arabic text for fuzzy name matching (inline to avoid circular import)
+  // Normalize Arabic text for fuzzy name matching
   const norm = (t?: string | null) => (t || '').trim().toLowerCase()
     .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
     .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
     .replace(/\s+/g, ' ').trim();
 
+  const isPlaceholder = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاستبيان') || n === 'طالب' || n === 'الطالب' || n.startsWith('طالب ');
   const normName = norm(student.fullName);
-  const normPhone = (student.parentPhone || '').replace(/\D/g, '');
+  const cleanPhone = (p?: string | null) => (p || '').replace(/\D/g, '');
+  const pPhone = cleanPhone(student.parentPhone);
+  const pPhoneSuffix = pPhone.length >= 8 ? pPhone.slice(-8) : '';
+  const email = (student.email || student.recoveryEmail || student.parentEmail || '').trim().toLowerCase();
 
-  // Find existing by ID, national ID, or normalized name
-  const existing = students.find((item) =>
-    (student.id && item.id === student.id) ||
-    (student.nationalId && item.nationalId && item.nationalId === student.nationalId) ||
-    (normName && normName.length > 3 && norm(item.fullName) === normName)
-  );
+  // Find existing by ID, national ID, normalized real name, phone suffix, or email
+  const existing = students.find((item) => {
+    if (student.id && item.id === student.id) return true;
+    if (student.nationalId && item.nationalId && item.nationalId === student.nationalId) return true;
+    if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
+    
+    // If one of them is a placeholder, match by phone suffix or email
+    const itemPhone = cleanPhone(item.parentPhone);
+    const itemPhoneSuffix = itemPhone.length >= 8 ? itemPhone.slice(-8) : '';
+    if (pPhoneSuffix && itemPhoneSuffix && pPhoneSuffix === itemPhoneSuffix) {
+      if (isPlaceholder(item.fullName) || isPlaceholder(student.fullName) || normName === norm(item.fullName)) return true;
+    }
+    if (email && !email.includes('generated') && !email.includes('@masar.local')) {
+      const itemEmail = (item.email || item.recoveryEmail || item.parentEmail || '').trim().toLowerCase();
+      if (itemEmail === email) return true;
+    }
+    return false;
+  });
 
-  // Also find any OTHER duplicate that might exist (different ID, same normalized name or same national ID)
-  const duplicate = existing ? students.find((item) =>
-    item.id !== existing.id &&
-    ((normName && normName.length > 3 && norm(item.fullName) === normName) ||
-     (student.nationalId && item.nationalId && item.nationalId === student.nationalId))
-  ) : null;
+  // Also find any OTHER duplicate that might exist (different ID, same normalized real name or same national ID or same phone suffix)
+  const duplicate = existing ? students.find((item) => {
+    if (item.id === existing.id) return false;
+    if (student.nationalId && item.nationalId && item.nationalId === student.nationalId) return true;
+    if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
+    const itemPhone = cleanPhone(item.parentPhone);
+    const itemPhoneSuffix = itemPhone.length >= 8 ? itemPhone.slice(-8) : '';
+    if (pPhoneSuffix && itemPhoneSuffix && pPhoneSuffix === itemPhoneSuffix && (isPlaceholder(item.fullName) || normName === norm(item.fullName))) return true;
+    return false;
+  }) : null;
+
+  const resolvedFullName = (!isPlaceholder(student.fullName) && student.fullName) ||
+    (!isPlaceholder(existing?.fullName) && existing?.fullName) ||
+    (!isPlaceholder(duplicate?.fullName) && duplicate?.fullName) ||
+    student.fullName || 'طالب جديد';
 
   const photoUrl = student.photoUrl || existing?.photoUrl || duplicate?.photoUrl || undefined;
   const dateOfBirth = student.dateOfBirth || existing?.dateOfBirth || duplicate?.dateOfBirth || undefined;
   const nationalId = student.nationalId || existing?.nationalId || duplicate?.nationalId || undefined;
+  const parentName = (!isPlaceholder(student.parentName) && student.parentName) ||
+    (!isPlaceholder(existing?.parentName) && existing?.parentName) ||
+    (!isPlaceholder(duplicate?.parentName) && duplicate?.parentName) ||
+    student.parentName || undefined;
+  const parentPhone = student.parentPhone || existing?.parentPhone || duplicate?.parentPhone || undefined;
+  const schoolBranch = student.schoolBranch || existing?.schoolBranch || duplicate?.schoolBranch || undefined;
 
   const next: StudentRecord = {
     ...(duplicate || {}),
-    ...existing,
+    ...(existing || {}),
     ...student,
+    fullName: resolvedFullName,
     photoUrl,
     dateOfBirth,
     nationalId,
-    id: existing?.id ?? student.id ?? createId('student'),
+    parentName,
+    parentPhone,
+    schoolBranch,
+    id: (existing && !isPlaceholder(existing.fullName) ? existing.id : null) ??
+        (student.id ? student.id : null) ??
+        (existing ? existing.id : null) ??
+        createId('student'),
     createdAt: existing?.createdAt ?? duplicate?.createdAt ?? now,
     updatedAt: now,
   };
@@ -335,6 +373,9 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   // If we found and merged a duplicate, delete it from cloud too
   if (duplicate && duplicate.id !== next.id) {
     void deleteDocFromCloud('students', duplicate.id);
+  }
+  if (existing && existing.id !== next.id) {
+    void deleteDocFromCloud('students', existing.id);
   }
 
   saveActivity({
@@ -356,6 +397,10 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   if ((cleanUpdates.photoUrl === '' || cleanUpdates.photoUrl === undefined) && existing.photoUrl) {
     cleanUpdates.photoUrl = existing.photoUrl;
   }
+  // Never overwrite a real name with a placeholder
+  if (cleanUpdates.fullName && (cleanUpdates.fullName.includes('جديد') || cleanUpdates.fullName.includes('الاستبيان') || cleanUpdates.fullName === 'طالب') && existing.fullName && !existing.fullName.includes('جديد')) {
+    cleanUpdates.fullName = existing.fullName;
+  }
 
   const next: StudentRecord = {
     ...existing,
@@ -376,20 +421,46 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   return next;
 }
 
-export function deleteStudent(studentId: string) {
+export async function deleteStudent(studentId: string) {
   const students = getStudents();
   const student = students.find((item) => item.id === studentId);
-  // Remove student
+  
+  // 1. Remove student locally and cloud
   writeList(KEYS.students, students.filter((item) => item.id !== studentId));
-  deleteDocFromCloud('students', studentId);
-  // Remove all their reports
+  await deleteDocFromCloud('students', studentId);
+
+  // 2. Remove matching student accounts
+  const accounts = getAccounts();
+  const matchingAccounts = accounts.filter((a) => a.id === studentId || a.linkedStudentId === studentId);
+  for (const acc of matchingAccounts) {
+    await deleteDocFromCloud('accounts', acc.id);
+  }
+  writeList(KEYS.accounts, accounts.filter((a) => a.id !== studentId && a.linkedStudentId !== studentId));
+
+  // 3. Remove all their reports
   const reports = readList<ReportRecord>(KEYS.reports);
-  reports.filter((item) => item.studentId === studentId).forEach((r) => deleteDocFromCloud('reports', r.id));
-  writeList(KEYS.reports, reports.filter((item) => item.studentId !== studentId));
-  // Remove all their messages
+  const studentReps = reports.filter((item) => item.studentId === studentId || (student?.fullName && item.studentName === student.fullName));
+  for (const r of studentReps) {
+    await deleteDocFromCloud('reports', r.id);
+  }
+  writeList(KEYS.reports, reports.filter((item) => item.studentId !== studentId && !(student?.fullName && item.studentName === student.fullName)));
+
+  // 4. Remove all their messages
   const messages = readList<MessageRecord>(KEYS.messages);
-  messages.filter((item) => item.studentId === studentId).forEach((m) => deleteDocFromCloud('messages', m.id));
+  const studentMsgs = messages.filter((item) => item.studentId === studentId);
+  for (const m of studentMsgs) {
+    await deleteDocFromCloud('messages', m.id);
+  }
   writeList(KEYS.messages, messages.filter((item) => item.studentId !== studentId));
+
+  // 5. Remove all their surveys
+  const surveys = readList<SurveySubmission>(KEYS.surveys);
+  const studentSurveys = surveys.filter((item) => item.studentId === studentId || (student?.fullName && item.studentName === student.fullName));
+  for (const s of studentSurveys) {
+    await deleteDocFromCloud('surveys', s.id);
+  }
+  writeList(KEYS.surveys, surveys.filter((item) => item.studentId !== studentId && !(student?.fullName && item.studentName === student.fullName)));
+
   if (student) {
     saveActivity({
       type: 'student',

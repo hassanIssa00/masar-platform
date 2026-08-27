@@ -44,7 +44,9 @@ export default function Navbar() {
       }
 
       if (session && session.role === 'parent') {
-        filteredStudents = findStudentsForParent(session, allStudents);
+        const found = findStudentsForParent(session, allStudents);
+        const real = found.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+        filteredStudents = real.length > 0 ? real : found;
         if (!resolvedName && filteredStudents[0]?.parentName && !filteredStudents[0].parentName.includes('جديد')) {
           resolvedName = filteredStudents[0].parentName;
         }
@@ -56,12 +58,16 @@ export default function Navbar() {
       }
 
       const name = resolvedName || (session?.role === 'doctor' ? 'د. إسماعيل عيسى' : 'ولي الأمر');
+      const linkedId = (session as any)?.linkedStudentId;
+      const initialActiveId = (linkedId && filteredStudents.some((s) => s.id === linkedId))
+        ? linkedId
+        : (filteredStudents[0]?.id ?? '');
 
       setUserName(name);
       setUserRole(role);
       setMode(resolvedMode);
       setStudents(filteredStudents);
-      setActiveStudentId(filteredStudents[0]?.id ?? '');
+      setActiveStudentId(initialActiveId);
     };
     loadHeaderState();
     return () => {

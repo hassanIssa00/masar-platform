@@ -160,5 +160,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   await adminDb.collection(collectionName).doc(docId).delete();
+  invalidateSnapshotCache();
   return NextResponse.json({ ok: true });
 }

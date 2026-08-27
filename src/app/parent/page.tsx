@@ -79,76 +79,52 @@ export default function ParentDashboard() {
 
       // ── Step 1: Find the parent's own account record (has linkedStudentId if set) ──
       const parentAcc = allAccounts.find((a) => a.id === session.id || (!isGeneratedAlias(a.email) && a.email === session.email));
-      const linkedStudentId: string | undefined = (parentAcc as any)?.linkedStudentId;
+      const linkedStudentId: string | undefined = (parentAcc as any)?.linkedStudentId || (session as any)?.linkedStudentId;
 
-      // ── Step 2: Find all REAL (non-placeholder) student accounts in the system ──
-      const realStudentAccounts = allAccounts.filter(
-        (a) => a.role === 'student' && a.name && !a.name.includes('جديد') && !a.name.includes('الاستبيان') && !a.name.includes('طالب')
-      );
-
-      // ── Step 3: Get all REAL student records (non-placeholder) ──
-      const realStudentRecords = allStudents.filter(
-        (s) => s.fullName && !s.fullName.includes('الاستبيان') && !s.fullName.includes('جديد') && !s.fullName.includes('طالب من')
-      );
-
-      // ── Step 4: Build student list — prefer linkedStudentId, then real records, then fallback ──
+      // ── Step 2: Build student list matching this specific parent ──
       let myStudents: StudentRecord[] = [];
 
       if (linkedStudentId) {
         const linked = allStudents.find((s) => s.id === linkedStudentId);
-        if (linked && !linked.fullName.includes('الاستبيان') && !linked.fullName.includes('جديد')) {
+        if (linked) {
           myStudents = [linked];
         }
       }
 
       if (myStudents.length === 0) {
-        myStudents = findStudentsForParent(session, allStudents).filter(
-          (s) => !s.fullName.includes('الاستبيان') && !s.fullName.includes('جديد') && !s.fullName.includes('طالب من')
-        );
-      }
-
-      if (myStudents.length === 0 && realStudentRecords.length > 0) {
-        // Use any real registered student — the doctor registered them so they belong to someone
-        myStudents = realStudentRecords;
-      }
-
-      if (myStudents.length === 0 && realStudentAccounts.length > 0) {
-        // Convert real student accounts to student records
-        for (const acc of realStudentAccounts) {
-          const normName = normalizeArabicText(acc.name);
-          const matchingRecord = allStudents.find((s) => normalizeArabicText(s.fullName) === normName);
-          if (matchingRecord) {
-            myStudents.push(matchingRecord);
-          } else {
-            // Synthesize a student record from the account
-            const synth: StudentRecord = {
-              id: acc.id,
-              fullName: acc.name,
-              grade: 'الصف الأول الابتدائي',
-              photoUrl: acc.photoUrl,
-              parentPhone: session.phone || '',
-              parentName: session.name || parentAcc?.name || '',
-              source: 'student-wizard',
-              createdAt: acc.createdAt,
-              updatedAt: acc.createdAt,
-            };
-            myStudents.push(synth);
-          }
-        }
-      }
-
-      // ── Step 5: Still empty? Accept any student ──
-      if (myStudents.length === 0 && allStudents.length > 0) {
-        myStudents = [allStudents[0]];
+        myStudents = findStudentsForParent(session, allStudents);
       }
 
       if (activeId) {
         const activeStudent = allStudents.find((s) => s.id === activeId);
-        if (activeStudent && !activeStudent.fullName.includes('الاستبيان') && !activeStudent.fullName.includes('جديد')) {
-          if (!myStudents.some((s) => s.id === activeStudent.id)) {
-            myStudents = [activeStudent, ...myStudents];
-          }
+        if (activeStudent && !myStudents.some((s) => s.id === activeStudent.id)) {
+          myStudents = [activeStudent, ...myStudents];
         }
+      }
+
+      // If active student or matched student is a placeholder, try to find their real twin
+      myStudents = myStudents.map((st) => {
+        const isPl = !st.fullName || st.fullName.includes('جديد') || st.fullName.includes('الاستبيان') || st.fullName === 'طالب';
+        if (isPl) {
+          const pPhone = (st.parentPhone || session.phone || '').replace(/\D/g, '').slice(-8);
+          const realTwin = allStudents.find((other) =>
+            other.id !== st.id &&
+            other.fullName &&
+            !other.fullName.includes('جديد') &&
+            !other.fullName.includes('الاستبيان') &&
+            ((pPhone.length >= 8 && other.parentPhone && other.parentPhone.replace(/\D/g, '').includes(pPhone)) ||
+             (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
+             (st.parentEmail && other.parentEmail && other.parentEmail === st.parentEmail))
+          );
+          if (realTwin) return realTwin;
+        }
+        return st;
+      });
+
+      // Filter out pure placeholders if real students exist
+      const nonPlaceholders = myStudents.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+      if (nonPlaceholders.length > 0) {
+        myStudents = nonPlaceholders;
       }
 
       // Universal Deep Merger: For each child in myStudents, merge with all twin records across the system
