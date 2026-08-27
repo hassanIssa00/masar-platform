@@ -25,6 +25,7 @@ export default function StudentsControlPage() {
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCertData, setShowCertData] = useState<{ studentName: string; studentNameEn?: string; programTitle: string; completionDate: string; score: number } | null>(null);
 
@@ -44,7 +45,7 @@ export default function StudentsControlPage() {
       return;
     }
     const rawStudents = getStudents();
-    // Deduplicate students by national ID or normalized real name
+    // Deduplicate students by normalized real name (or id)
     const dedupMap = new Map<string, StudentRecord>();
     for (const s of rawStudents) {
       const norm = (s.fullName || '').trim().toLowerCase()
@@ -52,7 +53,7 @@ export default function StudentsControlPage() {
         .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
         .replace(/\s+/g, ' ').trim();
       const isPlaceholder = !norm || norm.includes('جديد') || norm.includes('الاستبيان') || norm === 'طالب' || norm === 'الطالب';
-      const key = s.nationalId || (!isPlaceholder && norm.length > 2 ? norm : s.id);
+      const key = (!isPlaceholder && norm.length > 2 ? norm : s.id);
       if (!dedupMap.has(key)) {
         dedupMap.set(key, s);
       } else {
@@ -81,6 +82,7 @@ export default function StudentsControlPage() {
       const activeSlugs = targetStudent.assignedPrograms || (targetStudent.assignedProgram ? [targetStudent.assignedProgram] : []);
       setSelectedTrackSlugs(activeSlugs);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -89,13 +91,12 @@ export default function StudentsControlPage() {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-      await refresh();
+      // 1. Pull cloud data first
+      await pullCloudDataToLocal([...STUDENTS_SYNC_KEYS]).catch(() => {});
+      // 2. Then refresh
+      if (!cancelled) await refresh();
     })();
-    pullCloudDataToLocal([...STUDENTS_SYNC_KEYS])
-      .then(() => {
-        if (!cancelled) void refresh();
-      })
-      .catch(() => {});
+
     const unsubscribe = subscribeToCloudUpdates(() => void refresh(), [...STUDENTS_SYNC_KEYS]);
     return () => {
       cancelled = true;
@@ -344,7 +345,12 @@ export default function StudentsControlPage() {
             </div>
           </header>
 
-          {students.length === 0 ? (
+          {loading ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-teal-200 border-t-teal-700" />
+              <p className="mt-4 text-sm font-black text-slate-600">جاري تحميل وتحديث قائمة الطلاب من السحابة...</p>
+            </section>
+          ) : students.length === 0 ? (
             <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
               <UsersRound className="mx-auto text-slate-400" size={48} />
               <h2 className="mt-4 text-2xl font-black text-slate-950">لا يوجد طلاب محفوظون حالياً</h2>
