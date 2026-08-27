@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
-  Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace,
+  Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace, Camera,
   User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -735,6 +736,80 @@ export default function ParentDashboard() {
         {/* Tab 5: Profile */}
         {activeTab === 'profile' && selectedStudent && (
           <section className="space-y-6 animate-fade-in">
+            {/* Photo & Quick Info Card */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative h-24 w-24 shrink-0">
+                {selectedStudent.photoUrl ? (
+                  <Image
+                    src={selectedStudent.photoUrl}
+                    alt={selectedStudent.fullName}
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="h-24 w-24 rounded-full object-cover ring-4 ring-teal-200 shadow-md"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-black text-2xl ring-4 ring-teal-200 shadow-inner">
+                    {(selectedStudent.fullName || 'ط').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('')}
+                  </div>
+                )}
+                <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-emerald-400 ring-2 ring-white shadow" />
+              </div>
+
+              <div className="flex-1 text-center sm:text-right space-y-2">
+                <h3 className="text-lg font-black text-slate-950">{selectedStudent.fullName}</h3>
+                <p className="text-xs font-bold text-slate-500">{selectedStudent.grade || 'الصف الأول الابتدائي'}</p>
+                <div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer rounded-2xl bg-teal-50 border border-teal-200 px-4 py-2 text-xs font-black text-teal-800 hover:bg-teal-100 transition shadow-2xs">
+                    <Camera size={16} />
+                    <span>{selectedStudent.photoUrl ? 'تغيير صورة الطفل' : 'رفع صورة شخصية للطفل'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file || !selectedStudent) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const img = document.createElement('img');
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxDim = 240;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > h) {
+                              if (w > maxDim) {
+                                h = Math.round((h * maxDim) / w);
+                                w = maxDim;
+                              }
+                            } else {
+                              if (h > maxDim) {
+                                w = Math.round((w * maxDim) / h);
+                                h = maxDim;
+                              }
+                            }
+                            canvas.width = w;
+                            canvas.height = h;
+                            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                            const healed = updateStudent(selectedStudent.id, { photoUrl: dataUrl });
+                            if (healed) {
+                              void syncDocToCloud('students', healed.id, healed);
+                              setStudents((prev) => prev.map((s) => (s.id === healed.id ? healed : s)));
+                            }
+                          };
+                          img.src = String(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
               <h2 className="text-base font-black text-slate-950 border-b border-slate-100 pb-3">بيانات ملف الطفل المسجل</h2>
               <div className="grid gap-4 sm:grid-cols-2 text-sm font-bold text-slate-700">

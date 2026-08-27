@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
-import { getAccounts, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
-import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { getAccounts, getReports, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
+import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { normalizeArabicText, findMatchingStudentForParent, isParentChildNameMatch } from '@/lib/nameMatching';
 
@@ -385,6 +385,14 @@ export default function RegisterPage() {
         parentEmail: cleanEmail || matchingStudent.parentEmail,
         schoolBranch: schoolBranch === 'IKHLAS_JEDDAH' ? 'IKHLAS_JEDDAH' : matchingStudent.schoolBranch || 'MASAR',
       });
+
+      // Link parent account to this student immediately
+      const updatedAcc = saveAccount({
+        ...payload.account,
+        linkedStudentId: matchingStudent.id,
+      });
+      setSession({ ...updatedAcc, linkedStudentId: matchingStudent.id }, false, false);
+      void syncDocToCloud('accounts', updatedAcc.id, { linkedStudentId: matchingStudent.id });
     } else if (accountType !== 'teacher') {
       matchingStudent = saveStudent({
         fullName: childName.trim() || `طالب ${parentName}`,
@@ -396,9 +404,24 @@ export default function RegisterPage() {
         source: schoolBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         reviewStatus: 'awaiting-survey',
       });
+
+      if (matchingStudent) {
+        const updatedAcc = saveAccount({
+          ...payload.account,
+          linkedStudentId: matchingStudent.id,
+        });
+        setSession({ ...updatedAcc, linkedStudentId: matchingStudent.id }, false, false);
+        void syncDocToCloud('accounts', updatedAcc.id, { linkedStudentId: matchingStudent.id });
+      }
     }
 
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
+
+    const allReports = getReports();
+    const studentHasReports = Boolean(
+      matchingStudent &&
+      allReports.some((r) => r.studentId === matchingStudent!.id || r.studentName === matchingStudent!.fullName)
+    );
 
     setTimeout(() => {
       if (schoolBranch === 'IKHLAS_JEDDAH') {
@@ -411,9 +434,21 @@ export default function RegisterPage() {
         }
       } else {
         if (accountType === 'parent') {
-          router.push('/student/new?flow=parent');
+          if (studentHasReports && matchingStudent) {
+            router.push(`/parent?student=${matchingStudent.id}`);
+          } else if (matchingStudent) {
+            router.push(`/student/new?flow=parent&student=${matchingStudent.id}`);
+          } else {
+            router.push('/student/new?flow=parent');
+          }
         } else {
-          router.push('/student/new?flow=student');
+          if (studentHasReports && matchingStudent) {
+            router.push(`/student/${matchingStudent.id}`);
+          } else if (matchingStudent) {
+            router.push(`/student/new?flow=student&student=${matchingStudent.id}`);
+          } else {
+            router.push('/student/new?flow=student');
+          }
         }
       }
     }, 600);
