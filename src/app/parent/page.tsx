@@ -244,7 +244,13 @@ export default function ParentDashboard() {
     };
   }, [router]);
 
-  const rawSelectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
+  const allAvailableStudents = getStudents();
+  const rawSelectedStudent =
+    students.find((student) => student.id === selectedStudentId) ??
+    students[0] ??
+    allAvailableStudents.find((s) => s.id === selectedStudentId) ??
+    allAvailableStudents[0] ??
+    null;
 
   const selectedStudent = useMemo<StudentRecord | null>(() => {
     if (!rawSelectedStudent) return null;
@@ -256,7 +262,7 @@ export default function ParentDashboard() {
 
     // Find the real student name across all available sources
     let resolvedFullName = rawSelectedStudent.fullName;
-    const isGenericName = !resolvedFullName || resolvedFullName.includes('الاستبيان') || resolvedFullName.includes('جديد');
+    const isGenericName = !resolvedFullName || resolvedFullName.includes('الاستبيان') || resolvedFullName.includes('جديد') || resolvedFullName === 'طالب';
 
     if (isGenericName) {
       const studentAcc = allAcc.find((a) => a.role === 'student' && a.name && !a.name.includes('جديد') && !a.name.includes('الاستبيان'));
@@ -269,6 +275,8 @@ export default function ParentDashboard() {
         resolvedFullName = repStudent.studentName;
       } else if (knownSt?.fullName) {
         resolvedFullName = knownSt.fullName;
+      } else if (parentName && parentName !== 'ولي الأمر') {
+        resolvedFullName = `طالب ${parentName}`;
       }
     }
 
@@ -282,7 +290,7 @@ export default function ParentDashboard() {
     );
 
     const bestPhoto =
-      (rawSelectedStudent.photoUrl && !isGenericName ? rawSelectedStudent.photoUrl : '') ||
+      rawSelectedStudent.photoUrl ||
       twins.find((t: any) => t.photoUrl)?.photoUrl ||
       allAcc.find((a) => a.photoUrl && (normalizeArabicText(a.name) === norm || a.role === 'student'))?.photoUrl ||
       allSt.find((s) => s.photoUrl)?.photoUrl ||

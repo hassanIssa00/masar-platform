@@ -32,11 +32,13 @@ export default function StudentProfileCard({
   variant = 'doctor',
   className = '',
 }: StudentProfileCardProps) {
-  const initials = student.fullName
+  const validName = (student?.fullName || '').trim() || 'طالب';
+  const initials = validName
     .split(' ')
+    .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0])
-    .join('');
+    .join('') || 'ط';
 
   const bgClass =
     variant === 'student'
