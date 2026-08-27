@@ -163,14 +163,19 @@ export default function ParentDashboard() {
           ...st,
           photoUrl: st.photoUrl || twins.find((t: any) => t.photoUrl)?.photoUrl || allAccounts.find((a) => a.photoUrl && normalizeArabicText(a.name) === normName)?.photoUrl || '',
           dateOfBirth: st.dateOfBirth || twins.find((t: any) => t.dateOfBirth)?.dateOfBirth || '',
-          nationalId: st.nationalId || twins.find((t: any) => t.nationalId)?.nationalId || '',
+          // Never inherit nationalId from unrelated students — compare by name only
+          nationalId: st.nationalId || '',
           grade: st.grade || twins.find((t: any) => t.grade)?.grade || 'الصف الأول',
           parentName: (st.parentName && !isPlaceholder(st.parentName) ? st.parentName : '') || twins.find((t: any) => t.parentName && !isPlaceholder(t.parentName))?.parentName || (session.name && !isPlaceholder(session.name) ? session.name : '') || 'ولي الأمر',
           parentPhone: st.parentPhone || twins.find((t: any) => t.parentPhone)?.parentPhone || session.phone || '',
         };
 
-        // Self-heal the DB if we enriched anything meaningful
-        if (enriched.photoUrl !== st.photoUrl || enriched.dateOfBirth !== st.dateOfBirth || enriched.nationalId !== st.nationalId) {
+        // Self-heal the DB only if something genuinely changed (avoid spamming writes on every render)
+        const hasChange =
+          (enriched.photoUrl && enriched.photoUrl !== st.photoUrl) ||
+          (enriched.dateOfBirth && enriched.dateOfBirth !== st.dateOfBirth);
+
+        if (hasChange) {
           const healed = updateStudent(st.id, enriched);
           if (healed) void syncDocToCloud('students', healed.id, healed);
         }
@@ -256,7 +261,6 @@ export default function ParentDashboard() {
 
     const bestNationalId =
       rawSelectedStudent.nationalId ||
-      twins.find((t: any) => t.nationalId)?.nationalId ||
       '';
 
     const bestGrade =

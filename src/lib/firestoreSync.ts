@@ -173,6 +173,10 @@ async function deleteDocThroughServer(collectionName: string, docId: string) {
   }
 }
 
+export function clearSnapshotBackoff() {
+  serverSnapshotBackoffUntil = 0;
+}
+
 export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return false;
   if (Date.now() < serverSnapshotBackoffUntil) return false;
@@ -212,10 +216,12 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
     return true;
   } catch (error) {
     console.error('Server snapshot sync failed:', error);
-    serverSnapshotBackoffUntil = Date.now() + 2 * 60 * 1000;
+    // Reduced from 120s → 10s so clients retry quickly after transient errors
+    serverSnapshotBackoffUntil = Date.now() + 10_000;
     return false;
   }
 }
+
 
 // Write helper to Firestore
 export async function syncDocToCloud(collectionName: string, docId: string, data: CloudPayload) {

@@ -393,9 +393,11 @@ export default function RegisterPage() {
       });
       setSession({ ...updatedAcc, linkedStudentId: matchingStudent.id }, false, false);
       void syncDocToCloud('accounts', updatedAcc.id, { linkedStudentId: matchingStudent.id });
-    } else if (accountType !== 'teacher') {
+    } else if (accountType !== 'teacher' && childName.trim()) {
+      // Only create a student record if the parent actually entered a child name.
+      // If childName is empty, skip this and let /student/new handle it.
       matchingStudent = saveStudent({
-        fullName: childName.trim() || `طالب ${parentName}`,
+        fullName: childName.trim(),
         grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : grade,
         parentName: parentName,
         parentPhone: fullPhone,

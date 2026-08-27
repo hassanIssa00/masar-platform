@@ -10,7 +10,7 @@ import { curriculaList, getCurriculumBySlug } from '@/data/curriculaData';
 import { BookOpen, FolderOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { deleteStudent, getAccounts, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
-import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+import { clearSnapshotBackoff, pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
 import StudentProfileCard from '@/components/StudentProfileCard';
@@ -91,9 +91,11 @@ export default function StudentsControlPage() {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-      // 1. Pull cloud data first
+      // 1. Clear any stale backoff so the first load always hits the server
+      clearSnapshotBackoff();
+      // 2. Pull cloud data first
       await pullCloudDataToLocal([...STUDENTS_SYNC_KEYS]).catch(() => {});
-      // 2. Then refresh
+      // 3. Then refresh
       if (!cancelled) await refresh();
     })();
 
@@ -104,6 +106,13 @@ export default function StudentsControlPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    clearSnapshotBackoff();
+    await pullCloudDataToLocal([...STUDENTS_SYNC_KEYS]).catch(() => {});
+    await refresh();
+  };
 
   const selectedStudent = students.find((student) => student.id === selectedId) ?? students[0] ?? null;
 
@@ -329,6 +338,14 @@ export default function StudentsControlPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  disabled={loading}
+                  className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs font-black text-teal-700 hover:bg-teal-100 transition cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? 'جارٍ التحديث...' : '↻ تحديث القائمة'}
+                </button>
                 {students.length > 0 && (
                   <button
                     type="button"
@@ -355,6 +372,13 @@ export default function StudentsControlPage() {
               <UsersRound className="mx-auto text-slate-400" size={48} />
               <h2 className="mt-4 text-2xl font-black text-slate-950">لا يوجد طلاب محفوظون حالياً</h2>
               <p className="mt-2 text-sm font-bold text-slate-500">سجل أول طالب وسيظهر هنا ملفه والتقارير الخاصة به.</p>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                className="mt-4 rounded-xl border border-teal-200 bg-teal-50 px-5 py-2.5 text-sm font-black text-teal-700 hover:bg-teal-100 transition cursor-pointer"
+              >
+                ↻ إعادة المحاولة وتحديث البيانات
+              </button>
             </section>
           ) : (
             <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] items-start">
