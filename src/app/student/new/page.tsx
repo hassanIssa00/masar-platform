@@ -92,16 +92,19 @@ export default function NewStudentPage() {
 
       if (!found) {
         if (session?.role === 'student') {
+          const cleanSessionName = (session.name && !session.name.includes('جديد') && !session.name.includes('الاستبيان') && session.name !== 'طالب' && session.name !== 'الطالب') ? session.name : '';
           setStudent((prev) => ({
             ...prev,
-            fullName: session.name || prev.fullName,
+            fullName: cleanSessionName,
             recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
             parentPhone: session.phone || prev.parentPhone,
           }));
         } else if (session?.role === 'parent') {
+          const cleanParentName = (session.name && !session.name.includes('جديد') && !session.name.includes('الاستبيان') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر') ? session.name : '';
           setStudent((prev) => ({
             ...prev,
-            parentName: (session.name && !session.name.includes('جديد')) ? session.name : prev.parentName,
+            fullName: '',
+            parentName: cleanParentName,
             recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
             parentPhone: session.phone || prev.parentPhone,
           }));
@@ -125,12 +128,17 @@ export default function NewStudentPage() {
         (!isGeneratedAlias(session?.email) ? session?.email : '') ||
         '';
 
+      const cleanFullName = (found.fullName && !found.fullName.includes('جديد') && !found.fullName.includes('الاستبيان') && found.fullName !== 'طالب' && found.fullName !== 'الطالب') ? found.fullName : '';
+      const cleanParentName = (found.parentName && !found.parentName.includes('جديد') && !found.parentName.includes('الاستبيان') && found.parentName !== 'ولي الأمر' && found.parentName !== 'ولي أمر')
+        ? found.parentName
+        : ((session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر') ? session.name : '');
+
       setStudent((prev) => ({
         ...prev,
-        fullName: found.fullName || prev.fullName,
+        fullName: cleanFullName,
         recoveryEmail: existingRecovery || prev.recoveryEmail,
         grade: found.grade || prev.grade,
-        parentName: found.parentName || (session?.name && !session.name.includes('جديد') ? session.name : '') || prev.parentName,
+        parentName: cleanParentName,
         parentPhone: found.parentPhone || session?.phone || prev.parentPhone,
         photoUrl: found.photoUrl || prev.photoUrl,
         notes: found.notes || prev.notes,
