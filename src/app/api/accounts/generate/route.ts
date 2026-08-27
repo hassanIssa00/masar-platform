@@ -121,7 +121,23 @@ export async function POST(req: NextRequest) {
     providerId: 'generated',
     onboardingRequired: true,
     linkedStudentEmail: studentEmail,
+    linkedStudentId: studentAccount.id, // Bug #3 fix: explicit ID link from the start
     createdAt: now,
+  };
+
+  // Bug #1 fix: StudentRecord written to `students/` collection so /students management page can find it
+  const studentRecord = {
+    id: studentAccount.id,
+    fullName: 'طالب جديد',
+    grade,
+    email: studentEmail,
+    parentEmail,
+    source: 'student-wizard' as const,
+    schoolBranch: branch,
+    reviewStatus: 'awaiting-survey' as const,
+    onboardingRequired: true,
+    createdAt: now,
+    updatedAt: now,
   };
 
   const [studentPasswordHash, parentPasswordHash] = await Promise.all([
@@ -159,6 +175,10 @@ export async function POST(req: NextRequest) {
         .then(async (userRecord) => {
           studentAccount.id = userRecord.uid;
           studentCredential.accountId = userRecord.uid;
+          // Keep studentRecord.id in sync with the confirmed Firebase UID
+          studentRecord.id = userRecord.uid;
+          // Keep parentAccount link in sync too
+          parentAccount.linkedStudentId = userRecord.uid;
           return adminAuth.setCustomUserClaims(userRecord.uid, {
             role: 'student',
             schoolBranch: branch,
@@ -173,6 +193,8 @@ export async function POST(req: NextRequest) {
               await adminAuth.updateUser(existing.uid, { password: studentPassword, displayName: studentAccount.name }).catch(() => {});
               studentAccount.id = existing.uid;
               studentCredential.accountId = existing.uid;
+              studentRecord.id = existing.uid;
+              parentAccount.linkedStudentId = existing.uid;
             }
           }
         }),
@@ -219,6 +241,8 @@ export async function POST(req: NextRequest) {
       await Promise.allSettled([
         adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
         adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
+        // Bug #1 fix: write to students/ so the /students management page can find this student
+        adminDb.collection('students').doc(studentRecord.id).set(studentRecord, { merge: true }),
         adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
         adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
         adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
@@ -238,6 +262,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     studentAccount,
     parentAccount,
+    studentRecord,
     studentPassword,
     parentPassword,
     cloudSynced,

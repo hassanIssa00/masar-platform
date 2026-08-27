@@ -18,7 +18,7 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, getStudents, getReports, getSurveys, saveAccount, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, type AccountRecord } from '@/lib/localDb';
 import { clearCloudCache, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -509,6 +509,21 @@ export default function PlatformSettingsPage() {
 
       if (data.studentAccount) saveAccount(data.studentAccount);
       if (data.parentAccount) saveAccount(data.parentAccount);
+      // Bug #2 fix: persist the new student to the students cache so /students page shows it immediately
+      if (data.studentRecord) {
+        saveStudent(data.studentRecord);
+      } else if (data.studentAccount) {
+        // Fallback: synthesise a minimal StudentRecord from the account if API is older
+        saveStudent({
+          fullName: data.studentAccount.name || 'طالب جديد',
+          grade: data.studentAccount.grade || generatorGrade || 'غير محدد',
+          email: data.studentAccount.email,
+          source: 'student-wizard' as const,
+          schoolBranch: data.studentAccount.schoolBranch,
+          reviewStatus: 'awaiting-survey' as const,
+          id: data.studentAccount.id,
+        });
+      }
 
       setGeneratedBundle({
         branch: generatorBranch,
