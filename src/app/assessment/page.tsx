@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
-import { getSession, getStudents, hydrateSessionFromServer, saveReport, saveStudent, StudentRecord, updateStudent, createId } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, setSession, StudentRecord, updateStudent, createId } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { getClassStudents } from '@/lib/classDb';
 import { speakWithMasarVoice } from '@/lib/voicePackage';
@@ -970,9 +970,23 @@ function PlacementAssessmentContent() {
     setSavedReportId(report.id);
     setSavedStudentId(savedStudent.id);
 
-    // Mark student onboarding as COMPLETE so next login goes to student portal, not wizard
+    // Mark student/parent onboarding as COMPLETE and link student to account
     const currentSession = getSession();
     if (currentSession?.id) {
+      // 1. Update local account record
+      const updatedAcc = saveAccount({
+        id: currentSession.id,
+        name: currentSession.name,
+        email: currentSession.email,
+        role: currentSession.role,
+        phone: currentSession.phone,
+        schoolBranch: currentSession.schoolBranch,
+        onboardingRequired: false,
+        linkedStudentId: savedStudent.id,
+      });
+      // 2. Update local session cache
+      setSession({ ...updatedAcc, linkedStudentId: savedStudent.id });
+      // 3. Sync to Firestore cloud
       void syncDocToCloud('accounts', currentSession.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
     }
 

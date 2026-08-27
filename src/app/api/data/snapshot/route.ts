@@ -97,35 +97,50 @@ export function invalidateSnapshotCache() {
 function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string; linkedStudentId?: string }) {
   const userEmail = (user.email || '').trim().toLowerCase();
   const userPhone = cleanDigits(user.phone);
+  const userPhoneSuffix = userPhone.length >= 8 ? userPhone.slice(-8) : '';
   const userName = normalizeArabic(user.name);
-  const userLinkedStudentId = user.linkedStudentId || '';
+  const linkedId = user.linkedStudentId || '';
 
-  // Direct ID check
-  if (item?.id && (item.id === user.id || (userLinkedStudentId && item.id === userLinkedStudentId))) return true;
-  if (item?.studentId && (item.studentId === user.id || (userLinkedStudentId && item.studentId === userLinkedStudentId))) return true;
-  if (item?.accountId && (item.accountId === user.id || (userLinkedStudentId && item.accountId === userLinkedStudentId))) return true;
-  if (item?.createdBy && item.createdBy === user.id) return true;
-  if (item?.firebaseUid && item.firebaseUid === user.id) return true;
+  // ── TIER 1: Direct linkedStudentId match (strongest signal) ──
+  if (linkedId) {
+    if (item?.id === linkedId) return true;
+    if (item?.studentId === linkedId) return true;
+    if (item?.accountId === linkedId) return true;
+    if (item?.linkedStudentId === linkedId) return true;
+  }
 
-  // Direct email checks
-  const emailFields = [
-    item?.email,
-    item?.parentEmail,
-    item?.recoveryEmail,
-    item?.linkedStudentEmail,
-  ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
+  // ── TIER 2: Direct account/user ID match ──
+  if (item?.id === user.id) return true;
+  if (item?.studentId === user.id) return true;
+  if (item?.accountId === user.id) return true;
+  if (item?.createdBy === user.id) return true;
+  if (item?.firebaseUid === user.id) return true;
 
-  if (userEmail && emailFields.some((e) => e === userEmail)) return true;
+  // ── TIER 3: Email match (skip generated/alias emails) ──
+  const isGeneratedEmail = userEmail.includes('@masar.local') ||
+    userEmail.includes('@masarplatform.org') ||
+    userEmail.startsWith('generated_') ||
+    userEmail.startsWith('parent.') ||
+    userEmail.startsWith('student.');
 
-  // Phone number matching (match if last 8 digits match)
-  const phoneFields = [
-    item?.phone,
-    item?.parentPhone,
-    item?.whatsapp,
-  ].filter(Boolean).map((p) => cleanDigits(String(p)));
+  if (userEmail && !isGeneratedEmail) {
+    const emailFields = [
+      item?.email,
+      item?.parentEmail,
+      item?.recoveryEmail,
+      item?.linkedStudentEmail,
+    ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
+    if (emailFields.some((e) => e === userEmail)) return true;
+  }
 
-  if (userPhone && userPhone.length >= 8) {
-    const userPhoneSuffix = userPhone.slice(-8);
+  // ── TIER 4: Phone match (last 8 digits) ──
+  if (userPhoneSuffix) {
+    const phoneFields = [
+      item?.phone,
+      item?.parentPhone,
+      item?.whatsapp,
+    ].filter(Boolean).map((p) => cleanDigits(String(p)));
+
     for (const pf of phoneFields) {
       if (pf.length >= 8) {
         const pfSuffix = pf.slice(-8);
@@ -136,38 +151,46 @@ function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; em
     }
   }
 
-  // Name and Patronymic matching
-  if (userName && userName.length >= 2 && !userName.includes('جديد') && userName !== 'ولي الامر') {
+  // ── TIER 5: Arabic name & patronymic match (only if name is real, not placeholder) ──
+  const isPlaceholderName = !userName ||
+    userName.includes('جديد') ||
+    userName === 'ولي الامر' ||
+    userName === 'طالب' ||
+    userName.length < 3;
+
+  if (!isPlaceholderName) {
     const itemParentName = normalizeArabic(String(item?.parentName || ''));
     const itemFullName = normalizeArabic(String(item?.fullName || item?.name || item?.studentName || ''));
 
-    // Parent name matches user name exactly or contains it
+    // Exact parent name match
     if (itemParentName && (itemParentName === userName || itemParentName.includes(userName) || userName.includes(itemParentName))) {
       return true;
     }
 
-    // Patronymic: child's full name contains parent's name (e.g. "ربيع اسماعيل محمد كامل عيسي" contains "اسماعيل محمد كامل عيسي")
+    // Patronymic: child's name contains parent's name as substring
     if (itemFullName && (itemFullName.includes(userName) || userName.includes(itemFullName))) {
       return true;
     }
 
-    // Split words patronymic match
+    // Word-level patronymic: child's 2nd word onward matches parent name
     const userWords = userName.split(' ').filter(Boolean);
     const itemWords = itemFullName.split(' ').filter(Boolean);
     if (itemWords.length >= 2 && userWords.length >= 1) {
       const childFatherPart = itemWords.slice(1).join(' ');
       const userFull = userWords.join(' ');
-      if (childFatherPart.includes(userFull) || userFull.includes(childFatherPart)) {
-        return true;
-      }
+      if (childFatherPart.includes(userFull) || userFull.includes(childFatherPart)) return true;
       if (itemWords[1] === userWords[0]) {
-        return true;
+        if (userWords.length === 1) return true;
+        if (userWords.length >= 2 && itemWords.length >= 3 && itemWords[2] === userWords[1]) return true;
+        const matchCount = userWords.filter((w) => itemWords.slice(1).includes(w)).length;
+        if (matchCount >= 2 || matchCount >= userWords.length - 1) return true;
       }
     }
   }
 
   return false;
 }
+
 
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ['doctor', 'specialist', 'teacher', 'parent', 'student']);

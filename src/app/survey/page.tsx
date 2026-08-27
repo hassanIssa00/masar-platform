@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
-import { getSession, getStudents, hydrateSessionFromServer, saveReport, saveStudent, saveSurvey, updateStudent, StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, saveSurvey, setSession, updateStudent, StudentRecord } from '@/lib/localDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 const SECTIONS = [
@@ -397,14 +397,29 @@ function SurveyContent() {
 
     updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
 
-    // Mark parent onboarding as COMPLETE so next login goes directly to /parent
+    // Mark parent onboarding as COMPLETE and link student to parent account
     const session = getSession();
     if (session?.id) {
+      // 1. Update local account record (so getSession() returns linkedStudentId)
+      const updatedAcc = saveAccount({
+        id: session.id,
+        name: session.name,
+        email: session.email,
+        role: session.role,
+        phone: session.phone,
+        schoolBranch: session.schoolBranch,
+        onboardingRequired: false,
+        linkedStudentId: savedStudent.id,
+      });
+      // 2. Update local session cache so hydrateSessionFromServer returns correct data
+      setSession({ ...updatedAcc, linkedStudentId: savedStudent.id });
+      // 3. Sync to cloud Firestore
       void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
     }
 
     setSubmitted(true);
-    const flow = searchParams.get('flow') ?? session?.role ?? 'parent';
+    const currentSession = getSession();
+    const flow = searchParams.get('flow') ?? currentSession?.role ?? 'parent';
     if (flow === 'student') {
       router.push(`/assessment?student=${savedStudent.id}&flow=student`);
     } else {

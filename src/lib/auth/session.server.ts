@@ -12,6 +12,7 @@ export interface SessionPayload {
   role: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
   phone?: string;
+  linkedStudentId?: string;
   iat: number;
   exp: number;
   v: number;
@@ -379,6 +380,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
         providerId?: string;
         onboardingRequired?: boolean;
         photoUrl?: string;
+        linkedStudentId?: string;
       };
 
       if (!data.email || !data.role) return null;
@@ -387,35 +389,55 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
       let resolvedPhoto = data.photoUrl;
       let resolvedPhone = data.phone;
       let onboardingReq = data.onboardingRequired;
+      let resolvedLinkedStudentId = data.linkedStudentId;
 
-      // Look up student details from students collection if account has placeholder name
-      if (!resolvedName || resolvedName.includes('جديد') || resolvedName === 'ولي الأمر' || resolvedName === 'طالب') {
+      // Look up student details from students collection if account has placeholder name OR linkedStudentId is missing
+      const needsStudentLookup =
+        !resolvedName ||
+        resolvedName.includes('جديد') ||
+        resolvedName === 'ولي الأمر' ||
+        resolvedName === 'طالب' ||
+        !resolvedLinkedStudentId;
+
+      if (needsStudentLookup) {
         const studentDocs = await adminDb.collection('students').limit(100).get().catch(() => null);
         if (studentDocs && !studentDocs.empty) {
-          const matched = studentDocs.docs.map((d) => d.data()).find((st: any) => {
+          const accEmail = data.email?.trim().toLowerCase();
+          const accPhone = (resolvedPhone || '').replace(/\D/g, '');
+          const matched = studentDocs.docs.map((d) => ({ id: d.id, ...d.data() } as any)).find((st: any) => {
             const stEmail = (st.email || '').trim().toLowerCase();
             const stRec = (st.recoveryEmail || '').trim().toLowerCase();
             const stParentEmail = (st.parentEmail || '').trim().toLowerCase();
-            const accEmail = data.email?.trim().toLowerCase();
+            const stPhone = (st.parentPhone || '').replace(/\D/g, '');
             return (
-              stEmail === accEmail ||
-              stRec === accEmail ||
-              stParentEmail === accEmail ||
+              (accEmail && (stEmail === accEmail || stRec === accEmail || stParentEmail === accEmail)) ||
               st.id === accountDoc.id ||
-              (resolvedPhone && st.parentPhone && st.parentPhone.replace(/\D/g, '') === resolvedPhone.replace(/\D/g, ''))
+              st.id === resolvedLinkedStudentId ||
+              (accPhone.length >= 8 && stPhone.length >= 8 && stPhone.slice(-8) === accPhone.slice(-8))
             );
           });
 
           if (matched) {
-            if (data.role === 'student' && matched.fullName && !matched.fullName.includes('جديد')) {
-              resolvedName = matched.fullName;
-              onboardingReq = false;
-            } else if (data.role === 'parent' && matched.parentName && !matched.parentName.includes('جديد')) {
-              resolvedName = matched.parentName;
-              onboardingReq = false;
+            if (!resolvedLinkedStudentId) {
+              resolvedLinkedStudentId = matched.id;
+              // Persist the link back to Firestore so future logins are instant
+              adminDb.collection('accounts').doc(accountDoc.id).set(
+                { linkedStudentId: matched.id, onboardingRequired: false },
+                { merge: true }
+              ).catch(() => {});
             }
-            if (matched.photoUrl) resolvedPhoto = matched.photoUrl;
-            if (matched.parentPhone) resolvedPhone = matched.parentPhone;
+            if (!resolvedName || resolvedName.includes('جديد') || resolvedName === 'ولي الأمر' || resolvedName === 'طالب') {
+              if (data.role === 'student' && matched.fullName && !matched.fullName.includes('جديد')) {
+                resolvedName = matched.fullName;
+                onboardingReq = false;
+              } else if (data.role === 'parent' && matched.parentName && !matched.parentName.includes('جديد')) {
+                resolvedName = matched.parentName;
+                onboardingReq = false;
+              }
+            }
+            if (matched.photoUrl && !resolvedPhoto) resolvedPhoto = matched.photoUrl;
+            if (matched.parentPhone && !resolvedPhone) resolvedPhone = matched.parentPhone;
+            if (onboardingReq !== false && resolvedLinkedStudentId) onboardingReq = false;
           }
         }
       }
@@ -430,6 +452,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
         photoUrl: resolvedPhoto,
         providerId: data.providerId,
         onboardingRequired: onboardingReq === false ? false : true,
+        linkedStudentId: resolvedLinkedStudentId,
       };
     }
 
@@ -637,6 +660,7 @@ export async function createSessionToken(account: {
   role: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
   phone?: string;
+  linkedStudentId?: string;
 }): Promise<string | null> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 7 * 24 * 60 * 60; // 7 days

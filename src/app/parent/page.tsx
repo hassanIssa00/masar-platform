@@ -47,178 +47,142 @@ export default function ParentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadParentPortal = async () => {
+      // Pull cloud data first
       await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents', 'messages']).catch(() => {});
       if (cancelled) return;
 
+      // Get session (local cache first, server fallback)
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
 
-      // Not logged in → send to login
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
+      if (!session) { router.replace('/login'); return; }
+      if (session.role === 'doctor' || session.role === 'specialist' || session.role === 'teacher') { router.push('/dashboard'); return; }
+      if (session.schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') { router.replace('/school-parent'); return; }
 
-      // Doctor / Staff → their own dashboard
-      if (session.role === 'doctor' || session.role === 'specialist' || session.role === 'teacher') {
-        router.push('/dashboard');
-        return;
-      }
-
-      // Ikhlas-branch parent → redirect to school-parent portal
-      if (session.schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') {
-        router.replace('/school-parent');
-        return;
-      }
-
-      let allStudents = getStudents();
+      const allStudents = getStudents();
       const allAccounts = getAccounts();
       const classStudents = getClassStudents();
-      const allKnown = [...allStudents, ...classStudents];
+      const allKnown = [...allStudents, ...classStudents] as StudentRecord[];
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
 
-      // ── Step 1: Find the parent's own account record (has linkedStudentId if set) ──
-      const parentAcc = allAccounts.find((a) => a.id === session.id || (!isGeneratedAlias(a.email) && a.email === session.email));
-      const linkedStudentId: string | undefined = (parentAcc as any)?.linkedStudentId || (session as any)?.linkedStudentId;
+      // ─────────────────────────────────────────────────────
+      //  TIER-BASED PARENT → CHILD MATCHING ALGORITHM
+      // ─────────────────────────────────────────────────────
 
-      // ── Step 2: Build student list matching this specific parent ──
+      const isPlaceholder = (n?: string | null) =>
+        !n || n.includes('جديد') || n.includes('الاستبيان') || n === 'طالب' || n === 'الطالب';
+
+      // Build parent profile from session + account record
+      const parentAcc = allAccounts.find((a) => a.id === session.id) as any;
+      const linkedStudentId: string | undefined =
+        (session as any)?.linkedStudentId ||
+        parentAcc?.linkedStudentId;
+      const parentPhone = (session.phone || parentAcc?.phone || '').replace(/\D/g, '');
+      const parentPhoneSuffix = parentPhone.length >= 8 ? parentPhone.slice(-8) : '';
+      const parentEmail = (session.email || '').trim().toLowerCase();
+
       let myStudents: StudentRecord[] = [];
 
-      if (linkedStudentId) {
-        const linked = allStudents.find((s) => s.id === linkedStudentId);
-        if (linked) {
-          myStudents = [linked];
-        }
-      }
-
-      if (myStudents.length === 0) {
-        myStudents = findStudentsForParent(session, allStudents);
-      }
-
+      // TIER 1: URL query param (user explicitly opened a student link)
       if (activeId) {
-        const activeStudent = allStudents.find((s) => s.id === activeId);
-        if (activeStudent && !myStudents.some((s) => s.id === activeStudent.id)) {
-          myStudents = [activeStudent, ...myStudents];
-        }
+        const byUrl = allKnown.find((s) => s.id === activeId);
+        if (byUrl) myStudents = [byUrl];
       }
 
-      // If active student or matched student is a placeholder, try to find their real twin
+      // TIER 2: linkedStudentId from session / account (set during onboarding)
+      if (myStudents.length === 0 && linkedStudentId) {
+        const byLink = allKnown.find((s) => s.id === linkedStudentId);
+        if (byLink) myStudents = [byLink];
+      }
+
+      // TIER 3: Parent phone number suffix match (last 8 digits)
+      if (myStudents.length === 0 && parentPhoneSuffix) {
+        const byPhone = allKnown.filter((s) => {
+          const sPhone = (s.parentPhone || '').replace(/\D/g, '');
+          return sPhone.length >= 8 && sPhone.slice(-8) === parentPhoneSuffix;
+        });
+        if (byPhone.length > 0) myStudents = byPhone;
+      }
+
+      // TIER 4: Parent email match (skip generated/alias emails)
+      if (myStudents.length === 0 && parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org') && !parentEmail.startsWith('parent.')) {
+        const byEmail = allKnown.filter((s) => {
+          const fields = [(s as any).parentEmail, (s as any).email, (s as any).recoveryEmail].map((e) => (e || '').trim().toLowerCase());
+          return fields.some((e) => e && e === parentEmail);
+        });
+        if (byEmail.length > 0) myStudents = byEmail;
+      }
+
+      // TIER 5: Patronymic name match (session name vs student's parent name)
+      if (myStudents.length === 0 && session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر') {
+        myStudents = findStudentsForParent(session, allKnown);
+      }
+
+      // TIER 6: Single student in DB (safe single-user fallback)
+      if (myStudents.length === 0 && allStudents.length === 1) {
+        myStudents = allStudents;
+      }
+
+      // ─────────────────────────────────────────────────────
+      //  DATA ENRICHMENT & DEDUPLICATION
+      // ─────────────────────────────────────────────────────
+
+      // Replace placeholders with real twin records where possible
       myStudents = myStudents.map((st) => {
-        const isPl = !st.fullName || st.fullName.includes('جديد') || st.fullName.includes('الاستبيان') || st.fullName === 'طالب';
-        if (isPl) {
-          const pPhone = (st.parentPhone || session.phone || '').replace(/\D/g, '').slice(-8);
-          const realTwin = allStudents.find((other) =>
-            other.id !== st.id &&
-            other.fullName &&
-            !other.fullName.includes('جديد') &&
-            !other.fullName.includes('الاستبيان') &&
-            ((pPhone.length >= 8 && other.parentPhone && other.parentPhone.replace(/\D/g, '').includes(pPhone)) ||
-             (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
-             (st.parentEmail && other.parentEmail && other.parentEmail === st.parentEmail))
-          );
-          if (realTwin) return realTwin;
-        }
-        return st;
+        if (!isPlaceholder(st.fullName)) return st;
+        const stPhone = (st.parentPhone || '').replace(/\D/g, '');
+        const twin = allKnown.find((other) =>
+          other.id !== st.id &&
+          !isPlaceholder(other.fullName) &&
+          (
+            (stPhone.length >= 8 && (other.parentPhone || '').replace(/\D/g, '').slice(-8) === stPhone.slice(-8)) ||
+            (st.nationalId && other.nationalId && other.nationalId === st.nationalId)
+          )
+        );
+        return twin || st;
       });
 
-      // Filter out pure placeholders if real students exist
-      const nonPlaceholders = myStudents.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
-      if (nonPlaceholders.length > 0) {
-        myStudents = nonPlaceholders;
-      }
+      // Remove any remaining placeholders if we have real students
+      const realStudents = myStudents.filter((s) => !isPlaceholder(s.fullName));
+      if (realStudents.length > 0) myStudents = realStudents;
 
-      // Safeguard: if myStudents is still empty, match against all students by phone suffix or patronymic
-      if (myStudents.length === 0 && allStudents.length > 0) {
-        const pPhone = (session.phone || '').replace(/\D/g, '').slice(-8);
-        const candidate = allStudents.find((s) =>
-          (pPhone.length >= 8 && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) ||
-          (session.name && s.parentName && isParentChildNameMatch(s.parentName, session.name)) ||
-          (session.name && s.fullName && isParentChildNameMatch(s.fullName, session.name))
-        ) || (allStudents.length === 1 ? allStudents[0] : null);
+      // Deduplicate by ID
+      const seen = new Set<string>();
+      myStudents = myStudents.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
 
-        if (candidate) {
-          myStudents = [candidate];
-        }
-      }
-
-      // Universal Deep Merger: For each child in myStudents, merge with all twin records across the system
-      const deduplicated: StudentRecord[] = [];
-      for (const st of myStudents) {
+      // Enrich each student record with best available data from twin records
+      myStudents = myStudents.map((st) => {
         const normName = normalizeArabicText(st.fullName);
-        const existingIdx = deduplicated.findIndex((d) => normalizeArabicText(d.fullName) === normName);
-
-        // Find all twin records across all known sources
         const twins = allKnown.filter((other: any) =>
-          normalizeArabicText(other.fullName) === normName ||
-          (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
-          (st.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '') === st.parentPhone.replace(/\D/g, '')) ||
-          isParentChildNameMatch(other.fullName, st.fullName)
+          other.id !== st.id && (
+            normalizeArabicText(other.fullName) === normName ||
+            (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
+            (st.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '').slice(-8) === st.parentPhone.replace(/\D/g, '').slice(-8))
+          )
         );
 
-        const bestPhoto =
-          st.photoUrl ||
-          twins.find((t: any) => t.photoUrl)?.photoUrl ||
-          allAccounts.find((acc) => acc.photoUrl && normalizeArabicText(acc.name) === normName)?.photoUrl ||
-          '';
-
-        const bestDob =
-          st.dateOfBirth ||
-          twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
-          '';
-
-        const bestNationalId =
-          st.nationalId ||
-          twins.find((t: any) => t.nationalId)?.nationalId ||
-          '';
-
-        const bestGrade =
-          st.grade ||
-          twins.find((t: any) => t.grade)?.grade ||
-          'الصف الأول';
-
-        const bestParentName =
-          (st.parentName && !st.parentName.includes('جديد') ? st.parentName : '') ||
-          twins.find((t: any) => t.parentName && !t.parentName.includes('جديد'))?.parentName ||
-          (session.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' ? session.name : '') ||
-          'ولي الأمر';
-
-        const bestParentPhone =
-          st.parentPhone ||
-          twins.find((t: any) => t.parentPhone)?.parentPhone ||
-          session.phone ||
-          '';
-
-        const mergedChild: StudentRecord = {
+        const enriched: StudentRecord = {
           ...st,
-          photoUrl: bestPhoto,
-          dateOfBirth: bestDob,
-          nationalId: bestNationalId,
-          grade: bestGrade,
-          parentName: bestParentName,
-          parentPhone: bestParentPhone,
+          photoUrl: st.photoUrl || twins.find((t: any) => t.photoUrl)?.photoUrl || allAccounts.find((a) => a.photoUrl && normalizeArabicText(a.name) === normName)?.photoUrl || '',
+          dateOfBirth: st.dateOfBirth || twins.find((t: any) => t.dateOfBirth)?.dateOfBirth || '',
+          nationalId: st.nationalId || twins.find((t: any) => t.nationalId)?.nationalId || '',
+          grade: st.grade || twins.find((t: any) => t.grade)?.grade || 'الصف الأول',
+          parentName: (st.parentName && !isPlaceholder(st.parentName) ? st.parentName : '') || twins.find((t: any) => t.parentName && !isPlaceholder(t.parentName))?.parentName || (session.name && !isPlaceholder(session.name) ? session.name : '') || 'ولي الأمر',
+          parentPhone: st.parentPhone || twins.find((t: any) => t.parentPhone)?.parentPhone || session.phone || '',
         };
 
-        // Self-heal local database record and cloud
-        if (bestPhoto !== st.photoUrl || bestDob !== st.dateOfBirth || bestNationalId !== st.nationalId || bestParentName !== st.parentName) {
-          const healed = updateStudent(st.id, mergedChild);
+        // Self-heal the DB if we enriched anything meaningful
+        if (enriched.photoUrl !== st.photoUrl || enriched.dateOfBirth !== st.dateOfBirth || enriched.nationalId !== st.nationalId) {
+          const healed = updateStudent(st.id, enriched);
           if (healed) void syncDocToCloud('students', healed.id, healed);
         }
 
-        if (existingIdx === -1) {
-          deduplicated.push(mergedChild);
-        } else {
-          deduplicated[existingIdx] = {
-            ...deduplicated[existingIdx],
-            photoUrl: deduplicated[existingIdx].photoUrl || bestPhoto,
-            dateOfBirth: deduplicated[existingIdx].dateOfBirth || bestDob,
-            nationalId: deduplicated[existingIdx].nationalId || bestNationalId,
-            grade: deduplicated[existingIdx].grade || bestGrade,
-            parentName: deduplicated[existingIdx].parentName || bestParentName,
-            parentPhone: deduplicated[existingIdx].parentPhone || bestParentPhone,
-          };
-        }
-      }
-      myStudents = deduplicated.length > 0 ? deduplicated : myStudents;
+        return enriched;
+      });
 
       setStudents(myStudents);
       setReports(getReports());
@@ -226,8 +190,8 @@ export default function ParentDashboard() {
 
       const primary = myStudents[0];
       const resolvedParentName =
-        (primary?.parentName && !primary.parentName.includes('جديد') ? primary.parentName : '') ||
-        (session.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' ? session.name : '') ||
+        (primary?.parentName && !isPlaceholder(primary.parentName) ? primary.parentName : '') ||
+        (session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر' ? session.name : '') ||
         'ولي الأمر';
 
       setParentName(resolvedParentName);
@@ -239,9 +203,7 @@ export default function ParentDashboard() {
       setHomeworkList(getLocalHomework());
     };
     void loadParentPortal();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [router]);
 
   const allAvailableStudents = getStudents();
