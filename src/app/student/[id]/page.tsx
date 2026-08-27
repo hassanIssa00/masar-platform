@@ -65,11 +65,46 @@ export default function StudentProfilePage() {
       // 1. Find student by direct ID
       let found = allKnown.find((item) => item.id === params.id) ?? null;
 
-      // 2. If not found by direct ID, check if params.id is an account ID
-      if (!found) {
-        const acc = allAcc.find((a) => a.id === params.id);
-        if (acc && acc.name && !acc.name.includes('جديد')) {
-          found = allKnown.find((st) => normalizeArabicText(st.fullName) === normalizeArabicText(acc.name)) ?? null;
+      // 2. If not found or if found has a generic/placeholder name, find real student
+      const isGeneric = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاستبيان') || n === 'طالب' || n === 'الطالب';
+
+      if (!found || isGeneric(found.fullName)) {
+        const allReports = getReports();
+        const rep = allReports.find((r) => r.studentId === params.id || (found && r.studentId === found.id));
+        const realTwin = allKnown.find((st) =>
+          !isGeneric(st.fullName) &&
+          (st.id === params.id ||
+           (found?.nationalId && st.nationalId && st.nationalId === found.nationalId) ||
+           (found?.parentPhone && st.parentPhone && st.parentPhone.replace(/\D/g, '').slice(-8) === found.parentPhone.replace(/\D/g, '').slice(-8)) ||
+           (rep?.studentName && normalizeArabicText(st.fullName) === normalizeArabicText(rep.studentName)))
+        );
+
+        if (realTwin) {
+          found = { ...found, ...realTwin };
+        } else if (rep?.studentName && !isGeneric(rep.studentName)) {
+          found = {
+            ...(found || {}),
+            id: params.id,
+            fullName: rep.studentName,
+            grade: rep.grade || found?.grade || 'الصف الأول الابتدائي',
+            source: 'student-wizard',
+            createdAt: found?.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as StudentRecord;
+        } else {
+          const acc = allAcc.find((a) => (a.id === params.id || (found && a.linkedStudentId === found.id)) && !isGeneric(a.name));
+          if (acc) {
+            found = {
+              ...(found || {}),
+              id: params.id,
+              fullName: acc.name,
+              photoUrl: acc.photoUrl || found?.photoUrl,
+              grade: found?.grade || 'الصف الأول الابتدائي',
+              source: 'student-wizard',
+              createdAt: found?.createdAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            } as StudentRecord;
+          }
         }
       }
 

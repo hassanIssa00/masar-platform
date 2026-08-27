@@ -131,7 +131,7 @@ export function findStudentsForParent(
   // Direct linkedStudentId match
   if (linkedId) {
     const linked = allStudents.find((s) => s.id === linkedId);
-    if (linked && !linked.fullName.includes('جديد') && !linked.fullName.includes('الاستبيان')) {
+    if (linked) {
       return [linked];
     }
   }
@@ -160,7 +160,7 @@ export function findStudentsForParent(
     }
 
     // Parent name match & Patronymic match
-    if (pName && pName.length >= 2 && !pName.includes('جديد') && pName !== 'ولي الامر') {
+    if (pName && pName.length >= 2 && pName !== 'ولي الامر') {
       if (s.parentName && normalizeArabicText(s.parentName) === pName) return true;
       if (s.parentName && isParentChildNameMatch(s.parentName, pName)) return true;
       if (s.fullName && isParentChildNameMatch(s.fullName, pName)) return true;
@@ -170,9 +170,12 @@ export function findStudentsForParent(
   });
 
   if (matched.length > 0) {
-    // If we have real named students among matches, filter out any generic placeholder records
     const realMatches = matched.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
     return realMatches.length > 0 ? realMatches : matched;
+  }
+
+  if (allStudents.length === 1) {
+    return allStudents;
   }
 
   return [];

@@ -127,6 +127,20 @@ export default function ParentDashboard() {
         myStudents = nonPlaceholders;
       }
 
+      // Safeguard: if myStudents is still empty, match against all students by phone suffix or patronymic
+      if (myStudents.length === 0 && allStudents.length > 0) {
+        const pPhone = (session.phone || '').replace(/\D/g, '').slice(-8);
+        const candidate = allStudents.find((s) =>
+          (pPhone.length >= 8 && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(pPhone)) ||
+          (session.name && s.parentName && isParentChildNameMatch(s.parentName, session.name)) ||
+          (session.name && s.fullName && isParentChildNameMatch(s.fullName, session.name))
+        ) || (allStudents.length === 1 ? allStudents[0] : null);
+
+        if (candidate) {
+          myStudents = [candidate];
+        }
+      }
+
       // Universal Deep Merger: For each child in myStudents, merge with all twin records across the system
       const deduplicated: StudentRecord[] = [];
       for (const st of myStudents) {
