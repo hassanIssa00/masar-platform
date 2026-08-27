@@ -18,7 +18,7 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, clearAllMockData, type AccountRecord } from '@/lib/localDb';
 import { clearCloudCache, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -387,6 +387,7 @@ export default function PlatformSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('all');
   const [clearStatus, setClearStatus] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
+  const [purgeAllStatus, setPurgeAllStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [generatorBranch, setGeneratorBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
   const [generatorGrade, setGeneratorGrade] = useState(GENERATOR_GRADE_OPTIONS[0]);
@@ -487,6 +488,41 @@ export default function PlatformSettingsPage() {
     setClearStatus((s) => ({ ...s, [colName]: 'done' }));
     setTimeout(() => setClearStatus((s) => ({ ...s, [colName]: 'idle' })), 3000);
     await loadSummary();
+  };
+
+  /* ── Master Purge All Data & Accounts ── */
+  const handlePurgeAllData = async () => {
+    const confirmed = confirm('⚠️ تحذير شديد الأهمية:\nهل أنت متأكد من رغبتك في تفريغ ومسح كافة بيانات وسجلات وحسابات الطلاب المسجلة نهائياً من السحابة؟\n(سيتم الحفاظ فقط على حساب الإدارة د. إسماعيل عيسى)');
+    if (!confirmed) return;
+    const doubleCheck = confirm('هل أنت متأكد بنسبة 100%؟ هذه العملية ستحذف كافة حسابات وسجلات الطلاب وأولياء الأمور التي تم تسجيلها ولا يمكن التراجع عنها.');
+    if (!doubleCheck) return;
+
+    setPurgeAllStatus('loading');
+    try {
+      const res = await fetch('/api/data/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        alert(data?.error || 'تعذر تفريغ البيانات من السحابة');
+        setPurgeAllStatus('error');
+        return;
+      }
+
+      // Clear client side cache as well
+      clearAllMockData();
+      clearCloudCache();
+
+      setAccounts((prev) => prev.filter((a) => a.role === 'doctor' || a.email === 'dr.ismail@masar.com'));
+      setPurgeAllStatus('done');
+      await loadSummary();
+      setTimeout(() => setPurgeAllStatus('idle'), 4000);
+    } catch (e: any) {
+      alert(e?.message || 'حدث خطأ أثناء تفريغ البيانات');
+      setPurgeAllStatus('error');
+    }
   };
 
   const handleGenerateAccounts = async () => {
@@ -1127,10 +1163,37 @@ export default function PlatformSettingsPage() {
                   </button>
                 </div>
 
+                {/* Master Purge All Test Data & Accounts */}
+                <div className="rounded-2xl border-2 border-rose-300 bg-rose-50/70 p-5 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <p className="font-black text-rose-900 flex items-center gap-2 text-base">
+                        <Trash2 size={20} className="text-rose-600" />
+                        تفريغ وتصفير شامل لجميع بيانات وحسابات الطلاب المسجلة
+                      </p>
+                      <p className="text-xs font-bold text-rose-700 mt-1">
+                        يقوم هذا الخيار بمسح كامل لجميع حسابات الطلاب وأولياء الأمور التجريبية، والاستبيانات، والتقارير، وسجلات الحضور والنشاط نهائياً من قاعدة البيانات (مع الحفاظ الكامل على حساب د. إسماعيل عيسى).
+                      </p>
+                    </div>
+                    <button
+                      onClick={handlePurgeAllData}
+                      disabled={purgeAllStatus === 'loading'}
+                      className="flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 text-sm font-black transition shadow-sm disabled:opacity-60 shrink-0"
+                    >
+                      {purgeAllStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> :
+                       purgeAllStatus === 'done' ? <CheckCircle2 size={16} /> : <Trash2 size={16} />}
+                      {purgeAllStatus === 'loading' ? 'جاري المسح الشامل من السحابة...' :
+                       purgeAllStatus === 'done' ? 'تم المسح والتصفير الشامل بنجاح ✓' :
+                       purgeAllStatus === 'error' ? 'فشل المسح - حاول ثانية' :
+                       'مسح وتصفير شامل لكل البيانات'}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Clear by collection */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                   <p className="font-black text-slate-800 mb-1 flex items-center gap-2">
-                    <Trash2 size={18} className="text-rose-500" /> مسح البيانات
+                    <Trash2 size={18} className="text-rose-500" /> مسح البيانات حسب القسم
                   </p>
                   <p className="text-xs font-bold text-slate-400 mb-4">احذف مجموعة محددة من بيانات Firestore</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
