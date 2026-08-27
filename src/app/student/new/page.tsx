@@ -178,14 +178,13 @@ export default function NewStudentPage() {
       const cleanDigits = (p?: string) => (p || '').replace(/\D/g, '');
       const pSuffix = cleanDigits(parentPhoneClean).slice(-8);
 
-      // Look up any child already registered with matching name, nationalId, phone suffix, or patronymic
+      // Look up any child already registered with exact matching ID or exact full name only
       let matchedChildren = allStudents.filter((s) => {
+        if (existingStudentId && s.id === existingStudentId) return true;
+        if (requestedStudentId && s.id === requestedStudentId) return true;
         const sNorm = normalizeArabicText(s.fullName);
         const cNorm = normalizeArabicText(childNameClean);
         if (cNorm && cNorm.length > 2 && cNorm !== 'طالب جديد' && sNorm === cNorm) return true;
-        if (student.nationalId && s.nationalId && s.nationalId === student.nationalId) return true;
-        if (pSuffix && pSuffix.length >= 8 && s.parentPhone && cleanDigits(s.parentPhone).includes(pSuffix)) return true;
-        if (parentNameClean && (isParentChildNameMatch(s.fullName, parentNameClean) || isParentChildNameMatch(s.parentName, parentNameClean))) return true;
         return false;
       });
 

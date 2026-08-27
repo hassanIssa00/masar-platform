@@ -130,14 +130,10 @@ export default function ParentDashboard() {
       // Replace placeholders with real twin records where possible
       myStudents = myStudents.map((st) => {
         if (!isPlaceholder(st.fullName)) return st;
-        const stPhone = (st.parentPhone || '').replace(/\D/g, '');
         const twin = allKnown.find((other) =>
           other.id !== st.id &&
           !isPlaceholder(other.fullName) &&
-          (
-            (stPhone.length >= 8 && (other.parentPhone || '').replace(/\D/g, '').slice(-8) === stPhone.slice(-8)) ||
-            (st.nationalId && other.nationalId && other.nationalId === st.nationalId)
-          )
+          normalizeArabicText(other.fullName) === normalizeArabicText(st.fullName)
         );
         return twin || st;
       });
@@ -154,15 +150,12 @@ export default function ParentDashboard() {
         return true;
       });
 
-      // Enrich each student record with best available data from twin records
+      // Enrich each student record with best available data from records of the EXACT same student name
       myStudents = myStudents.map((st) => {
         const normName = normalizeArabicText(st.fullName);
         const twins = allKnown.filter((other: any) =>
-          other.id !== st.id && (
-            normalizeArabicText(other.fullName) === normName ||
-            (st.nationalId && other.nationalId && other.nationalId === st.nationalId) ||
-            (st.parentPhone && other.parentPhone && other.parentPhone.replace(/\D/g, '').slice(-8) === st.parentPhone.replace(/\D/g, '').slice(-8))
-          )
+          other.id !== st.id &&
+          normalizeArabicText(other.fullName) === normName
         );
 
         const enriched: StudentRecord = {
@@ -244,30 +237,25 @@ export default function ParentDashboard() {
 
     const norm = normalizeArabicText(resolvedFullName);
 
+    // Only search twins with exact matching student name
     const twins = allKnown.filter((s: any) =>
-      normalizeArabicText(s.fullName) === norm ||
-      (rawSelectedStudent.nationalId && s.nationalId && s.nationalId === rawSelectedStudent.nationalId) ||
-      (rawSelectedStudent.parentPhone && s.parentPhone && s.parentPhone.replace(/\D/g, '') === rawSelectedStudent.parentPhone.replace(/\D/g, '')) ||
-      isParentChildNameMatch(s.fullName, resolvedFullName)
+      normalizeArabicText(s.fullName) === norm
     );
 
     const bestPhoto =
       rawSelectedStudent.photoUrl ||
       twins.find((t: any) => t.photoUrl)?.photoUrl ||
-      allAcc.find((a) => a.photoUrl && (normalizeArabicText(a.name) === norm || a.role === 'student'))?.photoUrl ||
-      allSt.find((s) => s.photoUrl)?.photoUrl ||
+      allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
       '';
 
     const bestDob =
       rawSelectedStudent.dateOfBirth ||
       twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
-      allSt.find((s) => s.dateOfBirth && !s.fullName?.includes('جديد'))?.dateOfBirth ||
       '';
 
     const bestNationalId =
       rawSelectedStudent.nationalId ||
       twins.find((t: any) => t.nationalId)?.nationalId ||
-      allSt.find((s) => s.nationalId && !s.fullName?.includes('جديد'))?.nationalId ||
       '';
 
     const bestGrade =

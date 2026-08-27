@@ -298,33 +298,20 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   const pPhoneSuffix = pPhone.length >= 8 ? pPhone.slice(-8) : '';
   const email = (student.email || student.recoveryEmail || student.parentEmail || '').trim().toLowerCase();
 
-  // Find existing by ID, national ID, normalized real name, phone suffix, or email
+  // Find existing by ID, or exact normalized real name (never national ID)
   const existing = students.find((item) => {
     if (student.id && item.id === student.id) return true;
-    if (student.nationalId && item.nationalId && item.nationalId === student.nationalId) return true;
     if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
     
-    // If one of them is a placeholder, match by phone suffix or email
-    const itemPhone = cleanPhone(item.parentPhone);
-    const itemPhoneSuffix = itemPhone.length >= 8 ? itemPhone.slice(-8) : '';
-    if (pPhoneSuffix && itemPhoneSuffix && pPhoneSuffix === itemPhoneSuffix) {
-      if (isPlaceholder(item.fullName) || isPlaceholder(student.fullName) || normName === norm(item.fullName)) return true;
-    }
-    if (email && !email.includes('generated') && !email.includes('@masar.local')) {
-      const itemEmail = (item.email || item.recoveryEmail || item.parentEmail || '').trim().toLowerCase();
-      if (itemEmail === email) return true;
-    }
+    // If current is placeholder and target is placeholder with same ID
+    if (student.id && item.id === student.id) return true;
     return false;
   });
 
-  // Also find any OTHER duplicate that might exist (different ID, same normalized real name or same national ID or same phone suffix)
+  // Also find any OTHER duplicate that might exist with exact same real name
   const duplicate = existing ? students.find((item) => {
     if (item.id === existing.id) return false;
-    if (student.nationalId && item.nationalId && item.nationalId === student.nationalId) return true;
     if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
-    const itemPhone = cleanPhone(item.parentPhone);
-    const itemPhoneSuffix = itemPhone.length >= 8 ? itemPhone.slice(-8) : '';
-    if (pPhoneSuffix && itemPhoneSuffix && pPhoneSuffix === itemPhoneSuffix && (isPlaceholder(item.fullName) || normName === norm(item.fullName))) return true;
     return false;
   }) : null;
 

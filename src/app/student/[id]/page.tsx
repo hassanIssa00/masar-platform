@@ -74,8 +74,6 @@ export default function StudentProfilePage() {
         const realTwin = allKnown.find((st) =>
           !isGeneric(st.fullName) &&
           (st.id === params.id ||
-           (found?.nationalId && st.nationalId && st.nationalId === found.nationalId) ||
-           (found?.parentPhone && st.parentPhone && st.parentPhone.replace(/\D/g, '').slice(-8) === found.parentPhone.replace(/\D/g, '').slice(-8)) ||
            (rep?.studentName && normalizeArabicText(st.fullName) === normalizeArabicText(rep.studentName)))
         );
 
@@ -138,8 +136,7 @@ export default function StudentProfilePage() {
       if (found) {
         const norm = normalizeArabicText(found.fullName);
         const twins = allKnown.filter((s: any) =>
-          normalizeArabicText(s.fullName) === norm ||
-          (found!.nationalId && s.nationalId && s.nationalId === found!.nationalId)
+          normalizeArabicText(s.fullName) === norm
         );
 
         const bestPhoto =
