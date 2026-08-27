@@ -871,11 +871,11 @@ function PlacementAssessmentContent() {
   };
 
   const finish = () => {
-    const studentMedia = { ...(student?.media || {}), ...mediaAnswers };
-    let savedStudent: StudentRecord;
     const all = getStudents();
     const targetStudentId = student?.id || studentIdParam;
     const existing = all.find((s) => s.id === targetStudentId);
+    const studentMedia = { ...(existing?.media || {}), ...(student?.media || {}), ...mediaAnswers };
+    let savedStudent: StudentRecord;
 
     const isGeneric = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاختبار') || n === 'طالب' || n === 'الطالب';
     const validFullName = (!isGeneric(studentName) && studentName.trim()) || (!isGeneric(student?.fullName) && student?.fullName) || existing?.fullName || 'طالب جديد';
@@ -889,16 +889,18 @@ function PlacementAssessmentContent() {
         nationalId: existing.nationalId || student?.nationalId || undefined,
         parentName: existing.parentName || student?.parentName || undefined,
         parentPhone: existing.parentPhone || student?.parentPhone || undefined,
+        schoolBranch: existing.schoolBranch || (student as any)?.schoolBranch || undefined,
         reviewStatus: 'awaiting-doctor-review',
         media: studentMedia,
       }) ?? existing;
     } else {
+      const sessionBranch = (getSession() as any)?.schoolBranch;
       savedStudent = saveStudent({
         id: targetStudentId || createId('student'),
         fullName: validFullName,
         grade: student?.grade || assessment.shortTitle,
         reviewStatus: 'awaiting-doctor-review',
-        source: 'student-wizard',
+        source: (student as any)?.source || (sessionBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard'),
         media: studentMedia,
         photoUrl: student?.photoUrl || '',
         parentName: student?.parentName || '',
@@ -907,6 +909,7 @@ function PlacementAssessmentContent() {
         dateOfBirth: student?.dateOfBirth || '',
         nationalId: student?.nationalId || '',
         notes: student?.notes || '',
+        schoolBranch: (student as any)?.schoolBranch || sessionBranch || undefined,
       });
     }
     syncDocToCloud('students', savedStudent.id, savedStudent);

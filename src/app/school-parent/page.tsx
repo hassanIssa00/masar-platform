@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
-import { clearSession, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
+import { clearSession, getAccounts, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
-const BRANCH = 'IKHLAS_JEDDAH';
 
 function authHeaders() {
   return { 'Content-Type': 'application/json' };
@@ -34,6 +34,7 @@ export default function SchoolParentPage() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
+  const [branch, setBranch] = useState<string>('MASAR');
 
   // الواجب
   const [openHw, setOpenHw] = useState<any>(null);
@@ -59,12 +60,39 @@ export default function SchoolParentPage() {
       router.replace('/school-student');
       return;
     }
+
+    // Read branch from session
+    const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
+    setBranch(sessionBranch);
+
     // Set parent name from session directly
     setParentName(session.name || 'ولي الأمر');
 
-    // Retrieve linked student record using intelligent patronymic and credentials matching
+    // Pull latest data from cloud before searching
+    await pullCloudDataToLocal(['students', 'accounts']).catch(() => {});
+    if (cancelled) return;
+
+    // Retrieve linked student record
     const allStudents = getStudents();
-    const linked = findMatchingStudentForParent(session, allStudents) || allStudents[0] || null;
+    const allAccounts = getAccounts();
+    const linkedStudentId = (session as any)?.linkedStudentId;
+
+    // Priority 1: linkedStudentId from account
+    let linked: StudentRecord | null = null;
+    if (linkedStudentId) {
+      linked = allStudents.find((s) => s.id === linkedStudentId) || null;
+    }
+    // Priority 2: intelligent patronymic and credentials matching
+    if (!linked) {
+      linked = findMatchingStudentForParent(session, allStudents) || null;
+    }
+    // Priority 3: check accounts for a linked student
+    if (!linked) {
+      const parentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email);
+      if ((parentAcc as any)?.linkedStudentId) {
+        linked = allStudents.find((s) => s.id === (parentAcc as any).linkedStudentId) || null;
+      }
+    }
 
     if (linked) {
       setStudentRecord(linked);
@@ -86,12 +114,12 @@ export default function SchoolParentPage() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/school/parent-dashboard?branch=${BRANCH}&studentId=${studentId}`, { headers: authHeaders() });
+      const r = await fetch(`${API}/school/parent-dashboard?branch=${branch}&studentId=${studentId}`, { headers: authHeaders() });
       if (r.ok) setDashboard(await r.json());
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, branch]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 

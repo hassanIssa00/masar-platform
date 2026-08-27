@@ -159,6 +159,7 @@ export default function NewStudentPage() {
     const targetId = existingStudentId || requestedStudentId || (session?.role === 'student' ? session.id : undefined);
     const recoveryEmail = student.recoveryEmail.trim();
     const photoToSave = student.photoUrl || matchedExisting?.photoUrl || undefined;
+    const branch = (session as any)?.schoolBranch || matchedExisting?.schoolBranch || 'MASAR';
 
     let savedStudent: any = null;
 
@@ -189,8 +190,13 @@ export default function NewStudentPage() {
           fullName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
           parentName: parentNameClean || primaryChild.parentName,
           parentPhone: parentPhoneClean || primaryChild.parentPhone,
+          parentEmail: recoveryEmail || primaryChild.parentEmail,
           nationalId: primaryChild.nationalId || student.nationalId,
           recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
+          photoUrl: photoToSave || primaryChild.photoUrl,
+          dateOfBirth: dateOfBirth || primaryChild.dateOfBirth,
+          grade: student.grade || primaryChild.grade,
+          schoolBranch: branch,
           reviewStatus: 'awaiting-survey',
         }) ?? primaryChild;
       } else {
@@ -201,10 +207,14 @@ export default function NewStudentPage() {
           nationalId: student.nationalId,
           parentName: parentNameClean,
           parentPhone: parentPhoneClean,
+          parentEmail: recoveryEmail || undefined,
           recoveryEmail: recoveryEmail || undefined,
+          photoUrl: photoToSave,
+          dateOfBirth,
           notes: student.notes,
+          schoolBranch: branch,
           reviewStatus: 'awaiting-survey',
-          source: 'student-wizard',
+          source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         });
       }
     } else {
@@ -221,8 +231,9 @@ export default function NewStudentPage() {
           parentPhone: student.parentPhone,
           photoUrl: photoToSave,
           notes: student.notes,
+          schoolBranch: branch,
           reviewStatus: 'awaiting-doctor-review',
-          source: 'student-wizard',
+          source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         });
       }
 
@@ -239,8 +250,9 @@ export default function NewStudentPage() {
           parentPhone: student.parentPhone,
           photoUrl: photoToSave,
           notes: student.notes,
+          schoolBranch: branch,
           reviewStatus: 'awaiting-doctor-review',
-          source: 'student-wizard',
+          source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         });
       }
     }
@@ -254,16 +266,20 @@ export default function NewStudentPage() {
       const resolvedName = nextFlow === 'student-test'
         ? (student.fullName.trim() || currentAcc?.name || session.name)
         : (student.parentName.trim() || currentAcc?.name || session.name);
-      const linkedStudentId = nextFlow === 'parent-survey' ? savedStudent.id : undefined;
+      // For parent flow: don't overwrite parent's own photo with child's photo
+      const accountPhoto = nextFlow === 'student-test'
+        ? (photoToSave || currentAcc?.photoUrl || (session as any).photoUrl)
+        : (currentAcc?.photoUrl || (session as any).photoUrl || undefined);
       const updatedAcc = saveAccount({
         ...(currentAcc || session),
         id: session.id,
         name: resolvedName,
         recoveryEmail: recoveryEmail || currentAcc?.recoveryEmail || session.email,
-        photoUrl: photoToSave || currentAcc?.photoUrl || (session as any).photoUrl,
+        photoUrl: accountPhoto,
         phone: student.parentPhone || currentAcc?.phone || session.phone,
+        schoolBranch: branch as any,
         onboardingRequired: false,
-        ...(linkedStudentId ? { linkedStudentId } : {}),
+        linkedStudentId: savedStudent.id,
       });
       setSession(updatedAcc);
       await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);

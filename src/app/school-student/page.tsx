@@ -105,13 +105,18 @@ export default function StudentDashboard() {
         return false;
       }) || null;
 
-      // Fallback: If no match found by direct fields, pick the registered student with real name
+      // Fallback: If no match found by direct fields, try to find student with matching linkedStudentId or real name
       if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
-        const nonGeneric = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
-        if (nonGeneric) {
-          linked = nonGeneric;
-        } else if (allStudents.length > 0) {
-          linked = allStudents[0];
+        // Try linkedStudentId from session account
+        const sessionLinkedId = (session as any)?.linkedStudentId;
+        if (sessionLinkedId) {
+          const byLinked = allStudents.find((s) => s.id === sessionLinkedId);
+          if (byLinked) linked = byLinked;
+        }
+        // If still nothing, find a non-generic student record
+        if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
+          const nonGeneric = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
+          if (nonGeneric) linked = nonGeneric;
         }
       }
 

@@ -18,6 +18,7 @@ export type AccountRecord = {
   lastLoginAt?: string;
   photoUrl?: string;
   onboardingRequired?: boolean;
+  linkedStudentId?: string;
   createdAt: string;
 };
 
@@ -144,7 +145,7 @@ const KEYS = {
 // Flag kept in memory after a data purge — prevents stale client data being re-pushed to cloud
 export const CLEARED_FLAG_KEY = 'masar.dataCleared.v1';
 let dataClearedAt: string | null = null;
-let activeSession: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'> | null = null;
+let activeSession: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone' | 'linkedStudentId'> | null = null;
 
 export function isDataCleared(): boolean {
   if (typeof window === 'undefined') return false;
@@ -218,7 +219,7 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & P
 const SESSION_STORAGE_KEY = 'masar_active_session_cache';
 
 export function setSession(
-  account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone'>,
+  account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone' | 'linkedStudentId'>,
   rememberMe: boolean = false,
   _writeClientCookie: boolean = false
 ) {
