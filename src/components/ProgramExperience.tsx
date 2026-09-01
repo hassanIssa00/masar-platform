@@ -10,7 +10,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SimpleSpellingWorkbook from '@/components/SimpleSpellingWorkbook';
 import { CurriculumProgram, curriculumPrograms } from '@/data/curriculum';
-import { getSession, hydrateSessionFromServer } from '@/lib/localDb';
+import { getSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 
 type ProgramExperienceProps = {
   program: CurriculumProgram;

@@ -6,7 +6,7 @@ import { Activity, ArrowLeft, ClipboardCheck, FileText, Target, UsersRound } fro
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
-import { ActivityRecord, getActivities, getReports, getStudents, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { ActivityRecord, getActivities, getReports, getStudents, ReportRecord, StudentRecord } from '@/lib/cloudStore';
 
 export default function SpecialistDashboard() {
   const [students, setStudents] = useState<StudentRecord[]>([]);

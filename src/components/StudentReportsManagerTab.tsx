@@ -1,10 +1,12 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import {
   Award, Send, Users, Printer, Sparkles,
-  MessageSquare, Eye
+  MessageSquare, Eye, CheckCircle2
 } from 'lucide-react';
+import { saveMessage, saveReport, saveActivity } from '@/lib/cloudStore';
+import { createNotification } from '@/lib/notifications';
 
 interface Student {
   id: string;
@@ -52,6 +54,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   const [showReportModal, setShowReportModal] = useState(false);
   const [batchSending, setBatchSending] = useState(false);
   const [batchSent, setBatchSent] = useState(false);
+  const [singleSentMsg, setSingleSentMsg] = useState('');
   const [postBody, setPostBody] = useState('');
   const [postType, setPostType] = useState<'ANNOUNCEMENT' | 'GENERAL'>('ANNOUNCEMENT');
   const [posts, setPosts] = useState<{ id: string; type: string; body: string; createdAt: string }[]>([
@@ -69,9 +72,131 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     setPostBody('');
   };
 
-  const handleSendBatchReports = () => {
+  const handleSendBatchReports = async () => {
     setBatchSending(true);
-    setTimeout(() => { setBatchSending(false); setBatchSent(true); setTimeout(() => setBatchSent(false), 5000); }, 1500);
+    try {
+      const day = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
+      for (const s of students) {
+        const metrics = getStudentMetrics(s.id);
+        const reportBody =
+          `📋 *التقرير الأكاديمي الشامل — فصل د. إسماعيل عيسى*\n\n` +
+          `👤 *الطالب:* ${s.name}\n` +
+          `📅 *التاريخ:* ${day}\n` +
+          `🏆 *التقدير العام:* ${metrics.overallGrade}\n\n` +
+          `📊 *مؤشرات الأداء:*\n` +
+          `• نسبة الحضور والانضباط: ${metrics.attendanceRate}%\n` +
+          `• إنجاز الواجبات الإلكترونية: ${metrics.homeworkRate}%\n` +
+          `• التفاعل والسلوك الصفي: ${metrics.behaviorScore}%\n\n` +
+          `📝 *ملاحظات د. إسماعيل عيسى:*\n` +
+          `"${metrics.teacherNotes}"\n\n` +
+          `💡 *التوصية والتوجيه:* ${metrics.recommendation}\n\n` +
+          `🌟 منصة مَسَار للتعليم والتأهيل الذكي`;
+
+        saveMessage({
+          studentId: s.id,
+          from: 'doctor',
+          to: 'parent',
+          body: reportBody,
+          read: false,
+        });
+
+        saveReport({
+          studentId: s.id,
+          studentName: s.name,
+          grade: s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+          program: 'التقرير الأكاديمي الشامل',
+          programColor: 'bg-emerald-600',
+          date: new Date().toISOString().slice(0, 10),
+          score: metrics.behaviorScore || 95,
+          status: 'completed',
+          type: 'clinical-analysis',
+          summary: reportBody,
+          recommendations: [metrics.recommendation],
+          answers: [],
+          domains: [
+            { name: 'الحضور والانضباط', score: metrics.attendanceRate, note: `${metrics.attendanceRate}%` },
+            { name: 'الواجبات الإلكترونية', score: metrics.homeworkRate, note: `${metrics.homeworkRate}%` },
+            { name: 'السلوك والمشاركة', score: metrics.behaviorScore, note: metrics.overallGrade },
+          ],
+        });
+
+        void createNotification({
+          type: 'report',
+          title: `📋 تقرير أكاديمي شامل جديد للطالب: ${s.name}`,
+          body: `أصدر د. إسماعيل عيسى التقرير الأكاديمي الشامل، تفقده الآن في حسابك.`,
+          link: `/school-parent?tab=report`,
+        });
+      }
+
+      saveActivity({
+        type: 'student',
+        title: '📊 إرسال التقارير الأكاديمية لجميع أولياء الأمور',
+        detail: `تم إرسال التقارير الأكاديمية الشاملة إلى منصات وحسابات جميع أولياء الأمور (${students.length} طالب).`,
+      });
+
+      setBatchSent(true);
+      setTimeout(() => setBatchSent(false), 5000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBatchSending(false);
+    }
+  };
+
+  const handleSendStudentReportToPlatform = async (s: Student) => {
+    const metrics = getStudentMetrics(s.id);
+    const day = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
+    const reportBody =
+      `📋 *التقرير الأكاديمي الشامل — فصل د. إسماعيل عيسى*\n\n` +
+      `👤 *الطالب:* ${s.name}\n` +
+      `📅 *التاريخ:* ${day}\n` +
+      `🏆 *التقدير العام:* ${metrics.overallGrade}\n\n` +
+      `📊 *مؤشرات الأداء:*\n` +
+      `• نسبة الحضور والانضباط: ${metrics.attendanceRate}%\n` +
+      `• إنجاز الواجبات الإلكترونية: ${metrics.homeworkRate}%\n` +
+      `• التفاعل والسلوك الصفي: ${metrics.behaviorScore}%\n\n` +
+      `📝 *ملاحظات د. إسماعيل عيسى:*\n` +
+      `"${metrics.teacherNotes}"\n\n` +
+      `💡 *التوصية والتوجيه:* ${metrics.recommendation}\n\n` +
+      `🌟 منصة مَسَار للتعليم والتأهيل الذكي`;
+
+    saveMessage({
+      studentId: s.id,
+      from: 'doctor',
+      to: 'parent',
+      body: reportBody,
+      read: false,
+    });
+
+    saveReport({
+      studentId: s.id,
+      studentName: s.name,
+      grade: s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+      program: 'التقرير الأكاديمي الشامل',
+      programColor: 'bg-emerald-600',
+      date: new Date().toISOString().slice(0, 10),
+      score: metrics.behaviorScore || 95,
+      status: 'completed',
+      type: 'clinical-analysis',
+      summary: reportBody,
+      recommendations: [metrics.recommendation],
+      answers: [],
+      domains: [
+        { name: 'الحضور والانضباط', score: metrics.attendanceRate, note: `${metrics.attendanceRate}%` },
+        { name: 'الواجبات الإلكترونية', score: metrics.homeworkRate, note: `${metrics.homeworkRate}%` },
+        { name: 'السلوك والمشاركة', score: metrics.behaviorScore, note: metrics.overallGrade },
+      ],
+    });
+
+    await createNotification({
+      type: 'report',
+      title: `📋 تقرير أكاديمي شامل جديد للطالب: ${s.name}`,
+      body: `تم إرسال التقرير الأكاديمي الشامل من قِبَل د. إسماعيل عيسى لحسابك.`,
+      link: `/school-parent?tab=report`,
+    });
+
+    setSingleSentMsg(`✅ تم إرسال التقرير الشامل للطالب (${s.name}) إلى منصة وحساب ولي الأمر بنجاح!`);
+    setTimeout(() => setSingleSentMsg(''), 4000);
   };
 
   const getStudentMetrics = (sId: string) => MOCK_STUDENT_METRICS[sId] || MOCK_STUDENT_METRICS['default'];
@@ -511,6 +636,13 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   return (
     <div className="space-y-6 text-slate-900" dir="rtl">
 
+      {singleSentMsg && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 flex items-center gap-3 animate-fade-in shadow-sm">
+          <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
+          <p className="text-xs sm:text-sm font-black">{singleSentMsg}</p>
+        </div>
+      )}
+
       {/* ── EXECUTIVE BANNER ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#06392c] via-[#094d3c] to-[#04291e] p-6 text-white shadow-xl border border-emerald-800/40">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -521,13 +653,13 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white">التقارير الأكاديمية والملف الشخصي لكل طالب 📊📱</h2>
             <p className="mt-1 text-sm font-semibold text-emerald-100/90">
-              ملف أكاديمي موثق لكل طالب، تقارير أداء مدعومة بالذكاء الاصطناعي، وإمكانية الإرسال المباشر للآباء عبر WhatsApp وطباعة PDF بتوقيع د. إسماعيل.
+              ملف أكاديمي موثق لكل طالب، تقارير أداء مدعومة بالذكاء الاصطناعي، وإمكانية الإرسال المباشر للآباء عبر المنصة وWhatsApp وطباعة PDF بتوقيع د. إسماعيل.
             </p>
           </div>
           <button
             onClick={handleSendBatchReports}
             disabled={batchSending}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 px-5 py-3 rounded-2xl text-xs font-black transition shadow-lg active:scale-95 shrink-0 border border-amber-300/60"
+            className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 px-5 py-3 rounded-2xl text-xs font-black transition shadow-lg active:scale-95 shrink-0 border border-amber-300/60 cursor-pointer disabled:opacity-50"
           >
             {batchSending ? <Sparkles className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {batchSent ? '✅ تم الإرسال للجميع!' : 'إرسال التقارير لجميع أولياء الأمور 🚀'}
@@ -599,24 +731,32 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
                   💬 &ldquo;{metrics.teacherNotes}&rdquo;
                 </p>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
                   <button
                     onClick={() => { setSelectedStudent(student); setShowReportModal(true); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-black transition"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-black transition cursor-pointer"
                   >
-                    <Eye size={14} /> استعراض التقرير الشامل 🔍
+                    <Eye size={14} /> استعراض 🔍
+                  </button>
+                  <button
+                    onClick={() => handleSendStudentReportToPlatform(student)}
+                    className="flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition cursor-pointer"
+                    title="إرسال لمنصة وحساب ولي الأمر"
+                  >
+                    <Send size={14} /> للمنصة 📱
                   </button>
                   <a
                     href={generateWhatsAppReportLink(student)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition"
+                    className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-black transition cursor-pointer"
+                    title="إرسال عبر الواتساب"
                   >
-                    <Send size={14} /> إرسال للآباء 📱
+                    <Send size={14} /> واتساب 💬
                   </a>
                   <button
                     onClick={() => handlePrintStudentReport(student)}
-                    className="flex items-center justify-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2.5 rounded-xl text-xs font-black transition"
+                    className="flex items-center justify-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2.5 rounded-xl text-xs font-black transition cursor-pointer"
                     title="طباعة التقرير PDF"
                   >
                     <Printer size={14} />

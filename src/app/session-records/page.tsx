@@ -12,7 +12,7 @@ import {
   type SessionRecord, type CooperationLevel, type SessionRating,
   COOPERATION_LABELS, COOPERATION_COLORS, RATING_LABELS
 } from '@/lib/sessionRecords';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function SessionRecordsPage() {

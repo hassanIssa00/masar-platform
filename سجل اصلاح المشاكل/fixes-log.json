@@ -1,0 +1,129 @@
+{
+  "lastUpdated": "2026-09-01",
+  "folder": "سجل اصلاح المشاكل",
+  "status": "documented",
+  "fixes": [
+    {
+      "id": "cloud-students-visibility",
+      "problem": "الطالب لا يظهر في إدارة الطلاب بعد التسجيل أو توليد الحسابات.",
+      "solution": "ربط إنشاء الحسابات وملفات الطلاب بالسحابة وتوسيع مفاتيح snapshot والمزامنة.",
+      "mainFiles": [
+        "src/lib/cloudStore.ts",
+        "src/lib/firestoreSync.ts",
+        "src/app/api/accounts/generate/route.ts",
+        "src/app/api/data/snapshot/route.ts",
+        "src/app/students/page.tsx"
+      ]
+    },
+    {
+      "id": "parent-student-linking",
+      "problem": "ولي الأمر لا يتعرف على الابن أو يتم إنشاء طالب مكرر.",
+      "solution": "اعتماد linkedStudentId والبريد والهاتف وتطبيع الأسماء العربية وإلغاء اختيار أول طالب عشوائياً.",
+      "mainFiles": [
+        "src/lib/nameMatching.ts",
+        "src/lib/auth/session.server.ts",
+        "src/app/api/auth/session/route.ts",
+        "src/app/parent/page.tsx",
+        "src/app/school-parent/page.tsx"
+      ]
+    },
+    {
+      "id": "onboarding-flow",
+      "problem": "حسابات التوليد أو التسجيل تدخل البوابة بدون بيانات أو استبيان أو اختبار.",
+      "solution": "فصل الربط عن اكتمال التسجيل؛ ولي الأمر يحتاج استبيان والطالب يحتاج اختبار قبل دخول البوابة النهائية.",
+      "mainFiles": [
+        "src/app/auth/login/page.tsx",
+        "src/app/auth/register/page.tsx",
+        "src/app/api/auth/register/route.ts",
+        "src/lib/auth/session.server.ts",
+        "src/app/api/auth/session/route.ts",
+        "src/app/student/new/page.tsx",
+        "src/app/survey/page.tsx",
+        "src/app/assessment/page.tsx"
+      ]
+    },
+    {
+      "id": "neutral-login-copy",
+      "problem": "واجهة التسجيل تعرض صياغة تفترض طفل واحد.",
+      "solution": "استبدال النصوص بصياغة عامة عن ملف طالب أو الطلاب المرتبطين.",
+      "mainFiles": [
+        "src/app/auth/register/page.tsx",
+        "src/app/student/new/page.tsx",
+        "src/components/Navbar.tsx"
+      ]
+    },
+    {
+      "id": "mobile-sidebar",
+      "problem": "السايدبار في الموبايل لا يظهر أو لا يتصرف بشكل مضبوط.",
+      "solution": "ضبط عرض الموبايل وقفل خلفية الصفحة وإغلاق السايدبار بعد التنقل.",
+      "mainFiles": [
+        "src/components/Sidebar.tsx",
+        "src/components/Navbar.tsx"
+      ]
+    },
+    {
+      "id": "student-learning-progress",
+      "problem": "لا توجد شاشة متابعة واضحة لما فتحه الطالب وما أنجزه في المسار.",
+      "solution": "إضافة تتبع فتح الصفحات والرسومات والواجبات وعرضها داخل ملف الطالب.",
+      "mainFiles": [
+        "src/lib/learningProgress.ts",
+        "src/components/CurriculumInteractiveWorkbook.tsx",
+        "src/app/students/page.tsx",
+        "src/app/api/data/doc/route.ts",
+        "src/app/api/data/snapshot/route.ts"
+      ]
+    },
+    {
+      "id": "printable-reports",
+      "problem": "التقرير يفتح من المنتصف أو يطبع بنسخة مختلفة أو يضيف صفحة توقيع فارغة.",
+      "solution": "توحيد مكون العرض والطباعة، إجبار scroll للأعلى، وتحسين موضع الصورة والتوقيع والختم.",
+      "mainFiles": [
+        "src/app/reports/page.tsx",
+        "src/app/reports/[id]/page.tsx",
+        "src/components/ReportPrintDocument.tsx",
+        "src/components/PrintableReportModal.tsx"
+      ]
+    },
+    {
+      "id": "persistent-chat-audio",
+      "problem": "الرسائل تحتاج حفظ دائم ودعم تسجيل صوتي.",
+      "solution": "إضافة مكون تسجيل صوتي وحفظ الصوت داخل سجلات الرسائل السحابية.",
+      "mainFiles": [
+        "src/components/VoiceRecorderButton.tsx",
+        "src/lib/cloudStore.ts",
+        "src/app/messages/page.tsx",
+        "src/app/parents/page.tsx",
+        "src/app/parent/page.tsx",
+        "src/components/ParentsCommunityChatTab.tsx",
+        "src/app/meetings/page.tsx",
+        "src/components/LiveStreamTab.tsx"
+      ]
+    },
+    {
+      "id": "generated-account-login-link-repair",
+      "problem": "حسابات التوليد كانت قد تسجل أول مرة ثم بعد الخروج تدخل ناقصة الربط أو تفتح شاشة بيانات ولي الأمر وفيها اسم/صورة الطالب.",
+      "solution": "مسح جلسة السيرفر عند الخروج، تمرير student id بعد الدخول، إخفاء حقول الطالب عند وجود linkedStudentId، مزامنة الاستبيان للسحابة، وترميم روابط الحسابات المولدة القديمة من السيرفر.",
+      "mainFiles": [
+        "src/app/api/auth/logout/route.ts",
+        "src/lib/cloudStore.ts",
+        "src/lib/auth/session.server.ts",
+        "src/app/auth/login/page.tsx",
+        "src/app/student/new/page.tsx",
+        "src/app/survey/page.tsx",
+        "src/app/school-parent/page.tsx"
+      ],
+      "verification": [
+        "npm run build",
+        "vercel --prod",
+        "production login API: old student linked",
+        "production login API: old parent linked",
+        "production login API: new student linked",
+        "production login API: new parent linked"
+      ]
+    }
+  ],
+  "verification": [
+    "npm run build",
+    "vercel --prod"
+  ]
+}

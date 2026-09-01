@@ -8,7 +8,8 @@ export default function ReportDetailsRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(`/reports?report=${params.id}`);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    router.replace(`/reports?report=${params.id}`, { scroll: true });
   }, [params.id, router]);
 
   return <div className="min-h-screen bg-[var(--background)]" />;

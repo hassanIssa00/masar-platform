@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import { getLocalInvoices, createInvoice, updateInvoiceStatus, type InvoiceRecord } from '@/lib/invoices';
 
 export default function InvoicesPage() {

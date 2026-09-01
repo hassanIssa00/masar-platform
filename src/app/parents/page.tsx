@@ -10,10 +10,11 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import {
   getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
   MessageRecord, ReportRecord, saveMessage, StudentRecord, AccountRecord
-} from '@/lib/localDb';
+} from '@/lib/cloudStore';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
 const PARENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'messages'] as const;
@@ -138,7 +139,7 @@ export default function ParentsManagementPage() {
   // Actions
   const sendDirectMessage = () => {
     if (!messageBody.trim() || !selectedStudent) return;
-    const newMsg = saveMessage({
+    saveMessage({
       studentId: selectedStudent.id,
       from: 'doctor',
       to: 'parent',
@@ -148,6 +149,21 @@ export default function ParentsManagementPage() {
     setMessageBody('');
     setMessages(getMessages());
     showNotification(`تم إرسال الرسالة بنجاح لولي أمر ${selectedStudent.fullName} ✅`);
+  };
+
+  const sendDirectAudioMessage = async (audioDataUrl: string) => {
+    if (!selectedStudent) return;
+    saveMessage({
+      studentId: selectedStudent.id,
+      from: 'doctor',
+      to: 'parent',
+      body: 'رسالة صوتية من د. إسماعيل',
+      audioDataUrl,
+      attachmentType: 'audio',
+      read: false,
+    });
+    setMessages(getMessages());
+    showNotification(`تم إرسال التسجيل الصوتي لولي أمر ${selectedStudent.fullName} ✅`);
   };
 
   const sendReportNotification = () => {
@@ -504,6 +520,7 @@ export default function ParentsManagementPage() {
                                   }`}
                                 >
                                   {msg.body}
+                                  <MessageAudio src={msg.audioDataUrl} />
                                 </div>
                               </div>
                             );
@@ -531,6 +548,7 @@ export default function ParentsManagementPage() {
                           placeholder="اكتب رسالة لولي الأمر واضغط Enter لإرسالها بالشات..."
                           className="flex-1 min-h-[44px] max-h-[100px] rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-teal-600 resize-none"
                         />
+                        <VoiceRecorderButton onRecorded={sendDirectAudioMessage} disabled={!selectedStudent} />
                         <button
                           onClick={sendDirectMessage}
                           disabled={!messageBody.trim()}

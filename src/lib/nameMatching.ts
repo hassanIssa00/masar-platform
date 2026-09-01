@@ -3,7 +3,7 @@
  * Enables intelligent connection between parents and children based on Arabic naming patterns.
  */
 
-import type { StudentRecord } from './localDb';
+import type { StudentRecord } from './cloudStore';
 
 /**
  * Normalizes Arabic text by removing tashkeel, standardizing letters (أ, إ, آ, ٱ -> ا; ة -> ه; ى -> ي),
@@ -114,7 +114,17 @@ export function isParentChildNameMatch(studentFullName?: string | null, parentNa
  * Finds all students that belong to a given parent.
  */
 export function findStudentsForParent(
-  parent: { id?: string; name?: string; phone?: string; email?: string; linkedStudentId?: string } | null | undefined,
+  parent: {
+    id?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    schoolBranch?: string;
+    linkedStudentId?: string;
+    linkedStudentEmail?: string;
+    linkedParentId?: string;
+    linkedParentEmail?: string;
+  } | null | undefined,
   allStudents: StudentRecord[]
 ): StudentRecord[] {
   if (!parent || !Array.isArray(allStudents) || allStudents.length === 0) {
@@ -127,21 +137,55 @@ export function findStudentsForParent(
   const pEmail = parent.email ? parent.email.trim().toLowerCase() : '';
   const pId = parent.id || '';
   const linkedId = parent.linkedStudentId || (parent as any)?.linkedStudentId || '';
+  const linkedStudentEmail = ((parent as any)?.linkedStudentEmail || '').trim().toLowerCase();
+  const linkedParentId = ((parent as any)?.linkedParentId || parent.id || '').trim();
+  const linkedParentEmail = ((parent as any)?.linkedParentEmail || parent.email || '').trim().toLowerCase();
+  const parentBranch = (parent as any)?.schoolBranch || '';
+  const sameBranch = (s: StudentRecord) => !parentBranch || !s.schoolBranch || s.schoolBranch === parentBranch;
 
   // Direct linkedStudentId match
   if (linkedId) {
-    const linked = allStudents.find((s) => s.id === linkedId);
+    const linked = allStudents.find((s) =>
+      s.id === linkedId ||
+      (s as any).studentAccountId === linkedId ||
+      (s as any).linkedStudentId === linkedId
+    );
     if (linked) {
       return [linked];
     }
   }
 
   const matched = allStudents.filter((s) => {
-    const record = s as StudentRecord & { email?: string; parentEmail?: string; recoveryEmail?: string };
+    const record = s as StudentRecord & {
+      email?: string;
+      parentEmail?: string;
+      recoveryEmail?: string;
+      linkedStudentEmail?: string;
+      parentAccountId?: string;
+      linkedParentId?: string;
+      linkedParentEmail?: string;
+      studentAccountId?: string;
+    };
+
+    if (!sameBranch(s)) return false;
     
     // Direct ID match
     if (linkedId && s.id === linkedId) return true;
+    if (linkedId && (record.studentAccountId === linkedId || (record as any).linkedStudentId === linkedId)) return true;
     if (pId && s.id === pId) return true;
+    if (pId && (record.parentAccountId === pId || record.linkedParentId === pId)) return true;
+    if (linkedParentId && (record.parentAccountId === linkedParentId || record.linkedParentId === linkedParentId)) return true;
+
+    // Explicit generated-account links. These are trusted even when the email is generated.
+    if (linkedStudentEmail) {
+      if ((record.email || '').trim().toLowerCase() === linkedStudentEmail) return true;
+      if ((record.recoveryEmail || '').trim().toLowerCase() === linkedStudentEmail) return true;
+      if ((record.linkedStudentEmail || '').trim().toLowerCase() === linkedStudentEmail) return true;
+    }
+    if (linkedParentEmail) {
+      if ((record.parentEmail || '').trim().toLowerCase() === linkedParentEmail) return true;
+      if ((record.linkedParentEmail || '').trim().toLowerCase() === linkedParentEmail) return true;
+    }
 
     // Phone match by last 8 digits (handles country code variants +20, 0020, 010...)
     if (s.parentPhone) {
@@ -153,7 +197,7 @@ export function findStudentsForParent(
     }
 
     // Email match
-    if (pEmail && !pEmail.includes('generated') && !pEmail.includes('@masar.local')) {
+    if (pEmail && !pEmail.includes('generated') && !pEmail.includes('@masar.local') && !pEmail.includes('@masarplatform.org')) {
       if (record.parentEmail && record.parentEmail.trim().toLowerCase() === pEmail) return true;
       if (record.recoveryEmail && record.recoveryEmail.trim().toLowerCase() === pEmail) return true;
       if (record.email && record.email.trim().toLowerCase() === pEmail) return true;
@@ -174,10 +218,6 @@ export function findStudentsForParent(
     return realMatches.length > 0 ? realMatches : matched;
   }
 
-  if (allStudents.length === 1) {
-    return allStudents;
-  }
-
   return [];
 }
 
@@ -185,7 +225,17 @@ export function findStudentsForParent(
  * Finds the best single matching student for a parent.
  */
 export function findMatchingStudentForParent(
-  parent: { id?: string; name?: string; phone?: string; email?: string } | null | undefined,
+  parent: {
+    id?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    schoolBranch?: string;
+    linkedStudentId?: string;
+    linkedStudentEmail?: string;
+    linkedParentId?: string;
+    linkedParentEmail?: string;
+  } | null | undefined,
   allStudents: StudentRecord[]
 ): StudentRecord | undefined {
   const matches = findStudentsForParent(parent, allStudents);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, normalizePasswordInput, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
-import type { UserRole } from '@/lib/localDb';
+import type { UserRole } from '@/lib/cloudStore';
 
 export const runtime = 'nodejs';
 
@@ -32,31 +32,64 @@ async function createFirebaseUserViaRest(email: string, password: string, displa
 
   if (!apiKey) return null;
 
-  try {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        password,
-        displayName,
-        returnSecureToken: true,
-      }),
-    });
+  const referers = [
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://masarplatform.org/',
+    'https://masarplatform.org',
+    'https://ismail-edu.vercel.app/',
+    '',
+  ];
 
-    if (!response.ok) {
-      const errData = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
-      if (errData?.error?.message === 'EMAIL_EXISTS') {
-        return { ok: false, error: 'EMAIL_EXISTS' as const };
+  for (const referer of referers) {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (referer) headers.Referer = referer;
+
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          email,
+          password,
+          displayName,
+          returnSecureToken: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+        if (errData?.error?.message === 'EMAIL_EXISTS') {
+          return { ok: false, error: 'EMAIL_EXISTS' as const };
+        }
+        continue;
       }
-      return null;
-    }
 
-    const data = (await response.json()) as { localId?: string };
-    return { ok: true, localId: data.localId };
-  } catch {
-    return null;
+      const data = (await response.json()) as { localId?: string };
+      return { ok: true, localId: data.localId };
+    } catch {
+      continue;
+    }
   }
+
+  return null;
+}
+
+function normalizeArabic(text?: string | null): string {
+  if (!text) return '';
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/^(أ\.|د\.|أستاذ|استاذ|دكتور|دكتوره|الدكتور|الدكتورة|السيد|السيدة|الشيخ|والد الطالب|والد|والدة|أم|ام|أبو|ابو|ولي أمر|ولي امر)\s+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanDigits(phone?: string | null): string {
+  if (!phone) return '';
+  return String(phone).replace(/\D/g, '');
 }
 
 export async function POST(req: NextRequest) {
@@ -66,6 +99,10 @@ export async function POST(req: NextRequest) {
     adminAuth = await getAdminAuth();
   } catch {}
 
+  if (!adminDb) {
+    return NextResponse.json({ ok: false, error: 'Firebase Admin غير مضبوط، لا يمكن إنشاء حساب سحابي الآن.' }, { status: 503 });
+  }
+
   const body = await req.json().catch(() => ({}));
   const email = cleanEmail(body.email);
   const password = String(body.password || '');
@@ -73,6 +110,8 @@ export async function POST(req: NextRequest) {
   const schoolBranch = cleanBranch(body.schoolBranch);
   const name = String(body.name || '').trim() || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد');
   const phone = String(body.phone || '').trim();
+  const childName = String(body.childName || '').trim();
+  const grade = String(body.grade || '').trim();
 
   if (!email || !email.includes('@') || password.trim().length < 6) {
     return NextResponse.json({ ok: false, error: 'بيانات التسجيل غير مكتملة أو كلمة المرور قصيرة.' }, { status: 400 });
@@ -98,6 +137,167 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
   const accountId = `account_${crypto.randomUUID()}`;
+  let linkedStudentId: string | undefined = undefined;
+  let linkedStudentEmail: string | undefined = undefined;
+  let linkedStudentName: string | undefined = undefined;
+  let linkedParentId: string | undefined = role === 'parent' ? accountId : undefined;
+  let linkedParentEmail: string | undefined = role === 'parent' ? email : undefined;
+  let pendingStudentWrite: { docId: string; data: Record<string, unknown> } | null = null;
+
+  // ── Server-side Student Matching and Linking ──
+  try {
+      const pPhone = cleanDigits(phone);
+      const pPhoneSuffix = pPhone.length >= 8 ? pPhone.slice(-8) : '';
+      const pEmail = email.trim().toLowerCase();
+      const normParentName = normalizeArabic(name);
+      const normChildName = normalizeArabic(childName);
+
+      const studentsSnap = await adminDb.collection('students').limit(200).get();
+      const allExistingStudents = studentsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const sameBranch = (st: any) => !st.schoolBranch || !schoolBranch || st.schoolBranch === schoolBranch || st.branch === schoolBranch;
+
+      if (role === 'parent') {
+        let matchedStudent = allExistingStudents.find((st) => {
+          if (!sameBranch(st)) return false;
+          const sPhone = cleanDigits(st.parentPhone || st.phone);
+          const sPhoneSuffix = sPhone.length >= 8 ? sPhone.slice(-8) : '';
+          const parentEmails = [st.parentEmail, st.linkedParentEmail].map(cleanEmail);
+          const studentEmails = [st.email, st.recoveryEmail, st.linkedStudentEmail].map(cleanEmail);
+          const sFullNameNorm = normalizeArabic(st.fullName);
+          const sParentNameNorm = normalizeArabic(st.parentName);
+
+          // 1. Phone match (last 8 digits)
+          if (pPhoneSuffix && sPhoneSuffix && (sPhoneSuffix === pPhoneSuffix || sPhone.includes(pPhoneSuffix) || pPhone.includes(sPhoneSuffix))) {
+            return true;
+          }
+          // 2. Email match
+          if (pEmail && parentEmails.includes(pEmail)) {
+            return true;
+          }
+          if (pEmail && !pEmail.includes('generated') && studentEmails.includes(pEmail)) {
+            return true;
+          }
+          // 3. Child name match
+          if (normChildName && normChildName.length > 2 && !normChildName.includes('جديد') && sFullNameNorm === normChildName) {
+            return true;
+          }
+          // 4. Patronymic match (child full name contains parent name or father part matches)
+          if (normParentName && normParentName.length > 3 && !normParentName.includes('جديد') && !normParentName.includes('ولي')) {
+            if (sParentNameNorm === normParentName) return true;
+            if (sFullNameNorm.includes(normParentName)) return true;
+          }
+          return false;
+        });
+
+        if (matchedStudent) {
+          linkedStudentId = matchedStudent.id;
+          linkedStudentEmail = matchedStudent.linkedStudentEmail || matchedStudent.email;
+          linkedStudentName = matchedStudent.fullName || matchedStudent.name || childName;
+          linkedParentId = accountId;
+          linkedParentEmail = email;
+          pendingStudentWrite = {
+            docId: matchedStudent.id,
+            data: {
+              parentName: name && !name.includes('جديد') ? name : (matchedStudent.parentName || name),
+              parentPhone: phone || matchedStudent.parentPhone,
+              parentEmail: email || matchedStudent.parentEmail,
+              parentAccountId: accountId,
+              linkedParentId: accountId,
+              linkedParentEmail: email,
+              ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+              ...(linkedStudentName ? { linkedStudentName } : {}),
+              schoolBranch: schoolBranch || matchedStudent.schoolBranch || 'MASAR',
+              updatedAt: now,
+            },
+          };
+        } else if (childName && !childName.includes('جديد')) {
+          // Create new student record for the parent's child
+          const newStudentId = `student_${crypto.randomUUID()}`;
+          const newStudentRecord = {
+            id: newStudentId,
+            fullName: childName,
+            grade: grade || (schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
+            parentName: name,
+            parentPhone: phone,
+            parentEmail: email,
+            parentAccountId: accountId,
+            linkedParentId: accountId,
+            linkedParentEmail: email,
+            schoolBranch,
+            source: schoolBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
+            reviewStatus: 'awaiting-survey',
+            createdAt: now,
+            updatedAt: now,
+          };
+          pendingStudentWrite = { docId: newStudentId, data: newStudentRecord };
+          linkedStudentId = newStudentId;
+          linkedStudentName = childName;
+        }
+      } else if (role === 'student') {
+        const normStudentName = normalizeArabic(name);
+        let matchedStudent = allExistingStudents.find((st) => {
+          if (!sameBranch(st)) return false;
+          const sPhone = cleanDigits(st.parentPhone || st.phone);
+          const sPhoneSuffix = sPhone.length >= 8 ? sPhone.slice(-8) : '';
+          const studentEmails = [st.email, st.recoveryEmail, st.linkedStudentEmail].map(cleanEmail);
+          const sFullNameNorm = normalizeArabic(st.fullName);
+
+          if (pEmail && studentEmails.includes(pEmail)) return true;
+          if (normStudentName && normStudentName.length > 2 && !normStudentName.includes('جديد') && sFullNameNorm === normStudentName) {
+            return true;
+          }
+          if (pPhoneSuffix && sPhoneSuffix && sPhoneSuffix === pPhoneSuffix) return true;
+          return false;
+        });
+
+        if (matchedStudent) {
+          linkedStudentId = matchedStudent.id;
+          linkedStudentEmail = email;
+          linkedStudentName = name;
+          linkedParentId = matchedStudent.linkedParentId || matchedStudent.parentAccountId;
+          linkedParentEmail = matchedStudent.linkedParentEmail || matchedStudent.parentEmail;
+          pendingStudentWrite = {
+            docId: matchedStudent.id,
+            data: {
+              fullName: name && !name.includes('جديد') ? name : matchedStudent.fullName,
+              email,
+              studentAccountId: accountId,
+              linkedStudentId: matchedStudent.id,
+              linkedStudentEmail: email,
+              linkedStudentName: name && !name.includes('جديد') ? name : matchedStudent.fullName,
+              schoolBranch: schoolBranch || matchedStudent.schoolBranch || 'MASAR',
+              updatedAt: now,
+            },
+          };
+        } else {
+          // Create student record with ID matching the student account
+          const newStudentRecord = {
+            id: accountId,
+            fullName: name,
+            grade: grade || (schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
+            email,
+            studentAccountId: accountId,
+            linkedStudentId: accountId,
+            linkedStudentEmail: email,
+            linkedStudentName: name,
+            parentPhone: phone,
+            schoolBranch,
+            source: schoolBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
+            reviewStatus: 'awaiting-doctor-review',
+            createdAt: now,
+            updatedAt: now,
+          };
+          pendingStudentWrite = { docId: accountId, data: newStudentRecord };
+          linkedStudentId = accountId;
+          linkedStudentEmail = email;
+          linkedStudentName = name;
+        }
+      }
+    } catch (err) {
+      console.error('[AuthRegister] Student linking lookup error:', err);
+      return NextResponse.json({ ok: false, error: 'تعذر ربط ملف الطالب على السحابة. حاول مرة أخرى.' }, { status: 500 });
+  }
+
   const account = {
     id: accountId,
     name,
@@ -105,11 +305,16 @@ export async function POST(req: NextRequest) {
     phone,
     role,
     schoolBranch,
-    createdVia: 'email',
+    createdVia: 'email' as const,
     providerId: 'password',
     createdAt: now,
     lastLoginAt: now,
-    onboardingRequired: true,
+    onboardingRequired: role === 'parent' || role === 'student',
+    ...(linkedStudentId ? { linkedStudentId } : {}),
+    ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+    ...(linkedStudentName ? { linkedStudentName } : {}),
+    ...(linkedParentId ? { linkedParentId } : {}),
+    ...(linkedParentEmail ? { linkedParentEmail } : {}),
   };
   const passwordHash = await bcrypt.hash(normalizePasswordInput(password), 12);
   const credential = {
@@ -117,6 +322,11 @@ export async function POST(req: NextRequest) {
     email,
     phone,
     passwordHash,
+    ...(linkedStudentId ? { linkedStudentId } : {}),
+    ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+    ...(linkedStudentName ? { linkedStudentName } : {}),
+    ...(linkedParentId ? { linkedParentId } : {}),
+    ...(linkedParentEmail ? { linkedParentEmail } : {}),
     createdAt: now,
     source: 'manual-register',
     authUserCreated: false,
@@ -146,7 +356,12 @@ export async function POST(req: NextRequest) {
         role,
         schoolBranch,
         providerId: 'password',
-        onboardingRequired: true,
+        onboardingRequired: role === 'parent' || role === 'student',
+        ...(linkedStudentId ? { linkedStudentId } : {}),
+        ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+        ...(linkedStudentName ? { linkedStudentName } : {}),
+        ...(linkedParentId ? { linkedParentId } : {}),
+        ...(linkedParentEmail ? { linkedParentEmail } : {}),
       }).catch(() => {});
     }
   }
@@ -161,10 +376,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (adminDb) {
-    try {
+  try {
     await Promise.all([
       adminDb.collection('accounts').doc(accountId).set(account, { merge: true }),
+      ...(pendingStudentWrite
+        ? [adminDb.collection('students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true })]
+        : []),
       adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),
       adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),
       adminDb.collection('account_credentials').doc(accountId).set(credential, { merge: true }),
@@ -176,9 +393,9 @@ export async function POST(req: NextRequest) {
         ]
         : []),
     ]);
-    } catch (error) {
-      console.error('[AuthRegister] Firestore write failed after auth creation:', error);
-    }
+  } catch (error) {
+    console.error('[AuthRegister] Firestore write failed after auth creation:', error);
+    return NextResponse.json({ ok: false, error: 'تعذر حفظ الحساب على السحابة. حاول مرة أخرى.' }, { status: 500 });
   }
 
   try {

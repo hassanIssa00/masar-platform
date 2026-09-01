@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { Send, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getMessages, getSession, getStudents, hydrateSessionFromServer, MessageRecord, saveMessage, StudentRecord } from '@/lib/localDb';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
+import { getMessages, getSession, getStudents, hydrateSessionFromServer, MessageRecord, saveMessage, StudentRecord } from '@/lib/cloudStore';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
 export default function MessagesPage() {
   return (
@@ -33,8 +35,17 @@ function MessagesContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => void refresh(), 0);
-    return () => window.clearTimeout(timeout);
+    let cancelled = false;
+    const load = async () => {
+      await pullCloudDataToLocal(['students', 'messages']).catch(() => {});
+      if (!cancelled) void refresh();
+    };
+    void load();
+    const unsubscribe = subscribeToCloudUpdates(() => void refresh(), ['students', 'messages']);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [refresh]);
 
   const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0] ?? null;
@@ -51,6 +62,20 @@ function MessagesContent() {
     });
     setBody('');
     void refresh();
+  };
+
+  const sendAudio = async (audioDataUrl: string) => {
+    if (!selectedStudent) return;
+    saveMessage({
+      studentId: selectedStudent.id,
+      from: role,
+      to: role === 'doctor' ? 'parent' : 'doctor',
+      body: 'رسالة صوتية',
+      audioDataUrl,
+      attachmentType: 'audio',
+      read: false,
+    });
+    await refresh();
   };
 
   return (
@@ -102,6 +127,7 @@ function MessagesContent() {
                     <article key={message.id} className={`max-w-[82%] rounded-lg p-4 shadow-sm ${message.from === 'doctor' ? 'mr-auto bg-slate-950 text-white' : 'ml-auto bg-white text-slate-950'}`}>
                       <p className="text-xs font-black opacity-70">{message.from === 'doctor' ? 'د. إسماعيل' : 'ولي الأمر'}</p>
                       <p className="mt-2 text-sm font-bold leading-7">{message.body}</p>
+                      <MessageAudio src={message.audioDataUrl} />
                       <p className="mt-2 text-[11px] font-bold opacity-50">{new Date(message.createdAt).toLocaleString('ar-SA')}</p>
                     </article>
                   ))
@@ -109,12 +135,13 @@ function MessagesContent() {
                   <p className="rounded-lg bg-white p-5 text-center text-sm font-bold text-slate-500">لا توجد رسائل لهذا الطالب بعد.</p>
                 )}
               </div>
-              <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-[180px_minmax(0,1fr)_120px]">
+              <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-[180px_minmax(0,1fr)_auto_120px]">
                 <select value={role} onChange={(event) => setRole(event.target.value as 'doctor' | 'parent')} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black outline-none">
                   <option value="doctor">د. إسماعيل</option>
                   <option value="parent">ولي الأمر</option>
                 </select>
                 <input value={body} onChange={(event) => setBody(event.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700" placeholder="اكتب الرسالة..." />
+                <VoiceRecorderButton onRecorded={sendAudio} disabled={!selectedStudent} />
                 <button onClick={send} className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-3 text-sm font-black text-white">
                   <Send size={17} />
                   إرسال

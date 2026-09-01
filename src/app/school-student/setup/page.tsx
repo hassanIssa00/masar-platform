@@ -10,7 +10,7 @@ import BrandMark from '@/components/BrandMark';
 import {
   getSession, getStudents, hydrateSessionFromServer, updateStudent,
   saveStudent, StudentRecord, setSession
-} from '@/lib/localDb';
+} from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 
 // Preset avatar options for quick selection

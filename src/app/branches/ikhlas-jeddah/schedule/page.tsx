@@ -12,7 +12,7 @@ import {
   getSavedSchedule, parseSlotsToPeriods,
   type Period,
 } from '@/data/ikhlasSchedule';
-import { broadcastScheduleToParents } from '@/lib/broadcastService';
+import { broadcastScheduleToParents, broadcastScheduleToStudents } from '@/lib/broadcastService';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -34,19 +34,35 @@ export default function IkhlasScheduleManagerPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activePeriod, setActivePeriod] = useState<Period | null>(null);
   const [minsDismissal, setMinsDismissal] = useState<number>(-1);
-  const [broadcasting, setBroadcasting] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastingParents, setBroadcastingParents] = useState(false);
+  const [broadcastingStudents, setBroadcastingStudents] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState<{ text: string; type: 'parents' | 'students' | 'error' } | null>(null);
 
-  const handleBroadcast = async () => {
-    setBroadcasting(true);
+  const handleBroadcastParents = async () => {
+    setBroadcastingParents(true);
     try {
       const res = await broadcastScheduleToParents(schedule);
-      setBroadcastMessage(res.message);
-      setTimeout(() => setBroadcastMessage(''), 5000);
+      setBroadcastMessage({ text: res.message, type: 'parents' });
+      setTimeout(() => setBroadcastMessage(null), 5000);
     } catch {
-      setBroadcastMessage('حدث خطأ أثناء الإرسال.');
+      setBroadcastMessage({ text: 'حدث خطأ أثناء الإرسال لأولياء الأمور.', type: 'error' });
+      setTimeout(() => setBroadcastMessage(null), 5000);
     } finally {
-      setBroadcasting(false);
+      setBroadcastingParents(false);
+    }
+  };
+
+  const handleBroadcastStudents = async () => {
+    setBroadcastingStudents(true);
+    try {
+      const res = await broadcastScheduleToStudents(schedule);
+      setBroadcastMessage({ text: res.message, type: 'students' });
+      setTimeout(() => setBroadcastMessage(null), 5000);
+    } catch {
+      setBroadcastMessage({ text: 'حدث خطأ أثناء الإرسال للطلاب.', type: 'error' });
+      setTimeout(() => setBroadcastMessage(null), 5000);
+    } finally {
+      setBroadcastingStudents(false);
     }
   };
 
@@ -141,28 +157,51 @@ export default function IkhlasScheduleManagerPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
             <button
-              onClick={handleBroadcast}
-              disabled={broadcasting}
+              onClick={handleBroadcastParents}
+              disabled={broadcastingParents || broadcastingStudents}
               className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 cursor-pointer text-xs"
+              title="إرسال الجدول لكل أولياء الأمور"
             >
-              {broadcasting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              <span>إرسال الجدول للجميع 📤</span>
+              {broadcastingParents ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <span>إرسال لكل أولياء الأمور 👨‍👩‍👧‍👦</span>
+            </button>
+
+            <button
+              onClick={handleBroadcastStudents}
+              disabled={broadcastingParents || broadcastingStudents}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 cursor-pointer text-xs"
+              title="إرسال الجدول لكل الطلاب"
+            >
+              {broadcastingStudents ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <span>إرسال لكل الطلاب 🎒</span>
             </button>
 
             <button onClick={saveSchedule} disabled={saving}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 cursor-pointer text-xs">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              className="flex items-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-black px-5 py-2.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all disabled:opacity-50 cursor-pointer text-xs">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Save className="w-4 h-4" />}
               {saveSuccess ? 'تم الحفظ بنجاح! ✅' : 'حفظ الجدول الأسبوعي 💾'}
             </button>
           </div>
         </div>
 
         {broadcastMessage && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/60 p-4 text-emerald-200 flex items-center gap-3 animate-fade-in shadow-sm">
-            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-            <p className="text-xs sm:text-sm font-black">{broadcastMessage}</p>
+          <div className={`rounded-2xl border p-4 flex items-center gap-3 animate-fade-in shadow-sm ${
+            broadcastMessage.type === 'error'
+              ? 'border-rose-500/30 bg-rose-950/60 text-rose-200'
+              : broadcastMessage.type === 'students'
+              ? 'border-blue-500/30 bg-blue-950/60 text-blue-200'
+              : 'border-emerald-500/30 bg-emerald-950/60 text-emerald-200'
+          }`}>
+            <CheckCircle className={`w-5 h-5 shrink-0 ${
+              broadcastMessage.type === 'error'
+                ? 'text-rose-400'
+                : broadcastMessage.type === 'students'
+                ? 'text-blue-400'
+                : 'text-emerald-400'
+            }`} />
+            <p className="text-xs sm:text-sm font-black">{broadcastMessage.text}</p>
           </div>
         )}
 

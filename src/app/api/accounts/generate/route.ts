@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
     providerId: 'generated',
     onboardingRequired: true,
     grade,
+    linkedStudentEmail: studentEmail,
+    linkedParentEmail: parentEmail,
     createdAt: now,
   };
 
@@ -122,6 +124,8 @@ export async function POST(req: NextRequest) {
     onboardingRequired: true,
     linkedStudentEmail: studentEmail,
     linkedStudentId: studentAccount.id, // Bug #3 fix: explicit ID link from the start
+    linkedStudentName: 'طالب جديد',
+    linkedParentEmail: parentEmail,
     createdAt: now,
   };
 
@@ -132,6 +136,11 @@ export async function POST(req: NextRequest) {
     grade,
     email: studentEmail,
     parentEmail,
+    studentAccountId: studentAccount.id,
+    parentAccountId: parentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
     source: 'student-wizard' as const,
     schoolBranch: branch,
     reviewStatus: 'awaiting-survey' as const,
@@ -148,6 +157,8 @@ export async function POST(req: NextRequest) {
   const studentCredential = {
     accountId: studentAccount.id,
     email: studentEmail,
+    linkedStudentEmail: studentEmail,
+    linkedParentEmail: parentEmail,
     passwordHash: studentPasswordHash,
     createdAt: now,
     createdBy: currentUser?.id || 'dr_ismail',
@@ -155,6 +166,10 @@ export async function POST(req: NextRequest) {
   const parentCredential = {
     accountId: parentAccount.id,
     email: parentEmail,
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentEmail: parentEmail,
     passwordHash: parentPasswordHash,
     createdAt: now,
     createdBy: currentUser?.id || 'dr_ismail',
@@ -184,6 +199,9 @@ export async function POST(req: NextRequest) {
             schoolBranch: branch,
             providerId: 'generated',
             onboardingRequired: true,
+            linkedStudentId: userRecord.uid,
+            linkedStudentEmail: studentEmail,
+            linkedParentEmail: parentEmail,
           });
         })
         .catch(async (error: { code?: string }) => {
@@ -213,7 +231,11 @@ export async function POST(req: NextRequest) {
             schoolBranch: branch,
             providerId: 'generated',
             onboardingRequired: true,
+            linkedStudentId: studentAccount.id,
             linkedStudentEmail: studentEmail,
+            linkedStudentName: 'طالب جديد',
+            linkedParentId: userRecord.uid,
+            linkedParentEmail: parentEmail,
           });
         })
         .catch(async (error: { code?: string }) => {
@@ -235,28 +257,104 @@ export async function POST(req: NextRequest) {
     ]);
   }
 
-  let cloudSynced = false;
-  if (adminDb) {
-    try {
-      await Promise.allSettled([
-        adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
-        adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
-        // Bug #1 fix: write to students/ so the /students management page can find this student
-        adminDb.collection('students').doc(studentRecord.id).set(studentRecord, { merge: true }),
-        adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
-        adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
-        adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
-        adminDb.collection('auth_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
-        adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
-        adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
-        adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
-        adminDb.collection('account_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
-      ]);
-      cloudSynced = true;
-    } catch (error) {
-      console.error('[AccountGenerator] Firestore sync failed after auth creation:', error);
-    }
+  Object.assign(studentAccount, {
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
+  });
+  Object.assign(parentAccount, {
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
+  });
+  Object.assign(studentRecord, {
+    id: studentAccount.id,
+    studentAccountId: studentAccount.id,
+    parentAccountId: parentAccount.id,
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
+  });
+  Object.assign(studentCredential, {
+    accountId: studentAccount.id,
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
+  });
+  Object.assign(parentCredential, {
+    accountId: parentAccount.id,
+    linkedStudentId: studentAccount.id,
+    linkedStudentEmail: studentEmail,
+    linkedStudentName: 'طالب جديد',
+    linkedParentId: parentAccount.id,
+    linkedParentEmail: parentEmail,
+  });
+
+  if (adminAuth) {
+    await Promise.allSettled([
+      adminAuth.setCustomUserClaims(studentAccount.id, {
+        role: 'student',
+        schoolBranch: branch,
+        providerId: 'generated',
+        onboardingRequired: true,
+        linkedStudentId: studentAccount.id,
+        linkedStudentEmail: studentEmail,
+        linkedStudentName: 'طالب جديد',
+        linkedParentId: parentAccount.id,
+        linkedParentEmail: parentEmail,
+      }),
+      adminAuth.setCustomUserClaims(parentAccount.id, {
+        role: 'parent',
+        schoolBranch: branch,
+        providerId: 'generated',
+        onboardingRequired: true,
+        linkedStudentId: studentAccount.id,
+        linkedStudentEmail: studentEmail,
+        linkedStudentName: 'طالب جديد',
+        linkedParentId: parentAccount.id,
+        linkedParentEmail: parentEmail,
+      }),
+    ]);
   }
+
+  let cloudSynced = false;
+  if (!adminDb) {
+    return NextResponse.json({ ok: false, error: 'Firebase Admin غير مضبوط، لا يمكن حفظ الحسابات على السحابة.' }, { status: 503 });
+  }
+
+  try {
+    await Promise.all([
+      adminDb.collection('accounts').doc(studentAccount.id).set(studentAccount, { merge: true }),
+      adminDb.collection('accounts').doc(parentAccount.id).set(parentAccount, { merge: true }),
+      // Bug #1 fix: write to students/ so the /students management page can find this student
+      adminDb.collection('students').doc(studentRecord.id).set(studentRecord, { merge: true }),
+      adminDb.collection('auth_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+      adminDb.collection('auth_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+      adminDb.collection('auth_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+      adminDb.collection('auth_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
+      adminDb.collection('account_credentials').doc(studentAccount.id).set(studentCredential, { merge: true }),
+      adminDb.collection('account_credentials').doc(parentAccount.id).set(parentCredential, { merge: true }),
+      adminDb.collection('account_credentials').doc(credentialLookupId(studentEmail)).set(studentCredential, { merge: true }),
+      adminDb.collection('account_credentials').doc(credentialLookupId(parentEmail)).set(parentCredential, { merge: true }),
+    ]);
+    cloudSynced = true;
+  } catch (error) {
+    console.error('[AccountGenerator] Firestore sync failed after auth creation:', error);
+    return NextResponse.json({ ok: false, error: 'تعذر حفظ الحسابات على السحابة. حاول مرة أخرى.' }, { status: 500 });
+  }
+
+  try {
+    const { invalidateSnapshotCache } = await import('../../data/snapshot/route');
+    invalidateSnapshotCache();
+  } catch {}
 
   return NextResponse.json({
     ok: true,

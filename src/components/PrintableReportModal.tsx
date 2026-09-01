@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 import { Printer, X, Award, FileCheck } from 'lucide-react';
-import { getStudents, type ReportRecord } from '@/lib/localDb';
+import { getStudents, type ReportRecord, type StudentRecord } from '@/lib/cloudStore';
 
 function getTodayHijri(): string {
   try {
@@ -18,22 +18,22 @@ function getTodayHijri(): string {
 
 export default function PrintableReportModal({
   report,
+  student,
   onClose,
 }: {
   report: ReportRecord;
+  student?: StudentRecord | null;
   onClose: () => void;
 }) {
   const hijriDate = getTodayHijri();
   const fileNumber = `MASAR-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const resolvedStudent = useMemo(
+    () => student ?? getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName) ?? null,
+    [report.studentId, report.studentName, student],
+  );
 
-  useEffect(() => {
-    const timer = setTimeout(() => handlePrint(), 400);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function handlePrint() {
+  function handlePrint(autoPrint = false) {
     const reportScore = typeof report.score === 'number' ? report.score : 0;
     const domainsList = Array.isArray(report.domains) ? report.domains : [];
     const recommendationsList = Array.isArray(report.recommendations) ? report.recommendations : [];
@@ -54,8 +54,10 @@ export default function PrintableReportModal({
         ? 'إجابات الطالب سؤالاً بسؤال مع قراءة المجالات المرتبطة بالاختبار'
         : 'تحليل المجالات والأولويات والخطة المقترحة دون عرض الإجابات التفصيلية';
     const printableAnswers = isAnswersReport ? answersList : [];
-    const student = getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName);
-    const studentPhoto = student?.photoUrl?.trim();
+    const reportPhoto = (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).studentPhotoUrl ||
+      (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).photoUrl ||
+      (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).avatarUrl;
+    const studentPhoto = resolvedStudent?.photoUrl?.trim() || reportPhoto?.trim();
     const studentPhotoHTML = studentPhoto
       ? `<img src="${studentPhoto}" alt="صورة الطالب ${report.studentName || ''}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:2px solid #d6a83f;box-shadow:0 10px 24px rgba(15,23,42,.14);" />`
       : `<div style="width:74px;height:74px;border-radius:18px;background:#f8fafc;border:2px solid #d6a83f;display:flex;align-items:center;justify-content:center;color:#06392c;font-size:28px;font-weight:900;">${(report.studentName || 'م').slice(0, 1)}</div>`;
@@ -179,10 +181,81 @@ export default function PrintableReportModal({
         <td style="padding:7px 10px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">${ans.question}</td>
         <td style="padding:7px 10px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${ans.answer}</td>
       </tr>`;
-    const firstAnswerChunk = printableAnswers.slice(0, 18);
-    const secondAnswerChunk = printableAnswers.slice(18);
-    const answersRows = firstAnswerChunk.map((ans, i) => answerRow(ans, i)).join('');
-    const answersRowsContinuation = secondAnswerChunk.map((ans, i) => answerRow(ans, i + firstAnswerChunk.length)).join('');
+    const chunkAnswers = (items: typeof printableAnswers, size: number) => {
+      const chunks: typeof printableAnswers[] = [];
+      for (let index = 0; index < items.length; index += size) {
+        chunks.push(items.slice(index, index + size));
+      }
+      return chunks.length > 0 ? chunks : [[]];
+    };
+    const answerChunks = chunkAnswers(printableAnswers, 14);
+    const totalPages = isAnswersReport ? answerChunks.length + 1 : 2;
+    const answersRows = answerChunks[0].map((ans, i) => answerRow(ans, i)).join('');
+    const signatureBlockHtml = `
+        <div class="verification-statement">
+          وثيقة إشرافية مستخرجة إلكترونياً من منصة مَسَار تحت إشراف د. إسماعيل عيسى، مخصصة لمتابعة التأهيل والتعليم الحديث.
+        </div>
+        <div class="signature-row">
+          <div class="stamp-box">
+            <svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" stroke-width="2.5"/>
+              <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" stroke-width="1.2"/>
+              <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرقمي</text>
+              <text x="80" y="49" text-anchor="middle" font-family="Cairo,Arial" font-size="10" font-weight="900" fill="#06392c">د. إسماعيل عيسى</text>
+              <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" stroke-width="0.8"/>
+              <defs>
+                <clipPath id="sig-clip-modal">
+                  <rect x="22" y="60" width="116" height="38"/>
+                </clipPath>
+              </defs>
+              <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-modal)" style="mix-blend-mode:multiply"/>
+              <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
+              <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${hijriDate}</text>
+              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+            </svg>
+            <div style="font-size:8.5px;font-weight:900;color:#06392c;margin-top:2px;">الختم الرقمي</div>
+          </div>
+          <div class="sig-box">
+            <div style="font-size:9px;font-weight:700;color:#64748b;">يعتمد:</div>
+            <div style="font-size:13px;font-weight:900;color:#06392c;margin-top:2px;">د. إسماعيل عيسى</div>
+            <div style="height:44px;display:flex;align-items:center;justify-content:center;margin:4px 0 2px 0;">
+              <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
+            </div>
+            <div style="border-bottom:1.5px solid #06392c;margin:2px 0 4px 0;"></div>
+            <div style="font-size:9px;font-weight:900;color:#64748b;font-family:monospace;">${hijriDate}</div>
+          </div>
+        </div>`;
+    const answerContinuationPages = isAnswersReport
+      ? answerChunks.slice(1).map((chunk, pageIndex) => {
+          const pageNumber = pageIndex + 3;
+          const startNumber = answerChunks.slice(0, pageIndex + 1).reduce((sum, item) => sum + item.length, 0);
+          const isLastAnswerPage = pageNumber === totalPages;
+          return `
+    <section class="print-page">
+      <div>
+        ${compactHeaderHtml(`${isStudentAnswersReport ? 'تكملة إجابات اختبار الطالب' : 'تكملة إجابات ولي الأمر'} - صفحة ${pageIndex + 2}`)}
+        <div class="sec-head">تكملة سجل الإجابات التفصيلية المحفوظة</div>
+        <table class="answers-table">
+          <thead>
+            <tr>
+              <th style="width: 8%;">#</th>
+              <th style="width: 52%;">السؤال المستهدف</th>
+              <th style="width: 40%;">الإجابة المحفوظة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${chunk.map((ans, i) => answerRow(ans, startNumber + i)).join('')}
+          </tbody>
+        </table>
+        ${isLastAnswerPage ? signatureBlockHtml : ''}
+      </div>
+      <div class="footer">
+        <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
+        <span>صفحة ${pageNumber} من ${totalPages}</span>
+      </div>
+    </section>`;
+        }).join('')
+      : '';
 
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -203,6 +276,7 @@ export default function PrintableReportModal({
       background: #cbd5e1;
       color: #0f172a;
       direction: rtl;
+      scroll-behavior: auto;
     }
     @page {
       size: A4 portrait;
@@ -231,7 +305,7 @@ export default function PrintableReportModal({
       box-shadow: 0 18px 45px rgba(15,23,42,0.18);
       page-break-after: always;
       break-after: page;
-      overflow: hidden;
+      overflow: visible;
     }
     .print-page:last-child {
       page-break-after: auto;
@@ -433,6 +507,10 @@ export default function PrintableReportModal({
     }
     table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
     tr { page-break-inside: avoid; break-inside: avoid; }
+    table, .banner, .info-grid, .score-card, .sig-box, .stamp-box {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
     th { background: #06392c; color: #ffffff; padding: 6px 10px; text-align: right; font-weight: 900; }
     td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
     .answers-table td { padding: 6px 9px !important; line-height: 1.55; }
@@ -442,6 +520,26 @@ export default function PrintableReportModal({
       font-size: 8.5px; font-weight: 800; color: #64748b;
     }
     .stamp-box { text-align: center; }
+    .verification-statement {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-top: 10px;
+      font-size: 8.8px;
+      font-weight: 800;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .signature-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 1.5px solid #06392c;
+      padding-top: 8px;
+      margin-top: 10px;
+    }
     .sig-box {
       border: 1.5px solid #06392c; background: #ffffff; border-radius: 12px;
       padding: 8px 16px; text-align: center; min-width: 180px;
@@ -509,7 +607,7 @@ export default function PrintableReportModal({
 
       <div class="footer">
         <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
-        <span>صفحة 1 من 3</span>
+        <span>صفحة 1 من ${totalPages}</span>
       </div>
     </section>
 
@@ -621,87 +719,25 @@ export default function PrintableReportModal({
           </div>
         </div>
         ` : ''}
+        ${(!isAnswersReport || answerChunks.length === 1) ? signatureBlockHtml : ''}
       </div>
 
       <div class="footer">
         <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
-        <span>صفحة 2 من 3</span>
+        <span>صفحة 2 من ${totalPages}</span>
       </div>
     </section>
 
-    <!-- PAGE 3: DETAILED ANSWERS & SIGNATURE -->
-    <section class="print-page">
-      <div>
-        ${compactHeaderHtml('التوقيع والختم الرقمي')}
-
-        ${
-          isAnswersReport && answersRowsContinuation.length > 0
-            ? `
-        <div class="sec-head">2. تكملة سجل الإجابات التفصيلية المحفوظة</div>
-        <table class="answers-table">
-          <thead>
-            <tr>
-              <th style="width: 8%;">#</th>
-              <th style="width: 52%;">السؤال المستهدف</th>
-              <th style="width: 40%;">الإجابة المحفوظة</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${answersRowsContinuation}
-          </tbody>
-        </table>`
-            : ''
-        }
-
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 14px;">
-          <p style="font-size: 9.5px; color: #475569; font-weight: 700; line-height: 1.6; margin: 0;">
-            وثيقة إشرافية مستخرجة إلكترونياً من منصة مَسَار تحت إشراف د. إسماعيل عيسى، مخصصة لمتابعة التأهيل والتعليم الحديث.
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <div style="display: flex; align-items: flex-end; justify-content: space-between; border-top: 1.5px solid #06392c; padding-top: 10px; margin-top: 20px;">
-          <!-- STAMP -->
-          <div class="stamp-box">
-            <svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" stroke-width="2.5"/>
-              <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" stroke-width="1.2"/>
-              <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرقمي</text>
-              <text x="80" y="49" text-anchor="middle" font-family="Cairo,Arial" font-size="10" font-weight="900" fill="#06392c">د. إسماعيل عيسى</text>
-              <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" stroke-width="0.8"/>
-              <defs>
-                <clipPath id="sig-clip-modal">
-                  <rect x="22" y="60" width="116" height="38"/>
-                </clipPath>
-              </defs>
-              <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-modal)" style="mix-blend-mode:multiply"/>
-              <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
-              <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${hijriDate}</text>
-              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
-            </svg>
-            <div style="font-size: 8.5px; font-weight: 900; color: #06392c; margin-top: 2px;">الختم الرقمي</div>
-          </div>
-
-          <!-- SIGNATURE -->
-          <div class="sig-box">
-            <div style="font-size: 9px; font-weight: 700; color: #64748b;">يعتمد:</div>
-            <div style="font-size: 13px; font-weight: 900; color: #06392c; margin-top: 2px;">د. إسماعيل عيسى</div>
-            <div style="height: 44px; display: flex; align-items: center; justify-content: center; margin: 4px 0 2px 0;">
-              <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" class="sig-img"/>
-            </div>
-            <div style="border-bottom: 1.5px solid #06392c; margin: 2px 0 4px 0;"></div>
-            <div style="font-size: 9px; font-weight: 900; color: #64748b; font-family: monospace;">${hijriDate}</div>
-          </div>
-        </div>
-
-        <div class="footer">
-          <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
-          <span>صفحة 3 من 3</span>
-        </div>
-      </div>
-    </section>
+    ${answerContinuationPages}
   </div>
+  <script>
+    window.scrollTo(0, 0);
+    ${autoPrint ? `
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); }, 500);
+    });
+    ` : ''}
+  </script>
 </body>
 </html>`;
 
@@ -727,17 +763,24 @@ export default function PrintableReportModal({
         </div>
 
         <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs space-y-2">
-          <p className="font-bold text-slate-700">سيتم فتح نافذة المعاينة والطباعة المستقلة تلقائياً بنظام صفحات A4 المعايرة.</p>
+          <p className="font-bold text-slate-700">افتح نفس نسخة التقرير التي سيتم طباعتها، أو ادخل مباشرة إلى نافذة الطباعة وحفظ PDF.</p>
           <p className="text-slate-500 font-mono">رقم التقرير: {fileNumber}</p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
-            onClick={handlePrint}
+            onClick={() => handlePrint(false)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 py-3 text-sm font-black text-teal-800 hover:bg-teal-100 transition"
+          >
+            <FileCheck size={16} />
+            فتح التقرير
+          </button>
+          <button
+            onClick={() => handlePrint(true)}
             className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-teal-700 py-3 text-sm font-black text-white hover:bg-teal-800 transition"
           >
             <Printer size={16} />
-            إعادة فتح نافذة الطباعة PDF
+            طباعة / حفظ PDF
           </button>
           <button
             onClick={onClose}

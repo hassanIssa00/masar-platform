@@ -12,6 +12,7 @@ import {
   RoomAudioRenderer,
 } from '@livekit/components-react';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 
 interface LiveSession {
   id: string;
@@ -23,7 +24,7 @@ interface LiveSession {
   endedAt?: string;
   views: number;
   recordedVideoUrl?: string;
-  comments: Array<{ id: string; sender: string; text: string; time: string }>;
+  comments: Array<{ id: string; sender: string; text: string; time: string; audioDataUrl?: string }>;
 }
 
 const STORAGE_KEY = 'ikhlas_live_sessions_v1';
@@ -196,6 +197,20 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
     setChatMessage('');
   };
 
+  const handleSendAudioComment = async (audioDataUrl: string) => {
+    if (!activeSession) return;
+    const newComment = {
+      id: `c-${Date.now()}`,
+      sender: isHost ? 'د. إسماعيل عيسى' : 'ولي الأمر',
+      text: 'رسالة صوتية',
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      audioDataUrl,
+    };
+    const updated = sessions.map(s => s.id === activeSession.id ? { ...s, comments: [...s.comments, newComment] } : s);
+    saveSessions(updated);
+    setActiveSession(prev => prev ? { ...prev, comments: [...prev.comments, newComment] } : null);
+  };
+
   /* ══ RENDER ══ */
   return (
     <div className="space-y-6 text-slate-900" dir="rtl">
@@ -355,6 +370,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
                         <span className="text-[10px] text-slate-400">{c.time}</span>
                       </div>
                       <p className="text-slate-200 text-xs font-semibold leading-relaxed">{c.text}</p>
+                      <MessageAudio src={c.audioDataUrl} />
                     </div>
                   ))
                 )}
@@ -363,6 +379,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
                 <input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
                   placeholder="اكتب سؤالاً أو تعليقاً..."
                   className="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-xs font-bold text-white focus:border-teal-500 focus:outline-none" />
+                <VoiceRecorderButton onRecorded={handleSendAudioComment} className="[&>span]:hidden" />
                 <button type="submit" className="rounded-xl bg-teal-600 hover:bg-teal-500 px-3 py-2 text-xs font-black text-white transition">
                   <Send className="h-3.5 w-3.5" />
                 </button>

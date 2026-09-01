@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Send, Lock, Unlock, Pin, Trash2, Search, Users, Image as ImageIcon,
+  Send, Lock, Unlock, Pin, Search, Users, Image as ImageIcon,
   Mic, Paperclip, CheckCheck, Smile, Volume2, ShieldCheck, Crown,
   User, Phone, MessageCircle, AlertCircle, Sparkles, X, ChevronDown,
   Download, RefreshCw, MessageSquare, Flame, Check, MoreVertical
 } from 'lucide-react';
 import { getClassParents, type ClassParentRecord } from '@/lib/classDb';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
@@ -21,6 +22,7 @@ export interface ChatMessage {
   text: string;
   imageUrl?: string;
   audioUrl?: string;
+  audioDataUrl?: string;
   createdAt: string;
   isPinned?: boolean;
   isAnnouncement?: boolean;
@@ -115,8 +117,6 @@ export default function ParentsCommunityChatTab() {
   const [showSearch, setShowSearch] = useState(false);
   const [showMembersDrawer, setShowMembersDrawer] = useState(false);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -212,6 +212,35 @@ export default function ParentsCommunityChatTab() {
     setIsAnnouncementMode(false);
   };
 
+  const handleSendAudioMessage = async (audioDataUrl: string) => {
+    if (settings.isLocked && activeIdentity.role !== 'admin') {
+      alert('الشات مغلق حالياً من قِبل المشرف د. إسماعيل عيسى.');
+      return;
+    }
+
+    const newMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: activeIdentity.id,
+      senderName: activeIdentity.name,
+      senderRole: activeIdentity.role,
+      studentName: activeIdentity.studentName,
+      text: 'رسالة صوتية',
+      audioDataUrl,
+      isAnnouncement: activeIdentity.role === 'admin' && isAnnouncementMode,
+      createdAt: new Date().toISOString(),
+      replyTo: replyingTo ? {
+        id: replyingTo.id,
+        senderName: replyingTo.senderName,
+        text: replyingTo.text.slice(0, 70),
+      } : undefined,
+      reactions: {},
+    };
+
+    persistMessages([...messages, newMsg]);
+    setReplyingTo(null);
+    setIsAnnouncementMode(false);
+  };
+
   // ── Admin: Toggle Chat Lock ──
   const handleToggleLock = () => {
     const newLockState = !settings.isLocked;
@@ -240,14 +269,6 @@ export default function ParentsCommunityChatTab() {
       isPinned: m.id === newPinnedId,
     }));
     persistMessages(updated);
-  };
-
-  // ── Admin: Delete Message ──
-  const handleDeleteMessage = (msgId: string) => {
-    if (confirm('هل أنت متأكد من حذف هذه الرسالة من الشات؟')) {
-      const updated = messages.filter(m => m.id !== msgId);
-      persistMessages(updated);
-    }
   };
 
   // ── Add Emoji Reaction ──
@@ -546,6 +567,8 @@ export default function ParentsCommunityChatTab() {
                         </div>
                       )}
 
+                      <MessageAudio src={msg.audioDataUrl || msg.audioUrl} />
+
                       {/* Message Text */}
                       <p className="text-xs sm:text-sm font-semibold leading-relaxed whitespace-pre-wrap">
                         {msg.text}
@@ -591,24 +614,15 @@ export default function ParentsCommunityChatTab() {
                             رد ↩️
                           </button>
 
-                          {/* Admin Tools: Pin / Delete */}
+                          {/* Admin Tools: Pin */}
                           {activeIdentity.role === 'admin' && (
-                            <>
-                              <button
-                                onClick={() => handleTogglePin(msg.id)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-amber-300"
-                                title={msg.isPinned ? 'إلغاء التثبيت' : 'تثبيت الرسالة بالأعلى'}
-                              >
-                                <Pin size={12} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-rose-300"
-                                title="حذف الرسالة"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleTogglePin(msg.id)}
+                              className="p-1 hover:scale-110 transition cursor-pointer text-amber-300"
+                              title={msg.isPinned ? 'إلغاء التثبيت' : 'تثبيت الرسالة بالأعلى'}
+                            >
+                              <Pin size={12} />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -728,6 +742,7 @@ export default function ParentsCommunityChatTab() {
                     <Send size={14} />
                     <span>إرسال</span>
                   </button>
+                  <VoiceRecorderButton onRecorded={handleSendAudioMessage} />
                 </div>
               </form>
             )}

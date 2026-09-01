@@ -12,6 +12,22 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import BrandMark from '@/components/BrandMark';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+
+type MeetingMessage = {
+  id: number;
+  sender: string;
+  text: string;
+  time: string;
+  isMe: boolean;
+  audioDataUrl?: string;
+};
+
+const DEFAULT_MEETING_MESSAGES: MeetingMessage[] = [
+  { id: 1, sender: 'أحمد محمود', text: 'السلام عليكم ورحمة الله', time: '10:02', isMe: false },
+  { id: 2, sender: 'د. إسماعيل', text: 'وعليكم السلام، أهلاً بكم جميعاً. سنبدأ بعد دقيقة.', time: '10:03', isMe: false },
+];
 
 export default function MeetingsPage() {
   const searchParams = useSearchParams();
@@ -31,6 +47,7 @@ export default function MeetingsPage() {
   // Lobby state
   const [userName, setUserName] = useState('');
   const [roomCodeInput, setRoomCodeInput] = useState(roomCodeParam || '');
+  const meetingChatKey = `masar.meetingChat.${roomCodeInput || roomCodeParam || 'default'}`;
   const [lobbyMediaState, setLobbyMediaState] = useState({ video: true, audio: true });
   
   // Room state
@@ -46,10 +63,7 @@ export default function MeetingsPage() {
   
   // Chat state
   const [chatMessage, setChatMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'أحمد محمود', text: 'السلام عليكم ورحمة الله', time: '10:02', isMe: false },
-    { id: 2, sender: 'د. إسماعيل', text: 'وعليكم السلام، أهلاً بكم جميعاً. سنبدأ بعد دقيقة.', time: '10:03', isMe: false },
-  ]);
+  const [messages, setMessages] = useState<MeetingMessage[]>(DEFAULT_MEETING_MESSAGES);
   
   // Timer state
   const [duration, setDuration] = useState(0);
@@ -64,6 +78,21 @@ export default function MeetingsPage() {
       setCurrentView('lobby');
     }
   }, [roomCodeParam]);
+
+  useEffect(() => {
+    const cached = readCloudCache<MeetingMessage>(meetingChatKey);
+    setMessages(cached.length ? cached : DEFAULT_MEETING_MESSAGES);
+  }, [meetingChatKey]);
+
+  const persistMeetingMessages = (next: MeetingMessage[]) => {
+    setMessages(next);
+    writeCloudCache(meetingChatKey, next);
+    void syncDocToCloud('meeting_chats', meetingChatKey.replace(/[^\w.-]/g, '_'), {
+      roomCode: roomCodeInput || roomCodeParam || 'default',
+      messages: next,
+      updatedAt: new Date().toISOString(),
+    });
+  };
 
   // Handle local video stream
   useEffect(() => {
@@ -141,8 +170,8 @@ export default function MeetingsPage() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
-    
-    setMessages([...messages, {
+
+    persistMeetingMessages([...messages, {
       id: Date.now(),
       sender: userName || 'أنت',
       text: chatMessage,
@@ -150,6 +179,17 @@ export default function MeetingsPage() {
       isMe: true
     }]);
     setChatMessage('');
+  };
+
+  const handleSendAudioMessage = async (audioDataUrl: string) => {
+    persistMeetingMessages([...messages, {
+      id: Date.now(),
+      sender: userName || 'أنت',
+      text: 'رسالة صوتية',
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      isMe: true,
+      audioDataUrl,
+    }]);
   };
 
   // List View (Navbar + Sidebar) — Light theme only
@@ -592,6 +632,7 @@ export default function MeetingsPage() {
                         : 'bg-gray-800 text-gray-200 border border-gray-700 rounded-tl-sm'
                       }`}>
                         {msg.text}
+                        <MessageAudio src={msg.audioDataUrl} />
                       </div>
                     </div>
                   ))}
@@ -604,7 +645,7 @@ export default function MeetingsPage() {
                       value={chatMessage}
                       onChange={(e) => setChatMessage(e.target.value)}
                       placeholder="اكتب رسالة..."
-                      className="w-full bg-gray-800 border border-gray-700 rounded-full pl-12 pr-4 py-3 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-full pl-24 pr-4 py-3 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
                     />
                     <button 
                       type="submit"
@@ -613,6 +654,9 @@ export default function MeetingsPage() {
                     >
                       <Send className="w-4 h-4 rtl:-scale-x-100" />
                     </button>
+                    <div className="absolute left-12">
+                      <VoiceRecorderButton onRecorded={handleSendAudioMessage} className="h-8 w-8 rounded-full px-0 py-0 [&>span]:hidden" />
+                    </div>
                   </form>
                 </div>
               </>

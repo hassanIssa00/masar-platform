@@ -1,6 +1,6 @@
 'use client';
 
-import { AccountRecord, saveAccount, UserRole } from '@/lib/localDb';
+import { AccountRecord, saveAccount, UserRole } from '@/lib/cloudStore';
 import { auth, googleProvider } from '@/lib/firebase';
 import {
   signInWithPopup,

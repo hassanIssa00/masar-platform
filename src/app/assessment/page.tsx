@@ -6,9 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2, Sparkles, ChevronDown, Mic, Square, RotateCcw } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Sidebar';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
-import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, setSession, StudentRecord, updateStudent, createId } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, setSession, StudentRecord, updateStudent, createId } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { getClassStudents } from '@/lib/classDb';
 import { speakWithMasarVoice } from '@/lib/voicePackage';
@@ -1018,7 +1019,9 @@ function PlacementAssessmentContent() {
       ) : (
         <Navbar />
       )}
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+      <div className={isStudentFlow ? '' : 'flex'}>
+      {!isStudentFlow && <Sidebar desktopOnly />}
+      <main className={isStudentFlow ? 'mx-auto max-w-7xl px-4 py-6 lg:px-8' : 'min-w-0 flex-1 px-4 py-6 lg:px-8'}>
         <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -1456,6 +1459,7 @@ function PlacementAssessmentContent() {
           </aside>
         </section>
       </main>
+      </div>
     </div>
   );
 }

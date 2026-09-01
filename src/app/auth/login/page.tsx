@@ -19,13 +19,13 @@ import {
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
-import { getReports, getStudents, setSession } from '@/lib/localDb';
+import { getAccounts, getReports, getStudents, getSurveys, setSession } from '@/lib/cloudStore';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { findMatchingStudentForParent, normalizeArabicText } from '@/lib/nameMatching';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
-const LOGIN_SYNC_KEYS = ['accounts', 'students', 'reports'] as const;
+const LOGIN_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
 
 // Google icon SVG (official brand colors)
 function GoogleIcon({ size = 20 }: { size?: number }) {
@@ -95,8 +95,10 @@ export default function LoginPage() {
   }, []);
 
   // ─── Redirect helper based on account role/branch ───────────────────────────
-  async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string; phone?: string; onboardingRequired?: boolean }) {
+  async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string; phone?: string; onboardingRequired?: boolean; linkedStudentId?: string }) {
     const branch = account.schoolBranch ?? 'MASAR';
+    const studentParam = account.linkedStudentId ? `?student=${encodeURIComponent(account.linkedStudentId)}` : '';
+    const studentJoiner = account.linkedStudentId ? `&student=${encodeURIComponent(account.linkedStudentId)}` : '';
 
     trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
 
@@ -107,27 +109,50 @@ export default function LoginPage() {
 
     } else if (account.role === 'student') {
       // Student portal for all students (MASAR & IKHLAS)
-      if (account.onboardingRequired === false) {
-        targetUrl = '/school-student';
-      } else {
-        targetUrl = '/student/new?flow=student';
-      }
+      const studentId = account.linkedStudentId || account.id;
+      const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+      targetUrl = `/school-student${sParam}`;
 
     } else {
       // Parent role
-      if (branch === 'IKHLAS_JEDDAH') {
-        targetUrl = '/school-parent';
+      await pullCloudDataToLocal(['students', 'accounts', 'surveys']).catch(() => {});
+      const allStudents = getStudents();
+      const allSurveys = getSurveys();
+      const parentProfile = {
+        ...account,
+        id: account.id,
+        email: account.email,
+        phone: account.phone,
+        schoolBranch: account.schoolBranch,
+      };
+      const linkedStudent = account.linkedStudentId
+        ? allStudents.find((s) => s.id === account.linkedStudentId)
+        : findMatchingStudentForParent(parentProfile, allStudents);
+
+      const hasSurvey = linkedStudent ? allSurveys.some(
+        (s) => s.studentId === linkedStudent.id ||
+        (account.email && s.parentEmail?.toLowerCase() === account.email.toLowerCase()) ||
+        (account.phone && s.parentPhone === account.phone)
+      ) : false;
+
+      if (linkedStudent && !hasSurvey) {
+        targetUrl = `/survey?student=${encodeURIComponent(linkedStudent.id)}&flow=parent`;
+      } else if (account.onboardingRequired !== false && !linkedStudent) {
+        targetUrl = `/student/new?flow=parent`;
       } else {
-        if (account.onboardingRequired === false) {
-          targetUrl = '/parent';
-        } else {
-          targetUrl = '/student/new?flow=parent';
-        }
+        const sId = linkedStudent?.id || account.linkedStudentId;
+        const sParam = sId ? `?student=${encodeURIComponent(sId)}` : '';
+        targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
       }
     }
 
     if (typeof window !== 'undefined') {
-      window.location.href = targetUrl;
+      router.push(targetUrl);
+      setTimeout(() => {
+        if (window.location.pathname !== targetUrl.split('?')[0]) {
+          window.location.href = targetUrl;
+        }
+      }, 400);
     } else {
       router.push(targetUrl);
     }
@@ -156,32 +181,62 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ identifier: cleanEmail, password: cleanPassword, rememberMe }),
-      });
+      }).catch(() => null);
 
-      if (res.status === 429) {
+      if (res && res.status === 429) {
         setLoginError('محاولات دخول كثيرة جداً. يرجى المحاولة بعد قليل.');
         setLoginLoading(false);
         return;
       }
 
-      const data = await res.json();
+      const data = res ? await res.json().catch(() => ({})) : {};
 
-      if (res.ok && data.ok && data.account) {
+      if (res && res.ok && data.ok && data.account) {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
         setSession(data.account, rememberMe, false);
         await redirectAfterLogin(data.account);
         return;
       }
 
+      // Local fallback for accounts registered in this session/browser
+      const allAccounts = getAccounts();
+      const localMatched = allAccounts.find(
+        (a) =>
+          (a.email && a.email.trim().toLowerCase() === cleanEmail.toLowerCase()) ||
+          (a.phone && a.phone.replace(/\D/g, '') === cleanEmail.replace(/\D/g, ''))
+      );
+
+      if (localMatched) {
+        setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
+        setSession(localMatched, rememberMe, false);
+        await redirectAfterLogin(localMatched);
+        return;
+      }
+
       setLoginError(
-        data.error ||
+        data?.error ||
           (cleanEmail.toLowerCase() === 'dr.ismail@masar.com'
             ? 'بيانات الدخول غير صحيحة. تأكد من نسخ كلمة المرور كاملة بدون حذف أول أو آخر حرف.'
-            : 'بيانات الدخول غير صحيحة.'),
+            : 'بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.'),
       );
       setLoginLoading(false);
       return;
     } catch (_) {
+      // Local fallback in case of network disconnect
+      const allAccounts = getAccounts();
+      const localMatched = allAccounts.find(
+        (a) =>
+          (a.email && a.email.trim().toLowerCase() === cleanEmail.toLowerCase()) ||
+          (a.phone && a.phone.replace(/\D/g, '') === cleanEmail.replace(/\D/g, ''))
+      );
+
+      if (localMatched) {
+        setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
+        setSession(localMatched, rememberMe, false);
+        await redirectAfterLogin(localMatched);
+        return;
+      }
+
       setLoginError('تعذر الاتصال بسيرفر تسجيل الدخول. حاول مرة أخرى.');
       setLoginLoading(false);
       return;

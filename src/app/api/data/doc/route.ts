@@ -27,6 +27,8 @@ const ALLOWED_COLLECTIONS = new Set([
   'student_homework_logs',
   'student_cert_logs',
   'curriculum_files',
+  'curriculum_assignments',
+  'curriculum_drawings',
   'curriculum_quizzes',
   'quiz_submissions',
   'classroom_quizzes',
@@ -47,6 +49,7 @@ const ALLOWED_COLLECTIONS = new Set([
   'live_sessions',
   'period_attendance',
   'platform_analytics',
+  'student_learning_activity',
   'platform_config',
   'simple_spelling_assignments',
   'simple_spelling_drawings',
@@ -74,10 +77,12 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
     'notifications',
     'consents',
     'quiz_submissions',
+    'curriculum_drawings',
     'homework',
     'waitlist',
     'student_points',
     'point_transactions',
+    'student_learning_activity',
     'simple_spelling_drawings',
     'faceRecords',
   ].includes(collectionName);
@@ -102,6 +107,7 @@ export async function POST(req: NextRequest) {
     'surveys',
     'waitlist',
     'quiz_submissions',
+    'curriculum_drawings',
     'simple_spelling_drawings',
   ]);
 

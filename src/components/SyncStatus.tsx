@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, DatabaseZap, FileText, UserRound, Trash2, Loader2 } from 'lucide-react';
-import { clearAllMockData, getSyncSnapshot } from '@/lib/localDb';
+import { clearAllMockData, getSyncSnapshot } from '@/lib/cloudStore';
 import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -25,7 +25,7 @@ async function purgeFirestore() {
   }
 }
 
-import { getSession } from '@/lib/localDb';
+import { getSession } from '@/lib/cloudStore';
 
 export default function SyncStatus() {
   const [snapshot, setSnapshot] = useState({ students: 0, reports: 0, surveys: 0, activities: 0, lastSync: null as string | null });

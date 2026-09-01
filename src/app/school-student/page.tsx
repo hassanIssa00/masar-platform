@@ -32,7 +32,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS, DEFAULT_SCHEDULE, Period } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents, getAccounts, updateStudent, getIkhlasPosts, hydrateSessionFromServer, StudentRecord, AccountRecord } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, getAccounts, updateStudent, getIkhlasPosts, hydrateSessionFromServer, StudentRecord, AccountRecord } from '@/lib/cloudStore';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { normalizeArabicText } from '@/lib/nameMatching';
@@ -99,24 +99,20 @@ export default function StudentDashboard() {
       let linked = combined.find((s: any) => {
         if (linkedStudentId && s.id === linkedStudentId) return true;
         if (session.id && s.id === session.id) return true;
+        if (session.id && s.studentAccountId === session.id) return true;
+        if (email && s.linkedStudentEmail?.trim().toLowerCase() === email) return true;
         if (sName && !isSyntheticOrGeneric(sName) && normalizeArabicText(s.fullName) === sName) return true;
         if (phone && phone.length >= 8 && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(phone.slice(-8))) return true;
         if (email && ((s.email || '').trim().toLowerCase() === email || (s.recoveryEmail || '').trim().toLowerCase() === email || (s.parentEmail || '').trim().toLowerCase() === email)) return true;
         return false;
       }) || null;
 
-      // Fallback: If no match found by direct fields, try to find student with matching linkedStudentId or real name
+      // Fallback: If no match found by direct fields, try to find student with matching linkedStudentId
       if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
-        // Try linkedStudentId from session account
         const sessionLinkedId = (session as any)?.linkedStudentId;
         if (sessionLinkedId) {
           const byLinked = allStudents.find((s) => s.id === sessionLinkedId);
           if (byLinked) linked = byLinked;
-        }
-        // If still nothing, find a non-generic student record
-        if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
-          const nonGeneric = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
-          if (nonGeneric) linked = nonGeneric;
         }
       }
 
@@ -127,17 +123,22 @@ export default function StudentDashboard() {
       } else if (linked?.fullName && !isSyntheticOrGeneric(linked.fullName)) {
         finalName = linked.fullName;
       } else {
-        const studentAcc = allAccounts.find((a) => a.role === 'student' && a.name && !isSyntheticOrGeneric(a.name));
-        const realRec = allStudents.find((s) => s.fullName && !isSyntheticOrGeneric(s.fullName));
-        finalName = realRec?.fullName || studentAcc?.name || (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : 'طالب');
+        finalName = (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : (session.name || 'طالب'));
       }
+
 
       // Auto-heal photo if missing
       let photoUrl =
         linked?.photoUrl ||
         (session as any)?.photoUrl ||
-        allStudents.find((s) => s.photoUrl && !isSyntheticOrGeneric(s.fullName))?.photoUrl ||
-        allAccounts.find((a) => a.photoUrl && (a.role === 'student' || normalizeArabicText(a.name) === normalizeArabicText(finalName)))?.photoUrl ||
+        allStudents.find((s) =>
+          s.photoUrl &&
+          (s.id === linked?.id || s.studentAccountId === session.id || s.linkedStudentEmail === email)
+        )?.photoUrl ||
+        allAccounts.find((a) =>
+          a.photoUrl &&
+          (a.id === session.id || a.linkedStudentId === linked?.id || a.email === email)
+        )?.photoUrl ||
         '';
 
       if (!photoUrl && linked) {

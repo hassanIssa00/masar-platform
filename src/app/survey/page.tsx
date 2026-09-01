@@ -2,8 +2,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
-import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, saveSurvey, setSession, updateStudent, StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, saveSurvey, setSession, updateStudent, StudentRecord } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
+import { findMatchingStudentForParent } from '@/lib/nameMatching';
 
 const SECTIONS = [
   {
@@ -277,17 +278,18 @@ function SurveyContent() {
 
       const requested = searchParams.get('student');
       const allStudents = getStudents();
+      const linkedStudentId = (session as any)?.linkedStudentId;
       let found = requested ? allStudents.find((s) => s.id === requested) : null;
-      if (!found && session) {
-        found = allStudents.find((s) =>
-          (session.id && s.id === session.id) ||
-          (session.phone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(session.phone.replace(/\D/g, ''))) ||
-          (session.name && s.parentName && s.parentName.trim().toLowerCase() === session.name.trim().toLowerCase()) ||
-          (session.email && s.email && s.email.trim().toLowerCase() === session.email.trim().toLowerCase())
-        ) ?? null;
+      if (!found && linkedStudentId) {
+        found = allStudents.find((s) => s.id === linkedStudentId) || null;
       }
-      if (!found && allStudents.length > 0) {
-        found = allStudents[0];
+      if (!found && session) {
+        found = session.role === 'parent'
+          ? findMatchingStudentForParent(session, allStudents)
+          : allStudents.find((s) =>
+            (session.id && (s.id === session.id || s.studentAccountId === session.id || s.linkedStudentId === session.id)) ||
+            (session.email && [s.email, s.recoveryEmail, s.linkedStudentEmail].some((mail) => mail?.trim().toLowerCase() === session.email.trim().toLowerCase()))
+          ) ?? null;
       }
 
       if (found) {
@@ -326,6 +328,8 @@ function SurveyContent() {
     const targetId = student?.id || requestedId || undefined;
     const all = getStudents();
     const existing = targetId ? all.find((s) => s.id === targetId) : student;
+    const session = getSession();
+    const branch = (session as any)?.schoolBranch || existing?.schoolBranch || 'MASAR';
 
     let savedStudent: StudentRecord;
     if (existing) {
@@ -333,6 +337,20 @@ function SurveyContent() {
         fullName: existing.fullName,
         grade: existing.grade || grade,
         parentPhone: existing.parentPhone || parentPhone,
+        parentEmail: existing.parentEmail || session?.email,
+        parentName: existing.parentName || session?.name,
+        ...(session?.role === 'parent' ? {
+          parentAccountId: session.id,
+          linkedParentId: session.id,
+          linkedParentEmail: session.email,
+        } : {}),
+        linkedStudentId: existing.linkedStudentId || existing.id,
+        linkedStudentEmail: existing.linkedStudentEmail || existing.email,
+        linkedStudentName: existing.fullName,
+        photoUrl: existing.photoUrl,
+        dateOfBirth: existing.dateOfBirth,
+        nationalId: existing.nationalId,
+        schoolBranch: branch,
         reviewStatus: 'awaiting-doctor-review',
       }) ?? existing;
     } else {
@@ -341,20 +359,32 @@ function SurveyContent() {
         fullName: studentName.trim() || 'طالب جديد',
         grade,
         parentPhone,
+        parentEmail: session?.email,
+        parentName: session?.name,
+        ...(session?.role === 'parent' ? {
+          parentAccountId: session.id,
+          linkedParentId: session.id,
+          linkedParentEmail: session.email,
+        } : {}),
+        schoolBranch: branch,
         reviewStatus: 'awaiting-doctor-review',
-        source: 'survey',
+        source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'survey',
       });
     }
 
     await syncDocToCloud('students', savedStudent.id, savedStudent).catch(() => {});
 
-    saveSurvey({
+
+    const savedSurvey = saveSurvey({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
       grade,
+      parentName: savedStudent.parentName || session?.name,
       parentPhone: savedStudent.parentPhone || parentPhone,
+      parentEmail: savedStudent.parentEmail || session?.email,
       answers,
     });
+    await syncDocToCloud('surveys', savedSurvey.id, savedSurvey).catch(() => {});
 
     const rep1 = saveReport({
       studentId: savedStudent.id,
@@ -395,10 +425,12 @@ function SurveyContent() {
       domains: clinicalDomains,
     });
 
-    updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
+    const reviewedStudent = updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
+    if (reviewedStudent) {
+      await syncDocToCloud('students', reviewedStudent.id, reviewedStudent).catch(() => {});
+    }
 
     // Mark parent onboarding as COMPLETE and link student to parent account
-    const session = getSession();
     if (session?.id) {
       // 1. Update local account record (so getSession() returns linkedStudentId)
       const updatedAcc = saveAccount({
@@ -410,12 +442,17 @@ function SurveyContent() {
         schoolBranch: session.schoolBranch,
         onboardingRequired: false,
         linkedStudentId: savedStudent.id,
+        linkedStudentEmail: savedStudent.linkedStudentEmail || savedStudent.email,
+        linkedStudentName: savedStudent.fullName,
+        linkedParentId: session.role === 'parent' ? session.id : savedStudent.linkedParentId || savedStudent.parentAccountId,
+        linkedParentEmail: session.role === 'parent' ? session.email : savedStudent.linkedParentEmail || savedStudent.parentEmail,
       });
       // 2. Update local session cache so hydrateSessionFromServer returns correct data
-      setSession({ ...updatedAcc, linkedStudentId: savedStudent.id });
+      setSession(updatedAcc);
       // 3. Sync to cloud Firestore
-      void syncDocToCloud('accounts', session.id, { onboardingRequired: false, linkedStudentId: savedStudent.id });
+      void syncDocToCloud('accounts', session.id, updatedAcc);
     }
+
 
     setSubmitted(true);
     const currentSession = getSession();
@@ -423,7 +460,7 @@ function SurveyContent() {
     if (flow === 'student') {
       router.push(`/assessment?student=${savedStudent.id}&flow=student`);
     } else {
-      router.push(`/parent?student=${savedStudent.id}`);
+      router.push(branch === 'IKHLAS_JEDDAH' ? `/school-parent?student=${savedStudent.id}` : `/parent?student=${savedStudent.id}`);
     }
   };
 
@@ -434,7 +471,7 @@ function SurveyContent() {
           <div className="bg-white rounded-3xl shadow-xl p-10 max-w-xl w-full text-center animate-slide-up">
             <div className="mx-auto mb-6 h-12 w-12 rounded-full border-4 border-blue-100 border-t-[#1E6FBF] animate-spin" />
             <h1 className="text-3xl font-bold text-[#1E6FBF] mb-4">تم حفظ استبيان ولي الأمر</h1>
-            <p className="text-gray-600 leading-8">جاري فتح بوابة ولي الأمر. اختبار الطالب يظهر فقط عند دخول الطالب أو عند فتحه من لوحة د. إسماعيل.</p>
+            <p className="text-gray-600 leading-8">جاري فتح بوابة ولي الأمر المناسبة للحساب. اختبار الطالب يظهر فقط عند دخول الطالب أو عند فتحه من لوحة د. إسماعيل.</p>
           </div>
         </div>
       </div>

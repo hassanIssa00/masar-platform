@@ -24,6 +24,8 @@ const COLLECTIONS_TO_PURGE = [
   'student_notes',
   'student_homework_logs',
   'student_cert_logs',
+  'curriculum_assignments',
+  'curriculum_drawings',
   'quiz_submissions',
   'classroom_quizzes',
   'smart_schedules',
@@ -39,6 +41,7 @@ const COLLECTIONS_TO_PURGE = [
   'live_sessions',
   'period_attendance',
   'platform_analytics',
+  'student_learning_activity',
   'simple_spelling_assignments',
   'simple_spelling_drawings',
 ];

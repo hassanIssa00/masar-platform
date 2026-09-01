@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getStudents, getSession, type StudentRecord } from '@/lib/localDb';
+import { getStudents, getSession, type StudentRecord } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
 
 export interface CalendarSession {

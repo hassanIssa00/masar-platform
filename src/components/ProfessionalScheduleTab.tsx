@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import { Clock, Calendar, Printer, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Sun, Send, Loader2 } from 'lucide-react';
 import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
-import { broadcastScheduleToParents } from '@/lib/broadcastService';
+import { broadcastScheduleToParents, broadcastScheduleToStudents } from '@/lib/broadcastService';
 
 interface Props {
   schedule: Period[];
   currentPeriod: Period | null;
   minsUntilDismissal: number;
   jsDay: number;
-  onNavigateToSmartSchedule?: () => void;
 }
 
 /* ── Subject Icon & Refined Palette Mapping ── */
@@ -111,23 +110,38 @@ export default function ProfessionalScheduleTab({
   currentPeriod,
   minsUntilDismissal,
   jsDay,
-  onNavigateToSmartSchedule,
 }: Props) {
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
   const [selectedDayFilter, setSelectedDayFilter] = useState<number | 'all'>('all');
-  const [broadcasting, setBroadcasting] = useState(false);
-  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [broadcastingParents, setBroadcastingParents] = useState(false);
+  const [broadcastingStudents, setBroadcastingStudents] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState<{ text: string; type: 'parents' | 'students' | 'error' } | null>(null);
 
-  const handleBroadcastSchedule = async () => {
-    setBroadcasting(true);
+  const handleBroadcastParents = async () => {
+    setBroadcastingParents(true);
     try {
       const res = await broadcastScheduleToParents(schedule);
-      setBroadcastMsg(res.message);
-      setTimeout(() => setBroadcastMsg(''), 5000);
+      setBroadcastMsg({ text: res.message, type: 'parents' });
+      setTimeout(() => setBroadcastMsg(null), 5000);
     } catch {
-      setBroadcastMsg('حدث خطأ أثناء إرسال الجدول لأولياء الأمور.');
+      setBroadcastMsg({ text: 'حدث خطأ أثناء إرسال الجدول لأولياء الأمور.', type: 'error' });
+      setTimeout(() => setBroadcastMsg(null), 5000);
     } finally {
-      setBroadcasting(false);
+      setBroadcastingParents(false);
+    }
+  };
+
+  const handleBroadcastStudents = async () => {
+    setBroadcastingStudents(true);
+    try {
+      const res = await broadcastScheduleToStudents(schedule);
+      setBroadcastMsg({ text: res.message, type: 'students' });
+      setTimeout(() => setBroadcastMsg(null), 5000);
+    } catch {
+      setBroadcastMsg({ text: 'حدث خطأ أثناء إرسال الجدول للطلاب.', type: 'error' });
+      setTimeout(() => setBroadcastMsg(null), 5000);
+    } finally {
+      setBroadcastingStudents(false);
     }
   };
 
@@ -426,30 +440,33 @@ export default function ProfessionalScheduleTab({
         </div>
 
         {/* Actions Toolbar */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           {/* One-Click Broadcast Schedule to All Parents */}
           <button
-            onClick={handleBroadcastSchedule}
-            disabled={broadcasting}
-            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-black transition shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            onClick={handleBroadcastParents}
+            disabled={broadcastingParents || broadcastingStudents}
+            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3.5 py-2 rounded-xl text-xs font-black transition shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            title="إرسال الجدول لكل أولياء الأمور"
           >
-            {broadcasting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            <span>إرسال الجدول للجميع 📤</span>
+            {broadcastingParents ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            <span>إرسال لكل أولياء الأمور 👨‍👩‍👧‍👦</span>
           </button>
 
-          {onNavigateToSmartSchedule && (
-            <button
-              onClick={onNavigateToSmartSchedule}
-              className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl text-xs font-black transition shadow-xs cursor-pointer"
-            >
-              <Sparkles size={14} className="text-amber-600" /> تعديل أو رفع جدول 🤖
-            </button>
-          )}
+          {/* One-Click Broadcast Schedule to All Students */}
+          <button
+            onClick={handleBroadcastStudents}
+            disabled={broadcastingParents || broadcastingStudents}
+            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-black transition shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            title="إرسال الجدول لكل الطلاب"
+          >
+            {broadcastingStudents ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            <span>إرسال لكل الطلاب 🎒</span>
+          </button>
 
           {/* Print Button */}
           <button
             onClick={handlePrintSchedule}
-            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition shadow-sm active:scale-95 cursor-pointer"
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-black transition shadow-sm active:scale-95 cursor-pointer"
           >
             <Printer size={14} /> طباعة الجدول 🖨️
           </button>
@@ -457,9 +474,21 @@ export default function ProfessionalScheduleTab({
       </div>
 
       {broadcastMsg && (
-        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 flex items-center gap-3 animate-fade-in shadow-sm">
-          <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
-          <p className="text-xs sm:text-sm font-black">{broadcastMsg}</p>
+        <div className={`rounded-2xl border p-4 flex items-center gap-3 animate-fade-in shadow-sm ${
+          broadcastMsg.type === 'error'
+            ? 'border-rose-300 bg-rose-50 text-rose-950'
+            : broadcastMsg.type === 'students'
+            ? 'border-blue-300 bg-blue-50 text-blue-950'
+            : 'border-emerald-300 bg-emerald-50 text-emerald-950'
+        }`}>
+          <CheckCircle2 size={20} className={
+            broadcastMsg.type === 'error'
+              ? 'text-rose-700 shrink-0'
+              : broadcastMsg.type === 'students'
+              ? 'text-blue-700 shrink-0'
+              : 'text-emerald-700 shrink-0'
+          } />
+          <p className="text-xs sm:text-sm font-black">{broadcastMsg.text}</p>
         </div>
       )}
 

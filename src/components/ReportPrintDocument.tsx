@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import type { ReportRecord, StudentRecord } from '@/lib/localDb';
+import type { ReportRecord, StudentRecord } from '@/lib/cloudStore';
 
 function getTodayHijri(): string {
   try {
@@ -30,6 +30,14 @@ export default function ReportPrintDocument({
   const domainsList = Array.isArray(report.domains) ? report.domains : [];
   const recommendationsList = Array.isArray(report.recommendations) ? report.recommendations : [];
   const answersList = Array.isArray(report.answers) ? report.answers : [];
+  const hasRecommendations = recommendationsList.length > 0;
+  const hasDetailedAnswers = answersList.length > 0;
+  const finalPageNumber = hasRecommendations ? (hasDetailedAnswers ? 4 : 3) : (hasDetailedAnswers ? 3 : 2);
+  const totalPages = finalPageNumber;
+  const reportPhoto = (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).studentPhotoUrl ||
+    (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).photoUrl ||
+    (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).avatarUrl;
+  const studentPhoto = student?.photoUrl?.trim() || reportPhoto?.trim();
 
   const homeRecommendations = recommendationsList.slice(0, 3);
   const schoolRecommendations =
@@ -61,6 +69,60 @@ export default function ReportPrintDocument({
   };
 
   const badgeInfo = getScoreBadge(reportScore);
+  const SignatureBlock = () => (
+    <div className="sign-stamp-wrapper">
+      <div className="stamp-container">
+        <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
+          <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
+          <text x="80" y="34" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">
+            الختم الرقمي
+          </text>
+          <text x="80" y="49" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">
+            د. إسماعيل عيسى
+          </text>
+          <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" strokeWidth="0.8" />
+          <defs>
+            <clipPath id="sig-clip-print">
+              <rect x="22" y="60" width="116" height="38" />
+            </clipPath>
+          </defs>
+          <image
+            href={`${origin}/dr-ismail-signature.png`}
+            x="22"
+            y="62"
+            width="116"
+            height="36"
+            preserveAspectRatio="xMidYMid meet"
+            clipPath="url(#sig-clip-print)"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+          <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" strokeWidth="0.8" />
+          <text x="80" y="113" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">
+            {report.date || hijriDate}
+          </text>
+          <text x="80" y="125" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">
+            منصة مسار · التعليم الحديث
+          </text>
+        </svg>
+        <div className="stamp-label">الختم الرقمي</div>
+      </div>
+
+      <div className="doctor-sig-box">
+        <div className="doc-title-lbl">التوقيع والاعتماد</div>
+        <div className="sig-image-holder">
+          <img
+            src={`${origin}/dr-ismail-signature.png`}
+            alt="توقيع د. إسماعيل عيسى"
+            className="sig-img-print"
+          />
+        </div>
+        <div className="sig-divider" />
+        <div className="doc-name font-black">د. إسماعيل عيسى</div>
+        <div className="doc-date font-mono">{report.date || hijriDate}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="report-print-container" dir="rtl">
@@ -84,8 +146,19 @@ export default function ReportPrintDocument({
         <div className="page-body">
           {/* Main Document Title Box */}
           <div className="title-banner">
-            <h1 className="main-title">تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
-            <p className="subtitle">صادر من فصل د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>
+            <div className="title-content">
+              <div>
+                <h1 className="main-title">تقرير التقييم الشامل وخطة التأهيل الفردية</h1>
+                <p className="subtitle">صادر من فصل د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>
+              </div>
+              <div className="student-photo-print">
+                {studentPhoto ? (
+                  <img src={studentPhoto} alt={`صورة الطالب ${report.studentName || student?.fullName || ''}`} />
+                ) : (
+                  <span>{(report.studentName || student?.fullName || 'م').slice(0, 1)}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Student & Report Metadata Grid */}
@@ -145,7 +218,7 @@ export default function ReportPrintDocument({
         {/* Footer Bar */}
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة 1 من 4</span>
+          <span className="page-num">صفحة 1 من {totalPages}</span>
         </footer>
       </section>
 
@@ -243,18 +316,28 @@ export default function ReportPrintDocument({
               </tbody>
             </table>
           </div>
+          {!hasRecommendations && !hasDetailedAnswers && (
+            <>
+              <div className="verification-statement mt-4">
+                <p className="statement-text">
+                  نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
+                </p>
+              </div>
+              <SignatureBlock />
+            </>
+          )}
         </div>
 
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة 2 من 4</span>
+          <span className="page-num">صفحة 2 من {totalPages}</span>
         </footer>
       </section>
 
       {/* ═════════════════════════════════════════════════════════════
           PAGE 3: HOME & SCHOOL RECOMMENDATIONS
       ═════════════════════════════════════════════════════════════ */}
-      <section className="print-page page-3">
+      {hasRecommendations && <section className="print-page page-3">
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
@@ -303,18 +386,28 @@ export default function ReportPrintDocument({
               يُنصح بإجراء تقييم مرحلي بعد <strong>4 أسابيع</strong> من بدء الخطة التأهيلية لقياس نسبة النمو والتطور في المهارات المستهدفة وتعديل الأهداف عند الحاجة.
             </p>
           </div>
+          {!hasDetailedAnswers && (
+            <>
+              <div className="verification-statement mt-4">
+                <p className="statement-text">
+                  نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
+                </p>
+              </div>
+              <SignatureBlock />
+            </>
+          )}
         </div>
 
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة 3 من 4</span>
+          <span className="page-num">صفحة 3 من {totalPages}</span>
         </footer>
-      </section>
+      </section>}
 
       {/* ═════════════════════════════════════════════════════════════
           PAGE 4: DETAILED ANSWERS & OFFICIAL SIGN-OFF / STAMP
       ═════════════════════════════════════════════════════════════ */}
-      <section className="print-page page-4">
+      {hasDetailedAnswers && <section className="print-page page-4">
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
@@ -362,68 +455,14 @@ export default function ReportPrintDocument({
             </div>
           </div>
 
-          {/* Doctor Signature & Circular Stamp Block */}
-          <div className="sign-stamp-wrapper">
-            {/* Stamp Box */}
-            <div className="stamp-container">
-              <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 160 160">
-                <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" strokeWidth="2.5" />
-                <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" strokeWidth="1.2" />
-                <text x="80" y="34" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="6.5" fontWeight="bold" fill="#06392c" direction="rtl">
-                  الختم الرقمي
-                </text>
-                <text x="80" y="49" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="10.5" fontWeight="900" fill="#06392c" direction="rtl">
-                  د. إسماعيل عيسى
-                </text>
-                <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" strokeWidth="0.8" />
-                <defs>
-                  <clipPath id="sig-clip-print">
-                    <rect x="22" y="60" width="116" height="38" />
-                  </clipPath>
-                </defs>
-                <image
-                  href={`${origin}/dr-ismail-signature.png`}
-                  x="22"
-                  y="62"
-                  width="116"
-                  height="36"
-                  preserveAspectRatio="xMidYMid meet"
-                  clipPath="url(#sig-clip-print)"
-                  style={{ mixBlendMode: 'multiply' }}
-                />
-                <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" strokeWidth="0.8" />
-                <text x="80" y="113" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">
-                  {report.date || hijriDate}
-                </text>
-                <text x="80" y="125" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">
-                  منصة مسار · التعليم الحديث
-                </text>
-              </svg>
-              <div className="stamp-label">الختم الرقمي</div>
-            </div>
-
-            {/* Doctor Signature Block */}
-            <div className="doctor-sig-box">
-              <div className="doc-title-lbl">التوقيع والاعتماد</div>
-              <div className="sig-image-holder">
-                <img
-                  src={`${origin}/dr-ismail-signature.png`}
-                  alt="توقيع د. إسماعيل عيسى"
-                  className="sig-img-print"
-                />
-              </div>
-              <div className="sig-divider" />
-              <div className="doc-name font-black">د. إسماعيل عيسى</div>
-              <div className="doc-date font-mono">{report.date || hijriDate}</div>
-            </div>
-          </div>
+          <SignatureBlock />
         </div>
 
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة 4 من 4</span>
+          <span className="page-num">صفحة {finalPageNumber} من {totalPages}</span>
         </footer>
-      </section>
+      </section>}
 
       {/* ═════════════════════════════════════════════════════════════
           PRINT STYLES ENGINE (A4 PAGE MODEL & PERFECT BORDERS)
@@ -572,8 +611,40 @@ export default function ReportPrintDocument({
           border: 1.5px solid #bbf7d0;
           border-radius: 12px;
           padding: 12px 16px;
-          text-align: center;
           margin-bottom: 14px;
+        }
+
+        .title-content {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          text-align: right;
+        }
+
+        .student-photo-print {
+          width: 74px;
+          height: 74px;
+          flex: 0 0 74px;
+          border-radius: 18px;
+          border: 2px solid #d6a83f;
+          background: #ffffff;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+        }
+
+        .student-photo-print img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .student-photo-print span {
+          color: #06392c;
+          font-size: 28px;
+          font-weight: 900;
         }
 
         .main-title {

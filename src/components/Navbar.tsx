@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
-import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/localDb';
+import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 import { findStudentsForParent, findMatchingStudentForParent } from '@/lib/nameMatching';
 
 export default function Navbar() {
@@ -149,7 +149,7 @@ export default function Navbar() {
               <>
                 {students.length > 0 && (
                   <div className="hidden md:flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold">
-                    <span className="text-slate-400">الطفل:</span>
+                    <span className="text-slate-400">{students.length > 1 ? 'الطلاب:' : 'الطالب:'}</span>
                     <select
                       value={activeStudentId}
                       onChange={(e) => selectStudent(e.target.value)}

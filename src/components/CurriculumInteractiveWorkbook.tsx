@@ -22,8 +22,9 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { CurriculumSubject } from '@/data/curriculaData';
-import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/cloudStore';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { recordStudentLearningActivity } from '@/lib/learningProgress';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 const DRAWINGS_KEY = 'masar.curriculumDrawings.v1';
@@ -112,6 +113,11 @@ export default function CurriculumInteractiveWorkbook({
       return (
         allStudents.find(
           (student) =>
+            student.id === session.linkedStudentId ||
+            student.linkedStudentId === session.linkedStudentId ||
+            student.studentAccountId === session.id ||
+            student.linkedStudentEmail === session.email ||
+            student.email === session.email ||
             student.fullName === session.name ||
             student.parentPhone === session.phone ||
             student.parentPhone === session.email ||
@@ -121,6 +127,15 @@ export default function CurriculumInteractiveWorkbook({
     }
 
     return selectedStudentId || allStudents[0]?.id || '';
+  }
+
+  function getActiveStudent() {
+    const activeId = getActiveStudentId();
+    return getStudents().find((student) => student.id === activeId) ?? null;
+  }
+
+  function shouldTrackStudentActivity() {
+    return getSession()?.role === 'student';
   }
 
   function drawingId(pageNumber = page) {
@@ -140,6 +155,18 @@ export default function CurriculumInteractiveWorkbook({
     const next = [record, ...readDrawings().filter((item) => item.id !== record.id)];
     writeCloudCache(DRAWINGS_KEY, next);
     void syncDocToCloud('curriculum_drawings', record.id, record);
+    const activeStudent = getActiveStudent();
+    if (activeStudent && shouldTrackStudentActivity()) {
+      recordStudentLearningActivity({
+        studentId: activeStudent.id,
+        studentName: activeStudent.fullName,
+        type: 'save_curriculum_page',
+        subjectSlug: curriculum.slug,
+        subjectTitle: curriculum.title,
+        page: record.page,
+        href: `/programs/curricula/${curriculum.slug}?page=${record.page}`,
+      });
+    }
   }
 
   function getCanvasContext() {
@@ -211,6 +238,18 @@ export default function CurriculumInteractiveWorkbook({
   useEffect(() => {
     setPageInput(String(page));
     setLoadingPage(true);
+    const activeStudent = getActiveStudent();
+    if (activeStudent && shouldTrackStudentActivity()) {
+      recordStudentLearningActivity({
+        studentId: activeStudent.id,
+        studentName: activeStudent.fullName,
+        type: 'open_curriculum_page',
+        subjectSlug: curriculum.slug,
+        subjectTitle: curriculum.title,
+        page,
+        href: `/programs/curricula/${curriculum.slug}?page=${page}`,
+      });
+    }
     const timeout = setTimeout(() => {
       redrawSavedDrawing(page);
       setLoadingPage(false);

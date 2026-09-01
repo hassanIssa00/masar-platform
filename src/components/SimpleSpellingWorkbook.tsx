@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ClipboardCheck, Download, Eraser, PenLine, RotateCcw, Save, Send, Users } from 'lucide-react';
-import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/localDb';
+import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/cloudStore';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 const PAGE_COUNT = 81;

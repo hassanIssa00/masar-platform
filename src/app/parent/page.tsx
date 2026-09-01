@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
+import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import { curriculumPrograms } from '@/data/curriculum';
 import {
-  getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
+  getAccounts, getMessages, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer,
   MessageRecord, ReportRecord, saveMessage, StudentRecord, updateStudent, clearSession
-} from '@/lib/localDb';
+} from '@/lib/cloudStore';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { getClassStudents } from '@/lib/classDb';
@@ -36,6 +37,7 @@ export default function ParentDashboard() {
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [hasSurvey, setHasSurvey] = useState(true);
   const [parentName, setParentName] = useState<string>('');
   const [replyText, setReplyText] = useState('');
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
@@ -75,6 +77,14 @@ export default function ParentDashboard() {
 
       // Build parent profile from session + account record
       const parentAcc = allAccounts.find((a) => a.id === session.id) as any;
+      const parentProfile = {
+        ...session,
+        ...parentAcc,
+        id: session.id,
+        email: session.email || parentAcc?.email,
+        phone: session.phone || parentAcc?.phone,
+        schoolBranch: session.schoolBranch || parentAcc?.schoolBranch,
+      };
       const linkedStudentId: string | undefined =
         (session as any)?.linkedStudentId ||
         parentAcc?.linkedStudentId;
@@ -84,11 +94,7 @@ export default function ParentDashboard() {
 
       let myStudents: StudentRecord[] = [];
 
-      // TIER 1: URL query param (user explicitly opened a student link)
-      if (activeId) {
-        const byUrl = allKnown.find((s) => s.id === activeId);
-        if (byUrl) myStudents = [byUrl];
-      }
+      myStudents = findStudentsForParent(parentProfile, allKnown);
 
       // TIER 2: linkedStudentId from session / account (set during onboarding)
       if (myStudents.length === 0 && linkedStudentId) {
@@ -116,12 +122,20 @@ export default function ParentDashboard() {
 
       // TIER 5: Patronymic name match (session name vs student's parent name)
       if (myStudents.length === 0 && session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر') {
-        myStudents = findStudentsForParent(session, allKnown);
+        myStudents = findStudentsForParent(parentProfile, allKnown);
       }
 
-      // TIER 6: Single student in DB (safe single-user fallback)
-      if (myStudents.length === 0 && allStudents.length === 1) {
-        myStudents = allStudents;
+      if (activeId) {
+        const byUrl = allKnown.find((s) => s.id === activeId);
+        const urlOwned = byUrl && (
+          myStudents.some((s) => s.id === byUrl.id) ||
+          byUrl.parentAccountId === session.id ||
+          byUrl.linkedParentId === session.id ||
+          byUrl.id === linkedStudentId
+        );
+        if (urlOwned && byUrl) {
+          myStudents = [byUrl, ...myStudents.filter((s) => s.id !== byUrl.id)];
+        }
       }
 
       // ─────────────────────────────────────────────────────
@@ -161,9 +175,11 @@ export default function ParentDashboard() {
 
         const enriched: StudentRecord = {
           ...st,
-          photoUrl: st.photoUrl || twins.find((t: any) => t.photoUrl)?.photoUrl || allAccounts.find((a) => a.photoUrl && normalizeArabicText(a.name) === normName)?.photoUrl || '',
+          photoUrl: st.photoUrl || twins.find((t: any) => t.photoUrl)?.photoUrl || allAccounts.find((a) =>
+            a.photoUrl &&
+            (a.id === st.studentAccountId || a.linkedStudentId === st.id || a.email === st.linkedStudentEmail)
+          )?.photoUrl || '',
           dateOfBirth: st.dateOfBirth || twins.find((t: any) => t.dateOfBirth)?.dateOfBirth || '',
-          // Never inherit nationalId from unrelated students — compare by name only
           nationalId: st.nationalId || '',
           grade: st.grade || twins.find((t: any) => t.grade)?.grade || 'الصف الأول',
           parentName: (st.parentName && !isPlaceholder(st.parentName) ? st.parentName : '') || twins.find((t: any) => t.parentName && !isPlaceholder(t.parentName))?.parentName || (session.name && !isPlaceholder(session.name) ? session.name : '') || 'ولي الأمر',
@@ -198,6 +214,13 @@ export default function ParentDashboard() {
       if (myStudents.length > 0) {
         const targetId = (activeId && myStudents.some((s) => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
+        const allSurveys = getSurveys();
+        const surveyDone = allSurveys.some(
+          (s) => s.studentId === targetId ||
+          (session.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
+          (session.phone && s.parentPhone === session.phone)
+        );
+        setHasSurvey(surveyDone);
       }
       setHomeworkList(getLocalHomework());
     };
@@ -205,12 +228,9 @@ export default function ParentDashboard() {
     return () => { cancelled = true; };
   }, [router]);
 
-  const allAvailableStudents = getStudents();
   const rawSelectedStudent =
     students.find((student) => student.id === selectedStudentId) ??
     students[0] ??
-    allAvailableStudents.find((s) => s.id === selectedStudentId) ??
-    allAvailableStudents[0] ??
     null;
 
   const selectedStudent = useMemo<StudentRecord | null>(() => {
@@ -226,9 +246,31 @@ export default function ParentDashboard() {
     const isGenericName = !resolvedFullName || resolvedFullName.includes('الاستبيان') || resolvedFullName.includes('جديد') || resolvedFullName === 'طالب';
 
     if (isGenericName) {
-      const studentAcc = allAcc.find((a) => a.role === 'student' && a.name && !a.name.includes('جديد') && !a.name.includes('الاستبيان'));
-      const repStudent = allReps.find((r) => r.studentName && !r.studentName.includes('جديد') && !r.studentName.includes('الاستبيان'));
-      const knownSt = allKnown.find((s: any) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+      const studentAcc = allAcc.find((a) =>
+        a.role === 'student' &&
+        a.name &&
+        !a.name.includes('جديد') &&
+        !a.name.includes('الاستبيان') &&
+        (a.id === rawSelectedStudent.studentAccountId ||
+          a.linkedStudentId === rawSelectedStudent.id ||
+          a.email === rawSelectedStudent.linkedStudentEmail)
+      );
+      const repStudent = allReps.find((r) =>
+        r.studentId === rawSelectedStudent.id &&
+        r.studentName &&
+        !r.studentName.includes('جديد') &&
+        !r.studentName.includes('الاستبيان')
+      );
+      const knownSt = allKnown.find((s: any) =>
+        s.id !== rawSelectedStudent.id &&
+        (s.studentAccountId === rawSelectedStudent.studentAccountId ||
+          s.parentAccountId === rawSelectedStudent.parentAccountId ||
+          s.linkedParentId === rawSelectedStudent.linkedParentId ||
+          s.linkedStudentEmail === rawSelectedStudent.linkedStudentEmail) &&
+        s.fullName &&
+        !s.fullName.includes('جديد') &&
+        !s.fullName.includes('الاستبيان')
+      );
 
       if (studentAcc?.name) {
         resolvedFullName = studentAcc.name;
@@ -236,10 +278,9 @@ export default function ParentDashboard() {
         resolvedFullName = repStudent.studentName;
       } else if (knownSt?.fullName) {
         resolvedFullName = knownSt.fullName;
-      } else if (parentName && parentName !== 'ولي الأمر') {
-        resolvedFullName = `طالب ${parentName}`;
       }
     }
+
 
     const norm = normalizeArabicText(resolvedFullName);
 
@@ -251,7 +292,12 @@ export default function ParentDashboard() {
     const bestPhoto =
       rawSelectedStudent.photoUrl ||
       twins.find((t: any) => t.photoUrl)?.photoUrl ||
-      allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
+      allAcc.find((a) =>
+        a.photoUrl &&
+        (a.id === rawSelectedStudent.studentAccountId ||
+          a.linkedStudentId === rawSelectedStudent.id ||
+          a.email === rawSelectedStudent.linkedStudentEmail)
+      )?.photoUrl ||
       '';
 
     const bestDob =
@@ -351,6 +397,20 @@ export default function ParentDashboard() {
     setMessages(getMessages());
   };
 
+  const handleSendVoiceReply = async (audioDataUrl: string) => {
+    if (!selectedStudent) return;
+    saveMessage({
+      studentId: selectedStudent.id,
+      from: 'parent',
+      to: 'doctor',
+      body: 'رسالة صوتية من ولي الأمر',
+      audioDataUrl,
+      attachmentType: 'audio',
+      read: false,
+    });
+    setMessages(getMessages());
+  };
+
   const tabs: Array<{ key: ParentTab; label: string; icon: any }> = [
     { key: 'home', label: 'الرئيسية', icon: Home },
     { key: 'reports', label: 'التقارير الموثقة', icon: FileText },
@@ -398,6 +458,30 @@ export default function ParentDashboard() {
             </div>
           </div>
         </header>
+
+        {/* Required Survey Alert Banner */}
+        {!hasSurvey && selectedStudent && (
+          <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm font-black text-xl">
+                📝
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-amber-950">استبيان ولي الأمر مطلوب ⚠️</h3>
+                <p className="text-xs font-bold text-amber-800 mt-0.5">
+                  يرجى استكمال استبيان ولي الأمر عن الطالب (<strong>{selectedStudent.fullName}</strong>) لمساعدة د. إسماعيل عيسى في تخصيص الخطة والتقييم.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/survey?student=${selectedStudent.id}&flow=parent`}
+              className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 px-5 py-2.5 text-xs font-black text-white transition shadow-sm shrink-0 active:scale-95"
+            >
+              <span>تعبئة الاستبيان الآن</span>
+              <ArrowLeft size={14} />
+            </Link>
+          </div>
+        )}
 
         {/* Multiple Children Switcher Bar if parent has multiple kids */}
         {students.length > 1 && (
@@ -666,6 +750,7 @@ export default function ParentDashboard() {
                         }`}
                       >
                         {msg.body}
+                        <MessageAudio src={msg.audioDataUrl} />
                       </div>
                     </div>
                   );
@@ -701,6 +786,7 @@ export default function ParentDashboard() {
                 <Send size={15} />
                 <span>إرسال</span>
               </button>
+              <VoiceRecorderButton onRecorded={handleSendVoiceReply} disabled={!selectedStudent} />
             </div>
           </section>
         )}

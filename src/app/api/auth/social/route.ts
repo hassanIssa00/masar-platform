@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
-import type { UserRole } from '@/lib/localDb';
+import type { UserRole } from '@/lib/cloudStore';
 
 const ROLES = new Set<UserRole>(['parent', 'student', 'teacher', 'specialist']);
 

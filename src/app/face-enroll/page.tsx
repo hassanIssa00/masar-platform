@@ -7,7 +7,7 @@ import {
   Trash2, RefreshCw, ArrowLeft, Loader2, User, Eye, EyeOff, ZapIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import { getSession, hydrateSessionFromServer } from '@/lib/localDb';
+import { getSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 import { enrollFace, isFaceEnrolled, removeFaceEnrollment, initFaceAuth, detectFace, checkBlink } from '@/lib/faceAuth';
 
 type Phase = 'idle' | 'loading' | 'camera' | 'challenge' | 'capturing' | 'success' | 'error' | 'already_enrolled';

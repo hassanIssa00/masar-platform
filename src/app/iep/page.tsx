@@ -11,7 +11,7 @@ import {
   getLocalIEPs, createIEP, updateIEP, deleteIEP, type IEPRecord, type IEPGoal,
   type IEPDomain, DOMAIN_LABELS, DOMAIN_COLORS, type IEPGoalStatus
 } from '@/lib/iep';
-import { getReports, getStudents, type StudentRecord } from '@/lib/localDb';
+import { getReports, getStudents, type StudentRecord } from '@/lib/cloudStore';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function IEPPage() {

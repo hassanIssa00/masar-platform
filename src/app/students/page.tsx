@@ -1,33 +1,49 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
+import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle, CheckSquare, Square, CheckCircle2, Eye, PencilLine, ClipboardList } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
 import { curriculaList, getCurriculumBySlug } from '@/data/curriculaData';
 import { BookOpen, FolderOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { deleteStudent, getAccounts, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, updateStudent } from '@/lib/localDb';
-import { clearSnapshotBackoff, pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+import { deleteStudent, getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer, MessageRecord, ReportRecord, StudentRecord, updateStudent } from '@/lib/cloudStore';
+import { clearCloudCache, clearSnapshotBackoff, pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
-import { Award, Mic } from 'lucide-react';
+import { Award, Mic, Send, X, Target } from 'lucide-react';
+import { broadcastAssessmentToStudentsAndParents } from '@/lib/broadcastService';
+import { getLocalHomework, type HomeworkRecord } from '@/lib/homework';
+import { getCurriculumAssignments, getCurriculumDrawings, getStudentLearningActivities, type CurriculumAssignmentRecord, type CurriculumDrawingRecord, type StudentLearningActivity } from '@/lib/learningProgress';
 
-const STUDENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'studentNotes'] as const;
+const STUDENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'studentNotes', 'messages', 'homework', 'curriculumAssignments', 'curriculumDrawings', 'studentLearningActivity'] as const;
 
 export default function StudentsControlPage() {
   const router = useRouter();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [messagesList, setMessagesList] = useState<MessageRecord[]>([]);
+  const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
+  const [curriculumAssignments, setCurriculumAssignments] = useState<CurriculumAssignmentRecord[]>([]);
+  const [curriculumDrawings, setCurriculumDrawings] = useState<CurriculumDrawingRecord[]>([]);
+  const [learningActivity, setLearningActivity] = useState<StudentLearningActivity[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCertData, setShowCertData] = useState<{ studentName: string; studentNameEn?: string; programTitle: string; completionDate: string; score: number } | null>(null);
+
+  // Broadcast Assessment Modal State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('اختبار تحديد المستوى وتشخيص المهارات');
+  const [broadcastBranch, setBroadcastBranch] = useState<'ALL' | 'MASAR' | 'IKHLAS_JEDDAH'>('ALL');
+  const [broadcastInstructions, setBroadcastInstructions] = useState('يرجى الدخول لحساب الطالب وإجراء الاختبار لتقييم المهارات واعتماد الخطة الفردية.');
+  const [broadcastDueDate, setBroadcastDueDate] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
 
   // Note management state for selected student
   const [teacherNoteText, setTeacherNoteText] = useState('');
@@ -73,6 +89,11 @@ export default function StudentsControlPage() {
     const nextStudents = Array.from(dedupMap.values());
     setStudents(nextStudents);
     setReports(getReports());
+    setMessagesList(getMessages());
+    setHomeworkList(getLocalHomework());
+    setCurriculumAssignments(getCurriculumAssignments());
+    setCurriculumDrawings(getCurriculumDrawings());
+    setLearningActivity(getStudentLearningActivities());
     
     const initialStudentId = selectedId && nextStudents.some((s) => s.id === selectedId) ? selectedId : (nextStudents[0]?.id || '');
     setSelectedId(initialStudentId);
@@ -213,6 +234,82 @@ export default function StudentsControlPage() {
     return allSelectableTracks.filter((t) => slugs.includes(t.slug));
   }, [selectedStudent, allSelectableTracks]);
 
+  const studentLearningSnapshot = useMemo(() => {
+    if (!selectedStudent) {
+      return {
+        assignments: [] as CurriculumAssignmentRecord[],
+        drawings: [] as CurriculumDrawingRecord[],
+        activities: [] as StudentLearningActivity[],
+        homeworks: [] as HomeworkRecord[],
+        messages: [] as MessageRecord[],
+        assignedPages: 0,
+        solvedPages: 0,
+        openedPages: 0,
+        progressPercent: 0,
+        homeworkDone: 0,
+        homeworkPercent: 0,
+      };
+    }
+
+    const assignments = curriculumAssignments.filter((item) => item.studentId === selectedStudent.id);
+    const drawings = curriculumDrawings.filter((item) => item.studentId === selectedStudent.id);
+    const activities = learningActivity.filter((item) => item.studentId === selectedStudent.id);
+    const homeworks = homeworkList.filter((item) => item.studentId === selectedStudent.id || item.studentName === selectedStudent.fullName);
+    const messages = messagesList.filter((item) => item.studentId === selectedStudent.id);
+    const assignedPages = assignments.reduce((sum, item) => sum + Math.max(0, item.toPage - item.fromPage + 1), 0);
+    const solvedPageKeys = new Set(drawings.map((item) => `${item.subjectSlug}_${item.page}`));
+    const openedPageKeys = new Set(activities.filter((item) => item.type === 'open_curriculum_page').map((item) => `${item.subjectSlug}_${item.page}`));
+    const homeworkDone = homeworks.filter((item) => item.status === 'submitted' || item.status === 'reviewed').length;
+
+    return {
+      assignments,
+      drawings,
+      activities,
+      homeworks,
+      messages,
+      assignedPages,
+      solvedPages: solvedPageKeys.size,
+      openedPages: openedPageKeys.size,
+      progressPercent: assignedPages ? Math.min(100, Math.round((solvedPageKeys.size / assignedPages) * 100)) : 0,
+      homeworkDone,
+      homeworkPercent: homeworks.length ? Math.round((homeworkDone / homeworks.length) * 100) : 0,
+    };
+  }, [selectedStudent, curriculumAssignments, curriculumDrawings, learningActivity, homeworkList, messagesList]);
+
+  const recentLearningEvents = useMemo(() => {
+    const events = [
+      ...studentLearningSnapshot.activities.map((item) => ({
+        id: item.id,
+        at: item.createdAt,
+        title: item.type === 'save_curriculum_page' ? 'حفظ حل صفحة بالمنهج' : item.type === 'open_curriculum_page' ? 'فتح صفحة من المنهج' : 'نشاط تعليمي',
+        detail: `${item.subjectTitle || item.subjectSlug || 'منهج'}${item.page ? ` - صفحة ${item.page}` : ''}`,
+      })),
+      ...studentReports.map((item) => ({
+        id: item.id,
+        at: item.date || '',
+        title: 'تقرير/اختبار محفوظ',
+        detail: `${item.program} - نتيجة ${item.score}%`,
+      })),
+      ...studentLearningSnapshot.homeworks.map((item) => ({
+        id: item.id,
+        at: item.createdAt,
+        title: item.status === 'reviewed' ? 'واجب تمت مراجعته' : item.status === 'submitted' ? 'واجب تم تسليمه' : 'واجب مسند',
+        detail: `${item.title} - ${item.dueDate}`,
+      })),
+      ...studentLearningSnapshot.messages.map((item) => ({
+        id: item.id,
+        at: item.createdAt,
+        title: item.from === 'doctor' ? 'رسالة مرسلة لولي الأمر' : 'رد من ولي الأمر',
+        detail: item.body,
+      })),
+    ];
+
+    return events
+      .filter((item) => item.at)
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 8);
+  }, [studentLearningSnapshot, studentReports]);
+
   // System-recommended track suggestion
   const systemRecommendation = useMemo(() => {
     if (!selectedStudent) return null;
@@ -300,16 +397,53 @@ export default function StudentsControlPage() {
   };
 
   const handleDeleteAllStudents = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل؟ سيتم مسح ملفاتهم وسجلاتهم.')) return;
-    const currentStudents = getStudents();
-    for (const s of currentStudents) {
-      await deleteStudent(s.id);
+    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل من قاعدة البيانات السحابية؟ سيتم مسح ملفات الطلاب وحسابات الطلاب وأولياء الأمور والتقارير المرتبطة.')) return;
+    setLoading(true);
+    try {
+      const response = await fetch('/api/students/purge', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'students' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || 'تعذر حذف الطلاب من السحابة.');
+      }
+      clearCloudCache();
+      clearSnapshotBackoff();
+      setStudents([]);
+      setReports([]);
+      setSelectedId('');
+      setMessage(`تم حذف جميع الطلاب نهائياً من قاعدة البيانات السحابية (${payload.deletedStudents || 0} طالب).`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'تعذر حذف جميع الطلاب من السحابة.');
+    } finally {
+      setLoading(false);
     }
-    setStudents([]);
-    setSelectedId('');
-    await refresh();
-    setMessage('تم حذف جميع الطلاب بالكامل وتفريغ القائمة.');
     setTimeout(() => setMessage(''), 4000);
+  };
+
+  const handleBroadcastAssessment = async () => {
+    if (!broadcastTitle.trim()) return;
+    setBroadcastSending(true);
+    try {
+      const result = await broadcastAssessmentToStudentsAndParents({
+        testTitle: broadcastTitle.trim(),
+        branch: broadcastBranch,
+        instructions: broadcastInstructions.trim(),
+        dueDate: broadcastDueDate.trim() || undefined,
+      });
+
+      setShowBroadcastModal(false);
+      setBroadcastSending(false);
+      setMessage(result.message);
+      setTimeout(() => setMessage(''), 6000);
+      await refresh();
+    } catch (e: any) {
+      setBroadcastSending(false);
+      alert('حدث خطأ أثناء إرسال الاختبار: ' + (e?.message || ''));
+    }
   };
 
   return (
@@ -337,7 +471,15 @@ export default function StudentsControlPage() {
                   يمكنك اختيار مسار واحد أو دمج عدة مسارات معاً للطالب بناءً على رؤيتك التشخيصية، ثم اعتمادها رقمياً.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(true)}
+                  className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs font-black text-indigo-800 hover:bg-indigo-100 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Send size={14} className="text-indigo-600" />
+                  <span>إرسال اختبار وتنبيه أولياء الأمور 📤</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleManualRefresh}
@@ -361,6 +503,7 @@ export default function StudentsControlPage() {
               </div>
             </div>
           </header>
+
 
           {loading ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
@@ -783,7 +926,7 @@ export default function StudentsControlPage() {
                         <h3 className="font-black text-slate-950 text-xl flex items-center gap-2">
                           <span>📈</span> خط التطور والتحسن الزمني للطالب
                         </h3>
-                        <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">مقارنة التقييمات ومعدل التحسن عبر الأنشطة والاختبارات المنجزة</p>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">متابعة فتح المناهج، حل الصفحات، الواجبات، الرسائل، والتقييمات المرتبطة بالطالب</p>
                       </div>
                       {studentReports.length > 0 && (
                         <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-300 px-4 py-2 text-emerald-950 shadow-2xs self-start sm:self-auto">
@@ -794,6 +937,104 @@ export default function StudentsControlPage() {
                         </div>
                       )}
                     </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <ProgressMetric
+                        icon={<BookOpenCheck size={18} />}
+                        label="المسارات المعتمدة"
+                        value={assignedPrograms.length}
+                        note={assignedPrograms.length ? assignedPrograms.map((item) => item.shortTitle).join('، ') : 'لم يتم اعتماد مسار بعد'}
+                      />
+                      <ProgressMetric
+                        icon={<Eye size={18} />}
+                        label="صفحات تم فتحها"
+                        value={studentLearningSnapshot.openedPages}
+                        note={studentLearningSnapshot.assignedPages ? `من ${studentLearningSnapshot.assignedPages} صفحة مسندة` : 'تظهر عند فتح الطالب للمنهج'}
+                      />
+                      <ProgressMetric
+                        icon={<PencilLine size={18} />}
+                        label="صفحات محلولة بالقلم"
+                        value={`${studentLearningSnapshot.progressPercent}%`}
+                        note={`${studentLearningSnapshot.solvedPages} صفحة محفوظة`}
+                      />
+                      <ProgressMetric
+                        icon={<ClipboardList size={18} />}
+                        label="إنجاز الواجبات"
+                        value={`${studentLearningSnapshot.homeworkPercent}%`}
+                        note={`${studentLearningSnapshot.homeworkDone} من ${studentLearningSnapshot.homeworks.length} واجب`}
+                      />
+                    </div>
+
+                    {(studentLearningSnapshot.assignments.length > 0 || assignedPrograms.length > 0) && (
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <h4 className="text-sm font-black text-slate-950">المناهج والصفحات المسندة فعلياً</h4>
+                            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-teal-800 border border-teal-100">
+                              {studentLearningSnapshot.solvedPages}/{studentLearningSnapshot.assignedPages || 0} صفحة محلولة
+                            </span>
+                          </div>
+                          {studentLearningSnapshot.assignments.length ? (
+                            <div className="grid gap-2">
+                              {studentLearningSnapshot.assignments.map((assignment) => {
+                                const total = Math.max(0, assignment.toPage - assignment.fromPage + 1);
+                                const solved = studentLearningSnapshot.drawings.filter(
+                                  (drawing) =>
+                                    drawing.subjectSlug === assignment.subjectSlug &&
+                                    drawing.page >= assignment.fromPage &&
+                                    drawing.page <= assignment.toPage,
+                                ).length;
+                                const percent = total ? Math.min(100, Math.round((solved / total) * 100)) : 0;
+                                return (
+                                  <div key={`${assignment.studentId}_${assignment.subjectSlug}`} className="rounded-xl border border-slate-200 bg-white p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div>
+                                        <p className="text-xs font-black text-slate-950">{assignment.subjectTitle}</p>
+                                        <p className="mt-0.5 text-[11px] font-bold text-slate-500">
+                                          الصفحات {assignment.fromPage} إلى {assignment.toPage} · إسناد {new Date(assignment.assignedAt).toLocaleDateString('ar-EG')}
+                                        </p>
+                                      </div>
+                                      <span className="shrink-0 rounded-lg bg-teal-50 px-2.5 py-1 text-xs font-black text-teal-800 border border-teal-100">
+                                        {percent}%
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                                      <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${percent}%` }} />
+                                    </div>
+                                    <p className="mt-1.5 text-[11px] font-bold text-slate-500">{solved} صفحة محفوظة من {total}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs font-bold text-slate-500">
+                              المسار معتمد، لكن لم يتم إسناد صفحات منهج محددة بعد.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <h4 className="mb-3 text-sm font-black text-slate-950">آخر حركة في ملف الطالب</h4>
+                          {recentLearningEvents.length ? (
+                            <div className="space-y-2">
+                              {recentLearningEvents.map((event) => (
+                                <div key={`${event.id}_${event.at}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                  <p className="text-xs font-black text-slate-900">{event.title}</p>
+                                  <p className="mt-0.5 line-clamp-2 text-[11px] font-bold text-slate-500">{event.detail}</p>
+                                  <p className="mt-1 text-[10px] font-bold text-slate-400">
+                                    {new Date(event.at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs font-bold text-slate-500">
+                              لم يفتح الطالب أي منهج أو واجب بعد.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {studentReports.length === 0 ? (
                       <div className="py-10 text-center text-slate-400 space-y-2">
@@ -939,16 +1180,138 @@ export default function StudentsControlPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDeleteId(null)}
-                className="rounded-xl px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-100 transition"
+                className="rounded-xl px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-100 transition cursor-pointer"
               >
                 إلغاء
               </button>
               <button
                 type="button"
                 onClick={() => confirmDeleteId && handleDeleteStudent(confirmDeleteId)}
-                className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition shadow-md shadow-rose-600/20"
+                className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition shadow-md shadow-rose-600/20 cursor-pointer"
               >
                 تأكيد الحذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast Assessment Modal */}
+      {showBroadcastModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 text-right" dir="rtl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+                  <Send size={18} />
+                </span>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">إرسال اختبار للطلاب وتنبيه أولياء الأمور</h3>
+                  <p className="text-xs font-bold text-slate-500">تكليف وإشعار فوري لجميع الطلاب وأولياء أمورهم بضغطة واحدة</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBroadcastModal(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">عنوان الاختبار / التكليف *</label>
+                <input
+                  type="text"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="مثال: اختبار تحديد المستوى التشخيصي الأول"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">الجهة المستهدفة</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastBranch('ALL')}
+                    className={`rounded-xl py-2 text-xs font-black transition border ${
+                      broadcastBranch === 'ALL' ? 'bg-indigo-900 text-white border-indigo-900' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    جميع الطلاب ({students.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastBranch('MASAR')}
+                    className={`rounded-xl py-2 text-xs font-black transition border ${
+                      broadcastBranch === 'MASAR' ? 'bg-teal-700 text-white border-teal-700' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    منصة مسار
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastBranch('IKHLAS_JEDDAH')}
+                    className={`rounded-xl py-2 text-xs font-black transition border ${
+                      broadcastBranch === 'IKHLAS_JEDDAH' ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    فصل د. إسماعيل
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">تعليمات د. إسماعيل لأولياء الأمور والطلاب</label>
+                <textarea
+                  rows={3}
+                  value={broadcastInstructions}
+                  onChange={(e) => setBroadcastInstructions(e.target.value)}
+                  placeholder="اكتب أي ملاحظات أو توجيهات خاصة بالاختبار..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">الموعد النهائي الموصى به (اختياري)</label>
+                <input
+                  type="text"
+                  value={broadcastDueDate}
+                  onChange={(e) => setBroadcastDueDate(e.target.value)}
+                  placeholder="مثال: مساء الخميس القادم الساعة ٨ مساءً"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowBroadcastModal(false)}
+                className="rounded-xl px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-100 transition"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleBroadcastAssessment}
+                disabled={broadcastSending || !broadcastTitle.trim()}
+                className="rounded-xl bg-indigo-700 px-5 py-2.5 text-xs font-black text-white hover:bg-indigo-800 transition shadow-md shadow-indigo-700/20 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {broadcastSending ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>جارٍ الإرسال والتنبيه...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={13} />
+                    <span>إرسال التكليف والإشعار الآن</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -959,6 +1322,7 @@ export default function StudentsControlPage() {
     </div>
   );
 }
+
 
 function Avatar({ student, size }: { student: StudentRecord; size: 'sm' | 'lg' }) {
   const className = size === 'lg' ? 'h-32 w-32 text-4xl' : 'h-12 w-12 text-lg';
@@ -984,6 +1348,23 @@ function Info({ label, value }: { label: string; value?: string }) {
     <div className="rounded-xl bg-slate-50 p-3 border border-slate-100">
       <p className="text-[11px] font-black text-slate-400">{label}</p>
       <p className="mt-1 break-words text-xs font-black text-slate-900">{value || 'غير مسجل'}</p>
+    </div>
+  );
+}
+
+function ProgressMetric({ icon, label, value, note }: { icon: ReactNode; label: string; value: string | number; note: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-2xs">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-black text-slate-950">{value}</p>
+        </div>
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-teal-700 border border-teal-100">
+          {icon}
+        </span>
+      </div>
+      <p className="mt-2 line-clamp-2 text-[11px] font-bold leading-5 text-slate-500">{note}</p>
     </div>
   );
 }

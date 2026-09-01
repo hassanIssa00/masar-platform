@@ -15,14 +15,11 @@ import {
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
   getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal,
-  getSavedSchedule, parseSlotsToPeriods,
+  getSavedSchedule,
   type Period,
 } from '@/data/ikhlasSchedule';
-import { clearSession } from '@/lib/localDb';
-import { writeCloudCache } from '@/lib/firestoreSync';
+import { clearSession } from '@/lib/cloudStore';
 import { getClassStudents } from '@/lib/classDb';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
@@ -34,7 +31,6 @@ import ClassroomStudentsTab from '@/components/ClassroomStudentsTab';
 import ClassroomParentsTab from '@/components/ClassroomParentsTab';
 import ClassroomQuizzesTab from '@/components/ClassroomQuizzesTab';
 import StudentAIChatTab from '@/components/StudentAIChatTab';
-import SmartScheduleTab from '@/components/SmartScheduleTab';
 import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
@@ -51,7 +47,6 @@ type Tab =
   | 'parents'
   | 'quizzes'
   | 'ai-chat'
-  | 'smart-schedule'
   | 'live'
   | 'certificates'
   | 'schedule'
@@ -79,6 +74,12 @@ export default function IkhlasJeddahPage() {
     schedule: true,
   });
 
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
   const toggleCategory = (id: string) => {
     setOpenCategories((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -98,7 +99,7 @@ export default function IkhlasJeddahPage() {
     return () => window.removeEventListener('storage', syncStudents);
   }, []);
 
-  // ── Sync Schedule from Local Storage, Custom Events, & Firestore Cloud ──
+  // ── Keep the official term schedule in sync with in-app refresh events ──
   useEffect(() => {
     const refreshSchedule = () => {
       setSchedule(getSavedSchedule());
@@ -106,36 +107,9 @@ export default function IkhlasJeddahPage() {
 
     refreshSchedule();
     window.addEventListener('masar_schedule_updated', refreshSchedule);
-    window.addEventListener('storage', refreshSchedule);
-
-    let unsub = () => {};
-    try {
-      unsub = onSnapshot(collection(db, 'smart_schedules'), (snap) => {
-        const docSnap = snap.docs.find(d => d.id === 'IKHLAS_JEDDAH_SCHEDULE');
-        if (docSnap) {
-          const data = docSnap.data() as any;
-          if (data && Array.isArray(data.slots) && data.slots.length > 0) {
-            // Only accept the cloud schedule if it has real subject names
-            const hasRealSubjects = data.slots.some((s: any) => {
-              const sub = s.subject || s.subjectName;
-              return sub && sub !== 'درس حر' && sub !== 'حصة دراسية';
-            });
-            if (hasRealSubjects) {
-              const periods = parseSlotsToPeriods(data.slots);
-              setSchedule(periods);
-              writeCloudCache('masar_smart_schedule_v1', [data]);
-            }
-          }
-        }
-      });
-    } catch (e) {
-      console.warn('Firestore schedule sync note:', e);
-    }
 
     return () => {
       window.removeEventListener('masar_schedule_updated', refreshSchedule);
-      window.removeEventListener('storage', refreshSchedule);
-      unsub();
     };
   }, []);
 
@@ -295,7 +269,7 @@ export default function IkhlasJeddahPage() {
         setActiveTab('overview');
       }
 
-      if (actionType === 'schedule') setActiveTab('smart-schedule');
+      if (actionType === 'schedule') setActiveTab('schedule');
       if (actionType === 'report' || actionType === 'iep') setActiveTab('reports');
       if (actionType === 'message') setActiveTab('parents-chat');
       if (actionType === 'research') setActiveTab('ai-chat');
@@ -643,7 +617,6 @@ export default function IkhlasJeddahPage() {
       icon: Clock,
       items: [
         { key: 'schedule', label: 'جدول الحصص', icon: Clock },
-        { key: 'smart-schedule', label: 'الجدول الذكي', icon: Bell },
         { key: 'attendance', label: 'الحضور والغياب', icon: Users },
         { key: 'meetings', label: 'الاجتماعات المرئية', icon: Video },
         { key: 'photos', label: 'أرشيف الصور والفعاليات', icon: Camera },
@@ -712,15 +685,24 @@ export default function IkhlasJeddahPage() {
 
       {/* ─── MAIN CONTAINER WITH FLUSH RIGHT SIDEBAR ─── */}
       <div className="flex-1 flex w-full relative min-h-[calc(100vh-61px)]">
+        {isSidebarOpen && (
+          <button
+            type="button"
+            aria-label="إغلاق القائمة"
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-x-0 bottom-0 top-[61px] z-40 bg-slate-950/35 backdrop-blur-[1px] lg:hidden"
+          />
+        )}
 
         {/* ── RIGHT SIDEBAR MENU BAR (FLUSH TO VERY RIGHT EDGE) ── */}
         <aside
           className={`
             bg-white border-l border-slate-200 shadow-lg text-slate-700 font-sans select-none
-            transition-all duration-300 ease-in-out shrink-0 z-30
-            sticky top-[61px] h-[calc(100vh-61px)] overflow-y-auto flex flex-col
+            transition-all duration-300 ease-in-out z-50
+            fixed right-0 top-[61px] h-[calc(100dvh-61px)] w-[min(20rem,calc(100vw-16px))] overflow-y-auto flex flex-col
+            lg:sticky lg:z-30 lg:h-[calc(100vh-61px)] lg:shrink-0
             [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-emerald-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent
-            ${isSidebarOpen ? 'w-76 xl:w-80' : 'w-20'}
+            ${isSidebarOpen ? 'translate-x-0 lg:w-76 xl:w-80' : 'translate-x-full lg:translate-x-0 lg:w-20'}
           `}
         >
           {/* Top Brand / Toggle Card */}
@@ -839,7 +821,12 @@ export default function IkhlasJeddahPage() {
                               <button
                                 key={item.key}
                                 type="button"
-                                onClick={() => setActiveTab(item.key)}
+                                onClick={() => {
+                                  setActiveTab(item.key);
+                                  if (window.matchMedia('(max-width: 1023px)').matches) {
+                                    setIsSidebarOpen(false);
+                                  }
+                                }}
                                 className={`group flex min-h-10 items-center justify-between rounded-xl px-3 py-2 text-xs md:text-sm font-bold transition-all duration-150 border cursor-pointer ${
                                   isActive
                                     ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm font-black'
@@ -907,11 +894,6 @@ export default function IkhlasJeddahPage() {
 
         {/* ════════════ شات AI للطلاب ════════════ */}
         {activeTab === 'ai-chat' && <StudentAIChatTab />}
-
-        {/* ════════════ الجدول الذكي وإشعارات الأولياء ════════════ */}
-        {activeTab === 'smart-schedule' && (
-          <SmartScheduleTab onNavigateToSchedule={() => setActiveTab('schedule')} />
-        )}
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
@@ -1024,7 +1006,6 @@ export default function IkhlasJeddahPage() {
             currentPeriod={currentPeriod}
             minsUntilDismissal={minsUntilDismissal}
             jsDay={jsDay}
-            onNavigateToSmartSchedule={() => setActiveTab('smart-schedule')}
           />
         )}
 

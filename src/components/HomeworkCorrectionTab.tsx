@@ -105,47 +105,6 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
     window.open(waUrl, '_blank');
   };
 
-  // Demo Generator: if no submissions exist, allow teacher to populate sample student answers
-  const handleGenerateSampleSubmissions = () => {
-    if (quizzes.length === 0) {
-      alert('⚠️ يرجى إنشاء واجب أولاً من صفحة المناهج الدراسية!');
-      return;
-    }
-
-    const quiz = quizzes[0];
-    const sampleStudents = students.length > 0 ? students : [
-      { id: 'cls-std-001', name: 'انس ابراهيم محمد موافي', phone: '0551234567' },
-      { id: 'cls-std-002', name: 'أحمد إبراهيم علي إسماعيل', phone: '0509876543' },
-    ];
-
-    sampleStudents.forEach((st, idx) => {
-      const answers: Record<string, string> = {};
-      quiz.questions.forEach((q, qIdx) => {
-        if (q.options && q.options.length > 0) {
-          // student 1 gets mostly correct, student 2 gets some wrong
-          const isCorrect = idx === 0 ? true : qIdx % 2 === 0;
-          answers[q.id] = isCorrect ? q.correctAnswer : (q.options.find(o => o !== q.correctAnswer) || q.options[0]);
-        } else {
-          answers[q.id] = q.correctAnswer;
-        }
-      });
-
-      const sub: StudentQuizSubmission = {
-        id: `sub-${Date.now()}-${idx}`,
-        quizId: quiz.id,
-        studentId: st.id,
-        studentName: st.name,
-        answers,
-        submittedAt: new Date().toISOString(),
-      };
-
-      autoGradeSubmission(sub, quiz);
-    });
-
-    refreshData();
-    alert('✨ تم استيراد إجابات نموذجية للطلاب وتصحيحها تلقائياً!');
-  };
-
   return (
     <div className="space-y-6 text-slate-900" dir="rtl">
 
@@ -232,20 +191,13 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
         </div>
 
         <div className="flex items-center gap-2">
-          {submissions.length === 0 && (
-            <button
-              onClick={handleGenerateSampleSubmissions}
-              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer"
-            >
-              <Sparkles size={13} /> تجربة إجابات نموذجية للطلاب
-            </button>
-          )}
           <button
             onClick={refreshData}
-            className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
             title="تحديث البيانات"
           >
-            <RefreshCw size={15} />
+            <RefreshCw size={14} />
+            <span>تحديث</span>
           </button>
         </div>
       </div>
@@ -261,12 +213,12 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
             <p className="text-xs text-slate-500 font-semibold max-w-md mx-auto">
               عندما يجيب الطلاب على الواجبات المنشورة من المناهج، ستظهر هنا فوراً للتصحيح التلقائي واعتماد الدرجات.
             </p>
-            {quizzes.length > 0 && (
+            {onNavigateToCurriculum && (
               <button
-                onClick={handleGenerateSampleSubmissions}
-                className="mt-2 inline-flex items-center gap-2 bg-emerald-800 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-black transition cursor-pointer"
+                onClick={onNavigateToCurriculum}
+                className="mt-2 inline-flex items-center gap-2 bg-emerald-800 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
               >
-                <Sparkles size={14} className="text-amber-300" /> توليد إجابات تجريبية لاختبار التصحيح
+                <BookOpen size={14} className="text-emerald-200" /> الانتقال لصفحة المناهج والكتب
               </button>
             )}
           </div>

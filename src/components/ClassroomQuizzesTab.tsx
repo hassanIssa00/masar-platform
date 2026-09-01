@@ -121,98 +121,9 @@ function parseQuizFromAi(reply: string, subject: string): { title: string; quest
   }
 }
 
-const SAMPLE_QUIZZES: ClassQuiz[] = [
-  {
-    id: 'quiz-001',
-    title: 'كويز لغتي العربية: حروف الجر والكلمة والجملة 📖',
-    subject: 'لغتي العربية',
-    durationMinutes: 10,
-    totalPoints: 20,
-    createdAt: '2026-08-10',
-    submissionsCount: 4,
-    questions: [
-      {
-        id: 'q1',
-        questionText: 'اختر حرف الجر المناسب: ذهب الطالب ..... المدرسة صباحاً.',
-        type: 'multiple-choice',
-        options: ['عن', 'إلى', 'على', 'في'],
-        correctAnswer: 1,
-        points: 5,
-      },
-      {
-        id: 'q2',
-        questionText: 'الكلمة التي تبدأ بـ (الـ) القمرية هي:',
-        type: 'multiple-choice',
-        options: ['الشمس', 'السماء', 'القمر', 'الذهب'],
-        correctAnswer: 2,
-        points: 5,
-      },
-      {
-        id: 'q3',
-        questionText: 'الجملة الإسمية هي الجملة التي تبدأ بـ فعل.',
-        type: 'true-false',
-        options: ['صح', 'خطأ'],
-        correctAnswer: 1,
-        points: 5,
-      },
-      {
-        id: 'q4',
-        questionText: 'جمع كلمة (طالب) هو:',
-        type: 'multiple-choice',
-        options: ['طالبان', 'طلاب', 'طالبات', 'طلبة'],
-        correctAnswer: 1,
-        points: 5,
-      },
-    ],
-  },
-  {
-    id: 'quiz-002',
-    title: 'كويز الرياضيات السريع: جدول الضرب والقسمة 📐',
-    subject: 'الرياضيات',
-    durationMinutes: 15,
-    totalPoints: 20,
-    createdAt: '2026-08-11',
-    submissionsCount: 2,
-    questions: [
-      {
-        id: 'q1',
-        questionText: 'حاصل ضرب 7 × 8 يساوي:',
-        type: 'multiple-choice',
-        options: ['48', '54', '56', '64'],
-        correctAnswer: 2,
-        points: 5,
-      },
-      {
-        id: 'q2',
-        questionText: 'حاصل قسمة 36 ÷ 6 يساوي:',
-        type: 'multiple-choice',
-        options: ['5', '6', '7', '8'],
-        correctAnswer: 1,
-        points: 5,
-      },
-      {
-        id: 'q3',
-        questionText: 'أي الأعداد التالية يعتبر عدداً زوجياً؟',
-        type: 'multiple-choice',
-        options: ['13', '21', '28', '35'],
-        correctAnswer: 2,
-        points: 5,
-      },
-      {
-        id: 'q4',
-        questionText: 'مجموع زوايا المثلث يساوي 180 درجة.',
-        type: 'true-false',
-        options: ['صح', 'خطأ'],
-        correctAnswer: 0,
-        points: 5,
-      },
-    ],
-  },
-];
-
 function loadLocalQuizzes(): ClassQuiz[] {
   const cached = readCloudCache<ClassQuiz>(STORAGE_KEY);
-  return cached.length ? cached : SAMPLE_QUIZZES;
+  return cached.filter((q) => q && !q.id.startsWith('quiz-00') && q.id !== 'quiz-001' && q.id !== 'quiz-002');
 }
 
 function saveQuizStore(quiz: ClassQuiz, currentList: ClassQuiz[]): ClassQuiz[] {
@@ -255,30 +166,43 @@ export default function ClassroomQuizzesTab() {
 
   /* ☁️ Cloud Sync on Mount ─────────────────────────────────────── */
   useEffect(() => {
+    // Clean up any stale dummy sample quizzes
+    deleteDocFromCloud(CLOUD_COLLECTION, 'quiz-001');
+    deleteDocFromCloud(CLOUD_COLLECTION, 'quiz-002');
+
     getDocs(collection(db, CLOUD_COLLECTION)).then((snap) => {
       if (!snap.empty) {
-        const cloudItems = snap.docs.map(d => d.data() as ClassQuiz);
+        const cloudItems = snap.docs
+          .map(d => d.data() as ClassQuiz)
+          .filter(q => q && !q.id.startsWith('quiz-00') && q.id !== 'quiz-001' && q.id !== 'quiz-002');
         setQuizzes(prev => {
-          const merged = [...cloudItems, ...prev].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+          const merged = [...cloudItems, ...prev.filter(q => !q.id.startsWith('quiz-00') && q.id !== 'quiz-001' && q.id !== 'quiz-002')].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
           writeCloudCache(STORAGE_KEY, merged);
           return merged;
         });
       } else {
-        // Seed cloud with sample quizzes if cloud empty
-        SAMPLE_QUIZZES.forEach(q => syncDocToCloud(CLOUD_COLLECTION, q.id, q));
+        const cleaned = loadLocalQuizzes();
+        setQuizzes(cleaned);
+        writeCloudCache(STORAGE_KEY, cleaned);
       }
     }).catch(e => console.warn('Quizzes cloud fetch note:', e));
 
     const unsub = onSnapshot(collection(db, CLOUD_COLLECTION), (snap) => {
-      if (!snap.empty) {
-        const cloudItems = snap.docs.map(d => d.data() as ClassQuiz);
-        setQuizzes(cloudItems);
-        writeCloudCache(STORAGE_KEY, cloudItems);
-      }
+      const cloudItems = snap.docs
+        .map(d => d.data() as ClassQuiz)
+        .filter(q => q && !q.id.startsWith('quiz-00') && q.id !== 'quiz-001' && q.id !== 'quiz-002');
+      setQuizzes(cloudItems);
+      writeCloudCache(STORAGE_KEY, cloudItems);
     });
 
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (activeQuiz && !quizzes.some(q => q.id === activeQuiz.id)) {
+      setActiveQuiz(null);
+    }
+  }, [quizzes, activeQuiz]);
 
   const handleGenerateAIQuiz = async () => {
     setIsGeneratingAI(true);
@@ -418,56 +342,75 @@ export default function ClassroomQuizzesTab() {
           </h2>
 
           <div className="space-y-3">
-            {quizzes.map((quiz) => {
-              const active = activeQuiz?.id === quiz.id;
-              return (
-                <div
-                  key={quiz.id}
-                  onClick={() => setActiveQuiz(quiz)}
-                  className={`cursor-pointer rounded-2xl border p-5 transition-all duration-200 ${
-                    active
-                      ? 'border-indigo-600 bg-indigo-50/50 shadow-sm'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <span className="inline-block rounded-md bg-indigo-100 px-2.5 py-0.5 text-[10px] font-black text-indigo-800">
-                        {quiz.subject}
-                      </span>
-                      <h3 className="text-sm font-black text-slate-900 leading-snug">{quiz.title}</h3>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteQuiz(quiz.id); }}
-                      className="text-slate-400 hover:text-rose-600 p-1 transition"
-                      title="حذف الكويز"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} className="text-slate-400" />
-                        {quiz.durationMinutes} دقائق
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Award size={14} className="text-amber-500" />
-                        {quiz.totalPoints} درجة
-                      </span>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); startTest(quiz); }}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition"
-                    >
-                      <Play size={12} />
-                      تجربة الكويز
-                    </button>
-                  </div>
+            {quizzes.length === 0 ? (
+              <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-8 text-center space-y-3">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-indigo-600">
+                  <BookOpen size={24} />
                 </div>
-              );
-            })}
+                <h3 className="text-sm font-black text-slate-800">لا توجد كويزات مسجلة حالياً</h3>
+                <p className="text-xs font-bold text-slate-500 max-w-xs mx-auto">
+                  تم تفريغ الكويزات التجريبية. يمكنك إنشاء كويز حقيقي جديد أو توليده بالذكاء الاصطناعي لطلاب الفصل.
+                </p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700 transition cursor-pointer shadow-sm"
+                >
+                  <Plus size={14} />
+                  إنشاء كويز جديد
+                </button>
+              </div>
+            ) : (
+              quizzes.map((quiz) => {
+                const active = activeQuiz?.id === quiz.id;
+                return (
+                  <div
+                    key={quiz.id}
+                    onClick={() => setActiveQuiz(quiz)}
+                    className={`cursor-pointer rounded-2xl border p-5 transition-all duration-200 ${
+                      active
+                        ? 'border-indigo-600 bg-indigo-50/50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <span className="inline-block rounded-md bg-indigo-100 px-2.5 py-0.5 text-[10px] font-black text-indigo-800">
+                          {quiz.subject}
+                        </span>
+                        <h3 className="text-sm font-black text-slate-900 leading-snug">{quiz.title}</h3>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteQuiz(quiz.id); }}
+                        className="text-slate-400 hover:text-rose-600 p-1 transition"
+                        title="حذف الكويز"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} className="text-slate-400" />
+                          {quiz.durationMinutes} دقائق
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Award size={14} className="text-amber-500" />
+                          {quiz.totalPoints} درجة
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); startTest(quiz); }}
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 transition"
+                      >
+                        <Play size={12} />
+                        تجربة الكويز
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

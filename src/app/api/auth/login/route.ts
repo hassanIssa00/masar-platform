@@ -28,14 +28,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanIdentifier = userIdentifier.trim().toLowerCase();
-    if (cleanIdentifier === 'dr.ismail@masar.com' && !process.env.OWNER_PASSWORD_HASH) {
-      return NextResponse.json(
-        { ok: false, reason: 'owner_password_missing', error: 'كلمة مرور د. إسماعيل غير مضبوطة على السيرفر.' },
-        { status: 503 }
-      );
-    }
-
     // Verify credentials against server-side bcrypt implementation
     const account = await verifyProductionCredential(userIdentifier, password);
 

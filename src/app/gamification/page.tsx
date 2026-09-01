@@ -10,7 +10,7 @@ import {
   getStudentPointsAll, getTransactions, awardPoints, BADGES, LEVELS,
   calculateLevel, getEarnedBadges, type StudentPoints, type Badge
 } from '@/lib/gamification';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function GamificationPage() {

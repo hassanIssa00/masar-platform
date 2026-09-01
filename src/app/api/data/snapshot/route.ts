@@ -26,6 +26,8 @@ const COLLECTIONS = [
   ['studentHomeworkLogs', 'student_homework_logs'],
   ['studentCertLogs', 'student_cert_logs'],
   ['curriculumFiles', 'curriculum_files'],
+  ['curriculumAssignments', 'curriculum_assignments'],
+  ['curriculumDrawings', 'curriculum_drawings'],
   ['curriculumQuizzes', 'curriculum_quizzes'],
   ['quizSubmissions', 'quiz_submissions'],
   ['classroomQuizzes', 'classroom_quizzes'],
@@ -45,6 +47,7 @@ const COLLECTIONS = [
   ['liveSessions', 'live_sessions'],
   ['periodAttendance', 'period_attendance'],
   ['platformAnalytics', 'platform_analytics'],
+  ['studentLearningActivity', 'student_learning_activity'],
   ['simpleSpellingAssignments', 'simple_spelling_assignments'],
   ['simpleSpellingDrawings', 'simple_spelling_drawings'],
 ] as const;
@@ -94,41 +97,97 @@ export function invalidateSnapshotCache() {
   snapshotCache.clear();
 }
 
-function isLinkedToUser(item: SnapshotItem, user: { id: string; name: string; email: string; phone?: string; linkedStudentId?: string }) {
+function cleanEmail(value?: unknown): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+function sameText(a?: unknown, b?: unknown): boolean {
+  const left = String(a || '').trim();
+  const right = String(b || '').trim();
+  return !!left && !!right && left === right;
+}
+
+function isGeneratedEmail(email: string): boolean {
+  return email.includes('@masar.local') ||
+    email.includes('@masarplatform.org') ||
+    email.startsWith('generated_') ||
+    email.startsWith('parent.') ||
+    email.startsWith('student.');
+}
+
+function isLinkedToUser(
+  item: SnapshotItem,
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    schoolBranch?: string;
+    linkedStudentId?: string;
+    linkedStudentEmail?: string;
+    linkedParentId?: string;
+    linkedParentEmail?: string;
+  },
+) {
   const userEmail = (user.email || '').trim().toLowerCase();
+  const linkedStudentEmail = cleanEmail(user.linkedStudentEmail);
+  const linkedParentEmail = cleanEmail(user.linkedParentEmail);
   const userPhone = cleanDigits(user.phone);
   const userPhoneSuffix = userPhone.length >= 8 ? userPhone.slice(-8) : '';
   const userName = normalizeArabic(user.name);
   const linkedId = user.linkedStudentId || '';
+  const linkedParentId = user.linkedParentId || '';
+  const itemBranch = String(item?.schoolBranch || item?.branch || '').trim();
+  const sameBranch = !user.schoolBranch || !itemBranch || itemBranch === user.schoolBranch;
 
   // ── TIER 1: Direct linkedStudentId match (strongest signal) ──
   if (linkedId) {
-    if (item?.id === linkedId) return true;
-    if (item?.studentId === linkedId) return true;
-    if (item?.accountId === linkedId) return true;
-    if (item?.linkedStudentId === linkedId) return true;
+    if (sameText(item?.id, linkedId)) return true;
+    if (sameText(item?.studentId, linkedId)) return true;
+    if (sameText(item?.accountId, linkedId)) return true;
+    if (sameText(item?.studentAccountId, linkedId)) return true;
+    if (sameText(item?.linkedStudentId, linkedId)) return true;
   }
 
   // ── TIER 2: Direct account/user ID match ──
-  if (item?.id === user.id) return true;
-  if (item?.studentId === user.id) return true;
-  if (item?.accountId === user.id) return true;
-  if (item?.createdBy === user.id) return true;
-  if (item?.firebaseUid === user.id) return true;
+  if (sameText(item?.id, user.id)) return true;
+  if (sameText(item?.studentId, user.id)) return true;
+  if (sameText(item?.accountId, user.id)) return true;
+  if (sameText(item?.studentAccountId, user.id)) return true;
+  if (sameText(item?.parentAccountId, user.id)) return true;
+  if (sameText(item?.linkedParentId, user.id)) return true;
+  if (sameText(item?.createdBy, user.id)) return true;
+  if (sameText(item?.firebaseUid, user.id)) return true;
 
-  // ── TIER 3: Email match (skip generated/alias emails) ──
-  const isGeneratedEmail = userEmail.includes('@masar.local') ||
-    userEmail.includes('@masarplatform.org') ||
-    userEmail.startsWith('generated_') ||
-    userEmail.startsWith('parent.') ||
-    userEmail.startsWith('student.');
+  if (linkedParentId) {
+    if (sameText(item?.parentAccountId, linkedParentId)) return true;
+    if (sameText(item?.linkedParentId, linkedParentId)) return true;
+    if (sameText(item?.accountId, linkedParentId)) return true;
+  }
 
-  if (userEmail && !isGeneratedEmail) {
+  const explicitStudentEmails = [
+    item?.email,
+    item?.recoveryEmail,
+    item?.linkedStudentEmail,
+  ].filter(Boolean).map(cleanEmail);
+  if (linkedStudentEmail && explicitStudentEmails.some((e) => e === linkedStudentEmail)) return true;
+
+  const explicitParentEmails = [
+    item?.parentEmail,
+    item?.linkedParentEmail,
+  ].filter(Boolean).map(cleanEmail);
+  if (linkedParentEmail && explicitParentEmails.some((e) => e === linkedParentEmail)) return true;
+
+  if (!sameBranch) return false;
+
+  // ── TIER 3: Email match (skip generated/alias emails unless explicitly linked above) ──
+  if (userEmail && !isGeneratedEmail(userEmail)) {
     const emailFields = [
       item?.email,
       item?.parentEmail,
       item?.recoveryEmail,
       item?.linkedStudentEmail,
+      item?.linkedParentEmail,
     ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
     if (emailFields.some((e) => e === userEmail)) return true;
   }
@@ -233,6 +292,20 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  const SHARED_COLLECTIONS = new Set([
+    'curriculumFiles',
+    'curriculumQuizzes',
+    'classroomQuizzes',
+    'assessmentTemplates',
+    'resources',
+    'branches',
+    'ikhlasPosts',
+    'liveSessions',
+    'smartSchedules',
+    'parentsCommunityChat',
+    'parentsChatSettings',
+  ]);
+
   await Promise.all(
     collections.map(async ([payloadKey, collectionName]) => {
       try {
@@ -242,7 +315,8 @@ export async function GET(req: NextRequest) {
           return { ...data, id: data.id || data.accountId || doc.id } as SnapshotItem;
         });
 
-        result[payloadKey] = canReadAll ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
+        const isShared = SHARED_COLLECTIONS.has(payloadKey);
+        result[payloadKey] = canReadAll || isShared ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
       } catch (error) {
         console.error(`[snapshot] Failed reading ${collectionName}:`, error);
         failedCollections.push({
@@ -252,6 +326,7 @@ export async function GET(req: NextRequest) {
       }
     }),
   );
+
 
   const succeededCollections = Object.keys(result).length;
   const serverTime = new Date().toISOString();

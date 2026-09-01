@@ -11,7 +11,7 @@ import {
   getLocalAttendance, recordAttendance, updateAttendance, getAttendanceStats,
   type AttendanceRecord, ATTENDANCE_LABELS, ATTENDANCE_COLORS
 } from '@/lib/attendance';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 

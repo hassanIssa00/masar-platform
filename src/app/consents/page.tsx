@@ -11,7 +11,7 @@ import {
   getLocalConsents, createConsent, updateConsentStatus, revokeConsent,
   type ConsentForm, CONSENT_TYPE_LABELS, CONSENT_STATUS_COLORS, CONSENT_STATUS_LABELS
 } from '@/lib/consents';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import FeatureGuideBanner from '@/components/FeatureGuideBanner';
 
 export default function ConsentsPage() {

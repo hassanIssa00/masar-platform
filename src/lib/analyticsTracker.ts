@@ -8,7 +8,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { pullServerSnapshotToLocal, readCloudCache, subscribeToCloudCollection, syncDocToCloud, writeCloudCache } from './firestoreSync';
-import { getSession } from './localDb';
+import { getSession } from './cloudStore';
 
 /* ────────────────────────────────────────────────
    TYPES

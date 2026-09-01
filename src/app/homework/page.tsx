@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getStudents, type StudentRecord } from '@/lib/localDb';
+import { getStudents, type StudentRecord } from '@/lib/cloudStore';
 import { getLocalHomework, createHomework, updateHomeworkStatus, type HomeworkRecord } from '@/lib/homework';
 import { createNotification } from '@/lib/notifications';
 

@@ -19,6 +19,11 @@ export type AccountRecord = {
   photoUrl?: string;
   onboardingRequired?: boolean;
   linkedStudentId?: string;
+  linkedStudentEmail?: string;
+  linkedStudentName?: string;
+  linkedParentId?: string;
+  linkedParentEmail?: string;
+  grade?: string;
   createdAt: string;
 };
 
@@ -45,6 +50,13 @@ export type StudentRecord = {
   schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH' | string;
   branch?: string;
   media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  linkedStudentId?: string;
+  linkedStudentEmail?: string;
+  linkedStudentName?: string;
+  linkedParentId?: string;
+  linkedParentEmail?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -101,6 +113,8 @@ export type MessageRecord = {
   from: 'doctor' | 'parent';
   to: 'doctor' | 'parent';
   body: string;
+  audioDataUrl?: string;
+  attachmentType?: 'audio';
   createdAt: string;
   read?: boolean;
 };
@@ -145,7 +159,7 @@ const KEYS = {
 // Flag kept in memory after a data purge — prevents stale client data being re-pushed to cloud
 export const CLEARED_FLAG_KEY = 'masar.dataCleared.v1';
 let dataClearedAt: string | null = null;
-let activeSession: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone' | 'linkedStudentId'> | null = null;
+let activeSession: Partial<AccountRecord> & Pick<AccountRecord, 'id' | 'name' | 'email' | 'role'> | null = null;
 
 export function isDataCleared(): boolean {
   if (typeof window === 'undefined') return false;
@@ -216,10 +230,8 @@ export function saveAccount(account: Omit<AccountRecord, 'id' | 'createdAt'> & P
   return next;
 }
 
-const SESSION_STORAGE_KEY = 'masar_active_session_cache';
-
 export function setSession(
-  account: Pick<AccountRecord, 'id' | 'name' | 'email' | 'role' | 'schoolBranch' | 'phone' | 'linkedStudentId'>,
+  account: Partial<AccountRecord> & Pick<AccountRecord, 'id' | 'name' | 'email' | 'role'>,
   rememberMe: boolean = false,
   _writeClientCookie: boolean = false
 ) {
@@ -228,7 +240,7 @@ export function setSession(
   activeSession = account as AccountRecord;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(account));
+      localStorage.setItem('masar.session.v1', JSON.stringify(account));
     } catch {}
     window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: account }));
   }
@@ -238,7 +250,7 @@ export function getSession() {
   if (typeof window === 'undefined') return null;
   if (activeSession) return activeSession;
   try {
-    const cached = localStorage.getItem(SESSION_STORAGE_KEY);
+    const cached = localStorage.getItem('masar.session.v1');
     if (cached) {
       activeSession = JSON.parse(cached);
       return activeSession;
@@ -251,18 +263,24 @@ export async function hydrateSessionFromServer() {
   if (typeof window === 'undefined') return null;
   if (activeSession) return activeSession;
   try {
+    const cached = localStorage.getItem('masar.session.v1');
+    if (cached) {
+      activeSession = JSON.parse(cached);
+    }
+  } catch {}
+  try {
     const response = await fetch('/api/auth/session', {
       method: 'GET',
       credentials: 'include',
       cache: 'no-store',
     });
-    if (!response.ok) return null;
+    if (!response.ok) return activeSession;
     const payload = await response.json();
-    if (!payload?.ok || !payload.account) return null;
+    if (!payload?.ok || !payload.account) return activeSession;
     setSession(payload.account);
     return activeSession;
   } catch {
-    return null;
+    return activeSession;
   }
 }
 
@@ -270,10 +288,16 @@ export function clearSession() {
   if (typeof window !== 'undefined') {
     activeSession = null;
     try {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem('masar.session.v1');
+      sessionStorage.removeItem('masar.session.v1');
     } catch {}
-    document.cookie = `masar_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
     window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: null }));
+    void fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      keepalive: true,
+    }).catch(() => {});
   }
 }
 
@@ -285,7 +309,6 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   const students = getStudents();
   const now = new Date().toISOString();
 
-  // Normalize Arabic text for fuzzy name matching
   const norm = (t?: string | null) => (t || '').trim().toLowerCase()
     .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
     .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
@@ -293,26 +316,57 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
 
   const isPlaceholder = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاستبيان') || n === 'طالب' || n === 'الطالب' || n.startsWith('طالب ');
   const normName = norm(student.fullName);
-  const cleanPhone = (p?: string | null) => (p || '').replace(/\D/g, '');
-  const pPhone = cleanPhone(student.parentPhone);
-  const pPhoneSuffix = pPhone.length >= 8 ? pPhone.slice(-8) : '';
-  const email = (student.email || student.recoveryEmail || student.parentEmail || '').trim().toLowerCase();
+  const cleanEmail = (v?: string | null) => (v || '').trim().toLowerCase();
+  const cleanPhone = (v?: string | null) => (v || '').replace(/\D/g, '');
+  const suffix8 = (v?: string | null) => {
+    const digits = cleanPhone(v);
+    return digits.length >= 8 ? digits.slice(-8) : '';
+  };
+  const branchMatches = (item: StudentRecord) => {
+    if (!student.schoolBranch || !item.schoolBranch) return true;
+    return item.schoolBranch === student.schoolBranch;
+  };
+  const studentEmails = new Set([student.email, student.recoveryEmail, student.linkedStudentEmail].map(cleanEmail).filter(Boolean));
+  const parentEmails = new Set([student.parentEmail, student.linkedParentEmail].map(cleanEmail).filter(Boolean));
+  const exactEmailMatch = (item: StudentRecord) => {
+    const itemStudentEmails = [item.email, item.recoveryEmail, item.linkedStudentEmail].map(cleanEmail);
+    const itemParentEmails = [item.parentEmail, item.linkedParentEmail].map(cleanEmail);
+    return (
+      itemStudentEmails.some((email) => email && studentEmails.has(email)) ||
+      itemParentEmails.some((email) => email && parentEmails.has(email))
+    );
+  };
+  const directLinkMatch = (item: StudentRecord) => (
+    Boolean(student.id && item.id === student.id) ||
+    Boolean(student.studentAccountId && (item.studentAccountId === student.studentAccountId || item.id === student.studentAccountId)) ||
+    Boolean(student.parentAccountId && item.parentAccountId === student.parentAccountId) ||
+    Boolean(student.linkedParentId && (item.linkedParentId === student.linkedParentId || item.parentAccountId === student.linkedParentId)) ||
+    exactEmailMatch(item)
+  );
+  const sameGuardian = (item: StudentRecord) => {
+    const phone = suffix8(student.parentPhone);
+    const itemPhone = suffix8(item.parentPhone);
+    if (phone && itemPhone && phone === itemPhone) return true;
+    if (exactEmailMatch(item)) return true;
+    return Boolean(
+      (student.parentAccountId && item.parentAccountId === student.parentAccountId) ||
+      (student.linkedParentId && (item.linkedParentId === student.linkedParentId || item.parentAccountId === student.linkedParentId))
+    );
+  };
+  const nameMatch = (item: StudentRecord) =>
+    !isPlaceholder(student.fullName) &&
+    !isPlaceholder(item.fullName) &&
+    normName.length > 3 &&
+    norm(item.fullName) === normName;
 
-  // Find existing by ID, or exact normalized real name (never national ID)
-  const existing = students.find((item) => {
-    if (student.id && item.id === student.id) return true;
-    if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
-    
-    // If current is placeholder and target is placeholder with same ID
-    if (student.id && item.id === student.id) return true;
-    return false;
-  });
+  const existing = students.find((item) => branchMatches(item) && directLinkMatch(item)) ||
+    students.find((item) => branchMatches(item) && nameMatch(item) && sameGuardian(item));
 
-  // Also find any OTHER duplicate that might exist with exact same real name
   const duplicate = existing ? students.find((item) => {
     if (item.id === existing.id) return false;
-    if (!isPlaceholder(student.fullName) && !isPlaceholder(item.fullName) && normName.length > 3 && norm(item.fullName) === normName) return true;
-    return false;
+    if (!branchMatches(item)) return false;
+    if (directLinkMatch(item)) return true;
+    return nameMatch(item) && sameGuardian(item);
   }) : null;
 
   const resolvedFullName = (!isPlaceholder(student.fullName) && student.fullName) ||
@@ -329,6 +383,11 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     student.parentName || undefined;
   const parentPhone = student.parentPhone || existing?.parentPhone || duplicate?.parentPhone || undefined;
   const schoolBranch = student.schoolBranch || existing?.schoolBranch || duplicate?.schoolBranch || undefined;
+  const studentAccountId = student.studentAccountId || existing?.studentAccountId || duplicate?.studentAccountId || undefined;
+  const parentAccountId = student.parentAccountId || existing?.parentAccountId || duplicate?.parentAccountId || undefined;
+  const linkedStudentEmail = student.linkedStudentEmail || existing?.linkedStudentEmail || duplicate?.linkedStudentEmail || student.email || existing?.email || undefined;
+  const linkedParentId = student.linkedParentId || existing?.linkedParentId || duplicate?.linkedParentId || parentAccountId || undefined;
+  const linkedParentEmail = student.linkedParentEmail || existing?.linkedParentEmail || duplicate?.linkedParentEmail || student.parentEmail || existing?.parentEmail || undefined;
 
   const next: StudentRecord = {
     ...(duplicate || {}),
@@ -341,10 +400,14 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     parentName,
     parentPhone,
     schoolBranch,
-    id: (existing && !isPlaceholder(existing.fullName) ? existing.id : null) ??
-        (student.id ? student.id : null) ??
-        (existing ? existing.id : null) ??
-        createId('student'),
+    studentAccountId,
+    parentAccountId,
+    linkedStudentEmail,
+    linkedParentId,
+    linkedParentEmail,
+    email: student.email || existing?.email || duplicate?.email,
+    parentEmail: student.parentEmail || existing?.parentEmail || duplicate?.parentEmail,
+    id: existing?.id ?? student.id ?? duplicate?.id ?? studentAccountId ?? createId('student'),
     createdAt: existing?.createdAt ?? duplicate?.createdAt ?? now,
     updatedAt: now,
   };
@@ -411,42 +474,62 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
 export async function deleteStudent(studentId: string) {
   const students = getStudents();
   const student = students.find((item) => item.id === studentId);
+  const normalizeName = (value?: string | null) => (value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const targetName = normalizeName(student?.fullName);
+  const studentsToDelete = students.filter((item) =>
+    item.id === studentId ||
+    item.studentAccountId === studentId ||
+    item.linkedStudentId === studentId ||
+    (targetName && normalizeName(item.fullName) === targetName)
+  );
+  const studentIdsToDelete = new Set([studentId, ...studentsToDelete.map((item) => item.id), ...studentsToDelete.map((item) => item.studentAccountId || ''), ...studentsToDelete.map((item) => item.linkedStudentId || '')].filter(Boolean));
+  const studentNamesToDelete = new Set(studentsToDelete.map((item) => normalizeName(item.fullName)).filter(Boolean));
   
-  // 1. Remove student locally and cloud
-  writeList(KEYS.students, students.filter((item) => item.id !== studentId));
-  await deleteDocFromCloud('students', studentId);
+  // 1. Remove the student and any hidden duplicate records locally and in the cloud.
+  writeList(KEYS.students, students.filter((item) => !studentIdsToDelete.has(item.id) && !studentNamesToDelete.has(normalizeName(item.fullName))));
+  for (const id of studentIdsToDelete) {
+    await deleteDocFromCloud('students', id);
+  }
 
   // 2. Remove matching student accounts
   const accounts = getAccounts();
-  const matchingAccounts = accounts.filter((a) => a.id === studentId || a.linkedStudentId === studentId);
+  const matchingAccounts = accounts.filter((a) => studentIdsToDelete.has(a.id) || (a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId)));
   for (const acc of matchingAccounts) {
     await deleteDocFromCloud('accounts', acc.id);
   }
-  writeList(KEYS.accounts, accounts.filter((a) => a.id !== studentId && a.linkedStudentId !== studentId));
+  writeList(KEYS.accounts, accounts.filter((a) => !studentIdsToDelete.has(a.id) && !(a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId))));
 
   // 3. Remove all their reports
   const reports = readList<ReportRecord>(KEYS.reports);
-  const studentReps = reports.filter((item) => item.studentId === studentId || (student?.fullName && item.studentName === student.fullName));
+  const studentReps = reports.filter((item) => (item.studentId && studentIdsToDelete.has(item.studentId)) || studentNamesToDelete.has(normalizeName(item.studentName)));
   for (const r of studentReps) {
     await deleteDocFromCloud('reports', r.id);
   }
-  writeList(KEYS.reports, reports.filter((item) => item.studentId !== studentId && !(student?.fullName && item.studentName === student.fullName)));
+  writeList(KEYS.reports, reports.filter((item) => !(item.studentId && studentIdsToDelete.has(item.studentId)) && !studentNamesToDelete.has(normalizeName(item.studentName))));
 
   // 4. Remove all their messages
   const messages = readList<MessageRecord>(KEYS.messages);
-  const studentMsgs = messages.filter((item) => item.studentId === studentId);
+  const studentMsgs = messages.filter((item) => Boolean(item.studentId && studentIdsToDelete.has(item.studentId)));
   for (const m of studentMsgs) {
     await deleteDocFromCloud('messages', m.id);
   }
-  writeList(KEYS.messages, messages.filter((item) => item.studentId !== studentId));
+  writeList(KEYS.messages, messages.filter((item) => !item.studentId || !studentIdsToDelete.has(item.studentId)));
 
   // 5. Remove all their surveys
   const surveys = readList<SurveySubmission>(KEYS.surveys);
-  const studentSurveys = surveys.filter((item) => item.studentId === studentId || (student?.fullName && item.studentName === student.fullName));
+  const studentSurveys = surveys.filter((item) => (item.studentId && studentIdsToDelete.has(item.studentId)) || studentNamesToDelete.has(normalizeName(item.studentName)));
   for (const s of studentSurveys) {
     await deleteDocFromCloud('surveys', s.id);
   }
-  writeList(KEYS.surveys, surveys.filter((item) => item.studentId !== studentId && !(student?.fullName && item.studentName === student.fullName)));
+  writeList(KEYS.surveys, surveys.filter((item) => !(item.studentId && studentIdsToDelete.has(item.studentId)) && !studentNamesToDelete.has(normalizeName(item.studentName))));
 
   if (student) {
     saveActivity({

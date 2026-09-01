@@ -18,7 +18,7 @@ import {
   trackEvent,
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
-import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, clearAllMockData, type AccountRecord } from '@/lib/localDb';
+import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, clearAllMockData, type AccountRecord } from '@/lib/cloudStore';
 import { clearCloudCache, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

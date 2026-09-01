@@ -34,6 +34,8 @@ const KEYS = {
   studentHomeworkLogs: 'masar_student_hw_logs_v1',
   studentCertLogs: 'masar_student_cert_logs_v1',
   curriculumFiles: 'masar_curriculum_files_v1',
+  curriculumAssignments: 'masar.curriculumAssignments.v1',
+  curriculumDrawings: 'masar.curriculumDrawings.v1',
   curriculumQuizzes: 'masar_curriculum_quizzes_v1',
   quizSubmissions: 'masar_quiz_submissions_v1',
   classroomQuizzes: 'masar_class_quizzes_v1',
@@ -52,6 +54,7 @@ const KEYS = {
   points: 'masar.points.v1',
   pointTransactions: 'masar.transactions.v1',
   platformAnalytics: 'masar.analytics.v1',
+  studentLearningActivity: 'masar.studentLearningActivity.v1',
   simpleSpellingAssignments: 'masar.simpleSpellingAssignments.v1',
   simpleSpellingDrawings: 'masar.simpleSpellingDrawings.v1',
 };
@@ -84,6 +87,8 @@ const CLOUD_COLLECTIONS = [
   ['studentHomeworkLogs', 'student_homework_logs'],
   ['studentCertLogs', 'student_cert_logs'],
   ['curriculumFiles', 'curriculum_files'],
+  ['curriculumAssignments', 'curriculum_assignments'],
+  ['curriculumDrawings', 'curriculum_drawings'],
   ['curriculumQuizzes', 'curriculum_quizzes'],
   ['quizSubmissions', 'quiz_submissions'],
   ['classroomQuizzes', 'classroom_quizzes'],
@@ -102,6 +107,7 @@ const CLOUD_COLLECTIONS = [
   ['points', 'student_points'],
   ['pointTransactions', 'point_transactions'],
   ['platformAnalytics', 'platform_analytics'],
+  ['studentLearningActivity', 'student_learning_activity'],
   ['simpleSpellingAssignments', 'simple_spelling_assignments'],
   ['simpleSpellingDrawings', 'simple_spelling_drawings'],
 ] as const satisfies Array<[keyof typeof KEYS, string]>;

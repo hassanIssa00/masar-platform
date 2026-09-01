@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/localDb';
+import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
@@ -40,6 +40,7 @@ export default function NewStudentPage() {
   const [birthMonth, setBirthMonth] = useState('');
   const [birthYear, setBirthYear] = useState('');
   const [loading, setLoading] = useState(false);
+  const [studentResolved, setStudentResolved] = useState(false);
 
   // Pre-fill from registration if a student record already exists
   useEffect(() => {
@@ -67,6 +68,8 @@ export default function NewStudentPage() {
           ? findMatchingStudentForParent(session, allStudents)
           : undefined);
 
+      setStudentResolved(Boolean(found && session?.role === 'parent'));
+
       if (found && found.fullName && !found.fullName.includes('جديد')) {
         const allReports = getReports();
         const hasReports = allReports.some(
@@ -74,23 +77,31 @@ export default function NewStudentPage() {
         );
 
         if (session?.role === 'student') {
-          if (hasReports) {
-            router.replace(`/student/${found.id}`);
-            return;
-          }
+          router.replace(`/school-student?student=${found.id}`);
+          return;
         } else if (session?.role === 'parent') {
           const allSurveys = getSurveys();
           const hasSurvey = allSurveys.some(
             (s) => s.studentId === found.id || (session?.email && s.parentEmail === session.email) || (session?.phone && s.parentPhone === session.phone)
           );
-          if (hasSurvey || hasReports) {
-            router.replace(`/parent?student=${found.id}`);
+          if (hasSurvey) {
+            // Survey already done — go straight to parent portal
+            router.replace(
+              (found.schoolBranch === 'IKHLAS_JEDDAH' || (session as any)?.schoolBranch === 'IKHLAS_JEDDAH')
+                ? `/school-parent?student=${found.id}`
+                : `/parent?student=${found.id}`
+            );
+            return;
+          } else {
+            // Student is already recognized — direct parent straight to the survey!
+            router.replace(`/survey?student=${found.id}&flow=parent`);
             return;
           }
         }
       }
 
       if (!found) {
+        setStudentResolved(false);
         if (session?.role === 'student') {
           const cleanSessionName = (session.name && !session.name.includes('جديد') && !session.name.includes('الاستبيان') && session.name !== 'طالب' && session.name !== 'الطالب') ? session.name : '';
           setStudent((prev) => ({
@@ -153,6 +164,8 @@ export default function NewStudentPage() {
     setStudent((current) => ({ ...current, [key]: value }));
   };
 
+  const parentLinkedStudentVisible = nextFlow === 'parent-survey' && studentResolved;
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -188,8 +201,10 @@ export default function NewStudentPage() {
         return false;
       });
 
-      // Filter out dummy records if real student exists
-      matchedChildren = matchedChildren.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+      const realChildren = matchedChildren.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
+      if (realChildren.length > 0) {
+        matchedChildren = realChildren;
+      }
 
       const primaryChild = matchedChildren[0];
       if (primaryChild) {
@@ -198,6 +213,12 @@ export default function NewStudentPage() {
           parentName: parentNameClean || primaryChild.parentName,
           parentPhone: parentPhoneClean || primaryChild.parentPhone,
           parentEmail: recoveryEmail || primaryChild.parentEmail,
+          parentAccountId: session?.role === 'parent' ? session.id : primaryChild.parentAccountId,
+          linkedParentId: session?.role === 'parent' ? session.id : primaryChild.linkedParentId,
+          linkedParentEmail: session?.role === 'parent' ? session.email : primaryChild.linkedParentEmail || primaryChild.parentEmail,
+          linkedStudentId: primaryChild.id,
+          linkedStudentEmail: primaryChild.linkedStudentEmail || primaryChild.email,
+          linkedStudentName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
           nationalId: primaryChild.nationalId || student.nationalId,
           recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
           photoUrl: photoToSave || primaryChild.photoUrl,
@@ -215,6 +236,9 @@ export default function NewStudentPage() {
           parentName: parentNameClean,
           parentPhone: parentPhoneClean,
           parentEmail: recoveryEmail || undefined,
+          parentAccountId: session?.role === 'parent' ? session.id : undefined,
+          linkedParentId: session?.role === 'parent' ? session.id : undefined,
+          linkedParentEmail: session?.role === 'parent' ? session.email : recoveryEmail || undefined,
           recoveryEmail: recoveryEmail || undefined,
           photoUrl: photoToSave,
           dateOfBirth,
@@ -231,6 +255,12 @@ export default function NewStudentPage() {
           fullName: student.fullName.trim() || matchedExisting?.fullName || 'طالب جديد',
           email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
           recoveryEmail: recoveryEmail || undefined,
+          studentAccountId: session?.role === 'student' ? session.id : matchedExisting?.studentAccountId,
+          linkedStudentId: targetId || undefined,
+          linkedStudentEmail: session?.role === 'student' ? session.email : matchedExisting?.linkedStudentEmail || matchedExisting?.email,
+          linkedStudentName: student.fullName.trim() || matchedExisting?.fullName,
+          linkedParentId: matchedExisting?.linkedParentId || matchedExisting?.parentAccountId,
+          linkedParentEmail: matchedExisting?.linkedParentEmail || matchedExisting?.parentEmail,
           nationalId: student.nationalId,
           dateOfBirth,
           grade: student.grade,
@@ -250,6 +280,10 @@ export default function NewStudentPage() {
           fullName: student.fullName.trim() || 'طالب جديد',
           email: recoveryEmail || (!isGeneratedAlias(session?.email) ? session?.email : '') || '',
           recoveryEmail: recoveryEmail || undefined,
+          studentAccountId: session?.role === 'student' ? session.id : undefined,
+          linkedStudentId: session?.role === 'student' ? session.id : targetId || undefined,
+          linkedStudentEmail: session?.role === 'student' ? session.email : undefined,
+          linkedStudentName: student.fullName.trim() || 'طالب جديد',
           nationalId: student.nationalId,
           dateOfBirth,
           grade: student.grade,
@@ -285,8 +319,18 @@ export default function NewStudentPage() {
         photoUrl: accountPhoto,
         phone: student.parentPhone || currentAcc?.phone || session.phone,
         schoolBranch: branch as any,
-        onboardingRequired: false,
+        onboardingRequired: true,
         linkedStudentId: savedStudent.id,
+        linkedStudentEmail: nextFlow === 'student-test'
+          ? (session?.email || savedStudent.linkedStudentEmail || savedStudent.email)
+          : (savedStudent.linkedStudentEmail || savedStudent.email),
+        linkedStudentName: savedStudent.fullName,
+        linkedParentId: nextFlow === 'parent-survey'
+          ? session.id
+          : (savedStudent.linkedParentId || savedStudent.parentAccountId),
+        linkedParentEmail: nextFlow === 'parent-survey'
+          ? session.email
+          : (savedStudent.linkedParentEmail || savedStudent.parentEmail),
       });
       setSession(updatedAcc);
       await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
@@ -319,7 +363,7 @@ export default function NewStudentPage() {
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
                 {nextFlow === 'student-test'
                   ? 'بعد حفظ البيانات ينتقل الطالب مباشرة إلى اختبار مناسب للصف. لا تظهر أي درجة أو تشخيص داخل تجربة الطالب.'
-                  : 'بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل. يتعرف النظام تلقائياً على أبنائك المسجلين ويربط بياناتهم وصورهم بحسابك.'}
+                  : 'بعد حفظ البيانات ينتقل ولي الأمر مباشرة إلى الاستبيان الشامل، ويتم ربط الحساب بملفات الطلاب المسجلة دون عرض افتراضات عن عدد الأبناء.'}
               </p>
             </div>
           </div>
@@ -333,13 +377,30 @@ export default function NewStudentPage() {
               {nextFlow === 'student-test' ? 'بيانات الطالب وولي الأمر' : 'بيانات ولي الأمر'}
             </h2>
             <div className="grid gap-5 md:grid-cols-2">
-              <Field
-                label={nextFlow === 'student-test' ? 'اسم الطالب' : 'اسم الطالب / الطفل'}
-                placeholder="الاسم الرباعي"
-                value={student.fullName}
-                onChange={(value) => handleFieldChange('fullName', value)}
-                required
-              />
+              {parentLinkedStudentVisible ? (
+                <div className="md:col-span-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-4">
+                  <p className="text-xs font-black text-teal-800">تم ربط الطالب تلقائياً</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    {student.photoUrl ? (
+                      <Image src={student.photoUrl} alt="صورة الطالب" width={48} height={48} unoptimized className="h-12 w-12 rounded-full object-cover ring-2 ring-teal-200" />
+                    ) : (
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-white text-teal-700 font-black ring-2 ring-teal-200">{student.fullName?.[0] || 'ط'}</div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-slate-900">{student.fullName || 'الطالب المرتبط'}</p>
+                      <p className="text-xs font-bold text-slate-500">لا حاجة لإدخال اسم الطالب أو رفع صورته هنا.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Field
+                  label={nextFlow === 'student-test' ? 'اسم الطالب' : 'اسم الطالب'}
+                  placeholder="الاسم الرباعي"
+                  value={student.fullName}
+                  onChange={(value) => handleFieldChange('fullName', value)}
+                  required
+                />
+              )}
               <Field
                 label="رقم الهوية / الإقامة"
                 placeholder="رقم الهوية الوطنية أو الإقامة"
@@ -406,7 +467,17 @@ export default function NewStudentPage() {
           </section>
 
           <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-32 lg:self-start">
-            <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center mb-5">
+            {parentLinkedStudentVisible && (
+              <div className="mb-5 rounded-lg border border-teal-200 bg-teal-50 p-4">
+                <p className="text-xs font-black text-teal-800">الطالب المرتبط</p>
+                <p className="mt-1 text-sm font-black text-slate-900">{student.fullName || 'الطالب المرتبط'}</p>
+                <p className="mt-1 text-xs font-bold leading-6 text-slate-600">
+                  الملف معروف من الحساب، والاستبيان سيحفظ على نفس رقم الطالب بدون إنشاء ملف مكرر.
+                </p>
+              </div>
+            )}
+            {!parentLinkedStudentVisible && (
+              <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center mb-5">
               {student.photoUrl ? (
                 <>
                   <Image src={student.photoUrl} alt="صورة الطالب" width={112} height={112} unoptimized className="mx-auto h-28 w-28 rounded-full object-cover ring-4 ring-teal-200 shadow-md" />
@@ -474,7 +545,8 @@ export default function NewStudentPage() {
                   </label>
                 </>
               )}
-            </div>
+              </div>
+            )}
 
             <div className="rounded-lg bg-teal-50 p-4 text-sm font-bold leading-7 text-teal-950">
               <ClipboardList className="mb-2 text-teal-800" size={22} />
@@ -486,7 +558,7 @@ export default function NewStudentPage() {
               <Save size={17} />
               {loading
                 ? nextFlow === 'student-test' ? 'جاري فتح الاختبار...' : 'جاري فتح الاستبيان...'
-                : nextFlow === 'student-test' ? 'حفظ وفتح اختبار الطالب' : 'حفظ والانتقال للاستبيان'}
+                : nextFlow === 'student-test' ? 'حفظ وفتح اختبار الطالب' : parentLinkedStudentVisible ? 'فتح الاستبيان' : 'حفظ والانتقال للاستبيان'}
             </button>
           </aside>
         </form>

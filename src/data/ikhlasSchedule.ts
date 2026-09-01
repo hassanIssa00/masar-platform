@@ -1,6 +1,5 @@
 // جدول الحصص الأسبوعي — فصل د. إسماعيل عيسى
-// يُستخدَم من الـ Frontend ويُزامَن مع قاعدة البيانات
-import { readCloudCache } from '@/lib/firestoreSync';
+// يُستخدَم من الـ Frontend كمصدر الجدول الرسمي المعتمد.
 
 export type Period = {
   dayOfWeek: number; // 0=الأحد … 4=الخميس
@@ -13,48 +12,61 @@ export type Period = {
 
 export const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
+const PERIOD_TIMES: Record<number, { startTime: string; endTime: string }> = {
+  1: { startTime: '07:30', endTime: '08:10' },
+  2: { startTime: '08:10', endTime: '08:50' },
+  3: { startTime: '08:50', endTime: '09:30' },
+  4: { startTime: '09:50', endTime: '10:30' },
+  5: { startTime: '10:30', endTime: '11:10' },
+  6: { startTime: '11:10', endTime: '11:50' },
+  7: { startTime: '11:50', endTime: '12:30' },
+};
+
+function period(dayOfWeek: number, periodNumber: number, subjectName: string): Period {
+  return {
+    dayOfWeek,
+    periodNumber,
+    subjectName,
+    ...PERIOD_TIMES[periodNumber],
+  };
+}
+
 // جدول الحصص الأسبوعي المعتمد — فصل د. إسماعيل عيسى
-// 6 حصص يومياً (30 حصة أسبوعياً) مع الفسحة المدرسية
+// مستخرج من جدول الترم المرسل بتاريخ 2026-08-31. الخانات الفارغة في الصورة غير مدرجة كحصص فعلية.
 export const DEFAULT_SCHEDULE: Period[] = [
   // الأحد
-  { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 0, periodNumber: 4, subjectName: 'العلوم', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 0, periodNumber: 5, subjectName: 'التربية الفنية', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 0, periodNumber: 6, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
+  period(0, 1, 'لغتي العربية'),
+  period(0, 2, 'الرياضيات'),
+  period(0, 4, 'التربية الإسلامية'),
+  period(0, 5, 'حياتية'),
+  period(0, 7, 'العلوم'),
 
   // الاثنين
-  { dayOfWeek: 1, periodNumber: 1, subjectName: 'الرياضيات', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 1, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 1, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 1, periodNumber: 4, subjectName: 'التربية البدنية', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 1, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 1, periodNumber: 6, subjectName: 'الحاسب الآلي', startTime: '11:10', endTime: '11:50' },
+  period(1, 1, 'لغتي العربية'),
+  period(1, 2, 'لغتي العربية'),
+  period(1, 4, 'الرياضيات'),
+  period(1, 5, 'التربية الإسلامية'),
+  period(1, 6, 'العلوم'),
 
   // الثلاثاء
-  { dayOfWeek: 2, periodNumber: 1, subjectName: 'القرآن الكريم', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 2, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 2, periodNumber: 3, subjectName: 'لغتي العربية', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 2, periodNumber: 4, subjectName: 'التربية الإسلامية', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 2, periodNumber: 5, subjectName: 'الاجتماعيات', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 2, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+  period(2, 1, 'لغتي العربية'),
+  period(2, 2, 'التربية الإسلامية'),
+  period(2, 4, 'نشاط'),
+  period(2, 5, 'لغتي العربية'),
+  period(2, 7, 'نشاط'),
 
   // الأربعاء
-  { dayOfWeek: 3, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 3, periodNumber: 2, subjectName: 'العلوم', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 3, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 3, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 3, periodNumber: 5, subjectName: 'الحاسب الآلي', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 3, periodNumber: 6, subjectName: 'التربية البدنية', startTime: '11:10', endTime: '11:50' },
+  period(3, 1, 'لغتي العربية'),
+  period(3, 2, 'لغتي العربية'),
+  period(3, 4, 'الرياضيات'),
+  period(3, 5, 'التربية الإسلامية'),
 
   // الخميس
-  { dayOfWeek: 4, periodNumber: 1, subjectName: 'التربية الإسلامية', startTime: '07:30', endTime: '08:10' },
-  { dayOfWeek: 4, periodNumber: 2, subjectName: 'لغتي العربية', startTime: '08:10', endTime: '08:50' },
-  { dayOfWeek: 4, periodNumber: 3, subjectName: 'الرياضيات', startTime: '08:50', endTime: '09:30' },
-  { dayOfWeek: 4, periodNumber: 4, subjectName: 'الاجتماعيات', startTime: '09:50', endTime: '10:30' },
-  { dayOfWeek: 4, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-  { dayOfWeek: 4, periodNumber: 6, subjectName: 'القرآن الكريم', startTime: '11:10', endTime: '11:50' },
+  period(4, 1, 'الرياضيات'),
+  period(4, 2, 'لغتي العربية'),
+  period(4, 4, 'الرياضيات'),
+  period(4, 5, 'العلوم'),
+  period(4, 6, 'التربية الإسلامية'),
 ];
 
 export const SUBJECT_COLORS: Record<string, string> = {
@@ -67,6 +79,8 @@ export const SUBJECT_COLORS: Record<string, string> = {
   'التربية البدنية':  'bg-orange-500/20 text-orange-700 border-orange-300',
   'الحاسب الآلي':    'bg-violet-500/20 text-violet-700 border-violet-300',
   'الاجتماعيات':     'bg-rose-500/20 text-rose-700 border-rose-300',
+  'حياتية':          'bg-lime-500/20 text-lime-700 border-lime-300',
+  'نشاط':            'bg-fuchsia-500/20 text-fuchsia-700 border-fuchsia-300',
   'فسحة 🌤️':         'bg-yellow-300/30 text-yellow-700 border-yellow-300',
 };
 
@@ -122,22 +136,7 @@ export function parseSlotsToPeriods(slots: any[]): Period[] {
 }
 
 export function getSavedSchedule(): Period[] {
-  if (typeof window === 'undefined') return DEFAULT_SCHEDULE;
-  try {
-    const parsed = readCloudCache<any>('masar_smart_schedule_v1')[0];
-    if (!parsed) return DEFAULT_SCHEDULE;
-    if (parsed && Array.isArray(parsed.slots) && parsed.slots.length > 0) {
-      const hasRealSubjects = parsed.slots.some((s: any) => {
-        const sub = s.subject || s.subjectName;
-        return sub && sub !== 'درس حر' && sub !== 'حصة دراسية';
-      });
-      if (!hasRealSubjects) return DEFAULT_SCHEDULE;
-      return parseSlotsToPeriods(parsed.slots);
-    }
-    return DEFAULT_SCHEDULE;
-  } catch {
-    return DEFAULT_SCHEDULE;
-  }
+  return DEFAULT_SCHEDULE;
 }
 
 export function getTodayPeriods(schedule: Period[]): Period[] {

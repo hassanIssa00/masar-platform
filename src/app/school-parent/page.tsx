@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
-import { clearSession, getAccounts, getSession, getStudents, hydrateSessionFromServer, StudentRecord } from '@/lib/localDb';
+import { clearSession, getAccounts, getSession, getStudents, getSurveys, hydrateSessionFromServer, StudentRecord } from '@/lib/cloudStore';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
@@ -32,6 +32,7 @@ export default function SchoolParentPage() {
   const [loading, setLoading] = useState(true);
   const [parentName, setParentName] = useState<string>('');
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
+  const [hasSurvey, setHasSurvey] = useState(true);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
   const [branch, setBranch] = useState<string>('MASAR');
@@ -45,58 +46,82 @@ export default function SchoolParentPage() {
   useEffect(() => {
     let cancelled = false;
     const loadSchoolParent = async () => {
-    // Auth guard
-    const session = getSession() ?? await hydrateSessionFromServer();
-    if (cancelled) return;
-    if (!session) {
-      router.replace('/login');
-      return;
-    }
-    if (session.role === 'doctor' || session.role === 'specialist') {
-      router.replace('/dashboard');
-      return;
-    }
-    if (session.role === 'student') {
-      router.replace('/school-student');
-      return;
-    }
-
-    // Read branch from session
-    const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
-    setBranch(sessionBranch);
-
-    // Set parent name from session directly
-    setParentName(session.name || 'ولي الأمر');
-
-    // Pull latest data from cloud before searching
-    await pullCloudDataToLocal(['students', 'accounts']).catch(() => {});
-    if (cancelled) return;
-
-    // Retrieve linked student record
-    const allStudents = getStudents();
-    const allAccounts = getAccounts();
-    const linkedStudentId = (session as any)?.linkedStudentId;
-
-    // Priority 1: linkedStudentId from account
-    let linked: StudentRecord | null = null;
-    if (linkedStudentId) {
-      linked = allStudents.find((s) => s.id === linkedStudentId) || null;
-    }
-    // Priority 2: intelligent patronymic and credentials matching
-    if (!linked) {
-      linked = findMatchingStudentForParent(session, allStudents) || null;
-    }
-    // Priority 3: check accounts for a linked student
-    if (!linked) {
-      const parentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email);
-      if ((parentAcc as any)?.linkedStudentId) {
-        linked = allStudents.find((s) => s.id === (parentAcc as any).linkedStudentId) || null;
+      // Auth guard
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      if (!session) {
+        router.replace('/login');
+        return;
       }
-    }
+      if (session.role === 'doctor' || session.role === 'specialist') {
+        router.replace('/dashboard');
+        return;
+      }
+      if (session.role === 'student') {
+        router.replace('/school-student');
+        return;
+      }
 
-    if (linked) {
-      setStudentRecord(linked);
-    }
+      // Read branch from session
+      const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
+      setBranch(sessionBranch);
+
+      // Set parent name from session directly
+      setParentName(session.name || 'ولي الأمر');
+
+      // Pull latest data from cloud before searching
+      await pullCloudDataToLocal(['students', 'accounts', 'surveys']).catch(() => {});
+      if (cancelled) return;
+
+      // Retrieve linked student record
+      const allStudents = getStudents();
+      const allAccounts = getAccounts();
+      const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
+      const parentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email) as any;
+      const parentProfile = {
+        ...session,
+        ...parentAcc,
+        id: session.id,
+        email: session.email || parentAcc?.email,
+        phone: session.phone || parentAcc?.phone,
+        schoolBranch: session.schoolBranch || parentAcc?.schoolBranch,
+      };
+      const linkedStudentId = (session as any)?.linkedStudentId || parentAcc?.linkedStudentId;
+
+      // Priority 1: linkedStudentId from account
+      let linked: StudentRecord | null = null;
+      if (linkedStudentId) {
+        linked = allStudents.find((s) => s.id === linkedStudentId) || null;
+      }
+      // Priority 2: intelligent patronymic and credentials matching
+      if (!linked) {
+        linked = findMatchingStudentForParent(parentProfile, allStudents) || null;
+      }
+
+      if (activeId) {
+        const byUrl = allStudents.find((s) => s.id === activeId) || null;
+        const urlOwned = byUrl && (
+          byUrl.id === linkedStudentId ||
+          byUrl.parentAccountId === session.id ||
+          byUrl.linkedParentId === session.id ||
+          byUrl.linkedParentEmail === session.email ||
+          parentAcc?.linkedStudentId === byUrl.id
+        );
+        if (urlOwned) {
+          linked = byUrl;
+        }
+      }
+
+      if (linked) {
+        setStudentRecord(linked);
+        const allSurveys = getSurveys();
+        const surveyDone = allSurveys.some(
+          (s) => s.studentId === linked?.id ||
+          (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
+          (session?.phone && s.parentPhone === session.phone)
+        );
+        setHasSurvey(surveyDone);
+      }
     };
     void loadSchoolParent();
     return () => {
@@ -234,6 +259,30 @@ export default function SchoolParentPage() {
         {/* ══════════════ الرئيسية ══════════════ */}
         {!loading && tab === 'home' && (
           <div className="space-y-4">
+            {/* Required Parent Survey Banner */}
+            {!hasSurvey && studentRecord && (
+              <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm font-black text-xl">
+                    📝
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-amber-950">استبيان ولي الأمر مطلوب ⚠️</h3>
+                    <p className="text-xs font-bold text-amber-800 mt-0.5">
+                      يرجى استكمال استبيان ولي الأمر عن الطالب (<strong>{studentRecord.fullName}</strong>) لمساعدة د. إسماعيل عيسى في تخصيص الخطة والتقييم.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/survey?student=${studentRecord.id}&flow=parent`}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 px-5 py-2.5 text-xs font-black text-white transition shadow-sm shrink-0 active:scale-95"
+                >
+                  <span>تعبئة الاستبيان الآن</span>
+                  <ChevronLeft size={14} />
+                </Link>
+              </div>
+            )}
+
             {/* Face Biometric Enrollment Banner for Parent */}
             <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 text-white shadow-xl border border-emerald-700/50 relative overflow-hidden flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5 relative z-10">

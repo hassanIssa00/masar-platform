@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -26,7 +26,7 @@ import {
 import BrandMark from '@/components/BrandMark';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
-import { clearSession, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/localDb';
+import { clearSession, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/cloudStore';
 
 export default function KidsDashboard() {
   return (

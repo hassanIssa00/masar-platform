@@ -11,7 +11,7 @@ import {
   ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban,
   Sparkles, ShieldCheck
 } from 'lucide-react';
-import { clearSession, getSession, getStudents, getReports, hydrateSessionFromServer } from '@/lib/localDb';
+import { clearSession, getSession, getStudents, getReports, hydrateSessionFromServer } from '@/lib/cloudStore';
 
 type NavLink = {
   name: string;
@@ -53,6 +53,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   });
 
   const [userRole, setUserRole] = useState<string>('doctor');
+  const isMobileShow = mobileOpen || externalOpen;
 
   useEffect(() => {
     let disposed = false;
@@ -91,6 +92,21 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
       window.removeEventListener('masar_toggle_sidebar', handleToggle);
     };
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    onClose?.();
+  }, [pathname, onClose]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!isMobileShow) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileShow]);
 
   const isStaff = userRole === 'doctor' || userRole === 'specialist' || userRole === 'teacher';
 
@@ -186,7 +202,6 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
     router.push('/auth/login');
   };
 
-  const isMobileShow = mobileOpen || externalOpen;
   const isPathActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(`${path}/`));
 
   return (
@@ -207,7 +222,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
           transition-all duration-300 ease-in-out z-40 select-none
           [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sky-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent
           lg:flex lg:flex-col
-          ${isMobileShow ? 'fixed top-0 right-0 z-50 h-full w-80 flex flex-col shadow-2xl translate-x-0' : 'hidden lg:flex lg:flex-col'}
+          ${isMobileShow ? 'fixed top-0 right-0 z-50 flex h-[100dvh] w-[min(22rem,calc(100vw-16px))] max-w-[calc(100vw-16px)] flex-col shadow-2xl translate-x-0' : 'hidden lg:flex lg:flex-col'}
           ${collapsed && !isMobileShow ? 'w-20' : 'w-76 xl:w-80'}
         `}
         dir="rtl"

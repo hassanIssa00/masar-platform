@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowRight, FileText, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProgressBar from '@/components/ProgressBar';
-import { getReports, getStudents, getSession, getAccounts, hydrateSessionFromServer, ReportRecord, StudentRecord, saveStudent } from '@/lib/localDb';
+import { getReports, getStudents, getSession, getAccounts, hydrateSessionFromServer, ReportRecord, StudentRecord, saveStudent } from '@/lib/cloudStore';
 import { getClassStudents } from '@/lib/classDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { normalizeArabicText, isParentChildNameMatch } from '@/lib/nameMatching';

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { getStudents, getReports, type StudentRecord, type ReportRecord } from '@/lib/localDb';
+import { getStudents, getReports, type StudentRecord, type ReportRecord } from '@/lib/cloudStore';
 import { getLocalInvoices } from '@/lib/invoices';
 import { getLocalAttendance } from '@/lib/attendance';
 import { getLocalWaitlist } from '@/lib/waitlist';

@@ -9,7 +9,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
-import { getStudents, getReports, getSession, hydrateSessionFromServer, StudentRecord, ReportRecord } from '@/lib/localDb';
+import { getStudents, getReports, getSession, hydrateSessionFromServer, StudentRecord, ReportRecord } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
 

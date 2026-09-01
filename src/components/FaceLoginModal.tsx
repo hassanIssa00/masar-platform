@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound } from 'lucide-react';
 import FaceCamera from './FaceCamera';
 import { isFaceEnrolled } from '@/lib/faceAuth';
-import { AccountRecord, getAccounts, setSession } from '@/lib/localDb';
+import { AccountRecord, getAccounts, setSession } from '@/lib/cloudStore';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analyticsTracker';
 

@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
-import { getAccounts, getReports, getStudents, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/localDb';
+import { getAccounts, getSession, getStudents, getSurveys, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
-import { normalizeArabicText, findMatchingStudentForParent, isParentChildNameMatch } from '@/lib/nameMatching';
+import { normalizeArabicText, findMatchingStudentForParent } from '@/lib/nameMatching';
 
 // Google icon SVG (official brand colors)
 function GoogleIcon({ size = 20 }: { size?: number }) {
@@ -117,7 +117,7 @@ export default function RegisterPage() {
     setGoogleError('');
 
     const role = getSelectedRole();
-    const result = await signInWithMicrosoft(role as import('@/lib/localDb').UserRole, schoolBranch);
+    const result = await signInWithMicrosoft(role as import('@/lib/cloudStore').UserRole, schoolBranch);
 
     setMsLoading(false);
 
@@ -155,10 +155,31 @@ export default function RegisterPage() {
     type === 'student' ? '/student/new?flow=student' : type === 'parent' ? '/student/new?flow=parent' : '/dashboard';
 
   const routeRegisteredAccount = (type: typeof accountType, branch: typeof schoolBranch) => {
+    if (type === 'parent') {
+      const allStudents = getStudents();
+      const allSurveys = getSurveys();
+      const session = getSession();
+      const matched = findMatchingStudentForParent(session || { name: parentName, phone, email }, allStudents);
+      if (matched) {
+        const hasSurvey = allSurveys.some(
+          (s) => s.studentId === matched.id ||
+          (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
+          (session?.phone && s.parentPhone === session.phone)
+        );
+        if (!hasSurvey) {
+          router.push(`/survey?student=${matched.id}&flow=parent`);
+          return;
+        }
+      }
+      router.push(matched ? `/student/new?flow=parent&student=${matched.id}` : getMasarStartPath(type));
+      return;
+    }
+    if (type === 'student') {
+      router.push(getMasarStartPath(type));
+      return;
+    }
     if (branch === 'IKHLAS_JEDDAH') {
-      if (type === 'parent') router.push('/school-parent');
-      else if (type === 'student') router.push('/school-student/setup');
-      else router.push('/branches/ikhlas-jeddah');
+      router.push('/branches/ikhlas-jeddah');
       return;
     }
     router.push(getMasarStartPath(type));
@@ -167,7 +188,7 @@ export default function RegisterPage() {
   // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
   useEffect(() => {
     pullCloudDataToLocal([...REGISTER_SYNC_KEYS]).catch(() => {});
-    handleGoogleRedirectResult(getSelectedRole() as import('@/lib/localDb').UserRole, schoolBranch).then((result) => {
+    handleGoogleRedirectResult(getSelectedRole() as import('@/lib/cloudStore').UserRole, schoolBranch).then((result) => {
       if (result && result.ok) {
         setSession(result.account, false, false);
         const resolvedType =
@@ -187,7 +208,7 @@ export default function RegisterPage() {
     setGoogleError('');
 
     const role = getSelectedRole();
-    const result = await signInWithGoogle(role as import('@/lib/localDb').UserRole, schoolBranch);
+    const result = await signInWithGoogle(role as import('@/lib/cloudStore').UserRole, schoolBranch);
 
     setGoogleLoading(false);
 
@@ -207,7 +228,7 @@ export default function RegisterPage() {
     setGoogleError('');
 
     const role = getSelectedRole();
-    const result = await signInWithApple(role as import('@/lib/localDb').UserRole, schoolBranch);
+    const result = await signInWithApple(role as import('@/lib/cloudStore').UserRole, schoolBranch);
 
     setAppleLoading(false);
 
@@ -353,6 +374,8 @@ export default function RegisterPage() {
         password,
         role,
         schoolBranch,
+        childName: childName.trim(),
+        grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : grade,
       }),
     });
     const payload = await res.json().catch(() => ({}));
@@ -365,24 +388,65 @@ export default function RegisterPage() {
     const account = saveAccount(payload.account);
     setSession(account, false, false);
 
+    await pullCloudDataToLocal([...REGISTER_SYNC_KEYS]).catch(() => {});
     const allStudents = getStudents();
     const cleanEmail = email.trim().toLowerCase();
+    const accountProfile = {
+      ...payload.account,
+      name: parentName || primaryName,
+      phone: fullPhone,
+      email: cleanEmail,
+      schoolBranch,
+    };
 
-    let matchingStudent = findMatchingStudentForParent(
-      { name: parentName, phone: fullPhone, email: cleanEmail },
-      allStudents
-    );
+    let matchingStudent = role === 'parent'
+      ? findMatchingStudentForParent(accountProfile, allStudents)
+      : allStudents.find((s) =>
+        s.id === account.id ||
+        s.studentAccountId === account.id ||
+        s.linkedStudentId === account.id ||
+        s.email?.toLowerCase() === cleanEmail ||
+        s.linkedStudentEmail?.toLowerCase() === cleanEmail
+      );
 
     if (!matchingStudent && childName.trim()) {
       const normChild = normalizeArabicText(childName);
-      matchingStudent = allStudents.find((s) => normalizeArabicText(s.fullName) === normChild);
+      matchingStudent = allStudents.find((s) =>
+        (s.schoolBranch || schoolBranch) === schoolBranch &&
+        normalizeArabicText(s.fullName) === normChild
+      );
     }
 
     if (matchingStudent) {
-      updateStudent(matchingStudent.id, {
+      const linkedStudentEmail = role === 'student'
+        ? cleanEmail
+        : matchingStudent.linkedStudentEmail || matchingStudent.email;
+      const linkedParentId = role === 'parent'
+        ? account.id
+        : matchingStudent.linkedParentId || matchingStudent.parentAccountId;
+      const linkedParentEmail = role === 'parent'
+        ? cleanEmail
+        : matchingStudent.linkedParentEmail || matchingStudent.parentEmail;
+
+      updateStudent(matchingStudent.id, role === 'parent' ? {
         parentName: parentName || matchingStudent.parentName,
         parentPhone: fullPhone || matchingStudent.parentPhone,
         parentEmail: cleanEmail || matchingStudent.parentEmail,
+        parentAccountId: account.id,
+        linkedParentId: account.id,
+        linkedParentEmail: cleanEmail,
+        ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+        linkedStudentName: matchingStudent.fullName,
+        schoolBranch: schoolBranch === 'IKHLAS_JEDDAH' ? 'IKHLAS_JEDDAH' : matchingStudent.schoolBranch || 'MASAR',
+      } : {
+        fullName: childName.trim() || matchingStudent.fullName,
+        email: cleanEmail,
+        studentAccountId: account.id,
+        linkedStudentId: matchingStudent.id,
+        linkedStudentEmail: cleanEmail,
+        linkedStudentName: childName.trim() || matchingStudent.fullName,
+        ...(linkedParentId ? { linkedParentId } : {}),
+        ...(linkedParentEmail ? { linkedParentEmail } : {}),
         schoolBranch: schoolBranch === 'IKHLAS_JEDDAH' ? 'IKHLAS_JEDDAH' : matchingStudent.schoolBranch || 'MASAR',
       });
 
@@ -390,68 +454,85 @@ export default function RegisterPage() {
       const updatedAcc = saveAccount({
         ...payload.account,
         linkedStudentId: matchingStudent.id,
+        linkedStudentEmail,
+        linkedStudentName: matchingStudent.fullName || childName.trim(),
+        ...(linkedParentId ? { linkedParentId } : {}),
+        ...(linkedParentEmail ? { linkedParentEmail } : {}),
       });
-      setSession({ ...updatedAcc, linkedStudentId: matchingStudent.id }, false, false);
-      void syncDocToCloud('accounts', updatedAcc.id, { linkedStudentId: matchingStudent.id });
+      setSession(updatedAcc, false, false);
+      void syncDocToCloud('accounts', updatedAcc.id, {
+        linkedStudentId: matchingStudent.id,
+        ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
+        linkedStudentName: matchingStudent.fullName || childName.trim(),
+        ...(linkedParentId ? { linkedParentId } : {}),
+        ...(linkedParentEmail ? { linkedParentEmail } : {}),
+      });
     } else if (accountType !== 'teacher' && childName.trim()) {
       // Only create a student record if the parent actually entered a child name.
       // If childName is empty, skip this and let /student/new handle it.
       matchingStudent = saveStudent({
+        id: role === 'student' ? account.id : undefined,
         fullName: childName.trim(),
         grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : grade,
-        parentName: parentName,
-        parentPhone: fullPhone,
-        parentEmail: cleanEmail,
+        ...(role === 'parent' ? {
+          parentName,
+          parentPhone: fullPhone,
+          parentEmail: cleanEmail,
+          parentAccountId: account.id,
+          linkedParentId: account.id,
+          linkedParentEmail: cleanEmail,
+        } : {
+          email: cleanEmail,
+          studentAccountId: account.id,
+          linkedStudentId: account.id,
+          linkedStudentEmail: cleanEmail,
+          linkedStudentName: childName.trim(),
+        }),
         schoolBranch,
         source: schoolBranch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
         reviewStatus: 'awaiting-survey',
       });
 
       if (matchingStudent) {
+        const linkedStudentEmail = role === 'student' ? cleanEmail : matchingStudent.linkedStudentEmail || matchingStudent.email;
+        const linkedParentId = role === 'parent' ? account.id : matchingStudent.linkedParentId || matchingStudent.parentAccountId;
+        const linkedParentEmail = role === 'parent' ? cleanEmail : matchingStudent.linkedParentEmail || matchingStudent.parentEmail;
         const updatedAcc = saveAccount({
           ...payload.account,
           linkedStudentId: matchingStudent.id,
+          linkedStudentEmail,
+          linkedStudentName: matchingStudent.fullName,
+          ...(linkedParentId ? { linkedParentId } : {}),
+          ...(linkedParentEmail ? { linkedParentEmail } : {}),
         });
-        setSession({ ...updatedAcc, linkedStudentId: matchingStudent.id }, false, false);
-        void syncDocToCloud('accounts', updatedAcc.id, { linkedStudentId: matchingStudent.id });
+        setSession(updatedAcc, false, false);
+        void syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
       }
     }
 
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
 
-    const allReports = getReports();
-    const studentHasReports = Boolean(
-      matchingStudent &&
-      allReports.some((r) => r.studentId === matchingStudent!.id || r.studentName === matchingStudent!.fullName)
-    );
-
     setTimeout(() => {
-      if (schoolBranch === 'IKHLAS_JEDDAH') {
-        if (accountType === 'parent') {
-          router.push('/school-parent');
-        } else if (accountType === 'student') {
-          router.push('/school-student/setup');
-        } else {
-          router.push('/branches/ikhlas-jeddah');
+      if (accountType === 'parent') {
+        if (matchingStudent) {
+          const allSurveys = getSurveys();
+          const hasSurvey = allSurveys.some(
+            (s) => s.studentId === matchingStudent.id ||
+            (cleanEmail && s.parentEmail?.toLowerCase() === cleanEmail) ||
+            (fullPhone && s.parentPhone === fullPhone)
+          );
+          if (!hasSurvey) {
+            router.push(`/survey?student=${matchingStudent.id}&flow=parent`);
+            return;
+          }
         }
+        router.push(matchingStudent ? `/student/new?flow=parent&student=${matchingStudent.id}` : '/student/new?flow=parent');
+      } else if (accountType === 'student') {
+        router.push(matchingStudent ? `/student/new?flow=student&student=${matchingStudent.id}` : '/student/new?flow=student');
+      } else if (schoolBranch === 'IKHLAS_JEDDAH') {
+        router.push('/branches/ikhlas-jeddah');
       } else {
-        if (accountType === 'parent') {
-          if (studentHasReports && matchingStudent) {
-            router.push(`/parent?student=${matchingStudent.id}`);
-          } else if (matchingStudent) {
-            router.push(`/student/new?flow=parent&student=${matchingStudent.id}`);
-          } else {
-            router.push('/student/new?flow=parent');
-          }
-        } else {
-          if (studentHasReports && matchingStudent) {
-            router.push(`/student/${matchingStudent.id}`);
-          } else if (matchingStudent) {
-            router.push(`/student/new?flow=student&student=${matchingStudent.id}`);
-          } else {
-            router.push('/student/new?flow=student');
-          }
-        }
+        router.push('/dashboard');
       }
     }, 600);
   };
@@ -472,7 +553,7 @@ export default function RegisterPage() {
           </Link>
           <h1 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">إنشاء حساب جديد</h1>
           <p className="mt-1.5 text-xs sm:text-sm font-bold text-slate-500">
-            انضم لمنصة د. إسماعيل عيسى ومكّن طفلك من رحلة التأهيل الذكي
+            انضم لمنصة د. إسماعيل عيسى وابدأ رحلة التأهيل الذكي
           </p>
         </div>
 
@@ -605,7 +686,7 @@ export default function RegisterPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-black text-emerald-900">
-                      ✨ تم التعرف تلقائياً على طفلك المسجل:
+                      تم العثور على ملف طالب مرتبط بالحساب:
                     </p>
                     <p className="mt-0.5 text-sm font-black text-emerald-800">
                       {detectedStudent.fullName}
@@ -614,13 +695,13 @@ export default function RegisterPage() {
                       )}
                     </p>
                     <p className="mt-1 text-[11px] font-bold text-emerald-700 leading-relaxed">
-                      تم ربط حسابك بملف طفلك وصورته تلقائياً ولست بحاجة لإعادة كتابة اسمه.
+                      تم ربط الحساب بملف الطالب وبياناته تلقائياً.
                     </p>
                   </div>
                 </div>
               ) : (
                 <Field
-                  label="اسم الطالب / الطفل (اختياري - يتم التعرف عليه تلقائياً من اسمك)"
+                  label="اسم الطالب (اختياري إذا كان الملف مسجلاً من قبل)"
                   value={childName}
                   onChange={(val) => {
                     setChildName(val);

@@ -36,10 +36,14 @@ export function hasFirebaseAdminConfig() {
 
 function getAdminApp(): App | null {
   try {
+    const explicitCredential = parseServiceAccount();
+    const canUseApplicationDefault = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT);
+    if (!explicitCredential && !canUseApplicationDefault) return null;
+
     return (
       getApps()[0] ??
       initializeApp({
-        credential: parseServiceAccount() ?? applicationDefault(),
+        credential: explicitCredential ?? applicationDefault(),
         projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'masar-platform-8e642',
       })
     );
