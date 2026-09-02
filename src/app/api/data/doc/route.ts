@@ -53,6 +53,10 @@ const ALLOWED_COLLECTIONS = new Set([
   'platform_config',
   'simple_spelling_assignments',
   'simple_spelling_drawings',
+  'daily_attendance_archive',
+  'daily_homework_archive',
+  'daily_quiz_archive',
+  'meeting_chats',
 ]);
 
 function cleanDocId(value: unknown) {

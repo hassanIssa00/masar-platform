@@ -4,7 +4,18 @@ import { useEffect } from 'react';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { initAppCheck } from '@/lib/firebase';
 
-const CORE_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys', 'messages', 'notifications'] as const;
+const CORE_SYNC_KEYS = [
+  // Auth & core data
+  'accounts', 'students', 'reports', 'surveys', 'messages', 'notifications',
+  // Classroom & homework
+  'homework', 'ikhlasPosts', 'ikhlasLogs', 'classStudents',
+  // Student records
+  'studentCertLogs', 'studentHomeworkLogs', 'studentNotes',
+  // Schedule & attendance
+  'calendarSessions', 'attendance', 'periodAttendance',
+  // Points & activity
+  'points', 'pointTransactions', 'activity',
+] as const;
 
 export default function CloudSyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {

@@ -3,15 +3,26 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BarChart3, Send, CheckCircle, ArrowRight, Star, Loader2, FileText, User } from 'lucide-react';
+import { getClassStudents } from '@/lib/classDb';
+import { syncDocToCloud, pullCloudDataToLocal, readCloudCache, writeCloudCache } from '@/lib/firestoreSync';
 
-const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
+const LOCAL_KEY = 'masar.weekly_reports.v1';
 
-function authHeaders() {
-  return { 'Content-Type': 'application/json' };
-}
-
-const CLASS_STUDENTS: { id: string; name: string }[] = [];
+type WeeklyReport = {
+  id: string;
+  branch: string;
+  studentId: string;
+  studentName: string;
+  weekStart: string;
+  weekEnd: string;
+  attendanceDays: number;
+  avgPerformance: number;
+  homeworkDone: number;
+  homeworkTotal: number;
+  teacherNotes: string;
+  createdAt: string;
+};
 
 export default function IkhlasWeeklyReportPage() {
   const [reports, setReports] = useState<any[]>([]);
@@ -19,49 +30,60 @@ export default function IkhlasWeeklyReportPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState('أسبوع ممتاز والطلاب أظهروا تفوقاً رائعاً في القراءة والرياضيات 🌟');
+  const [classStudents, setClassStudents] = useState<{ id: string; name: string }[]>([]);
 
-  const fetchReports = async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${API}/school/weekly-reports?branch=${BRANCH}`, { headers: authHeaders() });
-      if (r.ok) setReports(await r.json());
-    } finally {
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await pullCloudDataToLocal(['classStudents']).catch(() => {});
+      const students = getClassStudents().map(s => ({ id: s.id, name: s.fullName }));
+      setClassStudents(students);
+      // Load past weekly reports from local cache
+      const cached = readCloudCache<WeeklyReport>(LOCAL_KEY);
+      const branchReports = cached.filter(r => r.branch === BRANCH);
+      setReports(branchReports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchReports(); }, []);
+    };
+    load();
+  }, []);
 
   const dispatchWeeklyReports = async () => {
+    if (classStudents.length === 0) {
+      alert('لا يوجد طلاب في الفصل! يرجى إضافة الطلاب أولاً من قسم إدارة الطلاب.');
+      return;
+    }
     setSubmitting(true);
     const now = new Date();
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 4);
 
     try {
-      await Promise.all(
-        CLASS_STUDENTS.map((student) =>
-          fetch(`${API}/school/weekly-reports`, {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({
-              branch: BRANCH,
-              studentName: student.name,
-              studentId: student.id,
-              weekStart: weekStart.toISOString().slice(0, 10),
-              weekEnd: weekEnd.toISOString().slice(0, 10),
-              attendanceDays: 5,
-              avgPerformance: 94,
-              homeworkDone: 5,
-              homeworkTotal: 5,
-              teacherNotes,
-            }),
-          })
-        )
-      );
+      const newReports: WeeklyReport[] = classStudents.map(student => ({
+        id: `wr-${student.id}-${now.toISOString().slice(0, 10)}`,
+        branch: BRANCH,
+        studentId: student.id,
+        studentName: student.name,
+        weekStart: weekStart.toISOString().slice(0, 10),
+        weekEnd: weekEnd.toISOString().slice(0, 10),
+        attendanceDays: 5,
+        avgPerformance: 94,
+        homeworkDone: 5,
+        homeworkTotal: 5,
+        teacherNotes,
+        createdAt: now.toISOString(),
+      }));
+
+      // Save to local cache
+      const existing = readCloudCache<WeeklyReport>(LOCAL_KEY);
+      const merged = [...newReports, ...existing.filter(r => !newReports.find(n => n.id === r.id))];
+      writeCloudCache(LOCAL_KEY, merged);
+
+      // Sync each report to Firestore
+      await Promise.allSettled(newReports.map(r => syncDocToCloud('weekly_reports' as any, r.id, r)));
+
       setSentSuccess(true);
       setTimeout(() => setSentSuccess(false), 4000);
-      await fetchReports();
+      setReports(merged.filter(r => r.branch === BRANCH).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } finally {
       setSubmitting(false);
     }
@@ -87,6 +109,16 @@ export default function IkhlasWeeklyReportPage() {
           </div>
         </div>
 
+        {/* Students count indicator */}
+        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm">
+          <User className="w-4 h-4 text-teal-400" />
+          <span className="text-slate-300">عدد الطلاب في الفصل:</span>
+          <span className="font-black text-white">{classStudents.length} طالب</span>
+          {classStudents.length === 0 && !loading && (
+            <span className="text-rose-400 text-xs font-bold mr-2">⚠️ لا يوجد طلاب — أضف الطلاب أولاً</span>
+          )}
+        </div>
+
         {/* Report Dispatcher Box */}
         <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-4">
           <h2 className="text-base font-black text-amber-300 flex items-center gap-2">
@@ -96,12 +128,12 @@ export default function IkhlasWeeklyReportPage() {
           <textarea placeholder="ملاحظات المعلم العامة للأسبوع..." value={teacherNotes} onChange={(e) => setTeacherNotes(e.target.value)} rows={3}
             className="w-full bg-slate-900/90 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-amber-400 transition resize-none" />
 
-          <button onClick={dispatchWeeklyReports} disabled={submitting || sentSuccess}
+          <button onClick={dispatchWeeklyReports} disabled={submitting || sentSuccess || classStudents.length === 0}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm transition-all shadow-lg ${
-              sentSuccess ? 'bg-emerald-600 text-white' : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white disabled:opacity-50'
+              sentSuccess ? 'bg-emerald-600 text-white' : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
             }`}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : sentSuccess ? <CheckCircle className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-            {sentSuccess ? 'تم إرسال التقرير الأسبوعي لكل الآباء بنجاح! ✅' : 'إرسال التقرير الشامل لجميع أولياء الأمور 🚀'}
+            {sentSuccess ? `تم حفظ التقارير لـ ${classStudents.length} طالب ✅` : `إرسال التقرير لجميع أولياء الأمور (${classStudents.length} طالب) 🚀`}
           </button>
         </div>
 

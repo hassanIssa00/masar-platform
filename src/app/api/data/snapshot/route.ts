@@ -50,6 +50,10 @@ const COLLECTIONS = [
   ['studentLearningActivity', 'student_learning_activity'],
   ['simpleSpellingAssignments', 'simple_spelling_assignments'],
   ['simpleSpellingDrawings', 'simple_spelling_drawings'],
+  ['dailyAttendanceArchive', 'daily_attendance_archive'],
+  ['dailyHomeworkArchive', 'daily_homework_archive'],
+  ['dailyQuizArchive', 'daily_quiz_archive'],
+  ['meetingChats', 'meeting_chats'],
 ] as const;
 
 const MAX_DOCS_PER_COLLECTION = 800;

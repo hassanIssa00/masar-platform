@@ -57,6 +57,10 @@ const KEYS = {
   studentLearningActivity: 'masar.studentLearningActivity.v1',
   simpleSpellingAssignments: 'masar.simpleSpellingAssignments.v1',
   simpleSpellingDrawings: 'masar.simpleSpellingDrawings.v1',
+  dailyAttendanceArchive: 'masar.daily_attendance_archive.v1',
+  dailyHomeworkArchive: 'masar.daily_homework_archive.v1',
+  dailyQuizArchive: 'masar.daily_quiz_archive.v1',
+  meetingChats: 'masar.meeting_chats.v1',
 };
 
 type CloudPayload = unknown;
@@ -110,6 +114,10 @@ const CLOUD_COLLECTIONS = [
   ['studentLearningActivity', 'student_learning_activity'],
   ['simpleSpellingAssignments', 'simple_spelling_assignments'],
   ['simpleSpellingDrawings', 'simple_spelling_drawings'],
+  ['dailyAttendanceArchive', 'daily_attendance_archive'],
+  ['dailyHomeworkArchive', 'daily_homework_archive'],
+  ['dailyQuizArchive', 'daily_quiz_archive'],
+  ['meetingChats', 'meeting_chats'],
 ] as const satisfies Array<[keyof typeof KEYS, string]>;
 
 function selectedCollections(collectionKeys?: Array<keyof typeof KEYS>) {

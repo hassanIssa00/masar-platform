@@ -73,7 +73,7 @@ export default function SchoolParentPage() {
       setParentName(session.name || 'ولي الأمر');
 
       // Pull latest data from cloud before searching
-      await pullCloudDataToLocal(['students', 'accounts', 'surveys']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents']).catch(() => {});
       if (cancelled) return;
 
       // Retrieve linked student record

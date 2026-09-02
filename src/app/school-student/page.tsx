@@ -49,7 +49,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadStudentPortal = async () => {
-      await pullCloudDataToLocal(['students', 'accounts', 'homework']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'homework', 'classStudents', 'studentCertLogs', 'studentHomeworkLogs', 'ikhlasPosts']).catch(() => {});
       if (cancelled) return;
 
       const session = getSession() ?? await hydrateSessionFromServer();

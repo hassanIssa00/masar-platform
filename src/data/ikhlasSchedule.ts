@@ -151,6 +151,21 @@ export function parseSlotsToPeriods(slots: any[]): Period[] {
 }
 
 export function getSavedSchedule(): Period[] {
+  // Try reading a parsed/customized schedule from cloud cache first (client only)
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('masar_smart_schedule_v1');
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (Array.isArray(cached) && cached.length > 0) {
+          const periods = cached[0]?.periods ?? cached;
+          if (Array.isArray(periods) && periods.length > 0) return periods as Period[];
+        }
+      }
+    } catch {
+      // Silently fall through to default
+    }
+  }
   return DEFAULT_SCHEDULE;
 }
 

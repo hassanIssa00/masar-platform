@@ -61,5 +61,10 @@ export async function markNotificationAsRead(id: string) {
 }
 
 export async function clearAllNotifications() {
+  const current = getLocalNotifications();
+  // Clear local cache first
   saveLocalNotifications([]);
+  // Delete each notification from Firestore so they don't reappear on next sync
+  const { deleteDocFromCloud } = await import('./firestoreSync');
+  await Promise.allSettled(current.map(n => deleteDocFromCloud('notifications', n.id)));
 }
