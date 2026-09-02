@@ -56,16 +56,32 @@ function ReportsContent() {
     const load = async () => {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
-      if (!session || (session.role !== 'doctor' && session.role !== 'specialist')) {
-        router.replace(session?.role === 'parent' ? '/parent' : session?.role === 'student' ? '/school-student' : '/login');
+      if (!session) {
+        router.replace('/login');
         return;
       }
+
+      const reportId = searchParams.get('report');
+      const isParentOrStudent = session.role === 'parent' || session.role === 'student';
+
+      // If parent/student tries to access general reports dashboard without a specific report ID, redirect to portal
+      if (isParentOrStudent && !reportId && !parentMode) {
+        router.replace(session.role === 'parent' ? '/parent' : '/school-student');
+        return;
+      }
+
+      // If user is neither doctor/specialist nor a parent/student viewing a report
+      if (session.role !== 'doctor' && session.role !== 'specialist' && !isParentOrStudent) {
+        router.replace('/login');
+        return;
+      }
+
       const rawReports = getReports();
       const nextReports = Array.isArray(rawReports) ? rawReports.filter(Boolean) : [];
       setReports(nextReports);
       const rawStudents = getStudents();
       setStudents(Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : []);
-      const reportId = searchParams.get('report');
+
       if (reportId && nextReports.some((report) => report && report.id === reportId)) {
         setSelectedId(reportId);
       }
@@ -130,8 +146,18 @@ function ReportsContent() {
           <main className={`min-w-0 flex-1 px-4 py-6 print:p-0 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
             {/* Top Action Toolbar (Above Report Frame) */}
             <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-4">
-              {!parentMode && (
+              {parentMode ? (
                 <button
+                  type="button"
+                  onClick={() => router.push(selectedStudent?.schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent')}
+                  className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 text-sm font-black text-teal-800 hover:bg-teal-100 transition shadow-xs cursor-pointer"
+                >
+                  <ArrowRight size={18} />
+                  <span>العودة إلى بوابة ولي الأمر</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
                   onClick={() => setSelectedId(null)}
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
                 >
