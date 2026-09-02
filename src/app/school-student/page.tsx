@@ -51,7 +51,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadStudentPortal = async () => {
-      await pullCloudDataToLocal(['students', 'accounts', 'homework', 'classStudents', 'studentCertLogs', 'studentHomeworkLogs', 'ikhlasPosts']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'homework', 'curriculumAssignments', 'classStudents', 'studentCertLogs', 'studentHomeworkLogs', 'ikhlasPosts']).catch(() => {});
       if (cancelled) return;
 
       const session = getSession() ?? await hydrateSessionFromServer();
@@ -149,7 +149,10 @@ export default function StudentDashboard() {
     return () => { cancelled = true; };
   }, [router]);
 
-  const loadHomework = useCallback((name: string, id: string) => {
+  const loadHomework = useCallback(async (name: string, id: string, forcePull = false) => {
+    if (forcePull) {
+      await pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs']).catch(() => {});
+    }
     const allHw = getLocalHomework();
 
     // Strategy 1: exact match by studentId or name
@@ -161,7 +164,6 @@ export default function StudentDashboard() {
     });
 
     // Strategy 2: if nothing found, show all class homework deduplicated by title
-    // (teacher broadcasts to all students — any unique homework title is relevant)
     let merged = exact.length > 0 ? exact : (() => {
       const seenTitles = new Set<string>();
       return allHw.filter(hw => {
@@ -171,7 +173,30 @@ export default function StudentDashboard() {
       });
     })();
 
-    // Strategy 3: also check ikhlas posts for homework type
+    // Strategy 3: Also load from curriculumAssignments
+    const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
+    const studentCurrAssignments = currAssignments.filter((a: any) =>
+      !a.studentId || a.studentId === 'all' || a.studentId === id ||
+      (a.studentName && normalizeArabicText(a.studentName) === normalizeArabicText(name))
+    );
+    const currAsHomework: HomeworkRecord[] = (studentCurrAssignments.length > 0 ? studentCurrAssignments : currAssignments).map((a: any) => ({
+      id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
+      studentId: a.studentId || id,
+      studentName: a.studentName || name,
+      title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
+      description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
+      dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+      status: 'assigned' as const,
+      createdAt: a.assignedAt || new Date().toISOString(),
+    }));
+
+    for (const ca of currAsHomework) {
+      if (!merged.find(h => h.id === ca.id || h.title === ca.title)) {
+        merged = [...merged, ca];
+      }
+    }
+
+    // Strategy 4: also check ikhlas posts for homework type
     const posts = getIkhlasPosts();
     const fromPosts: HomeworkRecord[] = posts
       .filter(p => p.type === 'homework')
@@ -193,7 +218,10 @@ export default function StudentDashboard() {
     setHomeworks(merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   }, []);
 
-  const loadCertificates = useCallback((id: string, name: string) => {
+  const loadCertificates = useCallback(async (id: string, name: string, forcePull = false) => {
+    if (forcePull) {
+      await pullCloudDataToLocal(['studentCertLogs']).catch(() => {});
+    }
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
 
     // Match by studentId OR by student name
@@ -304,7 +332,7 @@ export default function StudentDashboard() {
         <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
           <BookOpen size={18} className="text-teal-600" /> الواجبات المنزلية
         </h2>
-        <button onClick={() => loadHomework(studentName, studentId)}
+        <button onClick={() => loadHomework(studentName, studentId, true)}
           className="flex items-center gap-1 text-xs font-black text-teal-700 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl hover:bg-teal-100 transition cursor-pointer">
           <RefreshCw size={12} /> تحديث
         </button>
@@ -383,12 +411,16 @@ export default function StudentDashboard() {
           {curriculaList.map(subject => {
             const files = uploadedFiles.filter(f => f.subjectId === subject.slug);
             const subjectIcons: Record<string, string> = {
-              'arabic': '📖', 'math': '🔢', 'islamic': '🌙', 'science': '🔬',
-              'social': '🌍', 'art': '🎨', 'pe': '⚽', 'computer': '💻',
+              'lughati': '📖', 'math': '🔢', 'islamic': '🌙', 'science': '🔬',
+              'english': '🔤', 'life-skills': '🌱', 'art': '🎨',
             };
             return (
               <SubjectCard key={subject.slug} subject={{
+                slug: subject.slug,
                 name: subject.title,
+                subtitle: subject.subtitle,
+                badge: subject.badge,
+                pageCount: subject.pageCount,
                 icon: subjectIcons[subject.slug] || '📚',
                 color: subject.color || 'bg-blue-50 border-blue-200 text-blue-800',
                 topics: (subject as any).units?.map((u: any) => u.title) || (subject as any).chapters?.map((c: any) => c.title) || [],
@@ -411,13 +443,21 @@ export default function StudentDashboard() {
   // ── Certificates Tab ───────────────────────────────────────────────────────
   const renderCertificatesTab = () => (
     <div className="space-y-4">
-      <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg">
-        <div className="flex items-center gap-3 mb-2">
-          <Trophy size={22} />
-          <h2 className="text-base font-black">شهادات التميز 🏆</h2>
+      <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <Trophy size={22} />
+            <h2 className="text-base font-black">شهادات التميز 🏆</h2>
+          </div>
+          <p className="text-xs text-amber-100 font-bold">شهادات التفوق والإنجاز الخاصة بك</p>
+          <p className="text-xs text-amber-100 mt-1">{studentRecord?.fullName || studentName}</p>
         </div>
-        <p className="text-xs text-amber-100 font-bold">شهادات التفوق والإنجاز الخاصة بك</p>
-        <p className="text-xs text-amber-100 mt-1">{studentRecord?.fullName || studentName}</p>
+        <button
+          onClick={() => loadCertificates(studentId, studentName, true)}
+          className="flex items-center gap-1 text-xs font-black text-amber-900 bg-white/90 hover:bg-white px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer"
+        >
+          <RefreshCw size={12} /> تحديث
+        </button>
       </div>
 
       {certificates.length === 0 ? (
@@ -557,25 +597,70 @@ export default function StudentDashboard() {
 }
 
 // ── Subject Card Component ─────────────────────────────────────────────────
-function SubjectCard({ subject }: { subject: { name: string; icon: string; color: string; topics: string[]; files?: any[]; uploadedBooks?: any[] } }) {
+function SubjectCard({ subject }: { subject: { slug?: string; name: string; subtitle?: string; badge?: string; pageCount?: number; icon: string; color: string; topics: string[]; files?: any[]; uploadedBooks?: any[] } }) {
   const [open, setOpen] = useState(false);
   const hasFiles = (subject.files?.length ?? 0) > 0;
 
   return (
     <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden`}>
-      <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition">
+      <div className="p-4 flex items-center justify-between gap-3 bg-white">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{subject.icon}</span>
+          <span className="text-3xl">{subject.icon}</span>
           <div className="text-right">
             <span className="font-black text-sm text-slate-900 block">{subject.name}</span>
-            {hasFiles && <span className="text-[10px] text-emerald-600 font-bold">📁 {subject.files!.length} ملف متاح</span>}
+            <span className="text-[11px] text-slate-500 font-bold block">{subject.subtitle || 'كتاب الطالب التفاعلي'}</span>
+            <div className="flex items-center gap-2 mt-1">
+              {subject.pageCount && (
+                <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                  📄 {subject.pageCount} صفحة تفاعلية
+                </span>
+              )}
+              {hasFiles && (
+                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                  📁 {subject.files!.length} ملف إضافي
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        {open ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-      </button>
+
+        <div className="flex items-center gap-2">
+          {subject.slug && (
+            <Link
+              href={`/programs/curricula/${subject.slug}`}
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
+            >
+              <span>فتح الكتاب التفاعلي ✍️</span>
+            </Link>
+          )}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+            title="عرض الفهرس والوحدات"
+          >
+            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
+      </div>
+
       {open && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/50">
+          {/* Direct Interactive Link Alert */}
+          {subject.slug && (
+            <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-2">
+              <div className="text-right">
+                <p className="text-xs font-black text-teal-900">الكتاب المدرسي التفاعلي بالقلم والحل الرقمي</p>
+                <p className="text-[10px] text-teal-700 font-bold">يمكنك الكتابة والتلوين وحل الواجبات مباشرة داخل صفحات هذا المنهج.</p>
+              </div>
+              <Link
+                href={`/programs/curricula/${subject.slug}`}
+                className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shrink-0 transition"
+              >
+                دخول الكتاب 📖
+              </Link>
+            </div>
+          )}
+
           {/* Uploaded files / books */}
           {hasFiles && (
             <div className="space-y-2">
@@ -593,12 +678,13 @@ function SubjectCard({ subject }: { subject: { name: string; icon: string; color
               ))}
             </div>
           )}
+
           {/* Topics / chapters */}
           {subject.topics.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">📋 الوحدات الدراسية</p>
+              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">📋 فهرس الوحدات والدروس</p>
               {subject.topics.map(t => (
-                <div key={t} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                <div key={t} className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200/70">
                   <CheckCircle size={13} className="text-emerald-500 shrink-0" />
                   <span className="text-xs font-bold text-slate-700">{t}</span>
                 </div>
@@ -610,6 +696,7 @@ function SubjectCard({ subject }: { subject: { name: string; icon: string; color
     </div>
   );
 }
+
 
 
 // ── Homework Submission Modal ──────────────────────────────────────────────
