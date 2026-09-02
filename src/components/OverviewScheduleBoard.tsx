@@ -17,6 +17,7 @@ interface Props {
   onNavigateTab?: (tab: any) => void;
   variant?: 'teacher' | 'parent' | 'student';
   studentName?: string;
+  showFullWeek?: boolean;
 }
 
 const SUBJECT_CONFIG: Record<string, { icon: string; bg: string; border: string; text: string; badge: string }> = {
@@ -108,6 +109,7 @@ export default function OverviewScheduleBoard({
   onNavigateTab,
   variant = 'teacher',
   studentName,
+  showFullWeek = false,
 }: Props) {
   const schedule = useMemo(() => passedSchedule || getSavedSchedule(), [passedSchedule]);
   const jsDay = passedJsDay !== undefined ? passedJsDay : new Date().getDay();
@@ -116,6 +118,7 @@ export default function OverviewScheduleBoard({
   const minsUntilDismissal = passedMins !== undefined ? passedMins : getMinutesUntilDismissal(schedule);
 
   const [currentTimeStr, setCurrentTimeStr] = useState('');
+  const [viewAllDays, setViewAllDays] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -364,13 +367,13 @@ export default function OverviewScheduleBoard({
 
           {/* Quick Actions Bar */}
           <div className="flex items-center gap-2 flex-wrap">
-            {onNavigateTab && (
+            {(onNavigateTab || showFullWeek) && (
               <button
-                onClick={() => onNavigateTab('schedule')}
+                onClick={() => showFullWeek ? setViewAllDays(v => !v) : onNavigateTab?.('schedule')}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
               >
                 <Layers size={14} className="text-amber-300" />
-                <span>جدول الأسبوع كاملاً 📊</span>
+                <span>{viewAllDays ? 'إخفاء الجدول الأسبوعي ↑' : 'جدول الأسبوع كاملاً 📊'}</span>
               </button>
             )}
 
@@ -688,7 +691,43 @@ export default function OverviewScheduleBoard({
           </div>
         )}
       </div>
+
+      {/* ── FULL WEEK VIEW ── */}
+      {viewAllDays && (
+        <div className="border-t border-slate-200 bg-white p-4 space-y-4">
+          <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+            <Calendar size={15} className="text-emerald-600" />
+            الجدول الأسبوعي الكامل — الأحد إلى الخميس
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            {[0, 1, 2, 3, 4].map(day => {
+              const dayPeriods = getTodayPeriods(schedule, day);
+              const isToday = day === jsDay;
+              return (
+                <div key={day} className={`rounded-2xl border p-3 space-y-2 ${isToday ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className={`text-xs font-black text-center ${isToday ? 'text-emerald-800' : 'text-slate-700'}`}>
+                    {DAY_NAMES[day]} {isToday ? '⭐' : ''}
+                  </p>
+                  {dayPeriods.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 text-center">لا حصص</p>
+                  ) : dayPeriods.map(p => {
+                    const cfg = SUBJECT_CONFIG[p.subjectName] || { icon: '📚', badge: 'bg-slate-600 text-white' };
+                    return (
+                      <div key={`${p.dayOfWeek}-${p.periodNumber}`} className="bg-white rounded-xl border border-slate-200 p-2 flex items-center gap-1.5">
+                        <span className="text-base shrink-0">{cfg.icon}</span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{p.subjectName}</p>
+                          <p className="text-[9px] text-slate-500 font-mono">{p.startTime}–{p.endTime}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

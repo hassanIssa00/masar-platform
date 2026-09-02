@@ -10,6 +10,8 @@ import {
   Calendar, BookMarked, Trophy, ChevronDown, ChevronUp, RefreshCw
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { curriculaList } from '@/data/curriculaData';
+import { getCurriculumFiles } from '@/lib/curriculumDb';
 import {
   clearSession, getSession, getStudents, getAccounts, getReports,
   updateStudent, getIkhlasPosts, hydrateSessionFromServer,
@@ -148,47 +150,62 @@ export default function StudentDashboard() {
   }, [router]);
 
   const loadHomework = useCallback((name: string, id: string) => {
-    // Read from homework collection in local cache (pulled from Firestore)
     const allHw = getLocalHomework();
-    // Filter by studentId or studentName match, or show all branch-wide homework
-    const myHw = allHw.filter(hw => {
+
+    // Strategy 1: exact match by studentId or name
+    const exact = allHw.filter(hw => {
       if (!hw.studentId || hw.studentId === '' || hw.studentId === 'all') return true;
       if (hw.studentId === id) return true;
       if (hw.studentName && normalizeArabicText(hw.studentName) === normalizeArabicText(name)) return true;
       return false;
     });
 
-    // Also check ikhlas posts for homework type
-    const posts = getIkhlasPosts();
-    const hwPosts = posts.filter(p => p.type === 'homework');
-    const fromPosts: HomeworkRecord[] = hwPosts.map(p => ({
-      id: p.id,
-      studentId: 'all',
-      studentName: '',
-      title: p.title,
-      description: p.content || '',
-      dueDate: p.dueDate || p.createdAt?.slice(0, 10) || '',
-      status: 'assigned' as const,
-      createdAt: p.createdAt,
-    }));
+    // Strategy 2: if nothing found, show all class homework deduplicated by title
+    // (teacher broadcasts to all students — any unique homework title is relevant)
+    let merged = exact.length > 0 ? exact : (() => {
+      const seenTitles = new Set<string>();
+      return allHw.filter(hw => {
+        if (seenTitles.has(hw.title)) return false;
+        seenTitles.add(hw.title);
+        return true;
+      });
+    })();
 
-    // Merge, deduplicate by id
-    const merged = [...myHw];
+    // Strategy 3: also check ikhlas posts for homework type
+    const posts = getIkhlasPosts();
+    const fromPosts: HomeworkRecord[] = posts
+      .filter(p => p.type === 'homework')
+      .map(p => ({
+        id: p.id,
+        studentId: 'all',
+        studentName: '',
+        title: p.title,
+        description: p.content || '',
+        dueDate: p.dueDate || p.createdAt?.slice(0, 10) || '',
+        status: 'assigned' as const,
+        createdAt: p.createdAt,
+      }));
+
     for (const p of fromPosts) {
-      if (!merged.find(h => h.id === p.id)) merged.push(p);
+      if (!merged.find(h => h.title === p.title)) merged = [...merged, p];
     }
 
     setHomeworks(merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   }, []);
 
   const loadCertificates = useCallback((id: string, name: string) => {
-    const myCerts = getStudentCertificateLogs(id);
-    // Also check by name in case studentId wasn't set
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
-    const byName = allCerts.filter(c =>
-      c.studentName && normalizeArabicText(c.studentName) === normalizeArabicText(name) && !myCerts.find(m => m.id === c.id)
+
+    // Match by studentId OR by student name
+    const mine = allCerts.filter(c =>
+      c.studentId === id ||
+      (c.studentName && normalizeArabicText(c.studentName) === normalizeArabicText(name))
     );
-    setCertificates([...myCerts, ...byName].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+    // If nothing found and there are certs, show all (could be linked differently)
+    const result = mine.length > 0 ? mine : allCerts;
+
+    setCertificates(result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   }, []);
 
   const handleLogout = () => { clearSession(); router.push('/login'); };
@@ -338,21 +355,18 @@ export default function StudentDashboard() {
   // ── Schedule Tab ───────────────────────────────────────────────────────────
   const renderScheduleTab = () => (
     <div className="space-y-4">
-      <OverviewScheduleBoard variant="student" studentName={studentRecord?.fullName || studentName} onNavigateTab={(t) => { if (t !== 'schedule') setActiveTab(t as Tab); }} />
+      <OverviewScheduleBoard
+        variant="student"
+        studentName={studentRecord?.fullName || studentName}
+        onNavigateTab={(t) => { if (t !== 'schedule') setActiveTab(t as Tab); }}
+        showFullWeek={true}
+      />
     </div>
   );
 
   // ── Curriculum Tab ─────────────────────────────────────────────────────────
   const renderCurriculumTab = () => {
-    const subjects = [
-      { name: 'اللغة العربية', icon: '📖', color: 'bg-blue-50 border-blue-200 text-blue-800', topics: ['القراءة والفهم', 'التعبير الكتابي', 'النحو والصرف', 'الإملاء والخط'] },
-      { name: 'الرياضيات', icon: '🔢', color: 'bg-purple-50 border-purple-200 text-purple-800', topics: ['الأعداد والعمليات', 'الهندسة', 'القياس', 'الأنماط والجبر'] },
-      { name: 'التربية الإسلامية', icon: '🌙', color: 'bg-emerald-50 border-emerald-200 text-emerald-800', topics: ['القرآن الكريم والتلاوة', 'الحديث النبوي', 'الفقه والعبادات', 'السيرة النبوية'] },
-      { name: 'العلوم', icon: '🔬', color: 'bg-cyan-50 border-cyan-200 text-cyan-800', topics: ['الكائنات الحية', 'المادة وخصائصها', 'الطاقة والحركة', 'الأرض والفضاء'] },
-      { name: 'الدراسات الاجتماعية', icon: '🌍', color: 'bg-orange-50 border-orange-200 text-orange-800', topics: ['الوطن والمواطنة', 'الجغرافيا', 'التاريخ الإسلامي', 'المهارات الحياتية'] },
-      { name: 'التربية الفنية', icon: '🎨', color: 'bg-pink-50 border-pink-200 text-pink-800', topics: ['الرسم والتلوين', 'الأشغال اليدوية', 'التصميم الإبداعي'] },
-      { name: 'التربية البدنية', icon: '⚽', color: 'bg-green-50 border-green-200 text-green-800', topics: ['الألعاب الجماعية', 'الألعاب الفردية', 'الصحة واللياقة'] },
-    ];
+    const uploadedFiles = getCurriculumFiles();
 
     return (
       <div className="space-y-4">
@@ -366,13 +380,33 @@ export default function StudentDashboard() {
         </div>
 
         <div className="space-y-3">
-          {subjects.map(subject => (
-            <SubjectCard key={subject.name} subject={subject} />
-          ))}
+          {curriculaList.map(subject => {
+            const files = uploadedFiles.filter(f => f.subjectId === subject.slug);
+            const subjectIcons: Record<string, string> = {
+              'arabic': '📖', 'math': '🔢', 'islamic': '🌙', 'science': '🔬',
+              'social': '🌍', 'art': '🎨', 'pe': '⚽', 'computer': '💻',
+            };
+            return (
+              <SubjectCard key={subject.slug} subject={{
+                name: subject.title,
+                icon: subjectIcons[subject.slug] || '📚',
+                color: subject.color || 'bg-blue-50 border-blue-200 text-blue-800',
+                topics: (subject as any).units?.map((u: any) => u.title) || (subject as any).chapters?.map((c: any) => c.title) || [],
+                files: files.map(f => ({
+                  id: f.id,
+                  title: f.name,
+                  fileUrl: f.base64Data ? `data:${f.mimeType};base64,${f.base64Data}` : undefined,
+                  fileType: f.mimeType?.includes('pdf') ? 'pdf' : 'image',
+                })),
+                uploadedBooks: [],
+              }} />
+            );
+          })}
         </div>
       </div>
     );
   };
+
 
   // ── Certificates Tab ───────────────────────────────────────────────────────
   const renderCertificatesTab = () => (
@@ -523,31 +557,60 @@ export default function StudentDashboard() {
 }
 
 // ── Subject Card Component ─────────────────────────────────────────────────
-function SubjectCard({ subject }: { subject: { name: string; icon: string; color: string; topics: string[] } }) {
+function SubjectCard({ subject }: { subject: { name: string; icon: string; color: string; topics: string[]; files?: any[]; uploadedBooks?: any[] } }) {
   const [open, setOpen] = useState(false);
+  const hasFiles = (subject.files?.length ?? 0) > 0;
+
   return (
-    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${subject.color.includes('border') ? '' : 'border-slate-200'}`}>
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden`}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{subject.icon}</span>
-          <span className="font-black text-sm text-slate-900">{subject.name}</span>
+          <div className="text-right">
+            <span className="font-black text-sm text-slate-900 block">{subject.name}</span>
+            {hasFiles && <span className="text-[10px] text-emerald-600 font-bold">📁 {subject.files!.length} ملف متاح</span>}
+          </div>
         </div>
         {open ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
       </button>
       {open && (
-        <div className="px-4 pb-4 space-y-2">
-          {subject.topics.map(t => (
-            <div key={t} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-              <CheckCircle size={13} className="text-emerald-500 shrink-0" />
-              <span className="text-xs font-bold text-slate-700">{t}</span>
+        <div className="px-4 pb-4 space-y-3">
+          {/* Uploaded files / books */}
+          {hasFiles && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">📚 الكتب والملفات المرفوعة</p>
+              {subject.files!.map((f: any) => (
+                <a key={f.id} href={f.fileUrl || f.url || '#'} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2.5 bg-teal-50 border border-teal-200 rounded-xl hover:bg-teal-100 transition">
+                  <span className="text-lg">{f.fileType === 'pdf' || f.fileType === 'book' ? '📕' : '📄'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-teal-800 truncate">{f.title || f.name || 'ملف'}</p>
+                    {f.description && <p className="text-[10px] text-teal-600 truncate">{f.description}</p>}
+                  </div>
+                  <span className="text-[10px] bg-teal-600 text-white px-2 py-0.5 rounded-full font-bold">عرض</span>
+                </a>
+              ))}
             </div>
-          ))}
+          )}
+          {/* Topics / chapters */}
+          {subject.topics.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">📋 الوحدات الدراسية</p>
+              {subject.topics.map(t => (
+                <div key={t} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                  <CheckCircle size={13} className="text-emerald-500 shrink-0" />
+                  <span className="text-xs font-bold text-slate-700">{t}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
 
 // ── Homework Submission Modal ──────────────────────────────────────────────
 function HomeworkModal({ hw, onClose, onSubmitSuccess }: { hw: HomeworkRecord; onClose: () => void; onSubmitSuccess: () => void }) {
