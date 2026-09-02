@@ -1,8 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall } from 'lucide-react';
 import BrandMark from './BrandMark';
+import { saveStudentCertificateLog } from '@/lib/classDb';
+import { saveMessage } from '@/lib/cloudStore';
 
 /* ── Suggested Achievement Presets (User can pick or type custom) ── */
 const SUGGESTED_ACHIEVEMENTS = [
@@ -128,13 +130,59 @@ export default function ExcellenceCertificateTab({ students }: Props) {
   const handleSendToParentDirect = () => {
     const parent = parentsList.find(p => p.id === selectedParentId);
     const parentName = parent ? parent.parentName : 'ولي الأمر';
+    const matchedStudent = (students || []).find(s => s.id === selectedParentId || s.name.trim().toLowerCase() === form.studentName.trim().toLowerCase());
+    const targetStudentId = matchedStudent?.id || selectedParentId || `std-${Date.now()}`;
 
     setSendingDirect(true);
-    setTimeout(() => {
-      setSendingDirect(false);
-      setDirectSentMessage(`تم إرسال شهادة الطالب (${form.studentName}) لولي الأمر (${parentName}) بنجاح! 🚀`);
+
+    try {
+      // 1. Save certificate record to student certificates database
+      saveStudentCertificateLog({
+        studentId: targetStudentId,
+        studentName: form.studentName,
+        title: form.certTitle,
+        subTitle: form.subTitle,
+        programTitle: form.achievement,
+        achievement: form.achievement,
+        ratingText: form.ratingText,
+        completionDate: form.date,
+        score: form.score,
+        doctorName: form.doctorName,
+        doctorTitle: form.doctorTitle,
+        studentPrefix: form.studentPrefix,
+        gradeLabel: form.gradeLabel,
+        achievementIntro: form.achievementIntro,
+        note: form.note,
+        certNumber: form.certNumber,
+        badge: 'gold',
+      });
+
+      // 2. Dispatch instant notification message to Parent portal
+      saveMessage({
+        studentId: targetStudentId,
+        from: 'doctor',
+        to: 'parent',
+        body: `🏆 تم منح ابنكم البطل (${form.studentName}) شهادة تفوق وتقدير رسمية!\n\n🎖️ عنوان التكريم: ${form.certTitle}\n🎯 مجال التميز: ${form.achievement}\n⭐ التقدير: ${form.ratingText} (%${form.score})\n✍️ الرقم التسلسلي: ${form.certNumber}\n\n💬 ملاحظات د. إسماعيل عيسى:\n"${form.note}"\n\nيمكنكم استعراض وطباعة الشهادة الرقمية مباشرة الآن من قسم "إنجازات البطل" في بوابتكم 🌟`,
+        read: false,
+      });
+
+      // 3. Dispatch encouragement message to Student portal
+      saveMessage({
+        studentId: targetStudentId,
+        from: 'doctor',
+        to: 'student',
+        body: `🎉 مبروك يا بطل (${form.studentName})! لقد منحك د. إسماعيل عيسى شهادة تفوق وتميز (${form.certTitle}) في ${form.achievement}! 🏆`,
+        read: false,
+      });
+
+      setDirectSentMessage(`تم إرسال شهادة الطالب (${form.studentName}) وتوثيقها في بوابة ولي الأمر (${parentName}) بنجاح! 🚀`);
       setTimeout(() => setDirectSentMessage(null), 6000);
-    }, 1200);
+    } catch (err) {
+      console.error(err);
+      setDirectSentMessage('حدث خطأ أثناء إرسال الشهادة.');
+    } finally {
+      setSendingDirect(false);
+    }
   };
 
   const handlePrint = () => {

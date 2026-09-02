@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
   Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace, Camera,
-  User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone, Video, ExternalLink
+  User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone, Video, ExternalLink,
+  Trophy, Medal, Award, Gift
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
@@ -21,6 +22,7 @@ import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/ho
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
 function isGeneratedAlias(email?: string | null) {
@@ -28,7 +30,7 @@ function isGeneratedAlias(email?: string | null) {
   return /^(student|parent|acc|account|generated|user)[._-]/.test(email.toLowerCase()) || email.includes('@masar.local') || email.includes('@generated');
 }
 
-type ParentTab = 'home' | 'reports' | 'chat' | 'homework' | 'profile';
+type ParentTab = 'home' | 'achievements' | 'reports' | 'chat' | 'homework' | 'profile';
 
 export default function ParentDashboard() {
   const router = useRouter();
@@ -440,8 +442,11 @@ export default function ParentDashboard() {
     setMessages(getMessages());
   };
 
+  const childFirstName = (selectedStudent?.fullName || 'البطل').trim().split(' ')[0];
+
   const tabs: Array<{ key: ParentTab; label: string; icon: any }> = [
     { key: 'home', label: 'الرئيسية', icon: Home },
+    { key: 'achievements', label: `إنجازات البطل ${childFirstName} 🏆`, icon: Trophy },
     { key: 'reports', label: 'التقارير الموثقة', icon: FileText },
     { key: 'chat', label: 'محادثة الدكتور', icon: MessageSquare },
     { key: 'homework', label: 'الواجبات', icon: BookOpen },
@@ -613,7 +618,15 @@ export default function ParentDashboard() {
                 <h3 className="text-base font-black text-slate-950">الوصول السريع لخدمات الطفل</h3>
                 <span className="text-xs font-bold text-teal-800">بوابة د. إسماعيل عيسى</span>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <button
+                  onClick={() => setActiveTab('achievements')}
+                  className="flex flex-col items-start p-4 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-white hover:border-amber-400 transition text-right cursor-pointer shadow-xs"
+                >
+                  <Trophy className="text-amber-600 mb-2" size={24} />
+                  <span className="text-sm font-black text-slate-950">إنجازات وجوائز البطل 🏆</span>
+                  <span className="text-[11px] font-bold text-amber-800 mt-1">شهادات التفوق والأوسمة المعتمدة</span>
+                </button>
                 <button
                   onClick={() => setActiveTab('reports')}
                   className="flex flex-col items-start p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 transition text-right cursor-pointer"
@@ -643,7 +656,17 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* Tab 2: Reports */}
+        {/* Tab 2: Hero Achievements (إنجازات وجوائز البطل) */}
+        {activeTab === 'achievements' && selectedStudent && (
+          <StudentAchievementsTab
+            studentId={selectedStudent.id}
+            studentName={selectedStudent.fullName}
+            grade={selectedStudent.grade}
+            variant="parent"
+          />
+        )}
+
+        {/* Tab 3: Reports */}
         {activeTab === 'reports' && (
           <div className="space-y-6 animate-fade-in">
             {/* Multi-Track Display Card */}
@@ -1041,8 +1064,8 @@ export default function ParentDashboard() {
       </main>
 
       {/* Floating Bottom Navigation Bar matching student & school-parent portals */}
-      <div className="fixed bottom-3 left-3 right-3 max-w-xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-teal-600/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-teal-600/10">
-        <div className="grid grid-cols-5 gap-1">
+      <div className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-teal-600/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-teal-600/10">
+        <div className="grid grid-cols-6 gap-1">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = activeTab === t.key;

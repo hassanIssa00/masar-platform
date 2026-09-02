@@ -57,10 +57,22 @@ export type StudentHomeworkLog = {
 export type StudentCertificateLog = {
   id: string;
   studentId: string;
+  studentName?: string;
   title: string;
+  subTitle?: string;
   programTitle: string;
+  achievement?: string;
+  ratingText?: string;
   completionDate: string;
   score: number;
+  doctorName?: string;
+  doctorTitle?: string;
+  studentPrefix?: string;
+  gradeLabel?: string;
+  achievementIntro?: string;
+  note?: string;
+  certNumber?: string;
+  badge?: string;
   createdAt: string;
 };
 

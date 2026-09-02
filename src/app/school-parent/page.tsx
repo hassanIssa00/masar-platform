@@ -7,12 +7,14 @@ import {
   Clock, BookOpen, Video, MessageSquare, Camera,
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
-  ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck
+  ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
+  Trophy, Medal, Award, Gift
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
 import { clearSession, getAccounts, getSession, getStudents, getSurveys, hydrateSessionFromServer, StudentRecord } from '@/lib/cloudStore';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
@@ -23,7 +25,7 @@ function authHeaders() {
   return { 'Content-Type': 'application/json' };
 }
 
-type Tab = 'home' | 'schedule' | 'homework' | 'meetings' | 'community' | 'photos' | 'report';
+type Tab = 'home' | 'achievements' | 'schedule' | 'homework' | 'meetings' | 'community' | 'photos' | 'report';
 
 export default function SchoolParentPage() {
   const router = useRouter();
@@ -189,14 +191,17 @@ export default function SchoolParentPage() {
     return Array.from(map.values());
   }, [dashboard?.openHomework]);
 
+  const childFirstName = (studentRecord?.fullName || 'البطل').trim().split(' ')[0];
+
   const tabs = [
-    { key: 'home' as Tab,      label: 'الرئيسية',  icon: Home },
-    { key: 'schedule' as Tab,  label: 'الجدول',    icon: Clock },
-    { key: 'homework' as Tab,  label: 'الواجبات',  icon: BookOpen },
-    { key: 'meetings' as Tab,  label: 'الاجتماعات',icon: Video },
-    { key: 'community' as Tab, label: 'المجتمع',   icon: MessageSquare },
-    { key: 'photos' as Tab,    label: 'الصور',     icon: Camera },
-    { key: 'report' as Tab,    label: 'التقارير',  icon: BarChart3 },
+    { key: 'home' as Tab,          label: 'الرئيسية',  icon: Home },
+    { key: 'achievements' as Tab,  label: `إنجازات ${childFirstName} 🏆`, icon: Trophy },
+    { key: 'schedule' as Tab,      label: 'الجدول',    icon: Clock },
+    { key: 'homework' as Tab,      label: 'الواجبات',  icon: BookOpen },
+    { key: 'meetings' as Tab,      label: 'الاجتماعات',icon: Video },
+    { key: 'community' as Tab,     label: 'المجتمع',   icon: MessageSquare },
+    { key: 'photos' as Tab,        label: 'الصور',     icon: Camera },
+    { key: 'report' as Tab,        label: 'التقارير',  icon: BarChart3 },
   ];
 
   const displayName = parentName ? `أهلاً بك أ. ${parentName} 👋` : 'أهلاً بك يا ولي الأمر 👋';
@@ -239,8 +244,8 @@ export default function SchoolParentPage() {
       </div>
 
       {/* Prominent Floating Bottom Navigation Bar */}
-      <div className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
-        <div className="grid grid-cols-7 gap-1">
+      <div className="fixed bottom-3 left-2 right-2 max-w-3xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
+        <div className="grid grid-cols-8 gap-0.5 sm:gap-1">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -334,6 +339,30 @@ export default function SchoolParentPage() {
                 variant="parent"
                 showParent={false}
               />
+            )}
+
+            {/* Achievements Banner Link */}
+            {studentRecord && (
+              <div
+                onClick={() => setTab('achievements')}
+                className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 rounded-3xl p-5 text-slate-950 shadow-lg border-2 border-amber-300 relative overflow-hidden flex items-center justify-between gap-4 cursor-pointer hover:shadow-xl transition active:scale-98"
+              >
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-white/30 border border-white/40 flex items-center justify-center shrink-0 shadow-inner text-2xl">
+                    🏆
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-slate-950">إنجازات وجوائز البطل {childFirstName} 🏆</h3>
+                    <p className="text-xs font-bold text-amber-950 mt-0.5">
+                      استعراض شهادات التفوق المعتمدة، الأوسمة، والجوائز من د. إسماعيل عيسى
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 bg-slate-950 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-md transition flex items-center gap-1.5">
+                  <span>عرض الإنجازات</span>
+                  <ChevronLeft size={14} />
+                </div>
+              </div>
             )}
 
             {/* تنبيه تأخر استلام الطفل العاجل */}
@@ -447,6 +476,16 @@ export default function SchoolParentPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ══════════════ إنجازات البطل ══════════════ */}
+        {!loading && tab === 'achievements' && studentRecord && (
+          <StudentAchievementsTab
+            studentId={studentRecord.id}
+            studentName={studentRecord.fullName}
+            grade={studentRecord.grade}
+            variant="parent"
+          />
         )}
 
         {/* ══════════════ جدول الحصص ══════════════ */}
