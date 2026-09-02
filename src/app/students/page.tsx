@@ -108,15 +108,18 @@ export default function StudentsControlPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // 1. Instantly display existing students from local cache (0ms)
+    void refresh();
+
     (async () => {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       if (session) trackEvent('visit', { userId: session.id, userName: session.name, userRole: session.role, page: '/students' });
-      // 1. Clear any stale backoff so the first load always hits the server
+      // 2. Fetch fresh updates from cloud in the background
       clearSnapshotBackoff();
-      // 2. Pull cloud data first
       await pullCloudDataToLocal([...STUDENTS_SYNC_KEYS]).catch(() => {});
-      // 3. Then refresh
+      // 3. Update view once fresh cloud data arrives
       if (!cancelled) await refresh();
     })();
 

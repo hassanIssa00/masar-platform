@@ -57,8 +57,8 @@ const COLLECTIONS = [
 ] as const;
 
 const MAX_DOCS_PER_COLLECTION = 800;
-const SNAPSHOT_CACHE_TTL_MS = 5 * 1000; // 5 seconds fresh cache
-const STALE_SNAPSHOT_TTL_MS = 30 * 1000;
+const SNAPSHOT_CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh cache (prevents thrashing Firestore on fast reloads)
+const STALE_SNAPSHOT_TTL_MS = 120 * 1000; // 2 minutes stale cache
 const PARTIAL_RETRY_AFTER_MS = 1000;
 const EXHAUSTED_RETRY_AFTER_MS = 5000;
 

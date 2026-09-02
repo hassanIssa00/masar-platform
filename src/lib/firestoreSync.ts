@@ -131,20 +131,49 @@ function hasCloudAuthSession() {
 }
 
 export function readCloudCache<T>(key: string): T[] {
-  return (memoryCache.get(key) as T[] | undefined) ?? [];
+  const inMemory = memoryCache.get(key) as T[] | undefined;
+  if (inMemory !== undefined) return inMemory;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          memoryCache.set(key, parsed);
+          return parsed as T[];
+        }
+      }
+    } catch {}
+  }
+  return [];
 }
 
 export function writeCloudCache<T>(key: string, data: T[]) {
   memoryCache.set(key, data);
   if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
   window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key } }));
 }
 
 export function clearCloudCache(keys?: string[]) {
   if (keys?.length) {
-    keys.forEach((key) => memoryCache.delete(key));
+    keys.forEach((key) => {
+      memoryCache.delete(key);
+      if (typeof window !== 'undefined') {
+        try { localStorage.removeItem(key); } catch {}
+      }
+    });
   } else {
     memoryCache.clear();
+    if (typeof window !== 'undefined') {
+      try {
+        Object.values(KEYS).forEach((k) => {
+          try { localStorage.removeItem(k); } catch {}
+        });
+      } catch {}
+    }
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { cleared: true } }));
@@ -191,49 +220,65 @@ export function clearSnapshotBackoff() {
   serverSnapshotBackoffUntil = 0;
 }
 
+const inFlightSnapshots = new Map<string, Promise<boolean>>();
+
 export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
   if (typeof window === 'undefined') return false;
   if (Date.now() < serverSnapshotBackoffUntil) return false;
 
-  try {
-    const params = collectionKeys?.length
-      ? `?collections=${encodeURIComponent(collectionKeys.join(','))}`
-      : '';
-    const res = await fetch(`/api/data/snapshot${params}`, {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-    });
+  const keyParam = collectionKeys?.length
+    ? [...collectionKeys].sort().join(',')
+    : 'ALL';
 
-    if (!res.ok) return false;
-
-    const payload = await res.json();
-    if (!payload?.ok || !payload.data) return false;
-    if (typeof payload.retryAfterMs === 'number' && payload.retryAfterMs > 0) {
-      serverSnapshotBackoffUntil = Date.now() + payload.retryAfterMs;
-    }
-
-    const failedKeys = new Set<string>(
-      Array.isArray(payload.failedCollections)
-        ? payload.failedCollections.map((item: { key?: string }) => item.key).filter(Boolean)
-        : [],
-    );
-
-    Object.entries(KEYS).forEach(([payloadKey, localKey]) => {
-      if (failedKeys.has(payloadKey)) return;
-      const items = payload.data[payloadKey];
-      if (Array.isArray(items)) {
-        writeLocal(localKey, items);
-      }
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Server snapshot sync failed:', error);
-    // Reduced from 120s → 10s so clients retry quickly after transient errors
-    serverSnapshotBackoffUntil = Date.now() + 10_000;
-    return false;
+  if (inFlightSnapshots.has(keyParam)) {
+    return inFlightSnapshots.get(keyParam)!;
   }
+
+  const fetchPromise = (async () => {
+    try {
+      const params = collectionKeys?.length
+        ? `?collections=${encodeURIComponent(collectionKeys.join(','))}`
+        : '';
+      const res = await fetch(`/api/data/snapshot${params}`, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      if (!res.ok) return false;
+
+      const payload = await res.json();
+      if (!payload?.ok || !payload.data) return false;
+      if (typeof payload.retryAfterMs === 'number' && payload.retryAfterMs > 0) {
+        serverSnapshotBackoffUntil = Date.now() + payload.retryAfterMs;
+      }
+
+      const failedKeys = new Set<string>(
+        Array.isArray(payload.failedCollections)
+          ? payload.failedCollections.map((item: { key?: string }) => item.key).filter(Boolean)
+          : [],
+      );
+
+      Object.entries(KEYS).forEach(([payloadKey, localKey]) => {
+        if (failedKeys.has(payloadKey)) return;
+        const items = payload.data[payloadKey];
+        if (Array.isArray(items)) {
+          writeLocal(localKey, items);
+        }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Server snapshot sync failed:', error);
+      serverSnapshotBackoffUntil = Date.now() + 10_000;
+      return false;
+    } finally {
+      inFlightSnapshots.delete(keyParam);
+    }
+  })();
+
+  inFlightSnapshots.set(keyParam, fetchPromise);
+  return fetchPromise;
 }
 
 
