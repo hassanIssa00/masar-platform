@@ -97,7 +97,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     const loadRecipients = () => {
       const map = new Map<string, ParentStudentEntry>();
 
-      // 1. From classDb
+      // 1. From classDb — ONLY the registered class students (IKHLAS_JEDDAH)
       const clsStudents = getClassStudents();
       clsStudents.forEach(s => {
         map.set(s.id, {
@@ -110,7 +110,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         });
       });
 
-      // 2. From props if provided
+      // 2. From props if explicitly provided (e.g. teacher selects students)
       if (students && students.length > 0) {
         students.forEach((s, idx) => {
           if (!map.has(s.id)) {
@@ -126,26 +126,8 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         });
       }
 
-      // 3. From platform general students cache
-      try {
-        const allStudents = readCloudCache<any>('masar.students.v1');
-        if (Array.isArray(allStudents)) {
-          allStudents.forEach(s => {
-            if (s.id && !map.has(s.id) && s.fullName) {
-              map.set(s.id, {
-                id: s.id,
-                studentId: s.id,
-                studentName: s.fullName,
-                parentName: s.parentName || `ولي أمر ${s.fullName}`,
-                phone: s.parentPhone || '966501234567',
-                grade: s.grade,
-              });
-            }
-          });
-        }
-      } catch {}
-
-      // No fallback to DEFAULT_CLASS_STUDENTS — deleted students must never reappear
+      // NOTE: We do NOT fall back to masar.students.v1 (all platform students)
+      // Certificates must only go to students in THIS class.
 
       const list = Array.from(map.values());
       setRecipientList(list);
