@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
   Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace, Camera,
-  User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone
+  User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone, Video, ExternalLink
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
@@ -386,11 +386,17 @@ export default function ParentDashboard() {
 
   const latestReport = studentReports[0];
 
-  const isReportDispatchedByDoctor = (reportType: string) => {
+  const isReportDispatchedByDoctor = (report?: ReportRecord | string | null) => {
+    if (!report) return false;
+    if (typeof report === 'object') {
+      if (report.dispatchedToParent === true || report.status === 'completed') return true;
+    }
+    const reportType = typeof report === 'string' ? report : (report.type || report.program || '');
     return studentMessages.some((m) => m.from === 'doctor' && (
       m.body.includes('تم إرسال وتحديد التقرير') ||
       m.body.includes('التقرير الرقمي') ||
-      m.body.includes('تم اعتماد وإرسال التقرير')
+      m.body.includes('تم اعتماد وإرسال التقرير') ||
+      (reportType && m.body.includes(reportType))
     ));
   };
 
@@ -687,7 +693,7 @@ export default function ParentDashboard() {
                     report: studentReports.find((r) => r.type === 'clinical-analysis' || r.type === 'placement'),
                   },
                 ].map((slot) => {
-                  const isDispatched = slot.report && isReportDispatchedByDoctor(slot.report.type);
+                  const isDispatched = Boolean(slot.report && isReportDispatchedByDoctor(slot.report));
                   return (
                     <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
                       <div className="space-y-2">
@@ -761,6 +767,45 @@ export default function ParentDashboard() {
                       >
                         {msg.body}
                         <MessageAudio src={msg.audioDataUrl} />
+                        {(() => {
+                          const urlMatch = msg.body.match(/https?:\/\/[^\s]+/);
+                          if (urlMatch) {
+                            const url = urlMatch[0];
+                            const isZoom = url.includes('zoom.us');
+                            return (
+                              <div className="mt-3 pt-2.5 border-t border-slate-100/70">
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition shadow-xs ${
+                                    isZoom
+                                      ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-400/30'
+                                      : 'bg-teal-700 hover:bg-teal-800 text-white'
+                                  }`}
+                                >
+                                  {isZoom ? <Video size={15} /> : <ExternalLink size={15} />}
+                                  <span>{isZoom ? 'انضمام إلى اجتماع Zoom المباشر 📹' : 'فتح الرابط المرفق 🔗'}</span>
+                                </a>
+                              </div>
+                            );
+                          }
+                          if (msg.body.includes('تم إرسال وتحديد التقرير') || msg.body.includes('التقرير الرسمي')) {
+                            return (
+                              <div className="mt-3 pt-2.5 border-t border-slate-100/70">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTab('reports')}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 text-xs font-black transition shadow-xs cursor-pointer"
+                                >
+                                  <FileText size={15} />
+                                  <span>الانتقال لتبويب التقارير المعتمدة 📄</span>
+                                </button>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   );

@@ -13,7 +13,7 @@ import Sidebar from '@/components/Sidebar';
 import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import {
   getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
-  MessageRecord, ReportRecord, saveMessage, StudentRecord, AccountRecord
+  MessageRecord, ReportRecord, saveMessage, saveReport, StudentRecord, AccountRecord
 } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 
@@ -177,6 +177,12 @@ export default function ParentsManagementPage() {
   const sendReportNotification = () => {
     if (!selectedStudent || selectedReportsToSend.length === 0) return;
     selectedReportsToSend.forEach((report) => {
+      saveReport({
+        ...report,
+        status: 'completed',
+        dispatchedToParent: true,
+        dispatchedAt: new Date().toISOString(),
+      });
       const reportTitle = report.program || 'التقرير التشخيصي المعالج';
       const text = `📋 تم إرسال وتحديد التقرير الرسمي (${reportTitle}) للطالب (${selectedStudent.fullName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الآن.`;
       saveMessage({
@@ -187,6 +193,7 @@ export default function ParentsManagementPage() {
         read: false,
       });
     });
+    setReports(getReports());
     setMessages(getMessages());
     const titles = selectedReportsToSend.map((r) => r.program).join('، ');
     showNotification(`تم إرسال (${titles}) إلى بوابة ولي أمر ${selectedStudent.fullName} بنجاح 📄✅`);

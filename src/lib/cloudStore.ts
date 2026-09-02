@@ -84,6 +84,8 @@ export type ReportRecord = {
   answers: Array<{ question: string; answer: string }>;
   domains: Array<{ name: string; score: number; note: string }>;
   media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
+  dispatchedToParent?: boolean;
+  dispatchedAt?: string;
 };
 
 export type SurveySubmission = {
