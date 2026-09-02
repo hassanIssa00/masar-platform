@@ -112,8 +112,8 @@ export type ActivityRecord = {
 export type MessageRecord = {
   id: string;
   studentId?: string;
-  from: 'doctor' | 'parent';
-  to: 'doctor' | 'parent';
+  from: 'doctor' | 'parent' | 'student';
+  to: 'doctor' | 'parent' | 'student';
   body: string;
   audioDataUrl?: string;
   attachmentType?: 'audio';

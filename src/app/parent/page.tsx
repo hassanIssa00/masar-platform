@@ -19,7 +19,7 @@ import {
 } from '@/lib/cloudStore';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
-import { getClassStudents } from '@/lib/classDb';
+import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
@@ -232,11 +232,24 @@ export default function ParentDashboard() {
         router.replace('/student/new?flow=parent');
         return;
       }
-      setHomeworkList(getLocalHomework());
+      const localHw = getLocalHomework();
+      const allClassHw: HomeworkRecord[] = getStudentHomeworkLogs(selectedStudentId || (myStudents[0] ? myStudents[0].id : '')).map((h) => ({
+        id: h.id,
+        title: h.title,
+        description: h.subject ? `واجب مادة ${h.subject}` : 'واجب مدرسي',
+        dueDate: h.dueDate,
+        status: (h.grade !== undefined ? 'reviewed' : (h.status === 'submitted' ? 'submitted' : 'assigned')) as 'assigned' | 'submitted' | 'reviewed',
+        studentId: h.studentId,
+        studentName: myStudents.find((s) => s.id === h.studentId)?.fullName || 'طالب',
+        grade: h.grade,
+        teacherFeedback: h.teacherFeedback,
+        createdAt: h.createdAt,
+      }));
+      setHomeworkList([...allClassHw, ...localHw]);
     };
     void loadParentPortal();
     return () => { cancelled = true; };
-  }, [router]);
+  }, [router, selectedStudentId]);
 
   const rawSelectedStudent =
     students.find((student) => student.id === selectedStudentId) ??
@@ -867,14 +880,34 @@ export default function ParentDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {studentHomework.map((hw) => (
-                  <div key={hw.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                {studentHomework.map((hw: any) => (
+                  <div key={hw.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-black text-slate-950">{hw.title}</h4>
-                      <p className="text-xs font-bold text-slate-500 mt-0.5">{hw.description || 'مهمة وتدريب منزلي'} • موعد التسليم: {hw.dueDate}</p>
+                      <p className="text-xs font-bold text-slate-500 mt-0.5">
+                        {hw.description || 'مهمة وتدريب منزلي'} • موعد التسليم: {hw.dueDate}
+                      </p>
+                      {hw.grade !== undefined && (
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 text-xs font-black">
+                            ⭐ الدرجة المعتمدة: {hw.grade} من 10
+                          </span>
+                          {hw.teacherFeedback && (
+                            <span className="text-[11px] font-bold text-slate-600 italic">
+                              "{hw.teacherFeedback}"
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className="rounded-full bg-teal-100 text-teal-800 px-3 py-1 text-xs font-black">
-                      {hw.status === 'submitted' ? 'تم التسليم ✓' : 'مطلوب'}
+                    <span className={`rounded-full px-3 py-1 text-xs font-black shrink-0 ${
+                      hw.grade !== undefined
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : hw.status === 'submitted'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : 'bg-teal-100 text-teal-800'
+                    }`}>
+                      {hw.grade !== undefined ? 'تم التصحيح والتقييم ✅' : hw.status === 'submitted' ? 'تم التسليم ✓' : 'مطلوب'}
                     </span>
                   </div>
                 ))}

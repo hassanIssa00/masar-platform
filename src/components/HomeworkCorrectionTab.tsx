@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import {
   CheckCircle2, XCircle, Clock, Send, Award, BookOpen,
   Sparkles, RefreshCw, UserCheck, AlertCircle, ChevronDown,
-  ChevronUp, Check, Bell, MessageSquare, Filter, FileText, CheckCheck
+  ChevronUp, Check, Bell, MessageSquare, Filter, FileText, CheckCheck,
+  FolderOpen
 } from 'lucide-react';
 import {
   getAllQuizzes,
@@ -15,10 +16,12 @@ import {
   type GeneratedQuiz,
   type StudentQuizSubmission,
 } from '@/lib/curriculumDb';
+import CurriculumHomeworkBoard from '@/components/CurriculumHomeworkBoard';
 
 interface Student {
   id: string;
-  name: string;
+  name?: string;
+  fullName?: string;
   phone?: string;
 }
 
@@ -28,6 +31,7 @@ interface Props {
 }
 
 export default function HomeworkCorrectionTab({ students = [], onNavigateToCurriculum }: Props) {
+  const [activeCorrectionMode, setActiveCorrectionMode] = useState<'curriculum' | 'quizzes'>('curriculum');
   const [quizzes, setQuizzes] = useState<GeneratedQuiz[]>(() => getAllQuizzes());
   const [submissions, setSubmissions] = useState<StudentQuizSubmission[]>(() => getSubmissions());
   const [selectedQuizId, setSelectedQuizId] = useState<string>('all');
@@ -108,45 +112,84 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
   return (
     <div className="space-y-6 text-slate-900" dir="rtl">
 
-      {/* ── BANNER HEADER ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#06392c] via-[#0b4d3c] to-[#04291e] p-6 text-white shadow-xl border border-emerald-800/40">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCheck className="h-6 w-6 text-amber-400" />
-              <span className="font-black text-emerald-200 text-sm">منصة مَسَار · لوحة تصحيح الواجبات التلقائية</span>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-black text-white">تصحيح الواجبات وتقييم الطلاب 📝</h2>
-            <p className="mt-1.5 text-sm font-semibold text-emerald-100/90">
-              استقبال إجابات الطلاب للواجبات الصادرة من المناهج، التصحيح التلقائي بالذكاء الاصطناعي، وإرسال النتائج لأولياء الأمور.
-            </p>
-          </div>
+      {/* ── TOP TABS NAVIGATION ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveCorrectionMode('curriculum')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+              activeCorrectionMode === 'curriculum'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <FolderOpen size={15} />
+            واجبات وملفات المناهج لطلاب الفصل 📂
+          </button>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={handleGradeAll}
-              disabled={isAutoGradingAll || submissions.length === 0}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-lg active:scale-95 border border-amber-300/60 cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles size={15} /> تصحيح الكل تلقائياً بالـ AI ⚡
-            </button>
-            {onNavigateToCurriculum && (
-              <button
-                onClick={onNavigateToCurriculum}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer"
-              >
-                <BookOpen size={15} /> صفحة المناهج
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveCorrectionMode('quizzes')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+              activeCorrectionMode === 'quizzes'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Sparkles size={15} />
+            كويزات واختبارات AI ({quizzes.length})
+          </button>
         </div>
+      </div>
 
-        {/* Quick Metrics */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center border border-white/15">
-            <div className="text-xl font-black text-white font-mono">{quizzes.length}</div>
-            <div className="text-[11px] font-bold text-emerald-200 mt-0.5">📋 إجمالي الواجبات</div>
-          </div>
+      {/* ── MODE 1: CURRICULUM HOMEWORK BOARD ── */}
+      {activeCorrectionMode === 'curriculum' && (
+        <CurriculumHomeworkBoard students={students} />
+      )}
+
+      {/* ── MODE 2: AI QUIZZES ── */}
+      {activeCorrectionMode === 'quizzes' && (
+        <div className="space-y-6">
+          {/* ── BANNER HEADER ── */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#06392c] via-[#0b4d3c] to-[#04291e] p-6 text-white shadow-xl border border-emerald-800/40">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCheck className="h-6 w-6 text-amber-400" />
+                  <span className="font-black text-emerald-200 text-sm">منصة مَسَار · لوحة تصحيح الكويزات التلقائية</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white">تصحيح الكويزات والاختبارات 📝</h2>
+                <p className="mt-1.5 text-sm font-semibold text-emerald-100/90">
+                  استقبال إجابات الطلاب للكويزات الصادرة من المناهج، التصحيح التلقائي بالذكاء الاصطناعي، وإرسال النتائج لأولياء الأمور.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleGradeAll}
+                  disabled={isAutoGradingAll || submissions.length === 0}
+                  className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-lg active:scale-95 border border-amber-300/60 cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles size={15} /> تصحيح الكل تلقائياً بالـ AI ⚡
+                </button>
+                {onNavigateToCurriculum && (
+                  <button
+                    onClick={onNavigateToCurriculum}
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer"
+                  >
+                    <BookOpen size={15} /> صفحة المناهج
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center border border-white/15">
+                <div className="text-xl font-black text-white font-mono">{quizzes.length}</div>
+                <div className="text-[11px] font-bold text-emerald-200 mt-0.5">📋 إجمالي الواجبات</div>
+              </div>
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center border border-white/15">
             <div className="text-xl font-black text-white font-mono">{submissions.length}</div>
             <div className="text-[11px] font-bold text-emerald-200 mt-0.5">📥 إجابات واردة</div>
@@ -396,6 +439,8 @@ export default function HomeworkCorrectionTab({ students = [], onNavigateToCurri
           })
         )}
       </div>
+      </div>
+      )}
 
     </div>
   );
