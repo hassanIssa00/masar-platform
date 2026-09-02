@@ -163,8 +163,8 @@ export default function ProfessionalScheduleTab({
       if (!hasExplicitBreak && idx === 3 && nums.length >= 6) {
         slots.push({
           num: 999,
-          start: '09:30',
-          end: '09:50',
+          start: '09:15',
+          end: '09:30',
           label: 'الفسحة المدرسية 🌤️',
           isBreak: true,
         });
@@ -172,8 +172,8 @@ export default function ProfessionalScheduleTab({
 
       slots.push({
         num,
-        start: sample?.startTime || (num === 1 ? '07:30' : '08:10'),
-        end: sample?.endTime || (num === 1 ? '08:10' : '08:50'),
+        start: sample?.startTime || (num === 1 ? '07:00' : num === 2 ? '07:45' : num === 3 ? '08:30' : num === 4 ? '09:30' : num === 5 ? '10:15' : num === 6 ? '11:00' : '11:45'),
+        end: sample?.endTime || (num === 1 ? '07:45' : num === 2 ? '08:30' : num === 3 ? '09:15' : num === 4 ? '10:15' : num === 5 ? '11:00' : num === 6 ? '11:45' : '12:30'),
         label: isBreak ? 'الفسحة المدرسية 🌤️' : (PERIOD_LABELS[num] || `الحصة ${num}`),
         isBreak,
       });
@@ -199,7 +199,7 @@ export default function ProfessionalScheduleTab({
               🌤️ الفسحة المدرسية<br/><span style="font-size:9.5px;font-family:monospace;">${slot.start} - ${slot.end}</span>
             </td>
             <td colspan="5" style="padding:8px;text-align:center;font-weight:900;color:#92400e;font-size:11px;">
-              ☕ استراحة الفسحة المدرسية وتناول الوجبة والمرح الصفي (20 دقيقة)
+              ☕ استراحة الفسحة المدرسية وتناول الوجبة والمرح الصفي (15 دقيقة)
             </td>
           </tr>
         `;
@@ -253,14 +253,21 @@ export default function ProfessionalScheduleTab({
       <div class="logo-title">
         <div style="width:42px;height:42px;background:#06392c;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:20px;">مـ</div>
         <div>
-          <h1 style="font-size:18px;font-weight:900;color:#06392c;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
-          <p style="font-size:11px;color:#475569;font-weight:700;">جدول الحصص الأسبوعي الموثق — فصل د. إسماعيل عيسى</p>
+          <h1 style="font-size:18px;font-weight:900;color:#06392c;margin:0;">منصة مَسَار للتأهيل والتعليم الذكي</h1>
+          <p style="font-size:11px;color:#475569;font-weight:700;margin:2px 0 0;">مدرسة الإخلاص الأهلية – القسم الابتدائي &nbsp;|&nbsp; فصل د. إسماعيل عيسى</p>
         </div>
       </div>
       <div style="text-align:left;">
-        <div style="font-size:11px;font-weight:900;color:#06392c;background:#e6f4ea;padding:4px 12px;border-radius:20px;display:inline-block;">موثق رقمياً</div>
-        <div style="font-size:10px;color:#64748b;margin-top:3px;">الفصل الدراسي الأول 2026 / 1447 هـ</div>
+        <div style="font-size:11px;font-weight:900;color:#06392c;background:#e6f4ea;padding:4px 12px;border-radius:20px;display:inline-block;">الجدول الزمني المعتمد لعام 1448هـ</div>
+        <div style="font-size:10px;color:#64748b;margin-top:3px;">الفصل الدراسي الأول 1448 هـ</div>
       </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 12px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;font-size:10px;font-weight:bold;color:#334155;">
+      <span>🌅 طابور الصباح: 06:45 – 07:00</span>
+      <span>🌤️ الفسحة المدرسية: 09:15 – 09:30</span>
+      <span>🕌 صلاة الظهر: 12:30 – 12:40</span>
+      <span>🚪 الانصراف: 12:40 م (الأربعاء والخميس 11:45 ص)</span>
     </div>
 
     <table class="table-grid">
@@ -282,13 +289,13 @@ export default function ProfessionalScheduleTab({
 
   <div class="footer-sig">
     <div>
-      <div style="font-size:11px;color:#64748b;font-weight:700;">المملكة العربية السعودية · جدة</div>
-      <div style="font-size:11px;color:#06392c;font-weight:900;">فصل د. إسماعيل عيسى · القسم الابتدائي</div>
+      <div style="font-size:11px;color:#64748b;font-weight:700;">المملكة العربية السعودية · وزارة التعليم · تعليم جدة</div>
+      <div style="font-size:11px;color:#06392c;font-weight:900;">مدرسة الإخلاص الأهلية &nbsp;·&nbsp; مدير المدرسة: أ. مساعد سعد العباسي</div>
     </div>
 
     <div class="stamp-box">
       <div style="font-size:13px;font-weight:900;color:#06392c;">د. إسماعيل عيسى</div>
-      <div style="font-size:9.5px;color:#047857;">التأهيل والتعليم الحديث</div>
+      <div style="font-size:9.5px;color:#047857;">المشرف الأكاديمي والمعلم المختص</div>
       <div style="margin-top:4px;">
         <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" style="height:38px;object-fit:contain;mix-blend-mode:multiply;margin:0 auto;display:block;"/>
       </div>
@@ -378,6 +385,51 @@ export default function ProfessionalScheduleTab({
             </div>
 
           </div>
+        </div>
+      </div>
+
+      {/* ── OFFICIAL 1448H DAILY TIMETABLE RIBBON ── */}
+      <div className="rounded-3xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-4 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-emerald-200/80">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+              ⏰
+            </span>
+            <div>
+              <h3 className="text-sm font-black text-emerald-950">الجدول الزمني المعتمد لليوم الدراسي لعام 1448هـ</h3>
+              <p className="text-[11px] font-bold text-emerald-700">مدرسة الإخلاص الأهلية – القسم الابتدائي · إشراف د. إسماعيل عيسى</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap text-[11px] font-black">
+            <span className="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full">
+              🚪 موعد الانصراف: 12:40 م
+            </span>
+            <span className="bg-rose-100 text-rose-900 border border-rose-300 px-3 py-1 rounded-full">
+              ⚠️ الأربعاء والخميس: 11:45 ص
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-11 gap-1.5 pt-3">
+          {[
+            { name: 'طابور الصباح', time: '06:45 – 07:00', icon: '🌅', bg: 'bg-orange-100/80 text-orange-950 border-orange-200' },
+            { name: 'الحصة الأولى', time: '07:00 – 07:45', icon: '1️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الحصة الثانية', time: '07:45 – 08:30', icon: '2️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الحصة الثالثة', time: '08:30 – 09:15', icon: '3️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الفسحة المدرسية', time: '09:15 – 09:30', icon: '🌤️', bg: 'bg-amber-100/90 text-amber-950 border-amber-300 font-black ring-1 ring-amber-300' },
+            { name: 'الحصة الرابعة', time: '09:30 – 10:15', icon: '4️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الحصة الخامسة', time: '10:15 – 11:00', icon: '5️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الحصة السادسة', time: '11:00 – 11:45', icon: '6️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'الحصة السابعة', time: '11:45 – 12:30', icon: '7️⃣', bg: 'bg-white text-slate-800 border-slate-200' },
+            { name: 'صلاة الظهر', time: '12:30 – 12:40', icon: '🕌', bg: 'bg-emerald-100/80 text-emerald-950 border-emerald-200' },
+            { name: 'الانصراف', time: '12:40 م', icon: '🚪', bg: 'bg-slate-900 text-amber-300 border-slate-800 font-black' },
+          ].map((item, idx) => (
+            <div key={idx} className={`rounded-xl border p-2 text-center flex flex-col justify-between shadow-2xs ${item.bg}`}>
+              <div className="text-sm mb-0.5">{item.icon}</div>
+              <div className="text-[10px] font-black truncate">{item.name}</div>
+              <div className="text-[9px] font-mono font-bold opacity-85 mt-0.5 dir-ltr">{item.time}</div>
+            </div>
+          ))}
         </div>
       </div>
 

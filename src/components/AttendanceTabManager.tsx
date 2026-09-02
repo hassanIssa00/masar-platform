@@ -52,14 +52,15 @@ export default function AttendanceTabManager({
     const periods = schedule.filter(p => p.dayOfWeek === (jsDay >= 0 && jsDay <= 4 ? jsDay : 0));
     const sorted = periods.sort((a, b) => a.periodNumber - b.periodNumber);
     if (sorted.length > 0) return sorted;
-    // Fallback standard periods
+    // Fallback standard periods (1448H timetable)
     return [
-      { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:30', endTime: '08:10' },
-      { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '08:10', endTime: '08:50' },
-      { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:50', endTime: '09:30' },
-      { dayOfWeek: 0, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:50', endTime: '10:30' },
-      { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '10:30', endTime: '11:10' },
-      { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:10', endTime: '11:50' },
+      { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:00', endTime: '07:45' },
+      { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '07:45', endTime: '08:30' },
+      { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:30', endTime: '09:15' },
+      { dayOfWeek: 0, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:30', endTime: '10:15' },
+      { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '10:15', endTime: '11:00' },
+      { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:00', endTime: '11:45' },
+      { dayOfWeek: 0, periodNumber: 7, subjectName: 'نشاط صفي', startTime: '11:45', endTime: '12:30' },
     ];
   }, [schedule]);
 
@@ -134,9 +135,11 @@ export default function AttendanceTabManager({
           exitTime: rec.exitLogged,
         };
       });
+      const jsDay = new Date().getDay();
+      const isEarlyDay = jsDay === 3 || jsDay === 4;
       autoSaveAttendanceSnapshot(entries, {
-        sessionStart: todayPeriodsList[0]?.startTime || '07:30',
-        sessionEnd: todayPeriodsList[todayPeriodsList.length - 1]?.endTime || '11:50',
+        sessionStart: todayPeriodsList[0]?.startTime || '07:00',
+        sessionEnd: todayPeriodsList[todayPeriodsList.length - 1]?.endTime || (isEarlyDay ? '11:45' : '12:30'),
         savedBy: 'د. إسماعيل عيسى',
       });
     } catch (err) {

@@ -12,14 +12,29 @@ export type Period = {
 
 export const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
-const PERIOD_TIMES: Record<number, { startTime: string; endTime: string }> = {
-  1: { startTime: '07:30', endTime: '08:10' },
-  2: { startTime: '08:10', endTime: '08:50' },
-  3: { startTime: '08:50', endTime: '09:30' },
-  4: { startTime: '09:50', endTime: '10:30' },
-  5: { startTime: '10:30', endTime: '11:10' },
-  6: { startTime: '11:10', endTime: '11:50' },
-  7: { startTime: '11:50', endTime: '12:30' },
+// الجدول الزمني لليوم الدراسي لعام 1448هـ — مدرسة الإخلاص الأهلية
+export const SCHOOL_DAY_TIMETABLE = [
+  { order: 1, name: 'طابور الصباح', startTime: '06:45', endTime: '07:00', type: 'assembly' },
+  { order: 2, name: 'الحصة الأولى', startTime: '07:00', endTime: '07:45', type: 'period', periodNumber: 1 },
+  { order: 3, name: 'الحصة الثانية', startTime: '07:45', endTime: '08:30', type: 'period', periodNumber: 2 },
+  { order: 4, name: 'الحصة الثالثة', startTime: '08:30', endTime: '09:15', type: 'period', periodNumber: 3 },
+  { order: 5, name: 'الفسحة المدرسية', startTime: '09:15', endTime: '09:30', type: 'break' },
+  { order: 6, name: 'الحصة الرابعة', startTime: '09:30', endTime: '10:15', type: 'period', periodNumber: 4 },
+  { order: 7, name: 'الحصة الخامسة', startTime: '10:15', endTime: '11:00', type: 'period', periodNumber: 5 },
+  { order: 8, name: 'الحصة السادسة', startTime: '11:00', endTime: '11:45', type: 'period', periodNumber: 6 },
+  { order: 9, name: 'الحصة السابعة', startTime: '11:45', endTime: '12:30', type: 'period', periodNumber: 7 },
+  { order: 10, name: 'صلاة الظهر', startTime: '12:30', endTime: '12:40', type: 'prayer' },
+  { order: 11, name: 'الانصراف', startTime: '12:40', endTime: '12:40', type: 'dismissal' },
+];
+
+export const PERIOD_TIMES: Record<number, { startTime: string; endTime: string }> = {
+  1: { startTime: '07:00', endTime: '07:45' },
+  2: { startTime: '07:45', endTime: '08:30' },
+  3: { startTime: '08:30', endTime: '09:15' },
+  4: { startTime: '09:30', endTime: '10:15' },
+  5: { startTime: '10:15', endTime: '11:00' },
+  6: { startTime: '11:00', endTime: '11:45' },
+  7: { startTime: '11:45', endTime: '12:30' },
 };
 
 function period(dayOfWeek: number, periodNumber: number, subjectName: string): Period {
@@ -153,12 +168,18 @@ export function getCurrentPeriod(schedule: Period[]): Period | null {
 }
 
 export function getMinutesUntilDismissal(schedule: Period[]): number {
-  const todays = getTodayPeriods(schedule);
-  if (!todays.length) return -1;
-  const lastPeriod = todays[todays.length - 1];
-  const [h, m] = lastPeriod.endTime.split(':').map(Number);
+  const jsDay = new Date().getDay();
+  if (jsDay === 5 || jsDay === 6) return -1; // إجازة
+  
+  // موعد الانصراف الرسمي لعام 1448هـ:
+  // الأربعاء والخميس: 11:45 ص
+  // الأحد، الاثنين، الثلاثاء: 12:40 م (بعد صلاة الظهر)
+  const isEarlyDay = jsDay === 3 || jsDay === 4; // الأربعاء والخميس
+  const dismissalHour = isEarlyDay ? 11 : 12;
+  const dismissalMin = isEarlyDay ? 45 : 40;
+
   const now = new Date();
   const dismissal = new Date(now);
-  dismissal.setHours(h, m, 0, 0);
+  dismissal.setHours(dismissalHour, dismissalMin, 0, 0);
   return Math.floor((dismissal.getTime() - now.getTime()) / 60000);
 }
