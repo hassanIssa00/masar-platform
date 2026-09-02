@@ -297,6 +297,7 @@ export async function GET(req: NextRequest) {
   }
 
   const SHARED_COLLECTIONS = new Set([
+    // ── Content shared with ALL authenticated roles (student, parent, teacher, doctor) ──
     'curriculumFiles',
     'curriculumQuizzes',
     'classroomQuizzes',
@@ -308,6 +309,15 @@ export async function GET(req: NextRequest) {
     'smartSchedules',
     'parentsCommunityChat',
     'parentsChatSettings',
+    // ── Class data that students & parents MUST receive ──
+    'homework',              // homework assigned by teacher → students must see it
+    'studentCertLogs',       // certificates granted by doctor → students must see them
+    'studentHomeworkLogs',   // homework submissions → doctor & parent must see them
+    'classStudents',         // class roster → needed to resolve student identity
+    'curriculumAssignments', // curriculum tasks shared with students
+    'curriculumDrawings',    // curriculum drawings shared with students
+    'notifications',         // notifications sent to parents/students
+    'activity',              // class activity log
   ]);
 
   await Promise.all(
