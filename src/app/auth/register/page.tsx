@@ -292,7 +292,7 @@ export default function RegisterPage() {
     
     // Duplicate check
     const accounts = getAccounts();
-    if (accounts.some((a) => a.email.toLowerCase() === clean)) {
+    if (accounts.some((a) => a.email && a.email.toLowerCase() === clean)) {
       return 'هذا البريد الإلكتروني مسجل بالفعل لدى حساب آخر. يمكنك تسجيل الدخول بدلاً من ذلك.';
     }
     return '';

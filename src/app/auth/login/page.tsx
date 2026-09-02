@@ -97,10 +97,12 @@ export default function LoginPage() {
   // ─── Redirect helper based on account role/branch ───────────────────────────
   async function redirectAfterLogin(account: { role: string; schoolBranch?: string; id: string; name: string; email: string; providerId?: string; phone?: string; onboardingRequired?: boolean; linkedStudentId?: string }) {
     const branch = account.schoolBranch ?? 'MASAR';
-    const studentParam = account.linkedStudentId ? `?student=${encodeURIComponent(account.linkedStudentId)}` : '';
-    const studentJoiner = account.linkedStudentId ? `&student=${encodeURIComponent(account.linkedStudentId)}` : '';
 
     trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
+
+    // Helper: check if a name is a placeholder (not a real filled-in name)
+    const isPlaceholder = (n?: string | null) =>
+      !n || n.includes('جديد') || n === 'طالب' || n === 'الطالب' || n === 'ولي الأمر' || n === 'ولي أمر' || n === 'ولي أمر جديد';
 
     let targetUrl = '/dashboard';
 
@@ -108,13 +110,22 @@ export default function LoginPage() {
       targetUrl = '/dashboard';
 
     } else if (account.role === 'student') {
-      // Student portal for all students (MASAR & IKHLAS)
+      // ── Student login ──
+      // If onboarding is required (profile not complete or no assessment), go to setup
       const studentId = account.linkedStudentId || account.id;
       const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
-      targetUrl = `/school-student${sParam}`;
+
+      if (account.onboardingRequired || isPlaceholder(account.name)) {
+        // Student needs to complete their profile first
+        targetUrl = branch === 'IKHLAS_JEDDAH'
+          ? `/school-student/setup${sParam}`
+          : `/student/new?flow=student${studentId ? `&student=${encodeURIComponent(studentId)}` : ''}`;
+      } else {
+        targetUrl = `/school-student${sParam}`;
+      }
 
     } else {
-      // Parent role
+      // ── Parent login ──
       await pullCloudDataToLocal(['students', 'accounts', 'surveys']).catch(() => {});
       const allStudents = getStudents();
       const allSurveys = getSurveys();
@@ -135,11 +146,21 @@ export default function LoginPage() {
         (account.phone && s.parentPhone === account.phone)
       ) : false;
 
-      if (linkedStudent && !hasSurvey) {
+      const studentProfileComplete = linkedStudent && !isPlaceholder(linkedStudent.fullName);
+
+      if (!linkedStudent || isPlaceholder(linkedStudent?.fullName)) {
+        // STEP 1: Student profile not yet filled → go to data form
+        const sid = linkedStudent?.id || account.linkedStudentId || '';
+        targetUrl = `/student/new?flow=parent${sid ? `&student=${encodeURIComponent(sid)}` : ''}`;
+      } else if (account.onboardingRequired || isPlaceholder(account.name)) {
+        // STEP 2: Student profile is filled, but parent hasn't filled their OWN data yet → data form (parent-only fields)
+        targetUrl = `/student/new?flow=parent&student=${encodeURIComponent(linkedStudent.id)}`;
+      } else if (!hasSurvey) {
+        // STEP 3: Parent data filled, but no survey → go to survey
         targetUrl = `/survey?student=${encodeURIComponent(linkedStudent.id)}&flow=parent`;
       } else {
-        const sId = linkedStudent?.id || account.linkedStudentId;
-        const sParam = sId ? `?student=${encodeURIComponent(sId)}` : '';
+        // STEP 4: Everything is complete → go to parent dashboard
+        const sParam = `?student=${encodeURIComponent(linkedStudent.id)}`;
         targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
       }
     }

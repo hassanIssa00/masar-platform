@@ -77,30 +77,80 @@ export default function NewStudentPage() {
         );
 
         if (session?.role === 'student') {
-          router.replace(`/school-student?student=${found.id}`);
-          return;
+          if (hasReports) {
+            // Student has completed assessment — go to dashboard
+            router.replace(`/school-student?student=${found.id}`);
+            return;
+          }
+          // Student has real name but no assessment — let them fill additional data (photo, DOB, notes)
+          // then proceed to assessment. Pre-fill the form and don't redirect.
         } else if (session?.role === 'parent') {
-          const allSurveys = getSurveys();
-          const hasSurvey = allSurveys.some(
-            (s) => s.studentId === found.id || (session?.email && s.parentEmail === session.email) || (session?.phone && s.parentPhone === session.phone)
-          );
-          if (hasSurvey) {
-            // Survey already done — go straight to parent portal
-            router.replace(
-              (found.schoolBranch === 'IKHLAS_JEDDAH' || (session as any)?.schoolBranch === 'IKHLAS_JEDDAH')
-                ? `/school-parent?student=${found.id}`
-                : `/parent?student=${found.id}`
-            );
-            return;
+          // Check if parent's OWN data is filled (not just student data)
+          const isParentPlaceholder = !session.name || session.name.includes('جديد') || session.name === 'ولي الأمر' || session.name === 'ولي أمر' || session.name === 'ولي أمر جديد';
+
+          if (isParentPlaceholder || (session as any)?.onboardingRequired) {
+            // Parent hasn't filled their own data yet — stay on this form with parent-only fields
+            setStudentResolved(true);
+            setExistingStudentId(found.id);
+            const cleanParentName = (!isParentPlaceholder ? session.name : '') || '';
+            setStudent((prev) => ({
+              ...prev,
+              fullName: found.fullName || '',
+              parentName: cleanParentName || found.parentName || '',
+              grade: found.grade || prev.grade,
+              recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
+              parentPhone: session.phone || found.parentPhone || prev.parentPhone,
+              photoUrl: found.photoUrl || prev.photoUrl,
+              notes: found.notes || prev.notes,
+              nationalId: found.nationalId || prev.nationalId,
+            }));
+            // Don't return — let the form render with parent-only fields
           } else {
-            // Student is already recognized — direct parent straight to the survey!
-            router.replace(`/survey?student=${found.id}&flow=parent`);
-            return;
+            // Parent data is filled, check survey
+            const allSurveys = getSurveys();
+            const hasSurvey = allSurveys.some(
+              (s) => s.studentId === found.id || (session?.email && s.parentEmail === session.email) || (session?.phone && s.parentPhone === session.phone)
+            );
+            if (hasSurvey) {
+              router.replace(
+                (found.schoolBranch === 'IKHLAS_JEDDAH' || (session as any)?.schoolBranch === 'IKHLAS_JEDDAH')
+                  ? `/school-parent?student=${found.id}`
+                  : `/parent?student=${found.id}`
+              );
+              return;
+            } else {
+              router.replace(`/survey?student=${found.id}&flow=parent`);
+              return;
+            }
           }
         }
       }
 
       if (!found) {
+        // Check if parent has a linked student ID from generated accounts
+        const sessionLinkedId = (session as any)?.linkedStudentId;
+        if (session?.role === 'parent' && sessionLinkedId) {
+          // Generated account — student exists but might have placeholder name
+          const linkedRec = allStudents.find((s) => s.id === sessionLinkedId);
+          if (linkedRec) {
+            setExistingStudentId(linkedRec.id);
+            setStudentResolved(true);
+            const cleanParentName = (session.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر') ? session.name : '';
+            setStudent((prev) => ({
+              ...prev,
+              fullName: linkedRec.fullName || '',
+              parentName: cleanParentName,
+              grade: linkedRec.grade || prev.grade,
+              recoveryEmail: (!isGeneratedAlias(session.email) ? session.email : '') || prev.recoveryEmail,
+              parentPhone: session.phone || linkedRec.parentPhone || prev.parentPhone,
+              photoUrl: linkedRec.photoUrl || prev.photoUrl,
+              notes: linkedRec.notes || prev.notes,
+              nationalId: linkedRec.nationalId || prev.nationalId,
+            }));
+            return;
+          }
+        }
+
         setStudentResolved(false);
         if (session?.role === 'student') {
           const cleanSessionName = (session.name && !session.name.includes('جديد') && !session.name.includes('الاستبيان') && session.name !== 'طالب' && session.name !== 'الطالب') ? session.name : '';
@@ -123,6 +173,7 @@ export default function NewStudentPage() {
         return;
       }
 
+      // found exists but has placeholder name — pre-fill the form
       setExistingStudentId(found.id);
       if (found.dateOfBirth) {
         const parts = found.dateOfBirth.split('-');
@@ -319,7 +370,7 @@ export default function NewStudentPage() {
         photoUrl: accountPhoto,
         phone: student.parentPhone || currentAcc?.phone || session.phone,
         schoolBranch: branch as any,
-        onboardingRequired: true,
+        onboardingRequired: false,
         linkedStudentId: savedStudent.id,
         linkedStudentEmail: nextFlow === 'student-test'
           ? (session?.email || savedStudent.linkedStudentEmail || savedStudent.email)

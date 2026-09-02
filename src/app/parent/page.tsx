@@ -221,6 +221,16 @@ export default function ParentDashboard() {
           (session.phone && s.parentPhone === session.phone)
         );
         setHasSurvey(surveyDone);
+
+        // If survey is NOT done, redirect parent to complete it first
+        if (!surveyDone) {
+          router.replace(`/survey?student=${encodeURIComponent(targetId)}&flow=parent`);
+          return;
+        }
+      } else {
+        // No linked students found — redirect to data form
+        router.replace('/student/new?flow=parent');
+        return;
       }
       setHomeworkList(getLocalHomework());
     };

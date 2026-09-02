@@ -89,10 +89,19 @@ export default function ParentsManagementPage() {
     return found ?? accounts.filter((a) => a.role === 'parent')[0] ?? null;
   }, [selectedStudent, accounts]);
 
-  // Find all student reports (up to 3 types: survey answers, student test, clinical analysis)
+  // Find all student reports (up to 4 types: survey answers, student test, clinical analysis, student assessment answers)
   const studentReports = useMemo(() => {
     if (!selectedStudent) return [];
-    return reports.filter((r) => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName);
+    const matched = reports.filter((r) => r.studentId === selectedStudent.id || r.studentName === selectedStudent.fullName);
+    const uniqueMap = new Map<string, ReportRecord>();
+    for (const r of matched) {
+      const key = r.type || r.program || r.id;
+      const existing = uniqueMap.get(key);
+      if (!existing || (r.date && existing.date && r.date >= existing.date)) {
+        uniqueMap.set(key, r);
+      }
+    }
+    return Array.from(uniqueMap.values());
   }, [reports, selectedStudent]);
 
   // Reset selections when student changes
@@ -111,7 +120,6 @@ export default function ParentsManagementPage() {
 
   const selectedReportsToSend = studentReports.filter((r) => selectedReportIds.has(r.id));
 
-  // Find active chat thread for selected student
   const chatThread = useMemo(() => {
     if (!selectedStudent) return [];
     return messages

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-09-01",
+  "lastUpdated": "2026-09-02",
   "folder": "سجل اصلاح المشاكل",
   "status": "documented",
   "fixes": [
@@ -119,6 +119,36 @@
         "production login API: old parent linked",
         "production login API: new student linked",
         "production login API: new parent linked"
+      ]
+    },
+    {
+      "id": "login-redirect-survey-onboarding-overhaul",
+      "problem": "صفحة البيانات تظهر كل مرة، الاستبيان لا يظهر، الحسابات المولدة تتجاوز البيانات والاستبيان، صفحة البيانات تطلب اسم وصورة الطالب من ولي الأمر المربوط.",
+      "solution": "إصلاح onboardingRequired من true إلى false بعد الحفظ، إعادة كتابة redirectAfterLogin بمسارات واضحة (بيانات → استبيان → بوابة)، إضافة redirect guards في صفحات ولي الأمر والطالب، تحسين فورم ولي الأمر للحسابات المولدة.",
+      "mainFiles": [
+        "src/app/auth/login/page.tsx",
+        "src/app/student/new/page.tsx",
+        "src/app/school-parent/page.tsx",
+        "src/app/parent/page.tsx",
+        "src/app/school-student/page.tsx"
+      ],
+      "verification": [
+        "npm run build",
+        "vercel --prod",
+        "masarplatform.org alias set"
+    },
+    {
+      "id": "report-deduplication-and-cleanup",
+      "problem": "تكرار وتراكم التقارير السريرية لنفس الطالب في لوحة أولياء الأمور وظهور عدد مبالغ فيه (22 تقرير و28 في الشارة).",
+      "solution": "تحديث getReports لدمج وحذف التقارير المكررة والاحتفاظ بأحدث وأكمل نسخة لكل نوع مع حذف الزائد من Firestore، وتعديل saveReport لتحديث التقرير الموجود بدلاً من تكراره.",
+      "mainFiles": [
+        "src/lib/cloudStore.ts",
+        "src/app/parents/page.tsx"
+      ],
+      "verification": [
+        "npm run build",
+        "vercel --prod",
+        "masarplatform.org alias set"
       ]
     }
   ],

@@ -541,19 +541,102 @@ export async function deleteStudent(studentId: string) {
   }
 }
 
-export function getReports() {
-  return readList<ReportRecord>(KEYS.reports);
+export function getReports(): ReportRecord[] {
+  const raw = readList<ReportRecord>(KEYS.reports);
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+
+  const normalize = (s?: string | null) => (s || '').trim().toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ').trim();
+
+  const seen = new Map<string, ReportRecord>();
+  const duplicateIds: string[] = [];
+
+  for (const r of raw) {
+    if (!r || !r.id) continue;
+    const studentKey = r.studentId || normalize(r.studentName);
+    const typeKey = r.type || r.program;
+    const compositeKey = `${studentKey}__${typeKey}`;
+
+    if (!studentKey || !typeKey) {
+      seen.set(r.id, r);
+      continue;
+    }
+
+    const existing = seen.get(compositeKey);
+    if (!existing) {
+      seen.set(compositeKey, r);
+    } else {
+      const existingDate = existing.date || '';
+      const rDate = r.date || '';
+      const existingHasAnswers = Array.isArray(existing.answers) && existing.answers.length > 0;
+      const rHasAnswers = Array.isArray(r.answers) && r.answers.length > 0;
+
+      if ((rHasAnswers && !existingHasAnswers) || (rDate >= existingDate && (r.score ?? 0) >= (existing.score ?? 0))) {
+        duplicateIds.push(existing.id);
+        seen.set(compositeKey, r);
+      } else {
+        duplicateIds.push(r.id);
+      }
+    }
+  }
+
+  // Auto-prune duplicate report docs from cloud and local cache
+  if (duplicateIds.length > 0) {
+    const uniqueList = Array.from(seen.values());
+    writeList(KEYS.reports, uniqueList);
+    for (const dupId of duplicateIds) {
+      void deleteDocFromCloud('reports', dupId);
+    }
+  }
+
+  return Array.from(seen.values());
 }
 
 export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: string; date?: string }) {
   const reports = getReports();
+  const normalize = (s?: string | null) => (s || '').trim().toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ').trim();
+
+  const studentKey = report.studentId || normalize(report.studentName);
+  const typeKey = report.type || report.program;
+
+  // Find if a report of the same type/program for this student already exists
+  const existing = reports.find((r) => {
+    if (report.id && r.id === report.id) return true;
+    const rStudentKey = r.studentId || normalize(r.studentName);
+    const rTypeKey = r.type || r.program;
+    return Boolean(studentKey && rStudentKey && studentKey === rStudentKey && typeKey && rTypeKey && typeKey === rTypeKey);
+  });
+
+  const nextId = report.id ?? existing?.id ?? createId('report');
   const next: ReportRecord = {
+    ...existing,
     ...report,
-    id: report.id ?? createId('report'),
-    date: report.date ?? new Date().toISOString().slice(0, 10),
+    id: nextId,
+    date: report.date ?? existing?.date ?? new Date().toISOString().slice(0, 10),
   };
 
-  writeList(KEYS.reports, [next, ...reports.filter((item) => item.id !== next.id)]);
+  // Filter out any other duplicate records with same student + type
+  const duplicatesToDelete = reports.filter((item) => {
+    if (item.id === next.id) return false;
+    const rStudentKey = item.studentId || normalize(item.studentName);
+    const rTypeKey = item.type || item.program;
+    return Boolean(studentKey && rStudentKey && studentKey === rStudentKey && typeKey && rTypeKey && typeKey === rTypeKey);
+  });
+
+  for (const dup of duplicatesToDelete) {
+    void deleteDocFromCloud('reports', dup.id);
+  }
+
+  const cleanedReports = reports.filter((item) =>
+    item.id !== next.id && !duplicatesToDelete.some((d) => d.id === item.id)
+  );
+
+  writeList(KEYS.reports, [next, ...cleanedReports]);
   syncDocToCloud('reports', next.id, next);
   saveActivity({
     type: 'report',

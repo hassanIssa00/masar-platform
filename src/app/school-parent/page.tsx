@@ -121,6 +121,16 @@ export default function SchoolParentPage() {
           (session?.phone && s.parentPhone === session.phone)
         );
         setHasSurvey(surveyDone);
+
+        // If survey is NOT done, redirect parent to complete the survey first
+        if (!surveyDone) {
+          router.replace(`/survey?student=${encodeURIComponent(linked.id)}&flow=parent`);
+          return;
+        }
+      } else {
+        // No linked student found — redirect to data form to fill student info
+        router.replace('/student/new?flow=parent');
+        return;
       }
     };
     void loadSchoolParent();

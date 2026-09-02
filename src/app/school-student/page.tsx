@@ -32,7 +32,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS, DEFAULT_SCHEDULE, Period } from '@/data/ikhlasSchedule';
-import { clearSession, getSession, getStudents, getAccounts, updateStudent, getIkhlasPosts, hydrateSessionFromServer, StudentRecord, AccountRecord } from '@/lib/cloudStore';
+import { clearSession, getSession, getStudents, getAccounts, getReports, updateStudent, getIkhlasPosts, hydrateSessionFromServer, StudentRecord, AccountRecord } from '@/lib/cloudStore';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { normalizeArabicText } from '@/lib/nameMatching';
@@ -126,6 +126,36 @@ export default function StudentDashboard() {
         finalName = (linked?.fullName && !isSyntheticOrGeneric(linked.fullName) ? linked.fullName : (session.name || 'طالب'));
       }
 
+      // If student profile is still placeholder, redirect to setup page
+      if (isSyntheticOrGeneric(finalName)) {
+        const studentId = linked?.id || (session as any)?.linkedStudentId || session.id;
+        const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+        const sBranch = (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR';
+        if (sBranch === 'IKHLAS_JEDDAH') {
+          router.replace(`/school-student/setup${sParam}`);
+        } else {
+          router.replace(`/student/new?flow=student${studentId ? `&student=${encodeURIComponent(studentId)}` : ''}`);
+        }
+        return;
+      }
+
+      // If student has real name but hasn't done assessment yet, redirect to data form → assessment
+      if ((session as any)?.onboardingRequired) {
+        const allReports = getReports();
+        const hasAssessment = allReports.some(
+          (r) => r.studentId === (linked?.id || session.id) || r.studentName === finalName
+        );
+        if (!hasAssessment) {
+          const studentId = linked?.id || (session as any)?.linkedStudentId || session.id;
+          const sBranch = (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR';
+          if (sBranch === 'IKHLAS_JEDDAH') {
+            router.replace(`/school-student/setup?student=${encodeURIComponent(studentId)}`);
+          } else {
+            router.replace(`/student/new?flow=student&student=${encodeURIComponent(studentId)}`);
+          }
+          return;
+        }
+      }
 
       // Auto-heal photo if missing
       let photoUrl =
