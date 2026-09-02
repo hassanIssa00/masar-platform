@@ -10,7 +10,7 @@ import {
   AlertTriangle, Loader2, Star, MessageSquare,
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
-  Menu, X, ChevronRight, ChevronLeft, ClipboardList,
+  Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -34,12 +34,14 @@ import StudentAIChatTab from '@/components/StudentAIChatTab';
 import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
+import DailyArchiveTab from '@/components/DailyArchiveTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 type Tab =
   | 'overview'
+  | 'archive'
   | 'curriculum'
   | 'correction'
   | 'parents-chat'
@@ -584,6 +586,7 @@ export default function IkhlasJeddahPage() {
       icon: BarChart3,
       items: [
         { key: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+        { key: 'archive', label: 'الأرشيف اليومي الشامل', icon: Archive, badge: '📁 أرشيف', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
         { key: 'ai-chat', label: 'مساعد المعلم AI', icon: Sparkles, badge: '⚡ AI', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
         { key: 'live', label: 'البث المباشر', icon: Radio, badge: '🔴 مباشر', badgeColor: 'bg-rose-500 text-white font-black' },
         { key: 'reports', label: 'التقارير وسجلات الطلاب', icon: FileText },
@@ -863,6 +866,9 @@ export default function IkhlasJeddahPage() {
         {/* ── MAIN CONTENT AREA (CENTERED OR FULL WIDTH) ── */}
         <main className="flex-1 p-4 md:p-6 min-w-0">
           <div className="max-w-7xl mx-auto space-y-6">
+
+        {/* ════════════ الأرشيف اليومي الشامل (حضور، غياب، واجبات، كويزات) ════════════ */}
+        {activeTab === 'archive' && <DailyArchiveTab />}
 
         {/* ════════════ إدارة المناهج الدراسية وتوليد الواجبات الذكي ════════════ */}
         {activeTab === 'curriculum' && (

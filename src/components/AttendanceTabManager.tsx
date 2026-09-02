@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Period, DAY_NAMES, getTodayPeriods } from '@/data/ikhlasSchedule';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { autoSaveAttendanceSnapshot } from '@/lib/dailyArchive';
 
 export interface Student {
   id: string;
@@ -118,6 +119,29 @@ export default function AttendanceTabManager({
     const cached = readCloudCache<typeof record>(STORAGE_KEY_PREFIX);
     writeCloudCache(STORAGE_KEY_PREFIX, [record, ...cached.filter((item) => item.id !== record.id)]);
     syncDocToCloud(CLOUD_COLLECTION, `IKHLAS_${todayStr}`, record);
+
+    // 📁 Auto-save to Daily Archive Snapshot
+    try {
+      const currentPeriodNum = typeof selectedPeriodNum === 'number' ? selectedPeriodNum : 1;
+      const entries = students.map((s) => {
+        const rec = matrix[s.id]?.[currentPeriodNum] || matrix[s.id]?.[1] || { status: 'present', score: 95 };
+        return {
+          studentId: s.id,
+          studentName: s.name,
+          status: (rec.status || 'present') as 'present' | 'absent' | 'late' | 'excused',
+          score: rec.score,
+          note: rec.note,
+          exitTime: rec.exitLogged,
+        };
+      });
+      autoSaveAttendanceSnapshot(entries, {
+        sessionStart: todayPeriodsList[0]?.startTime || '07:30',
+        sessionEnd: todayPeriodsList[todayPeriodsList.length - 1]?.endTime || '11:50',
+        savedBy: 'د. إسماعيل عيسى',
+      });
+    } catch (err) {
+      console.warn('Auto-save attendance archive error:', err);
+    }
   };
 
   const [saving, setSaving] = useState(false);

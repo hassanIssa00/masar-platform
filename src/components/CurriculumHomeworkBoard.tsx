@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -22,6 +22,7 @@ import {
   type StudentHomeworkLog,
 } from '@/lib/classDb';
 import { saveMessage } from '@/lib/cloudStore';
+import { saveHomeworkSnapshot } from '@/lib/dailyArchive';
 
 type CurriculumAssignment = {
   id?: string;
@@ -174,6 +175,30 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
       body: `🎉 تم تصحيح واجبك في مادة (${assignment.subjectTitle})!\nدرجتك: ${grade}/10${feedbackNote}`,
       read: false,
     });
+    // 📁 Auto-save to Daily Homework Archive
+    try {
+      saveHomeworkSnapshot({
+        date: new Date().toISOString().slice(0, 10),
+        homeworkTitle: log?.title || `واجب ${assignment.subjectTitle} (ص ${assignment.fromPage}-${assignment.toPage})`,
+        subject: assignment.subjectTitle,
+        dueDate: log?.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+        submissions: [
+          {
+            studentId: assignment.studentId,
+            studentName: assignment.studentName,
+            status: 'submitted',
+            grade,
+            feedback: feedbackInput,
+          },
+        ],
+        totalStudents: 1,
+        totalSubmitted: 1,
+        totalMissing: 0,
+        avgGrade: grade,
+      });
+    } catch (err) {
+      console.warn('Auto-save homework archive error:', err);
+    }
     setIsSaving(false);
     setGradingTarget(null);
     setNotice(`✅ تم حفظ درجة ${assignment.studentName} (${grade}/10) وإبلاغ الطالب وولي الأمر!`);
