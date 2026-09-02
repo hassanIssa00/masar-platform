@@ -675,42 +675,47 @@ export default function ParentDashboard() {
                 <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المعتمدة من د. إسماعيل</h2>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   {
-                    title: 'إجابات ولي الأمر',
-                    description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها في الاستبيان.',
-                    report: studentReports.find((r) => r.type === 'survey-answers'),
-                  },
-                  {
-                    title: 'إجابات واختبار الطالب',
-                    description: 'نتيجة اختبار مهارات الطالب التفصيلية والتسجيلات.',
-                    report: studentReports.find((r) => r.type === 'student-assessment-answers' || r.type === 'student-assessment-analysis'),
+                    title: 'إجابات الاستبيان التفصيلية',
+                    description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها في الاستبيان الأولي.',
+                    report: studentReports.find((r) => r.type === 'survey-answers' || r.program === 'إجابات الاستبيان التفصيلية'),
                   },
                   {
                     title: 'التقرير التحليلي الشامل',
-                    description: 'التقرير النهائي وتوصيات د. إسماعيل عيسى.',
-                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.type === 'placement'),
+                    description: 'التقرير الإكلينيكي الشامل وتوصيات د. إسماعيل عيسى.',
+                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل'),
+                  },
+                  {
+                    title: 'إجابات اختبار الطالب التفصيلية',
+                    description: 'إجابات الطالب المباشرة والتسجيلات الصوتية والرسومات.',
+                    report: studentReports.find((r) => r.type === 'student-assessment-answers' || r.program === 'إجابات اختبار الطالب التفصيلية'),
+                  },
+                  {
+                    title: 'تحليل اختبار الطالب المباشر',
+                    description: 'نتائج تقييم المهارات وتحديد المستوى المباشر للطالب.',
+                    report: studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'placement' || r.program === 'تحليل اختبار الطالب المباشر' || r.program === 'اختبار قبول وتحديد مستوى'),
                   },
                 ].map((slot) => {
                   const isDispatched = Boolean(slot.report && isReportDispatchedByDoctor(slot.report));
                   return (
-                    <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                    <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                       <div className="space-y-2">
-                        <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={26} />
-                        <h3 className="font-black text-slate-950 text-sm">{slot.title}</h3>
-                        <p className="text-xs font-bold text-slate-500 leading-relaxed min-h-[36px]">{slot.description}</p>
+                        <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={24} />
+                        <h3 className="font-black text-slate-950 text-xs sm:text-sm leading-snug">{slot.title}</h3>
+                        <p className="text-[11px] font-bold text-slate-500 leading-relaxed min-h-[34px]">{slot.description}</p>
                       </div>
 
                       {isDispatched ? (
                         <Link
                           href={`/reports?report=${slot.report!.id}&mode=parent`}
-                          className="inline-flex w-full justify-center rounded-2xl bg-teal-700 py-3 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm"
+                          className="inline-flex w-full justify-center rounded-xl bg-teal-700 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-xs"
                         >
                           فتح التقرير الموثق 📄
                         </Link>
                       ) : (
-                        <div className="rounded-2xl bg-white border border-slate-200 p-3 text-center text-xs font-black text-slate-400">
+                        <div className="rounded-xl bg-white border border-slate-200 py-2.5 px-2 text-center text-[11px] font-black text-slate-400">
                           قيد الاعتماد من الدكتور
                         </div>
                       )}
