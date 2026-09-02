@@ -273,8 +273,8 @@ export default function Home() {
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl tracking-tight">
-                  <span className="block font-black tracking-widest text-slate-900 mb-1" style={{fontSize:'inherit'}}>مَسَار</span>
+                <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl">
+                  <span className="block font-black text-slate-900 mb-1" style={{fontSize:'inherit'}}>مَسَار</span>
                   اكتشف طفلك. طوّر قدراته.{' '}
                   <span className="bg-gradient-to-l from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
                     غيّر مستقبله.

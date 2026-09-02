@@ -133,9 +133,16 @@ body {
   background: var(--background);
   color: var(--ink);
   direction: rtl;
-  font-family: 'Cairo', Arial, sans-serif;
-  letter-spacing: 0;
+  font-family: var(--font-cairo), 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', 'DejaVu Sans', Arial, sans-serif;
+  letter-spacing: normal;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* In Arabic script, letter-spacing / tracking breaks cursive character shaping and causes detached letters */
+[dir="rtl"], [dir="rtl"] * {
+  letter-spacing: normal !important;
 }
 
 button,
