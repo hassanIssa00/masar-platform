@@ -28,6 +28,7 @@ import { getSession, getStudents, saveMessage, saveReport, type StudentRecord } 
 import { getClassStudents, saveStudentHomeworkLog } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { recordStudentLearningActivity } from '@/lib/learningProgress';
+import { broadcastHomeworkToParents } from '@/lib/broadcastService';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 const DRAWINGS_KEY = 'masar.curriculumDrawings.v1';
@@ -486,6 +487,17 @@ export default function CurriculumInteractiveWorkbook({
       status: 'submitted',
     });
 
+    // ── CRITICAL: Also save to 'homework' collection so student can see it in portal ──
+    void import('@/lib/homework').then(({ createHomework }) =>
+      createHomework({
+        studentId: student.id,
+        studentName: student.fullName,
+        title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+        description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+      })
+    );
+
     setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) وإشعار ولي أمره بنجاح!`);
     setTimeout(() => setNotice(''), 6000);
   }
@@ -519,15 +531,6 @@ export default function CurriculumInteractiveWorkbook({
         };
         newAssignmentsList.push(item);
 
-        // Send direct notification to parent
-        saveMessage({
-          studentId: s.id,
-          from: 'doctor',
-          to: 'parent',
-          body: `📚 واجب منزلي جديد لمادة (${curriculum.title}):\nيرجى حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) بالكتاب التفاعلي مع د. إسماعيل عيسى.\nرابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
-          read: false,
-        });
-
         // Save homework log
         saveStudentHomeworkLog({
           studentId: s.id,
@@ -543,6 +546,15 @@ export default function CurriculumInteractiveWorkbook({
         (a) => !(assignedIds.has(a.studentId) && a.subjectSlug === curriculum.slug),
       );
       writeAssignments([...newAssignmentsList, ...remaining]);
+
+      // ── CRITICAL: Also save to 'homework' collection so students can see it ──
+      await broadcastHomeworkToParents({
+        title: `واجب ${curriculum.title}`,
+        description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
+        subject: curriculum.title,
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+        notes: `رابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+      });
 
       setNotice(`📢 تم بنجاح إسناد واجب (${curriculum.title}) من ص ${cleanFrom} إلى ص ${cleanTo} لجميع طلاب الفصل (${students.length} طالب) وإشعار كافة أولياء الأمور! ✓`);
       setTimeout(() => setNotice(''), 7000);
