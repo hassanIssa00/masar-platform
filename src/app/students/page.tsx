@@ -410,8 +410,16 @@ export default function StudentsControlPage() {
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.error || 'تعذر حذف الطلاب من السحابة.');
       }
+      // Clear all local caches including class students — deleted data must never return
       clearCloudCache();
       clearSnapshotBackoff();
+      // Also wipe every key the server says to clear
+      if (payload.clientCacheToClear && Array.isArray(payload.clientCacheToClear)) {
+        payload.clientCacheToClear.forEach((key: string) => {
+          try { localStorage.removeItem(key); } catch {}
+          try { sessionStorage.removeItem(key); } catch {}
+        });
+      }
       setStudents([]);
       setReports([]);
       setSelectedId('');

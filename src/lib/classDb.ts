@@ -270,28 +270,23 @@ const CLOUD_COLLECTION = 'class_students';
 
 export function getClassStudents(): ClassStudentRecord[] {
   if (typeof window === 'undefined') return [];
-  let list = readCloudCache<ClassStudentRecord>(CLASS_STUDENTS_KEY);
+  const list = readCloudCache<ClassStudentRecord>(CLASS_STUDENTS_KEY);
 
-  // If initial list is empty, populate with default enrolled classroom students
-  if (!list || list.length === 0) {
-    list = [...DEFAULT_CLASS_STUDENTS];
-    writeCloudCache(CLASS_STUDENTS_KEY, list);
-    DEFAULT_CLASS_STUDENTS.forEach(s => void syncDocToCloud(CLOUD_COLLECTION, s.id, s));
-  }
+  // NOTE: No auto-seeding of DEFAULT_CLASS_STUDENTS.
+  // Deleted students must never come back automatically.
+  // The list is only populated via saveClassStudent() or fetchClassStudentsFromCloud().
 
-  // ☁️ Auto-sync: If there are students or accounts registered under IKHLAS_JEDDAH or classroom flow
+  // ☁️ Auto-sync: merge any students registered under IKHLAS_JEDDAH from the main students store
   try {
     const mainStudents = readCloudCache<any>('masar.students.v1');
     const existingNames = new Set(list.map((s) => s.fullName.trim().toLowerCase()));
 
     let hasNew = false;
     mainStudents.forEach((ms: any) => {
+      // ONLY add if explicitly marked as this class branch — never use name heuristics
       const isClassStudent =
         ms.schoolBranch === 'IKHLAS_JEDDAH' ||
-        ms.branch === 'IKHLAS_JEDDAH' ||
-        (ms.grade && ms.grade.includes('فصل')) ||
-        (ms.fullName && ms.fullName.includes('ربيع')) ||
-        ms.source === 'ikhlas-jeddah';
+        ms.branch === 'IKHLAS_JEDDAH';
 
       const normName = (ms.fullName || '').trim().toLowerCase();
       if (isClassStudent && normName && !existingNames.has(normName)) {
@@ -303,7 +298,7 @@ export function getClassStudents(): ClassStudentRecord[] {
           nationalId: ms.nationalId || '',
           dateOfBirth: ms.dateOfBirth || '',
           parentName: ms.parentName || `ولي أمر ${ms.fullName}`,
-          parentPhone: ms.parentPhone || '966501234567',
+          parentPhone: ms.parentPhone || '',
           photoUrl: ms.photoUrl || '',
           notes: ms.notes || '',
           assignedProgram: ms.assignedProgram || 'reading',

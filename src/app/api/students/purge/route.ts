@@ -210,6 +210,21 @@ export async function POST(req: NextRequest) {
       deletedScoped,
       deletedAccounts,
       deletedCredentials,
+      // Tell the client which localStorage keys to wipe immediately
+      clientCacheToClear: [
+        'masar_class_students_v1',
+        'masar.students.v1',
+        'masar.accounts.v1',
+        'masar.reports.v1',
+        'masar.surveys.v1',
+        'masar.notifications.v1',
+        'masar.attendance.v1',
+        'masar.ikhlas_posts.v1',
+        'masar_student_notes_v1',
+        'masar_student_hw_logs_v1',
+        'masar_student_cert_logs_v1',
+        'masar.cloud_snapshot',
+      ],
     });
   } catch (error) {
     console.error('[StudentsPurge] Failed:', error);
