@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, Calendar, Printer, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Sun, Send, Loader2 } from 'lucide-react';
+import { Clock, Calendar, Printer, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Sun, Send, Loader2, Check } from 'lucide-react';
 import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
 import { broadcastScheduleToParents, broadcastScheduleToStudents } from '@/lib/broadcastService';
 
@@ -637,6 +637,8 @@ export default function ProfessionalScheduleTab({
                         );
 
                         const isLiveNow = isToday && currentPeriod?.periodNumber === periodSlot.num;
+                        const nowHhmm = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
+                        const isPastSlot = isToday && periodItem && nowHhmm >= periodItem.endTime;
                         const subjectName = periodItem?.subjectName || '';
                         const teacherName = periodItem?.teacherName || '';
                         const cfg = SUBJECT_CONFIG[subjectName] || DEFAULT_SUBJECT_CONFIG;
@@ -661,11 +663,16 @@ export default function ProfessionalScheduleTab({
                                   <span className="font-black text-xs text-slate-900 leading-tight">
                                     {cfg.icon} {subjectName}
                                   </span>
-                                  {isLiveNow && (
+                                  {isLiveNow ? (
                                     <span className="flex items-center gap-1 text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.5 rounded-full animate-pulse shadow-sm shrink-0">
-                                      🟢
+                                      <span>جارية 🔴</span>
                                     </span>
-                                  )}
+                                  ) : isPastSlot ? (
+                                    <span className="flex items-center gap-0.5 text-[9px] font-black bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-md border border-slate-300 shrink-0">
+                                      <Check size={9} className="text-emerald-700 stroke-[3]" />
+                                      <span>انتهت</span>
+                                    </span>
+                                  ) : null}
                                 </div>
 
                                 {/* Teacher Name */}
@@ -716,6 +723,7 @@ export default function ProfessionalScheduleTab({
               .filter(p => p.dayOfWeek === dayIdx)
               .sort((a, b) => a.periodNumber - b.periodNumber);
             const isToday = jsDay === dayIdx;
+            const nowHhmm = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
 
             return (
               <div
@@ -749,7 +757,8 @@ export default function ProfessionalScheduleTab({
                 {/* Day Periods Grid */}
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {dayPeriods.map((p) => {
-                    const isNow = isToday && currentPeriod?.periodNumber === p.periodNumber;
+                    const isNow = isToday && (currentPeriod?.periodNumber === p.periodNumber || (nowHhmm >= p.startTime && nowHhmm < p.endTime));
+                    const isPast = isToday && nowHhmm >= p.endTime;
                     const cfg = SUBJECT_CONFIG[p.subjectName] || DEFAULT_SUBJECT_CONFIG;
 
                     return (
@@ -763,11 +772,21 @@ export default function ProfessionalScheduleTab({
                           <span className="text-xs font-black text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
                             الحصة {p.periodNumber}
                           </span>
-                          {isNow && (
-                            <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-pulse">
-                              جارية الآن 🟢
+                          {isNow ? (
+                            <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-pulse shadow-xs flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                              <span>جارية 🔴</span>
                             </span>
-                          )}
+                          ) : isPast ? (
+                            <span className="text-[10px] font-black bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full border border-slate-300 flex items-center gap-1">
+                              <Check size={10} className="text-emerald-700 stroke-[3]" />
+                              <span>انتهت</span>
+                            </span>
+                          ) : isToday ? (
+                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                              <span>قادمة</span>
+                            </span>
+                          ) : null}
                         </div>
 
                         <h4 className="font-black text-sm text-slate-900 mb-2 flex items-center gap-1.5">

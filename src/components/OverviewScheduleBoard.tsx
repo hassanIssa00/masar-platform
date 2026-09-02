@@ -442,12 +442,22 @@ export default function OverviewScheduleBoard({
                           🌤️
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-black text-amber-950 text-sm md:text-base">الفسحة المدرسية</span>
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-300 text-amber-950">15 دقيقة</span>
-                            {isActive && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white" /> جارية الآن
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white animate-pulse shadow-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                <span>جارية 🔴</span>
+                              </span>
+                            ) : isPast ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-200/90 text-amber-900 border border-amber-300">
+                                <Check size={11} className="text-amber-900 stroke-[3]" />
+                                <span>انتهت</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-amber-800 border border-amber-200">
+                                <span>قادمة</span>
                               </span>
                             )}
                           </div>
@@ -480,8 +490,25 @@ export default function OverviewScheduleBoard({
                           🌅
                         </div>
                         <div>
-                          <span className="font-black text-xs md:text-sm text-slate-900">طابور الصباح والإذاعة</span>
-                          <span className="text-[10px] text-slate-500 font-semibold mr-2">النشاط الصباحي والتحية</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-xs md:text-sm text-slate-900">طابور الصباح والإذاعة</span>
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white animate-pulse shadow-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                <span>جارية 🔴</span>
+                              </span>
+                            ) : isPast ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
+                                <Check size={11} className="text-emerald-700 stroke-[3]" />
+                                <span>انتهت</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-400 border border-slate-200">
+                                <span>قادمة</span>
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-semibold">النشاط الصباحي والتحية</span>
                         </div>
                       </div>
                       <div className="font-mono text-xs font-bold text-slate-600 shrink-0">
@@ -505,6 +532,17 @@ export default function OverviewScheduleBoard({
                       <div className="flex items-center gap-2.5">
                         <span className="text-lg">{evt.icon}</span>
                         <span className="font-black text-xs md:text-sm">{evt.name}</span>
+                        {isActive ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white animate-pulse shadow-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                            <span>جارية 🔴</span>
+                          </span>
+                        ) : isPast ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
+                            <Check size={11} className="text-emerald-700 stroke-[3]" />
+                            <span>انتهت</span>
+                          </span>
+                        ) : null}
                       </div>
                       <div className="font-mono text-xs font-black opacity-90">
                         {evt.startTime}
@@ -537,11 +575,28 @@ export default function OverviewScheduleBoard({
 
                       {/* Subject info */}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-lg">{config.icon}</span>
                           <h4 className="font-black text-sm md:text-base text-slate-950 truncate">
                             {evt.name}
                           </h4>
+
+                          {/* PROMINENT STATUS BADGES */}
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                              <span>جارية 🔴</span>
+                            </span>
+                          ) : isPast ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-slate-200/95 text-slate-700 border border-slate-300">
+                              <Check size={12} className="text-emerald-700 stroke-[3]" />
+                              <span>انتهت</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-slate-400 border border-slate-200">
+                              <span>قادمة ⏳</span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-1">
