@@ -9,7 +9,9 @@ import {
   Download,
   Eraser,
   Highlighter,
+  Loader2,
   Maximize2,
+  Megaphone,
   Minimize2,
   PenLine,
   Printer,
@@ -22,7 +24,8 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { CurriculumSubject } from '@/data/curriculaData';
-import { getSession, getStudents, saveReport, type StudentRecord } from '@/lib/cloudStore';
+import { getSession, getStudents, saveMessage, saveReport, type StudentRecord } from '@/lib/cloudStore';
+import { getClassStudents, saveStudentHomeworkLog } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { recordStudentLearningActivity } from '@/lib/learningProgress';
 
@@ -30,6 +33,16 @@ const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 const DRAWINGS_KEY = 'masar.curriculumDrawings.v1';
 
 type Tool = 'view' | 'pen' | 'highlighter' | 'eraser';
+
+type StudentItem = {
+  id: string;
+  name?: string;
+  fullName?: string;
+  phone?: string;
+  parentPhone?: string;
+  grade?: string;
+  schoolBranch?: string;
+};
 
 type CurriculumAssignment = {
   id?: string;
@@ -63,8 +76,12 @@ const COLOR_PALETTE = [
 
 export default function CurriculumInteractiveWorkbook({
   curriculum,
+  students: propStudents,
+  branch = 'IKHLAS_JEDDAH',
 }: {
   curriculum: CurriculumSubject;
+  students?: StudentItem[];
+  branch?: string;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,6 +105,7 @@ export default function CurriculumInteractiveWorkbook({
   const [assignment, setAssignment] = useState<CurriculumAssignment | null>(null);
   const [notice, setNotice] = useState('');
   const [loadingPage, setLoadingPage] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   function pageSrc(pageNum: number) {
     return `/resources/curricula/${curriculum.slug}/page-${String(pageNum).padStart(3, '0')}.jpg`;
@@ -216,12 +234,49 @@ export default function CurriculumInteractiveWorkbook({
     const role = session?.role || 'doctor';
     setSessionRole(role);
 
-    const allStudents = getStudents();
-    setStudents(allStudents);
-    if (allStudents.length > 0) {
-      setSelectedStudentId(allStudents[0].id);
+    if (propStudents && propStudents.length > 0) {
+      const mapped: StudentRecord[] = propStudents.map((s: any) => ({
+        id: s.id,
+        fullName: s.fullName || s.name || 'طالب',
+        grade: s.grade || 'الصف الأول الابتدائي',
+        parentPhone: s.parentPhone || s.phone,
+        parentName: s.parentName,
+        source: 'ikhlas-jeddah' as const,
+        schoolBranch: s.schoolBranch || branch || 'IKHLAS_JEDDAH',
+        createdAt: s.createdAt || new Date().toISOString(),
+        updatedAt: s.updatedAt || new Date().toISOString(),
+      }));
+      setStudents(mapped);
+      setSelectedStudentId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0]?.id || ''));
+      return;
     }
-  }, []);
+
+    const classStudents = getClassStudents();
+    const classIds = new Set(classStudents.map((c) => c.id));
+    const allStudents = getStudents();
+
+    let filtered = allStudents.filter(
+      (s) => s.schoolBranch === 'IKHLAS_JEDDAH' || s.source === 'ikhlas-jeddah' || classIds.has(s.id),
+    );
+
+    if (filtered.length === 0 && classStudents.length > 0) {
+      filtered = classStudents.map((cs) => ({
+        id: cs.id,
+        fullName: cs.fullName,
+        grade: cs.grade || 'الصف الأول الابتدائي',
+        parentPhone: cs.parentPhone,
+        source: 'ikhlas-jeddah' as const,
+        schoolBranch: 'IKHLAS_JEDDAH',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+
+    setStudents(filtered);
+    if (filtered.length > 0) {
+      setSelectedStudentId((prev) => (filtered.some((m) => m.id === prev) ? prev : filtered[0]?.id || ''));
+    }
+  }, [propStudents, branch]);
 
   useEffect(() => {
     const activeId = getActiveStudentId();
@@ -389,6 +444,7 @@ export default function CurriculumInteractiveWorkbook({
     const student = students.find((s) => s.id === selectedStudentId);
     if (!student) {
       setNotice('اختر طالباً أولاً لإسناد الصفحات.');
+      setTimeout(() => setNotice(''), 4000);
       return;
     }
 
@@ -396,6 +452,7 @@ export default function CurriculumInteractiveWorkbook({
     const cleanTo = Math.max(cleanFrom, Math.min(toPage, curriculum.pageCount));
 
     const newAssignment: CurriculumAssignment = {
+      id: `assign_${student.id}_${curriculum.slug}`,
       studentId: student.id,
       studentName: student.fullName,
       subjectSlug: curriculum.slug,
@@ -410,8 +467,90 @@ export default function CurriculumInteractiveWorkbook({
     );
     writeAssignments([newAssignment, ...currentAssignments]);
     setAssignment(newAssignment);
-    setNotice(`تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب ${student.fullName} بنجاح! ✓`);
-    setTimeout(() => setNotice(''), 5000);
+
+    // Send direct notification to parent
+    saveMessage({
+      studentId: student.id,
+      from: 'doctor',
+      to: 'parent',
+      body: `📚 واجب منزلي جديد لمادة (${curriculum.title}):\nيرجى حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي.\nرابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+      read: false,
+    });
+
+    // Save to homework log
+    saveStudentHomeworkLog({
+      studentId: student.id,
+      title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+      subject: curriculum.title,
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+      status: 'submitted',
+    });
+
+    setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) وإشعار ولي أمره بنجاح!`);
+    setTimeout(() => setNotice(''), 6000);
+  }
+
+  async function handleAssignToEntireClass() {
+    if (!students || students.length === 0) {
+      setNotice('لا يوجد طلاب في الفصل حالياً.');
+      setTimeout(() => setNotice(''), 4000);
+      return;
+    }
+
+    const cleanFrom = Math.max(1, Math.min(fromPage, curriculum.pageCount));
+    const cleanTo = Math.max(cleanFrom, Math.min(toPage, curriculum.pageCount));
+    setIsBroadcasting(true);
+
+    try {
+      const now = new Date().toISOString();
+      const currentAssignments = readAssignments();
+      const newAssignmentsList: CurriculumAssignment[] = [];
+
+      for (const s of students) {
+        const item: CurriculumAssignment = {
+          id: `assign_${s.id}_${curriculum.slug}`,
+          studentId: s.id,
+          studentName: s.fullName,
+          subjectSlug: curriculum.slug,
+          subjectTitle: curriculum.title,
+          fromPage: cleanFrom,
+          toPage: cleanTo,
+          assignedAt: now,
+        };
+        newAssignmentsList.push(item);
+
+        // Send direct notification to parent
+        saveMessage({
+          studentId: s.id,
+          from: 'doctor',
+          to: 'parent',
+          body: `📚 واجب منزلي جديد لمادة (${curriculum.title}):\nيرجى حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) بالكتاب التفاعلي مع د. إسماعيل عيسى.\nرابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+          read: false,
+        });
+
+        // Save homework log
+        saveStudentHomeworkLog({
+          studentId: s.id,
+          title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+          subject: curriculum.title,
+          dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+          status: 'submitted',
+        });
+      }
+
+      const assignedIds = new Set(students.map((s) => s.id));
+      const remaining = currentAssignments.filter(
+        (a) => !(assignedIds.has(a.studentId) && a.subjectSlug === curriculum.slug),
+      );
+      writeAssignments([...newAssignmentsList, ...remaining]);
+
+      setNotice(`📢 تم بنجاح إسناد واجب (${curriculum.title}) من ص ${cleanFrom} إلى ص ${cleanTo} لجميع طلاب الفصل (${students.length} طالب) وإشعار كافة أولياء الأمور! ✓`);
+      setTimeout(() => setNotice(''), 7000);
+    } catch (err) {
+      console.error('Error assigning to class:', err);
+    } finally {
+      setIsBroadcasting(false);
+    }
   }
 
   function submitStudentWork() {
@@ -522,7 +661,7 @@ export default function CurriculumInteractiveWorkbook({
 
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 shadow-xs cursor-pointer"
           >
             <Printer size={15} />
             طباعة الصفحة
@@ -530,7 +669,7 @@ export default function CurriculumInteractiveWorkbook({
 
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 shadow-xs cursor-pointer"
           >
             {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             {isFullscreen ? 'تصغير' : 'ملء الشاشة'}
@@ -540,26 +679,28 @@ export default function CurriculumInteractiveWorkbook({
 
       {/* ══ DOCTOR ASSIGNMENT / STUDENT HOMEWORK BANNER ══ */}
       {isStaff ? (
-        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Users size={18} className="text-blue-700" />
-              <span className="text-xs font-black text-blue-950">إسناد صفحات المنهج كواجب للطالب:</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 p-4 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Top row / Select student & page range */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-blue-700" />
+                <span className="text-xs font-black text-blue-950">إسناد صفحات المنهج كواجب:</span>
+              </div>
+
               <select
                 value={selectedStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-600 shadow-2xs"
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.fullName} ({s.grade || 'طالب'})
+                    {s.fullName} ({s.grade || 'الصف الأول'})
                   </option>
                 ))}
               </select>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+              <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <span>من ص</span>
                 <input
                   type="number"
@@ -567,7 +708,7 @@ export default function CurriculumInteractiveWorkbook({
                   max={curriculum.pageCount}
                   value={fromPage}
                   onChange={(e) => setFromPage(parseInt(e.target.value, 10) || 1)}
-                  className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900 outline-none"
+                  className="w-14 rounded-lg bg-slate-50 border border-slate-300 px-1.5 py-0.5 text-center font-black text-slate-900 outline-none focus:border-blue-600"
                 />
                 <span>إلى ص</span>
                 <input
@@ -576,22 +717,40 @@ export default function CurriculumInteractiveWorkbook({
                   max={curriculum.pageCount}
                   value={toPage}
                   onChange={(e) => setToPage(parseInt(e.target.value, 10) || fromPage)}
-                  className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900 outline-none"
+                  className="w-14 rounded-lg bg-slate-50 border border-slate-300 px-1.5 py-0.5 text-center font-black text-slate-900 outline-none focus:border-blue-600"
                 />
               </div>
+            </div>
+
+            {/* Action Buttons: Single Student + Entire Class */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleAssignHomework}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
+                title="إسناد الواجب للطالب المحدد فقط"
+              >
+                <ClipboardCheck size={16} />
+                <span>إسناد للطالب المحدد</span>
+              </button>
 
               <button
-                onClick={handleAssignHomework}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white px-4 py-1.5 text-xs font-black shadow-xs transition"
+                type="button"
+                onClick={handleAssignToEntireClass}
+                disabled={isBroadcasting || students.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-black shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 ring-2 ring-emerald-500/30"
+                title="إسناد الواجب لجميع طلاب الفصل وإشعار أولياء الأمور فوراً"
               >
-                <ClipboardCheck size={14} />
-                إسناد الواجب
+                {isBroadcasting ? <Loader2 size={16} className="animate-spin" /> : <Megaphone size={16} />}
+                <span>إسناد لجميع طلاب الفصل وإخطار أولياء الأمور 📢</span>
               </button>
             </div>
           </div>
+
           {assignment && (
-            <p className="mt-2 text-[11px] font-bold text-blue-800">
-              📌 الواجب الحالي المسند لـ ({assignment.studentName}): من صفحة {assignment.fromPage} إلى صفحة {assignment.toPage}
+            <p className="mt-2.5 text-[11px] font-bold text-blue-800 flex items-center gap-1.5 border-t border-blue-200/60 pt-2">
+              <span>📌</span>
+              <span>آخر واجب مسند لـ ({assignment.studentName}): من صفحة {assignment.fromPage} إلى صفحة {assignment.toPage}</span>
             </p>
           )}
         </div>
@@ -605,7 +764,7 @@ export default function CurriculumInteractiveWorkbook({
           </div>
           <button
             onClick={() => setPage(assignment.fromPage)}
-            className="rounded-lg bg-amber-400 hover:bg-amber-300 text-indigo-950 px-3 py-1.5 text-xs font-black shadow-xs transition"
+            className="rounded-lg bg-amber-400 hover:bg-amber-300 text-indigo-950 px-3 py-1.5 text-xs font-black shadow-xs transition cursor-pointer"
           >
             انتقل للواجب
           </button>
@@ -619,7 +778,7 @@ export default function CurriculumInteractiveWorkbook({
           <button
             type="button"
             onClick={() => setTool('pen')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition cursor-pointer ${
               tool === 'pen' ? 'bg-slate-950 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -630,7 +789,7 @@ export default function CurriculumInteractiveWorkbook({
           <button
             type="button"
             onClick={() => setTool('highlighter')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition cursor-pointer ${
               tool === 'highlighter' ? 'bg-amber-400 text-slate-950 font-black shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -641,7 +800,7 @@ export default function CurriculumInteractiveWorkbook({
           <button
             type="button"
             onClick={() => setTool('eraser')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition cursor-pointer ${
               tool === 'eraser' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -649,34 +808,16 @@ export default function CurriculumInteractiveWorkbook({
             الممحاة
           </button>
 
-          {/* Color Palette */}
-          {tool !== 'eraser' && (
-            <div className="flex items-center gap-1.5 border-r border-slate-300 pr-2 mr-2">
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setColor(c.value)}
-                  title={c.name}
-                  className={`h-6 w-6 rounded-full border-2 transition ${
-                    color === c.value ? 'scale-110 border-slate-900 ring-2 ring-slate-400' : 'border-white'
-                  }`}
-                  style={{ backgroundColor: c.value }}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Brush Thickness */}
-          <div className="flex items-center gap-2 border-r border-slate-300 pr-2 mr-2">
-            <span className="text-[11px] font-bold text-slate-500">الحجم:</span>
+          {/* Brush Sizes */}
+          <div className="flex items-center gap-1 border-r border-slate-200 pr-2 mr-1">
+            <span className="text-[10px] font-bold text-slate-400 ml-1">الحجم:</span>
             {[2, 4, 8, 14].map((size) => (
               <button
                 key={size}
                 type="button"
                 onClick={() => setBrush(size)}
-                className={`h-7 w-7 rounded-lg border text-xs font-black ${
-                  brush === size ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-700'
+                className={`h-7 w-7 rounded-lg text-xs font-black transition cursor-pointer ${
+                  brush === size ? 'bg-slate-900 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-200'
                 }`}
               >
                 {size}
@@ -684,10 +825,30 @@ export default function CurriculumInteractiveWorkbook({
             ))}
           </div>
 
+          {/* Color Palette */}
+          <div className="flex items-center gap-1.5 border-r border-slate-200 pr-2 mr-1">
+            {COLOR_PALETTE.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => {
+                  setColor(c.value);
+                  if (tool === 'eraser' || tool === 'view') setTool('pen');
+                }}
+                className={`h-6 w-6 rounded-full transition-transform cursor-pointer ${
+                  color === c.value && tool !== 'eraser' ? 'scale-125 ring-2 ring-offset-1 ring-slate-900' : 'hover:scale-110'
+                }`}
+                style={{ backgroundColor: c.value }}
+                title={c.name}
+              />
+            ))}
+          </div>
+
+          {/* Clear Page Canvas */}
           <button
             type="button"
             onClick={clearCurrentPage}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-rose-700"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-rose-700 cursor-pointer"
             title="مسح كل ما رُسم في هذه الصفحة"
           >
             <RotateCcw size={14} />
@@ -700,7 +861,7 @@ export default function CurriculumInteractiveWorkbook({
           <button
             type="button"
             onClick={() => setZoom((z) => Math.max(60, z - 15))}
-            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 grid place-items-center"
+            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 grid place-items-center cursor-pointer"
             title="تصغير"
           >
             <ZoomOut size={15} />
@@ -709,7 +870,7 @@ export default function CurriculumInteractiveWorkbook({
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(160, z + 15))}
-            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 grid place-items-center"
+            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 grid place-items-center cursor-pointer"
             title="تكبير"
           >
             <ZoomIn size={15} />
@@ -725,7 +886,7 @@ export default function CurriculumInteractiveWorkbook({
             <button
               key={unit.title}
               onClick={() => setPage(unit.fromPage)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 font-bold transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 font-bold transition cursor-pointer ${
                 page >= unit.fromPage && page <= unit.toPage
                   ? 'bg-slate-900 text-white font-black'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -736,6 +897,80 @@ export default function CurriculumInteractiveWorkbook({
           ))}
         </div>
       )}
+
+      {/* ══ INTERACTIVE PAGE SLIDER (سلايدر التصفح السريع المباشر لجميع الصفحات) ══ */}
+      <div className="mt-3.5 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-black text-xs">
+              📄
+            </span>
+            <div>
+              <h4 className="text-xs font-black text-slate-900">سلايدر التصفح والانتقال السريع لصفحات الكتاب</h4>
+              <p className="text-[10px] font-bold text-slate-400">اسحب المؤشر للتنقل الفوري بين جميع الصفحات (1 إلى {curriculum.pageCount})</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1 text-xs font-black text-slate-800 font-mono">
+            <span>صفحة:</span>
+            <span className="text-teal-700 text-sm font-black">{page}</span>
+            <span className="text-slate-400">/ {curriculum.pageCount}</span>
+            <span className="text-[10px] text-teal-700 bg-teal-100/70 px-1.5 py-0.5 rounded-md font-bold">
+              ({Math.round((page / curriculum.pageCount) * 100)}%)
+            </span>
+          </div>
+        </div>
+
+        {/* The Range Slider */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setPage(1)}
+            disabled={page <= 1}
+            className="shrink-0 rounded-lg bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[11px] font-black text-slate-700 disabled:opacity-30 transition cursor-pointer"
+            title="الانتقال لصفحة 1"
+          >
+            بداية (1)
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 10))}
+            disabled={page <= 1}
+            className="shrink-0 rounded-lg bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[11px] font-black text-slate-700 disabled:opacity-30 transition cursor-pointer font-mono"
+            title="رجوع 10 صفحات"
+          >
+            -10
+          </button>
+
+          <input
+            type="range"
+            min={1}
+            max={curriculum.pageCount}
+            step={1}
+            value={page}
+            onChange={(e) => setPage(parseInt(e.target.value, 10) || 1)}
+            className="flex-1 h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 hover:accent-teal-700 transition"
+          />
+
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(curriculum.pageCount, p + 10))}
+            disabled={page >= curriculum.pageCount}
+            className="shrink-0 rounded-lg bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[11px] font-black text-slate-700 disabled:opacity-30 transition cursor-pointer font-mono"
+            title="تقدم 10 صفحات"
+          >
+            +10
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage(curriculum.pageCount)}
+            disabled={page >= curriculum.pageCount}
+            className="shrink-0 rounded-lg bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[11px] font-black text-slate-700 disabled:opacity-30 transition cursor-pointer"
+            title={`الانتقال لآخر صفحة (${curriculum.pageCount})`}
+          >
+            نهاية ({curriculum.pageCount})
+          </button>
+        </div>
+      </div>
 
       {/* ══ MAIN INTERACTIVE CANVAS & BOOK PAGE ══ */}
       <div className="mt-4 flex flex-col items-center justify-center overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-2 md:p-6 min-h-[600px]">
@@ -796,7 +1031,7 @@ export default function CurriculumInteractiveWorkbook({
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-40 shadow-xs"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-40 shadow-xs cursor-pointer"
           >
             <ChevronRight size={16} />
             الصفحة السابقة
@@ -806,7 +1041,7 @@ export default function CurriculumInteractiveWorkbook({
             type="button"
             onClick={() => setPage((p) => Math.min(curriculum.pageCount, p + 1))}
             disabled={page >= curriculum.pageCount}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-40 shadow-xs"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-40 shadow-xs cursor-pointer"
           >
             الصفحة التالية
             <ChevronLeft size={16} />
@@ -826,7 +1061,7 @@ export default function CurriculumInteractiveWorkbook({
           />
           <button
             type="submit"
-            className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-black text-slate-800 hover:bg-slate-300"
+            className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-black text-slate-800 hover:bg-slate-300 cursor-pointer"
           >
             انتقال
           </button>

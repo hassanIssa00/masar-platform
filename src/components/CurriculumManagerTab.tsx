@@ -29,6 +29,7 @@ import {
   Search,
   ExternalLink,
   MessageCircle,
+  Megaphone,
 } from 'lucide-react';
 import {
   CURRICULUM_SUBJECTS,
@@ -45,6 +46,8 @@ import {
 } from '@/lib/curriculumDb';
 import { curriculaList, CurriculumSubject, getCurriculumBySlug } from '@/data/curriculaData';
 import CurriculumInteractiveWorkbook from '@/components/CurriculumInteractiveWorkbook';
+import { saveMessage } from '@/lib/cloudStore';
+import { saveStudentHomeworkLog } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
@@ -152,8 +155,60 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
 📖 *الصفحات المطلوبة:* من صفحة ${cleanFrom} إلى صفحة ${cleanTo}
 
 يرجى فتح المنهج التفاعلي والحل بالقلم الرقمي عبر منصة مسار: https://masarplatform.org/programs/curricula/${curriculum.slug}`;
-      window.open(`https://wa.me/966${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
+  };
+
+  const handleAssignToEntireClassTab = (curriculum: CurriculumSubject) => {
+    if (!students || students.length === 0) {
+      setAssignNotice('لا يوجد طلاب في الفصل حالياً.');
+      return;
+    }
+
+    const cleanFrom = Math.max(1, Math.min(assignPageFrom, curriculum.pageCount));
+    const cleanTo = Math.max(cleanFrom, Math.min(assignPageTo, curriculum.pageCount));
+    const now = new Date().toISOString();
+
+    const current = readCloudCache<any>(ASSIGNMENTS_KEY);
+    const newItems = students.map((s) => {
+      const item = {
+        studentId: s.id,
+        studentName: s.name,
+        subjectSlug: curriculum.slug,
+        subjectTitle: curriculum.title,
+        fromPage: cleanFrom,
+        toPage: cleanTo,
+        assignedAt: now,
+      };
+      void syncDocToCloud('curriculum_assignments', `${s.id}_${curriculum.slug}`, item);
+
+      // 1. Notify parent in system messages
+      saveMessage({
+        studentId: s.id,
+        from: 'doctor',
+        to: 'parent',
+        body: `📚 واجب جديد من د. إسماعيل لمادة (${curriculum.title}):\nيرجى حل الصفحات من (${cleanFrom}) إلى (${cleanTo}) في الكتاب التفاعلي.\nرابط المنهاج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+        read: false,
+      });
+
+      // 2. Save homework log
+      saveStudentHomeworkLog({
+        studentId: s.id,
+        title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+        subject: curriculum.title,
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+        status: 'submitted',
+      });
+
+      return item;
+    });
+
+    const studentIds = new Set(students.map((s) => s.id));
+    const updated = [...newItems, ...current.filter((item: any) => !(studentIds.has(item.studentId) && item.subjectSlug === curriculum.slug))];
+    writeCloudCache(ASSIGNMENTS_KEY, updated);
+    setActiveAssignments(updated);
+
+    setAssignNotice(`📢 تم بنجاح إسناد واجب (${curriculum.title}) من ص ${cleanFrom} إلى ص ${cleanTo} لجميع طلاب الفصل (${students.length} طالب) وإشعار كافة أولياء الأمور! ✓`);
+    setTimeout(() => setAssignNotice(''), 7000);
   };
 
   // ── AI Quiz Generator Handlers ───────────────────────────────────────────
@@ -371,10 +426,21 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
                 <button
                   type="button"
                   onClick={() => handleAssignToClassStudent(selectedCurriculum)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white px-4 py-1.5 text-xs font-black shadow-xs transition"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white px-3.5 py-1.5 text-xs font-black shadow-xs transition cursor-pointer"
+                  title="إسناد الواجب للطالب المحدد فقط"
                 >
                   <Send size={13} />
-                  إسناد وإشعار ولي الأمر
+                  إسناد للطالب
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAssignToEntireClassTab(selectedCurriculum)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-1.5 text-xs font-black shadow-xs transition cursor-pointer"
+                  title="إسناد الواجب لجميع طلاب الفصل وإشعار أولياء الأمور فوراً"
+                >
+                  <Megaphone size={13} />
+                  إسناد للفصل بالكامل وإشعار أولياء الأمور 📢
                 </button>
               </div>
             </div>
@@ -383,6 +449,45 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
                 {assignNotice}
               </p>
             )}
+          </div>
+
+          {/* Horizontal Books Slider Strip (سلايدر التصفح السريع للكتب والمناهج) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">
+                  📚
+                </span>
+                <span className="text-xs font-black text-slate-800">شريط التصفح السريع للكتب والمناهج الدراسية:</span>
+              </div>
+              <span className="text-[11px] font-bold text-slate-400">انقر على أي كتاب لفتحه وتصفحه فوراً</span>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-slate-200">
+              {curriculaList.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  onClick={() => handleOpenBook(c.slug)}
+                  className={`shrink-0 flex items-center gap-2.5 rounded-xl border p-2.5 transition cursor-pointer text-right min-w-[170px] ${
+                    selectedBookSlug === c.slug
+                      ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white'
+                  }`}
+                >
+                  <span
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white font-black text-sm shadow-xs"
+                    style={{ backgroundColor: c.color }}
+                  >
+                    <BookOpen size={18} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-slate-900 truncate leading-tight">{c.title}</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-0.5">{c.pageCount} صفحة</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Textbooks Grid */}
@@ -480,7 +585,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
             </div>
           </div>
 
-          <CurriculumInteractiveWorkbook curriculum={selectedCurriculum} />
+          <CurriculumInteractiveWorkbook curriculum={selectedCurriculum} students={students} branch="IKHLAS_JEDDAH" />
         </div>
       )}
 
