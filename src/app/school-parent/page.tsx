@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { clearSession, getAccounts, getSession, getStudents, getSurveys, hydrateSessionFromServer, StudentRecord } from '@/lib/cloudStore';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
+import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
@@ -365,6 +366,18 @@ export default function SchoolParentPage() {
               </div>
             )}
 
+            {/* Daily Schedule Timeline Board for Parent */}
+            <div className="pt-1">
+              <OverviewScheduleBoard
+                variant="parent"
+                studentName={studentRecord?.fullName}
+                onNavigateTab={(t) => {
+                  if (t === 'schedule') setTab('schedule');
+                  else setTab(t as Tab);
+                }}
+              />
+            </div>
+
             {/* تنبيه تأخر استلام الطفل العاجل */}
             {dashboard?.todayLog?.lateAlertSent && (
               <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-4.5 flex items-center gap-3.5 animate-pulse shadow-md shadow-rose-100">
@@ -490,29 +503,18 @@ export default function SchoolParentPage() {
 
         {/* ══════════════ جدول الحصص ══════════════ */}
         {!loading && tab === 'schedule' && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-600" /> جدول حصص اليوم — {todayName}
-            </h2>
-            {dashboard?.todaySchedule?.length === 0 && (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
-                🌙 اليوم إجازة رسمية
-              </div>
-            )}
-            {dashboard?.todaySchedule?.map((p: any) => {
-              const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-slate-100 text-slate-800 border-slate-200';
-              return (
-                <div key={p.periodNumber} className={`flex items-center gap-3.5 p-3.5 rounded-2xl border ${colorClass} shadow-sm`}>
-                  <div className="w-8 h-8 rounded-xl bg-white/80 border border-slate-200 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-black">{p.periodNumber}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-black text-sm">{p.subjectName}</p>
-                  </div>
-                  <span className="text-xs font-bold opacity-80">{p.startTime} – {p.endTime}</span>
-                </div>
-              );
-            })}
+          <div className="space-y-4">
+            <OverviewScheduleBoard
+              variant="parent"
+              studentName={studentRecord?.fullName}
+              onNavigateTab={(t) => {
+                if (t === 'schedule') {
+                  // already on schedule
+                } else {
+                  setTab(t as Tab);
+                }
+              }}
+            />
           </div>
         )}
 

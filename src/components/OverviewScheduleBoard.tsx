@@ -6,15 +6,17 @@ import {
   ChevronLeft, ArrowRight, Sun, Coffee, Users,
   Layers, AlertTriangle, ExternalLink, ShieldCheck, Check
 } from 'lucide-react';
-import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
+import { Period, DAY_NAMES, getSavedSchedule, getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal } from '@/data/ikhlasSchedule';
 
 interface Props {
-  schedule: Period[];
-  todayPeriods: Period[];
-  currentPeriod: Period | null;
-  minsUntilDismissal: number;
-  jsDay: number;
-  onNavigateTab: (tab: any) => void;
+  schedule?: Period[];
+  todayPeriods?: Period[];
+  currentPeriod?: Period | null;
+  minsUntilDismissal?: number;
+  jsDay?: number;
+  onNavigateTab?: (tab: any) => void;
+  variant?: 'teacher' | 'parent' | 'student';
+  studentName?: string;
 }
 
 const SUBJECT_CONFIG: Record<string, { icon: string; bg: string; border: string; text: string; badge: string }> = {
@@ -98,13 +100,21 @@ const SUBJECT_CONFIG: Record<string, { icon: string; bg: string; border: string;
 };
 
 export default function OverviewScheduleBoard({
-  schedule,
-  todayPeriods,
-  currentPeriod,
-  minsUntilDismissal,
-  jsDay,
+  schedule: passedSchedule,
+  todayPeriods: passedTodayPeriods,
+  currentPeriod: passedCurrentPeriod,
+  minsUntilDismissal: passedMins,
+  jsDay: passedJsDay,
   onNavigateTab,
+  variant = 'teacher',
+  studentName,
 }: Props) {
+  const schedule = useMemo(() => passedSchedule || getSavedSchedule(), [passedSchedule]);
+  const jsDay = passedJsDay !== undefined ? passedJsDay : new Date().getDay();
+  const todayPeriods = useMemo(() => passedTodayPeriods || getTodayPeriods(schedule, jsDay), [passedTodayPeriods, schedule, jsDay]);
+  const currentPeriod = passedCurrentPeriod !== undefined ? passedCurrentPeriod : getCurrentPeriod(schedule);
+  const minsUntilDismissal = passedMins !== undefined ? passedMins : getMinutesUntilDismissal(schedule);
+
   const [currentTimeStr, setCurrentTimeStr] = useState('');
 
   useEffect(() => {
@@ -331,35 +341,48 @@ export default function OverviewScheduleBoard({
             </div>
 
             <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-2 tracking-tight">
-              <span>🗓️ جدول اليوم — {DAY_NAMES[jsDay] ?? 'يوم دراسي'}</span>
+              {variant === 'parent' ? (
+                <span>🗓️ جدول حصص اليوم {studentName ? `للبطل (${studentName})` : ''} — {DAY_NAMES[jsDay] ?? 'يوم دراسي'}</span>
+              ) : variant === 'student' ? (
+                <span>🎒 جدول حصصي اليوم — {DAY_NAMES[jsDay] ?? 'يوم دراسي'}</span>
+              ) : (
+                <span>🗓️ جدول اليوم — {DAY_NAMES[jsDay] ?? 'يوم دراسي'}</span>
+              )}
             </h2>
 
             <p className="text-xs font-semibold text-slate-300 flex items-center gap-2">
               <span>مدرسة الإخلاص الأهلية · فصل د. إسماعيل عيسى</span>
               <span className="text-slate-500">|</span>
               <span className="text-amber-300 font-bold">
-                {isEarlyDay ? '⚡ موعد الخروج اليوم: 11:45 ص' : '🚪 موعد الخروج اليوم: 12:40 م'}
+                {variant === 'parent'
+                  ? (isEarlyDay ? '🚗 موعد استلام البطل اليوم: 11:45 ص' : '🚗 موعد استلام البطل اليوم: 12:40 م')
+                  : (isEarlyDay ? '⚡ موعد الخروج والانصراف اليوم: 11:45 ص' : '🚪 موعد الخروج والانصراف اليوم: 12:40 م')
+                }
               </span>
             </p>
           </div>
 
           {/* Quick Actions Bar */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => onNavigateTab('schedule')}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
-            >
-              <Layers size={14} className="text-amber-300" />
-              <span>جدول الأسبوع كاملاً 📊</span>
-            </button>
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('schedule')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
+              >
+                <Layers size={14} className="text-amber-300" />
+                <span>جدول الأسبوع كاملاً 📊</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => onNavigateTab('attendance')}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 text-xs font-black transition active:scale-95 cursor-pointer shadow-md shadow-emerald-900/30"
-            >
-              <Users size={14} />
-              <span>رصد الحضور 📋</span>
-            </button>
+            {variant === 'teacher' && onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('attendance')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 text-xs font-black transition active:scale-95 cursor-pointer shadow-md shadow-emerald-900/30"
+              >
+                <Users size={14} />
+                <span>رصد الحضور 📋</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -371,14 +394,18 @@ export default function OverviewScheduleBoard({
             <span className="text-5xl block animate-bounce">🌙</span>
             <h3 className="text-lg font-black text-slate-800">اليوم إجازة رسمية — عطلة نهاية الأسبوع</h3>
             <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto">
-              استمتع بوقتك! يمكنك الاطلاع على جدول الأسبوع أو تحضير الدروس والواجبات للأيام القادمة.
+              {variant === 'parent' 
+                ? 'نتمنى لكم ولأبنائكم عطلة سعيدة! يمكنكم استعراض الواجبات والتقارير الأسبوعية في أي وقت.'
+                : 'استمتع بوقتك! يمكنك الاطلاع على جدول الأسبوع أو تحضير الدروس والواجبات للأيام القادمة.'}
             </p>
-            <button
-              onClick={() => onNavigateTab('schedule')}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white px-4 py-2 text-xs font-black hover:bg-slate-800 transition"
-            >
-              عرض جدول الأسبوع كاملاً 📊
-            </button>
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('schedule')}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white px-4 py-2 text-xs font-black hover:bg-slate-800 transition"
+              >
+                عرض جدول الأسبوع كاملاً 📊
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -448,14 +475,16 @@ export default function OverviewScheduleBoard({
                           : 'border-orange-200/80 bg-orange-50/40'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-lg">🌅</span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-orange-100 border border-orange-200 flex items-center justify-center text-lg shrink-0">
+                          🌅
+                        </div>
                         <div>
-                          <span className="font-black text-slate-800 text-xs md:text-sm">{evt.name}</span>
-                          <span className="text-[10px] text-slate-500 mr-2">النشاط الصباحي والتحية</span>
+                          <span className="font-black text-xs md:text-sm text-slate-900">طابور الصباح والإذاعة</span>
+                          <span className="text-[10px] text-slate-500 font-semibold mr-2">النشاط الصباحي والتحية</span>
                         </div>
                       </div>
-                      <div className="text-left font-mono text-xs font-bold text-slate-700">
+                      <div className="font-mono text-xs font-bold text-slate-600 shrink-0">
                         {evt.startTime} – {evt.endTime}
                       </div>
                     </div>
@@ -488,15 +517,11 @@ export default function OverviewScheduleBoard({
                 return (
                   <div
                     key={evt.id}
-                    className={`rounded-2xl border transition-all p-3.5 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      isActive
-                        ? 'border-emerald-500 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 shadow-md ring-2 ring-emerald-400/80'
-                        : isPast
-                        ? 'border-slate-200 bg-white/70 opacity-80 hover:opacity-100'
-                        : `${config.bg} ${config.border} bg-white shadow-2xs hover:shadow-xs`
+                    className={`rounded-2xl border transition-all p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${config.bg} ${config.border} ${
+                      isActive ? 'ring-2 ring-emerald-500 shadow-md scale-[1.005]' : 'shadow-2xs'
                     }`}
                   >
-                    {/* Period Left Meta & Subject */}
+                    {/* Left & Center info */}
                     <div className="flex items-center gap-3.5 min-w-0">
                       {/* Period Number Badge */}
                       <div
@@ -512,24 +537,11 @@ export default function OverviewScheduleBoard({
 
                       {/* Subject info */}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <span className="text-lg">{config.icon}</span>
                           <h4 className="font-black text-sm md:text-base text-slate-950 truncate">
                             {evt.name}
                           </h4>
-
-                          {/* Live Status Pill */}
-                          {isActive && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white animate-pulse shadow-xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> جارية الآن 🔴
-                            </span>
-                          )}
-
-                          {isPast && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">
-                              <Check size={10} className="text-emerald-600" /> مكتملة
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-1">
@@ -537,34 +549,61 @@ export default function OverviewScheduleBoard({
                             <Clock size={12} className="text-slate-400" /> {evt.startTime} – {evt.endTime}
                           </span>
                           <span>·</span>
-                          <span className="text-slate-600 font-bold">مدة الحصة: 45 دقيقة</span>
+                          <span className="text-slate-600 font-bold">45 دقيقة</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Right Actions for the Period */}
                     <div className="flex items-center gap-2 shrink-0 sm:self-center">
-                      <button
-                        onClick={() => onNavigateTab('attendance')}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
-                          isActive
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}
-                        title="رصد الحضور لهذه الحصة"
-                      >
-                        <Users size={12} />
-                        <span>رصد الحضور</span>
-                      </button>
+                      {variant === 'teacher' ? (
+                        <>
+                          {onNavigateTab && (
+                            <button
+                              onClick={() => onNavigateTab('attendance')}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                                isActive
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                              title="رصد الحضور لهذه الحصة"
+                            >
+                              <Users size={12} />
+                              <span>رصد الحضور</span>
+                            </button>
+                          )}
 
-                      <button
-                        onClick={() => onNavigateTab('curriculum')}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition cursor-pointer"
-                        title="فتح المنهج والواجبات"
-                      >
-                        <BookOpen size={12} className="text-amber-600" />
-                        <span>المنهج</span>
-                      </button>
+                          {onNavigateTab && (
+                            <button
+                              onClick={() => onNavigateTab('curriculum')}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition cursor-pointer"
+                              title="فتح المنهج والواجبات"
+                            >
+                              <BookOpen size={12} className="text-amber-600" />
+                              <span>المنهج</span>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        /* Parent & Student Status Badge (No Teacher Edit Controls) */
+                        <div>
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 text-white shadow-xs animate-pulse">
+                              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                              <span>{variant === 'student' ? 'حصة البطل الحالية 🌟' : 'الحصة جارية بالفصل 🟢'}</span>
+                            </span>
+                          ) : isPast ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200/60">
+                              <Check size={11} className="text-emerald-600" />
+                              <span>تمت الحصة</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-white text-slate-400 border border-slate-200">
+                              <span>⏳ قادمة</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -578,15 +617,17 @@ export default function OverviewScheduleBoard({
                 <span>إجمالي حصص اليوم: <strong className="text-slate-950 font-black">{todayPeriods.length} حصص معتمدة</strong></span>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => onNavigateTab('schedule')}
-                  className="text-emerald-700 hover:text-emerald-900 font-black flex items-center gap-1 transition"
-                >
-                  <span>عرض الجدول الأسبوعي بالتفصيل</span>
-                  <ChevronLeft size={14} />
-                </button>
-              </div>
+              {onNavigateTab && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => onNavigateTab('schedule')}
+                    className="text-emerald-700 hover:text-emerald-900 font-black flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <span>عرض الجدول الأسبوعي بالتفصيل</span>
+                    <ChevronLeft size={14} />
+                  </button>
+                </div>
+              )}
             </div>
 
           </div>

@@ -37,6 +37,7 @@ import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { normalizeArabicText } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -359,20 +360,13 @@ export default function StudentDashboard() {
         )}
       </div>
 
-      {/* Today Schedule Summary — only show if schedule data is available */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-emerald-600" />
-            <h3 className="font-black text-sm text-slate-900">جدول الحصص 🕒</h3>
-          </div>
-          <button onClick={() => setActiveTab('schedule')} className="text-xs font-black text-emerald-700 hover:underline cursor-pointer">
-            الجدول الكامل
-          </button>
-        </div>
-        <div className="p-3 bg-slate-50 rounded-2xl text-center text-xs font-bold text-slate-500">
-          📋 سيظهر الجدول هنا فور إعداده من قِبَل د. إسماعيل عيسى.
-        </div>
+      {/* Live Timeline Schedule for Student */}
+      <div>
+        <OverviewScheduleBoard
+          variant="student"
+          studentName={studentRecord?.fullName || studentName}
+          onNavigateTab={(t) => setActiveTab(t as Tab)}
+        />
       </div>
     </div>
   );
@@ -434,46 +428,21 @@ export default function StudentDashboard() {
     </div>
   );
 
-  const renderScheduleTab = () => {
-    const jsDay = new Date().getDay(); // 0=Sunday... 4=Thursday
-    const activeDayIndex = (jsDay >= 0 && jsDay <= 4) ? jsDay : 0;
-    const dayPeriods = DEFAULT_SCHEDULE.filter((p) => p.dayOfWeek === activeDayIndex);
-
-    return (
-      <div className="bg-white rounded-3xl shadow-sm p-6 relative overflow-hidden border border-slate-200 space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="font-black text-slate-900 text-sm">
-              {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? 'جدول الحصص المعتمد — فصل د. إسماعيل عيسى' : 'جدول الحصص والأنشطة — منصة مسار'}
-            </h3>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">مدرج حسب الخطة الدراسية المعتمدة</p>
-          </div>
-          <span className="text-xs font-black text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
-            يوم {DAY_NAMES[activeDayIndex]}
-          </span>
-        </div>
-
-        <div className="space-y-2.5">
-          {dayPeriods.map((item) => (
-            <div key={`${item.dayOfWeek}-${item.periodNumber}`} className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 flex items-center justify-between transition">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
-                  {item.periodNumber}
-                </div>
-                <div>
-                  <h4 className="font-black text-xs text-slate-900">{item.subjectName}</h4>
-                  <p className="text-[10px] font-bold text-slate-500">الحصة {item.periodNumber}</p>
-                </div>
-              </div>
-              <div className="text-left">
-                <span className="text-[11px] font-mono font-black text-slate-700">{item.startTime} - {item.endTime}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  const renderScheduleTab = () => (
+    <div className="space-y-4">
+      <OverviewScheduleBoard
+        variant="student"
+        studentName={studentRecord?.fullName || studentName}
+        onNavigateTab={(t) => {
+          if (t === 'schedule') {
+            // Already on schedule
+          } else {
+            setActiveTab(t as Tab);
+          }
+        }}
+      />
+    </div>
+  );
 
   const renderMeetingsTab = () => (
     <div className="space-y-4">

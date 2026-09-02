@@ -154,8 +154,8 @@ export function getSavedSchedule(): Period[] {
   return DEFAULT_SCHEDULE;
 }
 
-export function getTodayPeriods(schedule: Period[]): Period[] {
-  const jsDay = new Date().getDay(); // 0=Sun…6=Sat
+export function getTodayPeriods(schedule: Period[], targetDay?: number): Period[] {
+  const jsDay = targetDay !== undefined ? targetDay : new Date().getDay(); // 0=Sun…6=Sat
   if (jsDay === 5 || jsDay === 6) return []; // جمعة وسبت إجازة
   return schedule.filter((p) => p.dayOfWeek === jsDay).sort((a, b) => a.periodNumber - b.periodNumber);
 }
