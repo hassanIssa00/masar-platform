@@ -137,8 +137,6 @@ export default function LoginPage() {
 
       if (linkedStudent && !hasSurvey) {
         targetUrl = `/survey?student=${encodeURIComponent(linkedStudent.id)}&flow=parent`;
-      } else if (account.onboardingRequired !== false && !linkedStudent) {
-        targetUrl = `/student/new?flow=parent`;
       } else {
         const sId = linkedStudent?.id || account.linkedStudentId;
         const sParam = sId ? `?student=${encodeURIComponent(sId)}` : '';
