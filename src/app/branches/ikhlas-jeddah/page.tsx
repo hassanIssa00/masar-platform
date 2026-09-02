@@ -35,6 +35,7 @@ import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 import DailyArchiveTab from '@/components/DailyArchiveTab';
+import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -909,61 +910,43 @@ export default function IkhlasJeddahPage() {
 
         {/* ════════════ نظرة عامة ════════════ */}
         {activeTab === 'overview' && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'طلاب الفصل',     value: classStudents.length,    icon: Users,    color: 'blue',   bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
-                { label: 'واجبات مفتوحة',  value: homeworkList.filter(h => h.status === 'OPEN').length, icon: BookOpen, color: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
-                { label: 'اجتماعات اليوم', value: meetings.length,          icon: Video,    color: 'violet', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
-                { label: 'صور الفصل',      value: photos.length,            icon: Camera,   color: 'pink',   bg: 'bg-pink-50',   border: 'border-pink-200',   text: 'text-pink-700' },
+                { label: 'طلاب الفصل',     value: classStudents.length,    icon: Users,    tab: 'students',   bg: 'from-blue-50 to-indigo-50/80',   border: 'border-blue-200 hover:border-blue-400',   text: 'text-blue-900', iconBg: 'bg-blue-600 text-white' },
+                { label: 'واجبات مفتوحة',  value: homeworkList.filter(h => h.status === 'OPEN').length, icon: BookOpen, tab: 'homework', bg: 'from-amber-50 to-yellow-50/80', border: 'border-amber-200 hover:border-amber-400', text: 'text-amber-900', iconBg: 'bg-amber-600 text-white' },
+                { label: 'اجتماعات اليوم', value: meetings.length,          icon: Video,    tab: 'meetings', bg: 'from-violet-50 to-purple-50/80', border: 'border-violet-200 hover:border-violet-400', text: 'text-violet-900', iconBg: 'bg-violet-600 text-white' },
+                { label: 'صور الفصل',      value: photos.length,            icon: Camera,   tab: 'photos',   bg: 'from-pink-50 to-rose-50/80',   border: 'border-pink-200 hover:border-pink-400',   text: 'text-pink-900', iconBg: 'bg-pink-600 text-white' },
               ].map((stat) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.label} className={`${stat.bg} border ${stat.border} rounded-2xl p-4 flex items-start gap-3`}>
-                    <div className={`w-10 h-10 rounded-xl ${stat.bg} border ${stat.border} flex items-center justify-center shrink-0 shadow-sm`}>
-                      <Icon className={`w-5 h-5 ${stat.text}`} />
-                    </div>
+                  <button
+                    key={stat.label}
+                    onClick={() => setActiveTab(stat.tab as Tab)}
+                    className={`bg-gradient-to-br ${stat.bg} border ${stat.border} rounded-2xl p-4 flex items-center justify-between gap-3 text-right transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:scale-98 cursor-pointer group`}
+                  >
                     <div>
-                      <div className={`text-2xl font-black ${stat.text}`}>{stat.value}</div>
-                      <div className="text-xs text-slate-500 font-medium">{stat.label}</div>
+                      <div className={`text-2xl lg:text-3xl font-black ${stat.text} font-mono tracking-tight`}>{stat.value}</div>
+                      <div className="text-xs text-slate-600 font-bold mt-0.5 group-hover:text-slate-900 transition-colors">{stat.label}</div>
                     </div>
-                  </div>
+                    <div className={`w-11 h-11 rounded-2xl ${stat.iconBg} flex items-center justify-center shrink-0 shadow-md transition-transform group-hover:scale-110`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </button>
                 );
               })}
             </div>
 
-            {/* Today's Schedule */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-              <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-600" />
-                جدول اليوم — {DAY_NAMES[jsDay] ?? 'إجازة'}
-              </h2>
-              {!isSchoolDay ? (
-                <div className="text-center py-8">
-                  <p className="text-4xl mb-2">🌙</p>
-                  <p className="text-slate-500 font-bold">اليوم إجازة رسمية — استرح!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {todayPeriods.map((p) => {
-                    const colorClass = SUBJECT_COLORS[p.subjectName] ?? 'bg-slate-100 text-slate-800 border-slate-200';
-                    const isNow = currentPeriod?.periodNumber === p.periodNumber;
-                    return (
-                      <div key={p.periodNumber}
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                          isNow ? 'ring-2 ring-emerald-500 ring-offset-1 shadow-md' : ''
-                        } ${colorClass}`}>
-                        <span className="text-xs font-black w-6 text-center opacity-70">{p.periodNumber}</span>
-                        <span className="flex-1 font-bold text-sm">{p.subjectName}</span>
-                        <span className="text-xs opacity-70">{p.startTime} – {p.endTime}</span>
-                        {isNow && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {/* Today's Schedule Board (Modern Executive 1448H View) */}
+            <OverviewScheduleBoard
+              schedule={schedule}
+              todayPeriods={todayPeriods}
+              currentPeriod={currentPeriod}
+              minsUntilDismissal={minsUntilDismissal}
+              jsDay={jsDay}
+              onNavigateTab={(tabKey) => setActiveTab(tabKey)}
+            />
 
             {/* Dismissal Alert */}
             {minsUntilDismissal > 0 && minsUntilDismissal <= 20 && (
