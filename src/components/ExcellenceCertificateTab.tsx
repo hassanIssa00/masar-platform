@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall, Users } from 'lucide-react';
 import BrandMark from './BrandMark';
-import { saveStudentCertificateLog, getClassStudents, DEFAULT_CLASS_STUDENTS } from '@/lib/classDb';
+import { saveStudentCertificateLog, getClassStudents } from '@/lib/classDb';
 import { saveMessage } from '@/lib/cloudStore';
 import { readCloudCache } from '@/lib/firestoreSync';
 import { createNotification } from '@/lib/notifications';
@@ -145,19 +145,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         }
       } catch {}
 
-      // 4. Default class fallback
-      if (map.size === 0) {
-        DEFAULT_CLASS_STUDENTS.forEach(s => {
-          map.set(s.id, {
-            id: s.id,
-            studentId: s.id,
-            studentName: s.fullName,
-            parentName: s.parentName || `ولي أمر ${s.fullName}`,
-            phone: s.parentPhone || '966501234567',
-            grade: s.grade,
-          });
-        });
-      }
+      // No fallback to DEFAULT_CLASS_STUDENTS — deleted students must never reappear
 
       const list = Array.from(map.values());
       setRecipientList(list);
