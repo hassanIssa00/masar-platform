@@ -2,7 +2,7 @@
 
 import { readCloudCache, syncDocToCloud, subscribeToCloudCollection, writeCloudCache } from './firestoreSync';
 
-export type NotificationType = 'survey' | 'report' | 'meeting' | 'message' | 'student' | 'system';
+export type NotificationType = 'survey' | 'report' | 'meeting' | 'message' | 'student' | 'system' | 'achievement';
 
 export interface AppNotification {
   id: string;
