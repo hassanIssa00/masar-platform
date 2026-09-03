@@ -65,7 +65,7 @@ const KEYS = {
 
 type CloudPayload = unknown;
 const memoryCache = new Map<string, unknown[]>();
-const SERVER_SNAPSHOT_POLL_MS = 60_000;
+const SERVER_SNAPSHOT_POLL_MS = 15 * 60 * 1000; // 15 minutes polling (was 60s) - prevents consuming free quota
 let serverSnapshotBackoffUntil = 0;
 const CLOUD_COLLECTIONS = [
   ['accounts', 'accounts'],
@@ -221,14 +221,24 @@ export function clearSnapshotBackoff() {
 }
 
 const inFlightSnapshots = new Map<string, Promise<boolean>>();
+const lastSnapshotTimes = new Map<string, number>();
+const SNAPSHOT_CLIENT_THROTTLE_MS = 3 * 60 * 1000; // 3 minutes throttle per key combination
 
-export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
+export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>, force = false) {
   if (typeof window === 'undefined') return false;
   if (Date.now() < serverSnapshotBackoffUntil) return false;
 
   const keyParam = collectionKeys?.length
     ? [...collectionKeys].sort().join(',')
     : 'ALL';
+
+  // If fetched recently, reuse existing client cache without hitting Firestore
+  if (!force) {
+    const lastTime = lastSnapshotTimes.get(keyParam) || 0;
+    if (Date.now() - lastTime < SNAPSHOT_CLIENT_THROTTLE_MS) {
+      return true;
+    }
+  }
 
   if (inFlightSnapshots.has(keyParam)) {
     return inFlightSnapshots.get(keyParam)!;
@@ -267,6 +277,7 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
         }
       });
 
+      lastSnapshotTimes.set(keyParam, Date.now());
       return true;
     } catch (error) {
       console.error('Server snapshot sync failed:', error);

@@ -56,11 +56,11 @@ const COLLECTIONS = [
   ['meetingChats', 'meeting_chats'],
 ] as const;
 
-const MAX_DOCS_PER_COLLECTION = 800;
-const SNAPSHOT_CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh cache (prevents thrashing Firestore on fast reloads)
-const STALE_SNAPSHOT_TTL_MS = 120 * 1000; // 2 minutes stale cache
-const PARTIAL_RETRY_AFTER_MS = 1000;
-const EXHAUSTED_RETRY_AFTER_MS = 5000;
+const MAX_DOCS_PER_COLLECTION = 150; // Lean queries to preserve quota
+const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes fresh cache on server
+const STALE_SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes stale cache
+const PARTIAL_RETRY_AFTER_MS = 2000;
+const EXHAUSTED_RETRY_AFTER_MS = 30000;
 
 function isStaff(role: string) {
   return role === 'doctor' || role === 'specialist' || role === 'teacher';
