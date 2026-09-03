@@ -52,8 +52,13 @@ export async function POST(req: NextRequest) {
       if (adminDb && account.id && !account.id.startsWith('generated_')) {
         await adminDb.collection('accounts').doc(account.id).set(
           {
+            id: account.id,
+            name: account.name || 'د. إسماعيل عيسى',
+            email: account.email || 'dr.ismail@masar.com',
+            role: account.role || 'doctor',
             lastLoginAt: new Date().toISOString(),
             lastLoginProvider: 'password',
+            createdAt: new Date().toISOString(),
           },
           { merge: true },
         );
