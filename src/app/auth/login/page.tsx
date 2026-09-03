@@ -123,10 +123,10 @@ export default function LoginPage() {
       } else {
         // Redirect to correct student dashboard based on branch:
         // IKHLAS_JEDDAH → /school-student (dedicated Ikhlas student portal)
-        // MASAR → /parent (the general portal that serves both parents and students)
+        // MASAR → /kids (dedicated MASAR student portal)
         targetUrl = branch === 'IKHLAS_JEDDAH'
           ? `/school-student${sParam}`
-          : `/parent${sParam}`;
+          : `/kids${sParam}`;
       }
 
     } else {

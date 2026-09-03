@@ -59,9 +59,9 @@ export default function StudentDashboard() {
       if (!session) { router.replace('/login'); return; }
       if (session.role === 'doctor' || session.role === 'specialist') { router.replace('/dashboard'); return; }
       if (session.role === 'parent') { router.replace('/school-parent'); return; }
-      // MASAR branch students should not be in the Ikhlas-specific portal
+      // MASAR branch students should not be in the Ikhlas-specific portal → redirect to /kids
       if ((session as any)?.schoolBranch && (session as any).schoolBranch !== 'IKHLAS_JEDDAH') {
-        router.replace('/parent');
+        router.replace('/kids');
         return;
       }
 
