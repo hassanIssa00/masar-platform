@@ -121,7 +121,12 @@ export default function LoginPage() {
           ? `/school-student/setup${sParam}`
           : `/student/new?flow=student${studentId ? `&student=${encodeURIComponent(studentId)}` : ''}`;
       } else {
-        targetUrl = `/school-student${sParam}`;
+        // Redirect to correct student dashboard based on branch:
+        // IKHLAS_JEDDAH → /school-student (dedicated Ikhlas student portal)
+        // MASAR → /parent (the general portal that serves both parents and students)
+        targetUrl = branch === 'IKHLAS_JEDDAH'
+          ? `/school-student${sParam}`
+          : `/parent${sParam}`;
       }
 
     } else {
