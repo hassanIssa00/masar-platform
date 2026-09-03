@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import { curriculaList } from '@/data/curriculaData';
+import { games } from '@/data/games';
 import { getCurriculumFiles } from '@/lib/curriculumDb';
 import {
   clearSession, getSession, getStudents, getAccounts, getReports,
@@ -238,10 +239,12 @@ export default function StudentDashboard() {
 
   const handleLogout = () => { clearSession(); router.push('/login'); };
 
+  const isIkhlas = studentRecord?.schoolBranch === 'IKHLAS_JEDDAH';
+
   const tabs: Array<{ key: Tab; label: string; icon: any }> = [
     { key: 'home',         label: 'الرئيسية',  icon: Home },
     { key: 'homework',     label: 'الواجبات',  icon: BookOpen },
-    { key: 'schedule',     label: 'الجدول',    icon: Clock },
+    ...(isIkhlas ? [{ key: 'schedule' as Tab, label: 'الجدول', icon: Clock }] : []),
     { key: 'curriculum',   label: 'المناهج',   icon: BookMarked },
     { key: 'certificates', label: 'شهاداتي',   icon: Trophy },
   ];
@@ -318,15 +321,82 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Schedule */}
-      <div>
-        <OverviewScheduleBoard
-          variant="student"
-          studentName={studentRecord?.fullName || studentName}
-          schoolBranch={studentRecord?.schoolBranch}
-          onNavigateTab={(t) => setActiveTab(t as Tab)}
-        />
-      </div>
+      {/* Schedule - Only for Doctor's Class (Ikhlas Jeddah) */}
+      {isIkhlas ? (
+        <div>
+          <OverviewScheduleBoard
+            variant="student"
+            studentName={studentRecord?.fullName || studentName}
+            schoolBranch={studentRecord?.schoolBranch}
+            onNavigateTab={(t) => setActiveTab(t as Tab)}
+          />
+        </div>
+      ) : (
+        /* Masar Platform Student Cards */
+        <div className="space-y-4">
+          {/* Quick Curriculum Access */}
+          <div className="bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-800 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
+            <div className="absolute -left-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BookMarked size={20} className="text-teal-200" />
+                <h3 className="font-black text-sm">المناهج والكتب المعتمدة 📚</h3>
+              </div>
+              <button
+                onClick={() => setActiveTab('curriculum')}
+                className="text-xs font-black bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-full transition cursor-pointer"
+              >
+                فتح المناهج ↗
+              </button>
+            </div>
+            <p className="text-xs text-teal-100 font-bold mb-3">
+              استعرض الكتب الدراسية والأنشطة والتدريبات التفاعلية الخاصة بصفك الدراسي.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {curriculaList.slice(0, 3).map((sub) => (
+                <div
+                  key={sub.slug}
+                  onClick={() => setActiveTab('curriculum')}
+                  className="bg-white/10 hover:bg-white/20 rounded-2xl p-2.5 text-center border border-white/15 cursor-pointer transition active:scale-95"
+                >
+                  <span className="text-xl block mb-1">
+                    {sub.slug === 'lughati' ? '📖' : sub.slug === 'math' ? '🔢' : '🕌'}
+                  </span>
+                  <span className="text-[11px] font-black text-white truncate block">{sub.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Educational Games & Challenges */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-amber-500" />
+                <h3 className="font-black text-sm text-slate-900">ألعاب الذكاء وتنمية المهارات 🎮</h3>
+              </div>
+              <span className="text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                أنشطة تفاعلية
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {games.slice(0, 4).map((g) => (
+                <Link
+                  key={g.slug}
+                  href={`/games/${g.slug}`}
+                  className="p-3 bg-slate-50 hover:bg-emerald-50 rounded-2xl border border-slate-100 flex items-center gap-2.5 transition active:scale-95 group"
+                >
+                  <span className="text-xl">🎯</span>
+                  <div className="overflow-hidden">
+                    <h4 className="font-black text-xs text-slate-900 group-hover:text-emerald-800 truncate">{g.title}</h4>
+                    <p className="text-[10px] font-bold text-slate-500 truncate">{g.skill}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -572,16 +642,16 @@ export default function StudentDashboard() {
           <>
             {activeTab === 'home'         && renderHomeTab()}
             {activeTab === 'homework'     && renderHomeworkTab()}
-            {activeTab === 'schedule'     && renderScheduleTab()}
+            {activeTab === 'schedule'     && isIkhlas && renderScheduleTab()}
             {activeTab === 'curriculum'   && renderCurriculumTab()}
             {activeTab === 'certificates' && renderCertificatesTab()}
           </>
         )}
       </div>
 
-      {/* Bottom Nav — 5 tabs */}
+      {/* Bottom Nav */}
       <div className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
-        <div className="grid grid-cols-5 gap-0.5">
+        <div className={`grid ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} gap-0.5`}>
           {tabs.map(t => {
             const Icon = t.icon;
             const active = activeTab === t.key;
