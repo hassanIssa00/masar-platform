@@ -82,8 +82,8 @@ function KidsDashboardContent() {
         return;
       }
 
-      // Ikhlas student → school-student portal
-      if (currentSession.schoolBranch === 'IKHLAS_JEDDAH') {
+      // All students use the interactive student dashboard
+      if (currentSession.role === 'student') {
         router.replace('/school-student');
         return;
       }

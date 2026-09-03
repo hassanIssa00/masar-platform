@@ -260,7 +260,9 @@ export default function StudentSetupPage() {
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-black text-emerald-800 border border-emerald-200">
             <Sparkles size={14} className="text-emerald-600" />
-            <span>منصة مسار — فصل د. إسماعيل عيسى</span>
+            <span>
+              {student?.schoolBranch === 'IKHLAS_JEDDAH' ? 'منصة مسار — فصل د. إسماعيل عيسى' : 'منصة مَسَار التعليمية الذكية'}
+            </span>
           </span>
           <h1 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900">
             استكمال بيانات ملف الطالب 🌟

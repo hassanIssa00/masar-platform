@@ -18,6 +18,8 @@ interface Props {
   variant?: 'teacher' | 'parent' | 'student';
   studentName?: string;
   showFullWeek?: boolean;
+  schoolName?: string;
+  schoolBranch?: string;
 }
 
 const SUBJECT_CONFIG: Record<string, { icon: string; bg: string; border: string; text: string; badge: string }> = {
@@ -110,6 +112,8 @@ export default function OverviewScheduleBoard({
   variant = 'teacher',
   studentName,
   showFullWeek = false,
+  schoolName,
+  schoolBranch,
 }: Props) {
   const schedule = useMemo(() => passedSchedule || getSavedSchedule(), [passedSchedule]);
   const jsDay = passedJsDay !== undefined ? passedJsDay : new Date().getDay();
@@ -354,7 +358,9 @@ export default function OverviewScheduleBoard({
             </h2>
 
             <p className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-              <span>مدرسة الإخلاص الأهلية · فصل د. إسماعيل عيسى</span>
+              <span>
+                {schoolName || (schoolBranch === 'IKHLAS_JEDDAH' ? 'مدرسة الإخلاص الأهلية · فصل د. إسماعيل عيسى' : 'منصة مَسَار التعليمية · التعليم التفاعلي')}
+              </span>
               <span className="text-slate-500">|</span>
               <span className="text-amber-300 font-bold">
                 {variant === 'parent'

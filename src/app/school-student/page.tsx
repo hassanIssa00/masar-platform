@@ -59,11 +59,6 @@ export default function StudentDashboard() {
       if (!session) { router.replace('/login'); return; }
       if (session.role === 'doctor' || session.role === 'specialist') { router.replace('/dashboard'); return; }
       if (session.role === 'parent') { router.replace('/school-parent'); return; }
-      // MASAR branch students should not be in the Ikhlas-specific portal → redirect to /kids
-      if ((session as any)?.schoolBranch && (session as any).schoolBranch !== 'IKHLAS_JEDDAH') {
-        router.replace('/kids');
-        return;
-      }
 
       const classStudents = getClassStudents();
       const allStudents = getStudents();
@@ -325,7 +320,12 @@ export default function StudentDashboard() {
 
       {/* Schedule */}
       <div>
-        <OverviewScheduleBoard variant="student" studentName={studentRecord?.fullName || studentName} onNavigateTab={(t) => setActiveTab(t as Tab)} />
+        <OverviewScheduleBoard
+          variant="student"
+          studentName={studentRecord?.fullName || studentName}
+          schoolBranch={studentRecord?.schoolBranch}
+          onNavigateTab={(t) => setActiveTab(t as Tab)}
+        />
       </div>
     </div>
   );
@@ -391,6 +391,7 @@ export default function StudentDashboard() {
       <OverviewScheduleBoard
         variant="student"
         studentName={studentRecord?.fullName || studentName}
+        schoolBranch={studentRecord?.schoolBranch}
         onNavigateTab={(t) => { if (t !== 'schedule') setActiveTab(t as Tab); }}
         showFullWeek={true}
       />
@@ -408,7 +409,9 @@ export default function StudentDashboard() {
             <BookMarked size={22} />
             <h2 className="text-base font-black">المناهج التعليمية 📚</h2>
           </div>
-          <p className="text-xs text-teal-100 font-bold">الصف الأول الابتدائي — فصل د. إسماعيل عيسى</p>
+          <p className="text-xs text-teal-100 font-bold">
+            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي — منصة مَسَار التعليمية'}
+          </p>
           <p className="text-xs text-teal-100 mt-1">المنهج الدراسي للعام ١٤٤٨ هـ</p>
         </div>
 
@@ -470,7 +473,9 @@ export default function StudentDashboard() {
           <div className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto text-4xl">🏅</div>
           <h3 className="text-base font-black text-slate-900">لا توجد شهادات بعد</h3>
           <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
-            ستظهر شهادات التميز هنا فور منحها لك من د. إسماعيل عيسى. واصل التفوق يا بطل! ⭐
+            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH'
+              ? 'ستظهر شهادات التميز هنا فور منحها لك من د. إسماعيل عيسى. واصل التفوق يا بطل! ⭐'
+              : 'ستظهر شهادات التميز هنا فور منحها لك من معلميك في منصة مَسَار. واصل التفوق يا بطل! ⭐'}
           </p>
         </div>
       ) : (
@@ -527,9 +532,15 @@ export default function StudentDashboard() {
           <div>
             <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-1.5">
               <span>منصة مَسَار الذكية</span>
-              <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
-                فصل د. إسماعيل
-              </span>
+              {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? (
+                <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  فصل د. إسماعيل
+                </span>
+              ) : (
+                <span className="text-xs bg-teal-100 text-teal-800 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
+                  بوابة الطالب
+                </span>
+              )}
             </h1>
             <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
