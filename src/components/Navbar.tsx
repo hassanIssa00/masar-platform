@@ -11,7 +11,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 import { findStudentsForParent, findMatchingStudentForParent } from '@/lib/nameMatching';
 
-export default function Navbar() {
+export default function Navbar({ hideSidebarToggle = false }: { hideSidebarToggle?: boolean } = {}) {
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
@@ -87,19 +87,21 @@ export default function Navbar() {
         <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
 
           <div className="flex items-center gap-2">
-            {/* Hamburger — controls existing sidebar directly */}
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('masar_toggle_sidebar'));
-                }
-              }}
-              className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition cursor-pointer"
-              aria-label="تبديل القائمة"
-              title="تبديل القائمة الرئيسية"
-            >
-              <Menu size={22} />
-            </button>
+            {/* Hamburger — only show when staff sidebar exists and not hidden */}
+            {isStaff && !hideSidebarToggle && (
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('masar_toggle_sidebar'));
+                  }
+                }}
+                className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-100 text-slate-700 transition cursor-pointer"
+                aria-label="تبديل القائمة"
+                title="تبديل القائمة الرئيسية"
+              >
+                <Menu size={22} />
+              </button>
+            )}
 
             {/* Brand Identity */}
             <Link

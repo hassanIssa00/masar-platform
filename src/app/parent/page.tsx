@@ -474,7 +474,7 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-950" dir="rtl">
-      <Navbar />
+      <Navbar hideSidebarToggle={true} />
       
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         
