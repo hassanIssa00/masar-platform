@@ -84,30 +84,9 @@ export default function NewStudentPage() {
           setStudentResolved(true);
           setExistingStudentId(found.id);
 
-          const isParentProfileComplete = Boolean(
-            (session as any)?.parentProfileComplete ||
-            ((session as any)?.parentAge && (session as any)?.childrenCount && (session as any)?.parentNationalId)
-          );
 
-          if (isParentProfileComplete && !(session as any)?.onboardingRequired) {
-            const allSurveys = getSurveys();
-            const hasSurvey = allSurveys.some(
-              (s) => s.studentId === found.id ||
-              (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
-              (session?.phone && s.parentPhone === session.phone)
-            );
-            if (hasSurvey) {
-              router.replace(
-                (found.schoolBranch === 'IKHLAS_JEDDAH' || (session as any)?.schoolBranch === 'IKHLAS_JEDDAH')
-                  ? `/school-parent?student=${found.id}`
-                  : `/parent?student=${found.id}`
-              );
-              return;
-            } else {
-              router.replace(`/survey?student=${found.id}&flow=parent`);
-              return;
-            }
-          }
+          // Always show the parent data form — never auto-skip it.
+          // Smart redirect to survey or dashboard only happens after the parent submits the form.
 
           // Parent still needs to fill their own profile
           const cleanParentName = (session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر')
