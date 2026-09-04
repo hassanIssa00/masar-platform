@@ -557,30 +557,30 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* Prominent Hero Student Profile Card */}
-        {selectedStudent && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-            <StudentProfileCard
-              student={{
-                fullName: selectedStudent.fullName,
-                grade: selectedStudent.grade,
-                photoUrl: resolvedChildPhoto || selectedStudent.photoUrl,
-                parentName: selectedStudent.parentName || parentName,
-                parentPhone: selectedStudent.parentPhone || undefined,
-                nationalId: selectedStudent.nationalId,
-                dateOfBirth: selectedStudent.dateOfBirth,
-              }}
-              greeting="بيانات طفلي المسجل في منصة مسار 🌟"
-              variant="parent"
-              showParent={true}
-              className="border-0 shadow-none rounded-2xl"
-            />
-          </section>
-        )}
-
         {/* Tab 1: Home Overview */}
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
+            {/* Prominent Hero Student Profile Card (Only displayed on Home tab) */}
+            {selectedStudent && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+                <StudentProfileCard
+                  student={{
+                    fullName: selectedStudent.fullName,
+                    grade: selectedStudent.grade,
+                    photoUrl: resolvedChildPhoto || selectedStudent.photoUrl,
+                    parentName: selectedStudent.parentName || parentName,
+                    parentPhone: selectedStudent.parentPhone || undefined,
+                    nationalId: selectedStudent.nationalId,
+                    dateOfBirth: selectedStudent.dateOfBirth,
+                  }}
+                  greeting="بيانات طفلي المسجل في منصة مسار 🌟"
+                  variant="parent"
+                  showParent={true}
+                  className="border-0 shadow-none rounded-2xl"
+                />
+              </section>
+            )}
+
             {/* Status Overview Cards */}
             <section className="grid gap-4 sm:grid-cols-3">
               <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
