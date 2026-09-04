@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   BookOpen, Star, Mic, Camera, FileText, CheckCircle, Award,
   Clock, Video, ChevronRight, Send, Loader2, X, Play, Square,
@@ -717,23 +718,39 @@ export default function StudentDashboard() {
       {/* Navbar */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs px-4 py-3 mb-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-1.5">
-              <span>منصة مَسَار الذكية</span>
-              {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? (
-                <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  فصل د. إسماعيل
-                </span>
-              ) : (
-                <span className="text-xs bg-teal-100 text-teal-800 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
-                  بوابة الطالب
-                </span>
-              )}
-            </h1>
-            <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              بوابة الطالب التفاعلية — {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="shrink-0 transition-transform active:scale-95" title="منصة مسار">
+              <span className="relative inline-block w-11 h-11 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm">
+                <Image
+                  src="/brand/masar-logo.webp"
+                  alt="شعار منصة مسار"
+                  fill
+                  className="object-contain p-1"
+                  priority
+                />
+              </span>
+            </Link>
+            <div>
+              <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
+                <span>منصة مَسَار الذكية</span>
+                {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? (
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    فصل د. إسماعيل
+                  </span>
+                ) : (
+                  <span className="text-xs bg-teal-100 text-teal-800 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
+                    بوابة الطالب
+                  </span>
+                )}
+              </h1>
+              <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH'
+                  ? 'بوابة الطالب — فصل د. إسماعيل عيسى'
+                  : 'بوابة الطالب التفاعلية — منصة مسار'}
+                {' '}• {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell role="student" studentId={studentId || studentRecord?.id} />

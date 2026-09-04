@@ -257,14 +257,27 @@ export default function SchoolParentPage() {
       {/* Header - White Elegant Theme */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-3.5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-              {displayName}
-            </h1>
-            <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              فصل د. إسماعيل عيسى — متابعة الطالب
-            </p>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="shrink-0 transition-transform active:scale-95" title="منصة مسار">
+              <span className="relative inline-block w-11 h-11 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm">
+                <Image
+                  src="/brand/masar-logo.webp"
+                  alt="شعار منصة مسار"
+                  fill
+                  className="object-contain p-1"
+                  priority
+                />
+              </span>
+            </Link>
+            <div>
+              <h1 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
+                {displayName}
+              </h1>
+              <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                فصل د. إسماعيل عيسى — متابعة الطالب
+              </p>
+            </div>
           </div>
           
           <div className="flex items-center gap-2">

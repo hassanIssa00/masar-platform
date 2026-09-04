@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import {
   LayoutDashboard,
   BookOpen, Clock, Users, Camera, BarChart3,
@@ -655,12 +656,25 @@ export default function IkhlasJeddahPage() {
               <span className="hidden sm:inline">{isSidebarOpen ? 'إخفاء المنيو' : 'منيو الأقسام'}</span>
             </button>
 
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md shrink-0">
-              <span className="text-xl">🏫</span>
-            </div>
+            <Link href="/" className="shrink-0 transition-transform active:scale-95" title="منصة مسار">
+              <span className="relative inline-block w-10 h-10 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm">
+                <NextImage
+                  src="/brand/masar-logo.webp"
+                  alt="شعار منصة مسار"
+                  fill
+                  className="object-contain p-1"
+                  priority
+                />
+              </span>
+            </Link>
             <div>
-              <h1 className="text-sm font-black text-slate-900 leading-tight">فصل د. إسماعيل عيسى</h1>
-              <p className="text-[11px] text-slate-500 font-medium">لوحة المعلم | أ. إسماعيل عيسى</p>
+              <h1 className="text-sm font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                <span>فصل د. إسماعيل عيسى</span>
+                <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                  منصة مسار
+                </span>
+              </h1>
+              <p className="text-[11px] text-slate-500 font-medium">لوحة المعلم | د. إسماعيل عيسى</p>
             </div>
           </div>
 
@@ -718,12 +732,17 @@ export default function IkhlasJeddahPage() {
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-700 p-3.5 border border-emerald-500/60 shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 border border-white/30 text-white shadow-inner">
-                      <Sparkles className="h-5 w-5 text-amber-300" />
+                    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white border border-white/30 shadow-inner">
+                      <NextImage
+                        src="/brand/masar-logo.webp"
+                        alt="شعار منصة مسار"
+                        fill
+                        className="object-contain p-0.5"
+                      />
                     </div>
                     <div>
                       <h2 className="text-sm font-black text-white tracking-wide leading-tight">فصل د. إسماعيل</h2>
-                      <p className="text-[11px] font-bold text-emerald-100 leading-tight mt-0.5">اللوحة التعليمية والإدارية</p>
+                      <p className="text-[11px] font-bold text-emerald-100 leading-tight mt-0.5">منصة مسار التعليمية</p>
                     </div>
                   </div>
 
