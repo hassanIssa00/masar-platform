@@ -53,7 +53,7 @@ export default function ParentDashboard() {
     let cancelled = false;
     const loadParentPortal = async () => {
       // Pull cloud data first
-      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents', 'messages']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents', 'messages', 'surveys']).catch(() => {});
       if (cancelled) return;
 
       // Get session (local cache first, server fallback)
@@ -218,21 +218,27 @@ export default function ParentDashboard() {
         setSelectedStudentId(targetId);
 
         const allSurveys = getSurveys();
-        const surveyDone = allSurveys.some(
+        // surveyDone check: use survey records OR session.onboardingRequired===false as fallback.
+        // The survey page sets onboardingRequired:false via setSession() before navigating,
+        // so even if pullCloudDataToLocal returns stale survey data, this fallback is reliable.
+        const surveyRecordFound = allSurveys.some(
           (s) => s.studentId === targetId ||
           (session.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
           (session.phone && s.parentPhone === session.phone)
         );
+        const surveyDone = surveyRecordFound || (session as any)?.onboardingRequired === false;
         setHasSurvey(surveyDone);
 
         const isParentProfileComplete = Boolean(
           (parentAcc as any)?.parentProfileComplete ||
-          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
+          (session as any)?.parentProfileComplete ||
+          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId) ||
+          ((session as any)?.parentAge && (session as any)?.childrenCount && (session as any)?.parentNationalId)
         );
 
         // Only redirect to data form if profile is NOT complete AND survey is also NOT done.
         // If survey is already done, the parent went through the full flow already — don't loop them back.
-        if ((!isParentProfileComplete || (session as any)?.onboardingRequired) && !surveyDone) {
+        if ((!isParentProfileComplete) && !surveyDone) {
           router.replace(`/student/new?flow=parent&student=${encodeURIComponent(targetId)}`);
           return;
         }

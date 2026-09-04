@@ -119,21 +119,25 @@ export default function SchoolParentPage() {
         setStudentRecord(linked);
 
         const allSurveys = getSurveys();
-        const surveyDone = allSurveys.some(
+        // surveyDone: check survey records OR onboardingRequired===false (set by survey page before navigation)
+        const surveyRecordFound = allSurveys.some(
           (s) => s.studentId === linked?.id ||
           (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
           (session?.phone && s.parentPhone === session.phone)
         );
+        const surveyDone = surveyRecordFound || (session as any)?.onboardingRequired === false;
         setHasSurvey(surveyDone);
 
         const isParentProfileComplete = Boolean(
           (parentAcc as any)?.parentProfileComplete ||
-          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
+          (session as any)?.parentProfileComplete ||
+          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId) ||
+          ((session as any)?.parentAge && (session as any)?.childrenCount && (session as any)?.parentNationalId)
         );
 
         // Only redirect to data form if profile is NOT complete AND survey is also NOT done.
         // If survey is already done, the parent went through the full flow — don't loop them back.
-        if ((!isParentProfileComplete || (session as any)?.onboardingRequired) && !surveyDone) {
+        if (!isParentProfileComplete && !surveyDone) {
           router.replace(`/student/new?flow=parent&student=${encodeURIComponent(linked.id)}`);
           return;
         }
