@@ -344,7 +344,6 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
 
   try {
     await sendPasswordResetEmail(auth, clean, {
-      // After the user resets their password, redirect them back to the login page
       url: 'https://masarplatform.org/auth/login',
       handleCodeInApp: false,
     });
@@ -352,7 +351,7 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
   } catch (err) {
     const authErr = err as AuthError;
     if (authErr.code === 'auth/user-not-found') {
-      return { ok: true, mode: 'firebase' };
+      return { ok: false, reason: 'هذا البريد غير مسجل في مزود خدمة البريد. يرجى استخدام الاستعادة الفورية برقم الهاتف.' };
     }
     if (authErr.code === 'auth/invalid-email') {
       return { ok: false, reason: 'صيغة البريد الإلكتروني غير صحيحة.' };
@@ -360,6 +359,6 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
     if (authErr.code === 'auth/too-many-requests') {
       return { ok: false, reason: 'تم إرسال عدد كبير من الطلبات. يُرجى الانتظار قليلاً قبل المحاولة مجدداً.' };
     }
-    return { ok: false, reason: 'حدث خطأ أثناء إرسال رابط الاستعادة. يُرجى المحاولة مجدداً.' };
+    return { ok: false, reason: 'تعذر إرسال الرابط عبر البريد. استخدم الاستعادة الفورية برقم الهاتف أدناه.' };
   }
 }

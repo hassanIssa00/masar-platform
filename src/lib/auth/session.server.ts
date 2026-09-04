@@ -146,7 +146,7 @@ function normalizeIdentifier(value: string) {
   return value.trim().toLowerCase();
 }
 
-function credentialLookupId(value: string) {
+export function credentialLookupId(value: string) {
   return `lookup_${normalizeIdentifier(value).replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
 }
 
