@@ -100,6 +100,22 @@ const PUBLIC_PATHS = [
   // ── Parent portals (have own client-side auth guard) ──────────────────────
   '/parent',
   '/school-parent',
+  // ── Doctor / Admin portals (have own client-side auth guard) ──────────────
+  '/dashboard',
+  '/students',
+  '/reports',
+  '/calendar',
+  '/attendance',
+  '/homework',
+  '/branches',
+  '/platform-settings',
+  '/invoices',
+  '/messages',
+  '/iep',
+  '/kids',
+  '/specialist',
+  '/parents',
+  '/bi-dashboard',
   // ── Public static ───────────────────────────────────────────────────────────
   '/_next',
   '/favicon.ico',

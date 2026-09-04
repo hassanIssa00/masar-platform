@@ -71,13 +71,13 @@ export async function POST(req: NextRequest) {
       account,
     });
 
-    // Set HttpOnly + SameSite=Lax cookie (Session cookie when rememberMe is false)
+    // Set HttpOnly + SameSite=Lax cookie (Default 7 days, 30 days if rememberMe)
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 } : {}),
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60,
     });
 
     return response;
