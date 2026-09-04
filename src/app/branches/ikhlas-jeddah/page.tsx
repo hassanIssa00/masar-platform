@@ -10,7 +10,7 @@ import {
   AlertTriangle, Loader2, Star, MessageSquare,
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
-  Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive,
+  Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive, Medal,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -36,6 +36,7 @@ import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 import DailyArchiveTab from '@/components/DailyArchiveTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
+import StudentBadgesManagerTab from '@/components/StudentBadgesManagerTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -52,6 +53,7 @@ type Tab =
   | 'ai-chat'
   | 'live'
   | 'certificates'
+  | 'badges'
   | 'schedule'
   | 'attendance'
   | 'homework'
@@ -613,6 +615,7 @@ export default function IkhlasJeddahPage() {
         { key: 'parents-chat', label: 'شات أولياء الأمور', icon: MessageSquare },
         { key: 'parents', label: 'أولياء الأمور', icon: UserCheck },
         { key: 'certificates', label: 'شهادات التفوق', icon: Award, badge: '🏆', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
+        { key: 'badges', label: 'الأوسمة والتكريمات', icon: Medal, badge: '🎖️', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
       ],
     },
     {
@@ -907,6 +910,9 @@ export default function IkhlasJeddahPage() {
 
         {/* ════════════ شهادات التفوق ════════════ */}
         {activeTab === 'certificates' && <ExcellenceCertificateTab students={classStudents} />}
+
+        {/* ════════════ الأوسمة والتكريمات ════════════ */}
+        {activeTab === 'badges' && <StudentBadgesManagerTab students={classStudents} />}
 
         {/* ════════════ نظرة عامة ════════════ */}
         {activeTab === 'overview' && (

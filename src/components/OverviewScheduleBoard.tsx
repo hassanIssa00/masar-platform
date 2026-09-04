@@ -122,7 +122,13 @@ export default function OverviewScheduleBoard({
   const minsUntilDismissal = passedMins !== undefined ? passedMins : getMinutesUntilDismissal(schedule);
 
   const [currentTimeStr, setCurrentTimeStr] = useState('');
-  const [viewAllDays, setViewAllDays] = useState(false);
+  const [viewAllDays, setViewAllDays] = useState(showFullWeek);
+
+  useEffect(() => {
+    if (showFullWeek) {
+      setViewAllDays(true);
+    }
+  }, [showFullWeek]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -375,7 +381,10 @@ export default function OverviewScheduleBoard({
           <div className="flex items-center gap-2 flex-wrap">
             {(onNavigateTab || showFullWeek) && (
               <button
-                onClick={() => showFullWeek ? setViewAllDays(v => !v) : onNavigateTab?.('schedule')}
+                onClick={() => {
+                  setViewAllDays((v) => !v);
+                  if (!showFullWeek && onNavigateTab) onNavigateTab('schedule');
+                }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2 text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
               >
                 <Layers size={14} className="text-amber-300" />
@@ -407,12 +416,12 @@ export default function OverviewScheduleBoard({
                 ? 'نتمنى لكم ولأبنائكم عطلة سعيدة! يمكنكم استعراض الواجبات والتقارير الأسبوعية في أي وقت.'
                 : 'استمتع بوقتك! يمكنك الاطلاع على جدول الأسبوع أو تحضير الدروس والواجبات للأيام القادمة.'}
             </p>
-            {onNavigateTab && (
+            {(onNavigateTab || showFullWeek) && (
               <button
-                onClick={() => onNavigateTab('schedule')}
+                onClick={() => { setViewAllDays(v => !v); if (!showFullWeek) onNavigateTab?.('schedule'); }}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white px-4 py-2 text-xs font-black hover:bg-slate-800 transition"
               >
-                عرض جدول الأسبوع كاملاً 📊
+                {viewAllDays ? 'إخفاء الجدول الأسبوعي ↑' : 'عرض جدول الأسبوع كاملاً 📊'}
               </button>
             )}
           </div>

@@ -49,7 +49,7 @@ export type StudentHomeworkLog = {
   subject: string;
   dueDate: string;
   grade?: number; // out of 10
-  status: 'submitted' | 'late' | 'missing';
+  status: 'assigned' | 'submitted' | 'late' | 'missing';
   teacherFeedback?: string;
   createdAt: string;
 };
@@ -282,3 +282,108 @@ export function getClassParents(): ClassParentRecord[] {
     createdAt: s.createdAt,
   }));
 }
+
+// ═══════════════════════════════════════════════════════
+//  STUDENT BADGES / MEDALS SYSTEM
+// ═══════════════════════════════════════════════════════
+
+const BADGES_KEY = 'masar_student_badges_v1';
+const BADGES_CLOUD = 'studentBadges';
+
+export type StudentBadgeRecord = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  badgeId: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: string;
+  points: number;
+  color: string;
+  note?: string;
+  awardedBy: string;
+  awardedAt: string;
+  createdAt: string;
+};
+
+// Available badge templates that Dr. Ismail can send
+export const BADGE_TEMPLATES = [
+  {
+    badgeId: 'b1',
+    title: 'وسام الالتزام الصفي والريادة',
+    description: 'مُنح للالتزام الدائم وحضور الحصص والتفاعل الإيجابي مع د. إسماعيل عيسى.',
+    icon: '🥇',
+    category: 'الانضباط والالتزام',
+    points: 150,
+    color: 'from-amber-400 to-amber-600',
+  },
+  {
+    badgeId: 'b2',
+    title: 'وسام بطل القراءة والطلاقة',
+    description: 'مُنح لإتقان مهارات القراءة ونطق الأصوات والكلمات بطلاقة.',
+    icon: '📖',
+    category: 'لغتي العربية',
+    points: 200,
+    color: 'from-emerald-500 to-teal-700',
+  },
+  {
+    badgeId: 'b3',
+    title: 'وسام العبقرية والمسائل الحسابية',
+    description: 'مُنح للحلول المتميزة للتمارين والعمليات الحسابية بدقة وذكاء.',
+    icon: '🧮',
+    category: 'الرياضيات',
+    points: 180,
+    color: 'from-blue-500 to-indigo-700',
+  },
+  {
+    badgeId: 'b4',
+    title: 'وسام الخط العربي الجميل والتنظيم',
+    description: 'مُنح لحسن الترتيب والكتابة بخط واضح ومرتب في كراسة الواجبات.',
+    icon: '✍️',
+    category: 'الإملاء والخط',
+    points: 120,
+    color: 'from-violet-500 to-purple-700',
+  },
+  {
+    badgeId: 'b5',
+    title: 'وسام التطور الأكاديمي السريع',
+    description: 'مُنح لتحقيق قفزة نوعية وتقدم ملموس في اكتساب المهارات.',
+    icon: '🚀',
+    category: 'التطور المستمر',
+    points: 250,
+    color: 'from-rose-500 to-pink-700',
+  },
+  {
+    badgeId: 'b6',
+    title: 'درع التفوق الفصلي الشامل 🏆',
+    description: 'أعلى وسام تقديري يُمنح للطلاب المتميزين في نهاية الفترة التعليمية.',
+    icon: '👑',
+    category: 'التفوق العام',
+    points: 500,
+    color: 'from-amber-500 via-yellow-400 to-amber-600',
+  },
+];
+
+export function saveBadge(data: Omit<StudentBadgeRecord, 'id' | 'createdAt'>): StudentBadgeRecord {
+  const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+  const record: StudentBadgeRecord = {
+    ...data,
+    id: `badge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+  };
+  all.push(record);
+  writeCloudCache(BADGES_KEY, all);
+  syncDocToCloud(BADGES_CLOUD, record.id, record);
+  return record;
+}
+
+export function getStudentBadges(studentId: string): StudentBadgeRecord[] {
+  const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+  return all.filter((b) => b.studentId === studentId);
+}
+
+export function getAllBadges(): StudentBadgeRecord[] {
+  return readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+}
+

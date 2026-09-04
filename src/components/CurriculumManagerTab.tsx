@@ -49,6 +49,8 @@ import CurriculumInteractiveWorkbook from '@/components/CurriculumInteractiveWor
 import { saveMessage } from '@/lib/cloudStore';
 import { saveStudentHomeworkLog } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { createNotification } from '@/lib/notifications';
+import { createHomework } from '@/lib/homework';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 
@@ -141,6 +143,32 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
     void syncDocToCloud('curriculum_assignments', `${targetStudent.id}_${curriculum.slug}`, newAssignment);
     setActiveAssignments(updated);
 
+    // 1. Create homework record in homework collection for student and parent
+    void createHomework({
+      studentId: targetStudent.id,
+      studentName: targetStudent.name,
+      title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+      description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+    });
+
+    // 2. Save homework log
+    saveStudentHomeworkLog({
+      studentId: targetStudent.id,
+      title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+      subject: curriculum.title,
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+      status: 'assigned',
+    });
+
+    // 3. In-app Notification for parent
+    void createNotification({
+      type: 'message',
+      title: `📝 واجب جديد للبطل ${targetStudent.name}: ${curriculum.title}`,
+      body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
+      link: `/school-parent?student=${targetStudent.id}&tab=homework`,
+    });
+
     setAssignNotice(`✅ تم إسناد الصفحات (${cleanFrom} إلى ${cleanTo}) في ${curriculum.title} للطالب (${targetStudent.name}) بنجاح!`);
     setTimeout(() => setAssignNotice(''), 5000);
 
@@ -167,6 +195,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
     const cleanFrom = Math.max(1, Math.min(assignPageFrom, curriculum.pageCount));
     const cleanTo = Math.max(cleanFrom, Math.min(assignPageTo, curriculum.pageCount));
     const now = new Date().toISOString();
+    const dueDateStr = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10);
 
     const current = readCloudCache<any>(ASSIGNMENTS_KEY);
     const newItems = students.map((s) => {
@@ -195,8 +224,25 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
         studentId: s.id,
         title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
         subject: curriculum.title,
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-        status: 'submitted',
+        dueDate: dueDateStr,
+        status: 'assigned',
+      });
+
+      // 3. Save to homework collection for student and parent
+      void createHomework({
+        studentId: s.id,
+        studentName: s.name,
+        title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+        description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
+        dueDate: dueDateStr,
+      });
+
+      // 4. In-app Notification for parent
+      void createNotification({
+        type: 'message',
+        title: `📝 واجب جديد للبطل ${s.name}: ${curriculum.title}`,
+        body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
+        link: `/school-parent?student=${s.id}&tab=homework`,
       });
 
       return item;

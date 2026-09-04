@@ -18,7 +18,10 @@ import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
+import { getStudentHomeworkLogs } from '@/lib/classDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import NotificationBell from '@/components/NotificationBell';
+import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -73,7 +76,7 @@ export default function SchoolParentPage() {
       setParentName(session.name || 'ولي الأمر');
 
       // Pull latest data from cloud before searching
-      await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges']).catch(() => {});
       if (cancelled) return;
 
       // Retrieve linked student record
@@ -191,10 +194,18 @@ export default function SchoolParentPage() {
   const todayName = jsDay >= 0 && jsDay <= 4 ? DAY_NAMES[jsDay] : 'إجازة';
 
   const allCombinedHomework = useMemo(() => {
-    const local = getLocalHomework();
+    const sid = studentRecord?.id;
+    if (!sid) return [];
+
+    const local = getLocalHomework().filter((h: any) => h.studentId === sid || h.studentId === 'all');
+    const logs = getStudentHomeworkLogs(sid);
     const apiHw = dashboard?.openHomework || [];
     const map = new Map<string, any>();
+
+    // 1. API homework
     apiHw.forEach((h: any) => map.set(h.id, h));
+
+    // 2. Local homework from assignments
     local.forEach((h: any) => {
       if (!map.has(h.id)) {
         map.set(h.id, {
@@ -206,8 +217,25 @@ export default function SchoolParentPage() {
         });
       }
     });
+
+    // 3. Homework logs from doctor assignment
+    logs.forEach((log) => {
+      const existing = Array.from(map.values()).find(
+        (x) => x.title === log.title || x.id === log.id
+      );
+      if (!existing) {
+        map.set(log.id, {
+          id: log.id,
+          title: log.title,
+          description: log.teacherFeedback || `واجب مدرسي مكلف من قبل د. إسماعيل عيسى (${log.subject || 'المادة'})`,
+          dueDate: log.dueDate || new Date().toISOString().slice(0, 10),
+          type: 'TEXT',
+        });
+      }
+    });
+
     return Array.from(map.values());
-  }, [dashboard?.openHomework]);
+  }, [dashboard?.openHomework, studentRecord?.id]);
 
   const childFirstName = (studentRecord?.fullName || 'البطل').trim().split(' ')[0];
 
@@ -240,6 +268,9 @@ export default function SchoolParentPage() {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Live Notifications Bell */}
+            <NotificationBell />
+
             {/* Student Info Button (User Icon) */}
             <button
               onClick={() => setShowStudentModal(true)}
@@ -524,6 +555,7 @@ export default function SchoolParentPage() {
             <OverviewScheduleBoard
               variant="parent"
               studentName={studentRecord?.fullName}
+              showFullWeek={true}
               onNavigateTab={(t) => {
                 if (t === 'schedule') {
                   // already on schedule
@@ -542,77 +574,62 @@ export default function SchoolParentPage() {
               <BookOpen className="w-4 h-4 text-emerald-600" /> الواجبات الإلكترونية
             </h2>
 
-            {openHw ? (
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
-                <button onClick={() => { setOpenHw(null); setMyAnswer(''); }} className="text-xs text-slate-500 font-bold flex items-center gap-1 hover:text-slate-800">
-                  <ChevronLeft className="w-3.5 h-3.5" /> رجوع للقائمة
-                </button>
-                <div>
-                  <h3 className="font-black text-slate-900 text-lg">{openHw.title}</h3>
-                  <p className="text-xs text-slate-600 mt-1">{openHw.description}</p>
-                </div>
-                {openHw.type === 'MULTIPLE_CHOICE' ? (
-                  <div className="space-y-2">
-                    {(openHw.options as string[]).map((opt: string, i: number) => (
-                      <button key={i} onClick={() => setMyAnswer(opt)}
-                        className={`w-full text-right p-3.5 rounded-2xl border text-xs font-bold transition-all ${
-                          myAnswer === opt ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-emerald-300'
-                        }`}>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <textarea placeholder="اكتب إجابتك هنا..." value={myAnswer} onChange={(e) => setMyAnswer(e.target.value)} rows={4}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 transition resize-none" />
-                )}
-                <button disabled={!myAnswer || submitting || submitted.includes(openHw.id)}
-                  onClick={async () => {
-                    setSubmitting(true);
-                    await fetch(`${API}/school/homework/${openHw.id}/submit`, {
-                      method: 'POST', headers: authHeaders(),
-                      body: JSON.stringify({ answer: myAnswer }),
-                    });
-                    setSubmitted((prev) => [...prev, openHw.id]);
-                    setSubmitting(false);
-                    setOpenHw(null);
-                    setMyAnswer('');
-                  }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md">
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  {submitted.includes(openHw.id) ? 'تم الإرسال بنجاح! ✅' : 'إرسال الإجابة للمعلم'}
-                </button>
-              </div>
-            ) : (
-              <>
-                {allCombinedHomework.map((hw: any) => {
-                  const done = submitted.includes(hw.id);
-                  return (
-                    <div key={hw.id} onClick={() => !done && setOpenHw(hw)}
-                      className={`bg-white border rounded-3xl p-4 transition-all cursor-pointer shadow-sm ${
-                        done ? 'border-emerald-200 bg-emerald-50/50 opacity-70' : 'border-slate-200 hover:border-emerald-400'
-                      }`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
+            <div className="space-y-3">
+              {allCombinedHomework.map((hw: any) => {
+                const done = submitted.includes(hw.id);
+                return (
+                  <div
+                    key={hw.id}
+                    onClick={() => setOpenHw(hw)}
+                    className={`bg-white border rounded-3xl p-4 transition-all cursor-pointer shadow-sm ${
+                      done ? 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400' : 'border-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
                           <p className="font-black text-sm text-slate-900">{hw.title}</p>
-                          <p className="text-xs text-slate-600 mt-0.5">{hw.description}</p>
-                          <p className="text-[10px] text-amber-700 font-bold mt-1.5">⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}</p>
+                          {done && (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                              مسلّم
+                            </span>
+                          )}
                         </div>
-                        {done ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                        ) : (
-                          <span className="text-xs bg-emerald-600 text-white font-bold px-3 py-1 rounded-full shrink-0">حلّ الواجب</span>
-                        )}
+                        <p className="text-xs text-slate-600 mt-0.5">{hw.description}</p>
+                        <p className="text-[10px] text-amber-700 font-bold mt-1.5">
+                          ⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}
+                        </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenHw(hw);
+                        }}
+                        className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-black px-3.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>عرض صفحات الواجب 📖</span>
+                      </button>
                     </div>
-                  );
-                })}
-                {!allCombinedHomework.length && (
-                  <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
-                    ✅ لا توجد واجبات مطلوبة حالياً
                   </div>
-                )}
-              </>
+                );
+              })}
+              {!allCombinedHomework.length && (
+                <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                  ✅ لا توجد واجبات مطلوبة حالياً
+                </div>
+              )}
+            </div>
+
+            {/* Parent Homework Pages Viewer Modal */}
+            {openHw && (
+              <ParentHomeworkPagesViewerModal
+                homework={openHw}
+                studentId={studentRecord?.id}
+                studentName={studentRecord?.fullName}
+                onClose={() => setOpenHw(null)}
+              />
             )}
           </div>
         )}

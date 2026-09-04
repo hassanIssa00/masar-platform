@@ -29,6 +29,7 @@ import { getClassStudents, saveStudentHomeworkLog } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { recordStudentLearningActivity } from '@/lib/learningProgress';
 import { broadcastHomeworkToParents } from '@/lib/broadcastService';
+import { createNotification } from '@/lib/notifications';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 const DRAWINGS_KEY = 'masar.curriculumDrawings.v1';
@@ -487,7 +488,6 @@ export default function CurriculumInteractiveWorkbook({
       status: 'submitted',
     });
 
-    // ── CRITICAL: Also save to 'homework' collection so student can see it in portal ──
     void import('@/lib/homework').then(({ createHomework }) =>
       createHomework({
         studentId: student.id,
@@ -497,6 +497,13 @@ export default function CurriculumInteractiveWorkbook({
         dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
       })
     );
+
+    void createNotification({
+      type: 'message',
+      title: `📝 واجب جديد للبطل ${student.fullName}: ${curriculum.title}`,
+      body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
+      link: `/school-parent?student=${student.id}&tab=homework`,
+    });
 
     setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) وإشعار ولي أمره بنجاح!`);
     setTimeout(() => setNotice(''), 6000);

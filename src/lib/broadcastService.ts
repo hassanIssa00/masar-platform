@@ -5,6 +5,7 @@ import { getClassStudents } from './classDb';
 import { createHomework, HomeworkRecord, saveLocalHomework, getLocalHomework } from './homework';
 import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
 import { syncDocToCloud } from './firestoreSync';
+import { createNotification } from './notifications';
 
 export interface BroadcastResult {
   success: boolean;
@@ -276,6 +277,13 @@ export async function broadcastHomeworkToParents(hwData: {
       to: 'parent',
       body: msgBody,
       read: false,
+    });
+
+    void createNotification({
+      type: 'message',
+      title: `📝 واجب جديد للبطل ${t.name}: ${hwData.title}`,
+      body: `تم إسناد واجب جديد (${hwData.title}) من قبل د. إسماعيل عيسى. موعد التسليم: ${hwData.dueDate}. يمكنك الاطلاع على التفاصيل من لوحة ولي الأمر.`,
+      link: `/school-parent?student=${t.id}&tab=homework`,
     });
 
     sentCount++;

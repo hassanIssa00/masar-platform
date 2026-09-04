@@ -20,13 +20,15 @@ import {
 } from '@/lib/cloudStore';
 import {
   getClassStudents, ClassStudentRecord,
-  getStudentCertificateLogs, StudentCertificateLog
+  getStudentCertificateLogs, StudentCertificateLog,
+  getStudentHomeworkLogs,
 } from '@/lib/classDb';
 import { getLocalHomework, HomeworkRecord } from '@/lib/homework';
 import { pullCloudDataToLocal, syncDocToCloud, readCloudCache } from '@/lib/firestoreSync';
 import { normalizeArabicText } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
+import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHomeworkModal';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -155,6 +157,7 @@ export default function StudentDashboard() {
       await pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs']).catch(() => {});
     }
     const allHw = getLocalHomework();
+    const logs = id ? getStudentHomeworkLogs(id) : [];
 
     // Strategy 1: exact match by studentId or name
     const exact = allHw.filter(hw => {
@@ -174,26 +177,64 @@ export default function StudentDashboard() {
       });
     })();
 
+    // Strategy 2.5: Homework logs from Doctor assignments
+    logs.forEach((log) => {
+      const existing = merged.find(
+        (x) => x.title === log.title || x.id === log.id
+      );
+      if (!existing) {
+        merged = [
+          ...merged,
+          {
+            id: log.id || `hw_log_${Date.now()}`,
+            studentId: log.studentId || id,
+            studentName: name,
+            title: log.title,
+            description: log.teacherFeedback || `واجب مكلف من د. إسماعيل عيسى (${log.subject || 'المنهج'})`,
+            dueDate: log.dueDate || new Date().toISOString().slice(0, 10),
+            status: (log.status === 'submitted' ? 'submitted' : 'assigned') as any,
+            createdAt: log.createdAt || new Date().toISOString(),
+          } as HomeworkRecord,
+        ];
+      } else if (log.status === 'submitted') {
+        existing.status = 'submitted';
+      }
+    });
+
     // Strategy 3: Also load from curriculumAssignments
     const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
     const studentCurrAssignments = currAssignments.filter((a: any) =>
       !a.studentId || a.studentId === 'all' || a.studentId === id ||
       (a.studentName && normalizeArabicText(a.studentName) === normalizeArabicText(name))
     );
-    const currAsHomework: HomeworkRecord[] = (studentCurrAssignments.length > 0 ? studentCurrAssignments : currAssignments).map((a: any) => ({
-      id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
-      studentId: a.studentId || id,
-      studentName: a.studentName || name,
-      title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
-      description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
-      dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-      status: 'assigned' as const,
-      createdAt: a.assignedAt || new Date().toISOString(),
-    }));
+    const currAsHomework: any[] = (studentCurrAssignments.length > 0 ? studentCurrAssignments : currAssignments).map((a: any) => {
+      const matchLog = logs.find(l => l.studentId === a.studentId && l.subject === a.subjectTitle);
+      const isSubmitted = matchLog?.status === 'submitted';
+      return {
+        id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
+        studentId: a.studentId || id,
+        studentName: a.studentName || name,
+        title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
+        description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
+        dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+        status: isSubmitted ? ('submitted' as const) : ('assigned' as const),
+        createdAt: a.assignedAt || new Date().toISOString(),
+        subjectSlug: a.subjectSlug,
+        subjectTitle: a.subjectTitle,
+        fromPage: a.fromPage,
+        toPage: a.toPage,
+      };
+    });
 
     for (const ca of currAsHomework) {
-      if (!merged.find(h => h.id === ca.id || h.title === ca.title)) {
+      const existing = merged.find(h => h.id === ca.id || h.title === ca.title);
+      if (!existing) {
         merged = [...merged, ca];
+      } else {
+        // preserve curriculum page properties if existing lacks them
+        (existing as any).subjectSlug = (existing as any).subjectSlug || ca.subjectSlug;
+        (existing as any).fromPage = (existing as any).fromPage || ca.fromPage;
+        (existing as any).toPage = (existing as any).toPage || ca.toPage;
       }
     }
 
@@ -424,8 +465,8 @@ export default function StudentDashboard() {
       ) : (
         homeworks.map(hw => (
           <div key={hw.id}
-            onClick={() => hw.status === 'assigned' && setSelectedHw(hw)}
-            className={`bg-white p-5 rounded-2xl shadow-sm border border-gray-100 transition-all ${hw.status === 'assigned' ? 'hover:shadow-md cursor-pointer hover:border-emerald-200' : 'opacity-80'}`}>
+            onClick={() => setSelectedHw(hw)}
+            className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md cursor-pointer hover:border-emerald-200 transition-all">
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><BookOpen size={18} /></div>
@@ -443,10 +484,15 @@ export default function StudentDashboard() {
                 {hw.status === 'assigned' ? '📝 مطلوب' : hw.status === 'submitted' ? '⏳ قيد المراجعة' : '✅ تم'}
               </span>
             </div>
-            {hw.status === 'assigned' && (
-              <button onClick={() => setSelectedHw(hw)}
-                className="mt-2 w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2">
-                <Send size={13} /> تسليم الواجب
+            {hw.status === 'assigned' ? (
+              <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
+                className="mt-2 w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                <Send size={13} /> حل وتسليم الواجب بالكتاب تفاعلياً ✍️
+              </button>
+            ) : (
+              <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
+                className="mt-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                <BookOpen size={13} /> استعراض حلي في الكتاب 👁️
               </button>
             )}
           </div>
@@ -670,12 +716,17 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Homework Submission Modal */}
+      {/* Homework Interactive Solver Modal */}
       {selectedHw && (
-        <HomeworkModal
+        <StudentInteractiveHomeworkModal
           hw={selectedHw}
+          studentId={studentId || studentRecord?.id || ''}
+          studentName={studentRecord?.fullName || studentName}
           onClose={() => setSelectedHw(null)}
-          onSubmitSuccess={() => { setSelectedHw(null); loadHomework(studentName, studentId); }}
+          onSubmitSuccess={() => {
+            setSelectedHw(null);
+            loadHomework(studentName, studentId, true);
+          }}
         />
       )}
     </div>
@@ -779,143 +830,6 @@ function SubjectCard({ subject }: { subject: { slug?: string; name: string; subt
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-
-
-// ── Homework Submission Modal ──────────────────────────────────────────────
-function HomeworkModal({ hw, onClose, onSubmitSuccess }: { hw: HomeworkRecord; onClose: () => void; onSubmitSuccess: () => void }) {
-  const [subTab, setSubTab] = useState<'text' | 'image' | 'audio'>('text');
-  const [answer, setAnswer] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => { setImagePreview(reader.result as string); setAnswer(reader.result as string); };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        setAudioURL(url);
-        const reader = new FileReader();
-        reader.onloadend = () => setAnswer(reader.result as string);
-        reader.readAsDataURL(blob);
-      };
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch { alert('يرجى السماح بالوصول إلى الميكروفون'); }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!answer) return;
-    setIsSubmitting(true);
-    try {
-      await fetch(`${API}/school/homework/${hw.id}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: subTab, content: answer }),
-      });
-      onSubmitSuccess();
-    } catch { alert('حدث خطأ أثناء إرسال الواجب'); }
-    finally { setIsSubmitting(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center bg-black/60 backdrop-blur-sm sm:p-4" dir="rtl">
-      <div className="bg-white w-full sm:max-w-md sm:mx-auto rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <div>
-            <h3 className="font-black text-gray-800 text-sm">{hw.title}</h3>
-            {hw.description && <p className="text-xs text-gray-500 mt-0.5">{hw.description}</p>}
-          </div>
-          <button onClick={onClose} className="p-2 bg-white rounded-full shadow-sm text-gray-500 hover:text-red-500 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex border-b border-gray-100">
-          {(['text', 'image', 'audio'] as const).map(tab => (
-            <button key={tab} onClick={() => setSubTab(tab)}
-              className={`flex-1 py-3 flex flex-col items-center gap-1 text-xs font-bold border-b-2 transition-colors ${subTab === tab ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>
-              {tab === 'text' && <><FileText size={16} /> نص</>}
-              {tab === 'image' && <><Camera size={16} /> صورة</>}
-              {tab === 'audio' && <><Mic size={16} /> صوت</>}
-            </button>
-          ))}
-        </div>
-
-        <div className="p-5 overflow-y-auto flex-1">
-          {subTab === 'text' && (
-            <textarea className="w-full h-40 p-3 bg-gray-50 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:border-emerald-500 text-xs font-bold text-gray-700"
-              placeholder="اكتب إجابتك هنا يا بطل..." value={answer} onChange={e => setAnswer(e.target.value)} />
-          )}
-          {subTab === 'image' && (
-            <div className="h-40 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gray-50 relative overflow-hidden">
-              {imagePreview ? (
-                <>
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                  <button onClick={() => { setImagePreview(null); setAnswer(''); }} className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur text-red-500 rounded-xl"><X size={16} /></button>
-                </>
-              ) : (
-                <label className="flex flex-col items-center gap-2 cursor-pointer p-4">
-                  <Upload className="text-gray-400" size={28} />
-                  <span className="text-xs font-bold text-gray-500">اختر صورة أو التقط من الكاميرا</span>
-                  <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
-                </label>
-              )}
-            </div>
-          )}
-          {subTab === 'audio' && (
-            <div className="h-40 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gray-50 gap-3">
-              {!audioURL ? (
-                <button type="button" onClick={isRecording ? stopRecording : startRecording}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${isRecording ? 'bg-red-500 animate-pulse scale-110' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
-                  {isRecording ? <Square size={20} /> : <Mic size={24} />}
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <audio src={audioURL} controls className="h-10" />
-                  <button onClick={() => { setAudioURL(null); setAnswer(''); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><X size={18} /></button>
-                </div>
-              )}
-              {isRecording && <span className="text-red-500 text-xs font-bold animate-pulse">جاري تسجيل صوتك...</span>}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-gray-100 bg-white">
-          <button onClick={handleSubmit} disabled={!answer || isSubmitting}
-            className={`w-full py-3.5 rounded-2xl text-white font-bold text-xs flex justify-center items-center gap-2 shadow-lg transition-all ${!answer || isSubmitting ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
-            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <><Send size={16} /> تسليم الواجب للمعلم</>}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

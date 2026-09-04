@@ -40,7 +40,7 @@ interface Props {
   students?: { id: string; name: string; phone?: string; grade?: string }[];
 }
 
-interface CertData {
+export interface CertData {
   certTitle: string;
   subTitle: string;
   doctorName: string;
@@ -727,7 +727,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 /* ════════════════════════════════════════════════════════════════
    OFFICIAL MASAR PLATFORM CERTIFICATE DESIGN
 ════════════════════════════════════════════════════════════════ */
-function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form: CertData; isPrintTarget?: boolean }) {
+export function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form: CertData; isPrintTarget?: boolean }) {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
   const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}`;

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -21,9 +21,10 @@ import {
   Share2,
   BookmarkCheck,
 } from 'lucide-react';
-import { getStudentCertificateLogs, type StudentCertificateLog } from '@/lib/classDb';
+import { getStudentCertificateLogs, getStudentBadges, type StudentCertificateLog, type StudentBadgeRecord } from '@/lib/classDb';
 import { readCloudCache } from '@/lib/firestoreSync';
 import BrandMark from './BrandMark';
+import { OfficialMasarCertificateDesign, type CertData } from './ExcellenceCertificateTab';
 
 interface Props {
   studentId: string;
@@ -82,164 +83,87 @@ export default function StudentAchievementsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, studentName]);
 
-  // Dynamic Medals & Badges list based on student progress
-  const badgesList: BadgeItem[] = [
-    {
-      id: 'b1',
-      title: 'وسام الالتزام الصفي والريادة',
-      description: 'مُنح للالتزام الدائم وحضور الحصص والتفاعل الإيجابي مع د. إسماعيل عيسى.',
-      icon: '🥇',
-      category: 'الانضباط والالتزام',
-      points: 150,
-      unlocked: true,
-      unlockedAt: 'معتمد',
-      color: 'from-amber-400 to-amber-600',
-    },
-    {
-      id: 'b2',
-      title: 'وسام بطل القراءة والطلاقة',
-      description: 'مُنح لإتقان مهارات القراءة ونطق الأصوات والكلمات بطلاقة.',
-      icon: '📖',
-      category: 'لغتي العربية',
-      points: 200,
-      unlocked: certificates.length > 0 || true,
-      unlockedAt: 'معتمد',
-      color: 'from-emerald-500 to-teal-700',
-    },
-    {
-      id: 'b3',
-      title: 'وسام العبقرية والمسائل الحسابية',
-      description: 'مُنح للحلول المتميزة للتمارين والعمليات الحسابية بدقة وذكاء.',
-      icon: '🧮',
-      category: 'الرياضيات',
-      points: 180,
-      unlocked: true,
-      unlockedAt: 'معتمد',
-      color: 'from-blue-500 to-indigo-700',
-    },
-    {
-      id: 'b4',
-      title: 'وسام الخط العربي الجميل والتنظيم',
-      description: 'مُنح لحسن الترتيب والكتابة بخط واضح ومرتب في كراسة الواجبات.',
-      icon: '✍️',
-      category: 'الإملاء والخط',
-      points: 120,
-      unlocked: true,
-      unlockedAt: 'معتمد',
-      color: 'from-violet-500 to-purple-700',
-    },
-    {
-      id: 'b5',
-      title: 'وسام التطور الأكاديمي السريع',
-      description: 'مُنح لتحقيق قفزة نوعية وتقدم ملموس في اكتساب المهارات.',
-      icon: '🚀',
-      category: 'التطور المستمر',
-      points: 250,
-      unlocked: certificates.length > 0,
-      unlockedAt: certificates.length > 0 ? certificates[0]?.completionDate : undefined,
-      color: 'from-rose-500 to-pink-700',
-    },
-    {
-      id: 'b6',
-      title: 'درع التفوق الفصلي الشامل 🏆',
-      description: 'أعلى وسام تقديري يُمنح للطلاب المتميزين في نهاية الفترة التعليمية.',
-      icon: '👑',
-      category: 'التفوق العام',
-      points: 500,
-      unlocked: certificates.length > 0,
-      unlockedAt: certificates.length > 0 ? certificates[0]?.completionDate : undefined,
-      color: 'from-amber-500 via-yellow-400 to-amber-600',
-    },
-  ];
+  // Real Medals & Badges — only show badges actually awarded by Dr. Ismail
+  const [badges, setBadges] = useState<StudentBadgeRecord[]>([]);
 
-  const totalPoints = badgesList.filter((b) => b.unlocked).reduce((sum, b) => sum + b.points, 0);
+  useEffect(() => {
+    const fromDb = getStudentBadges(studentId);
+    // Also check cloud cache
+    const allBadges = readCloudCache<StudentBadgeRecord>('masar_student_badges_v1');
+    const matched = allBadges.filter(
+      (b) => b.studentId === studentId ||
+      (b.studentName && studentName && b.studentName.trim().toLowerCase() === studentName.trim().toLowerCase()),
+    );
+    const merged = [...fromDb];
+    matched.forEach((b) => {
+      if (!merged.find((x) => x.id === b.id)) {
+        merged.push(b);
+      }
+    });
+    setBadges(merged);
+  }, [studentId, studentName]);
 
-  // Print certificate handler
+  const totalPoints = badges.reduce((sum, b) => sum + b.points, 0);
+
+  const toCertData = (cert: StudentCertificateLog): CertData => ({
+    certTitle: cert.title || 'شهادة تفوق وتميز صفي 🏆',
+    subTitle: cert.subTitle || 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف',
+    doctorName: cert.doctorName || 'د. إسماعيل عيسى',
+    doctorTitle: cert.doctorTitle || 'التأهيل والتعليم الحديث',
+    studentPrefix: cert.studentPrefix || 'بأن الطالب المتفوق',
+    studentName: cert.studentName || studentName,
+    gradeLabel: cert.gradeLabel || grade,
+    achievementIntro: cert.achievementIntro || 'قد حقق التميز والتفوق المستحق وجدارة الأداء العالي في:',
+    achievement: cert.achievement || cert.programTitle || 'التقدم الملحوظ في مهارات التعلم الحديث',
+    score: cert.score || 100,
+    ratingText: cert.ratingText || 'ممتاز مع مرتبة الشرف 🌟',
+    date: cert.completionDate || (cert.createdAt ? new Date(cert.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString('ar-EG')),
+    note: cert.note || 'طالب متميز ومتفوق أظهر التزاماً استثنائياً ومهارات عالية.',
+    certNumber: cert.certNumber || 'NSR-CERT-2026',
+  });
+
+  // Print certificate handler with official Masar design
   const handlePrintCertificate = (cert: StudentCertificateLog) => {
-    const certHtml = `
-      <!doctype html>
-      <html lang="ar" dir="rtl">
-      <head>
-        <meta charset="utf-8"/>
-        <title>شهادة تفوق وتقدير - ${cert.studentName || studentName}</title>
-        <style>
-          @page { size: 297mm 210mm; margin: 0; }
-          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', Arial, sans-serif; }
-          html, body {
-            width: 297mm;
-            height: 210mm;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: #ffffff;
-          }
-          .cert-container {
-            width: 285mm;
-            height: 198mm;
-            margin: 6mm auto;
-            border: 4px double #06392c;
-            border-radius: 12px;
-            padding: 24px;
-            background: radial-gradient(circle at top right, #fcfbf7 0%, #ffffff 100%);
-            box-shadow: inset 0 0 0 2px #d6a83f, inset 0 0 0 6px rgba(6,57,44,0.1);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-          }
-          .header { text-align: center; }
-          .header h1 { color: #06392c; font-size: 28px; margin: 0 0 4px 0; font-weight: 900; }
-          .header p { color: #856404; font-size: 14px; margin: 0; font-weight: bold; }
-          .body-content { text-align: center; margin: 15px 0; }
-          .student-name { color: #0b4d3c; font-size: 32px; font-weight: 900; margin: 10px 0; border-bottom: 2px dashed #d6a83f; display: inline-block; padding: 0 30px 5px 30px; }
-          .achievement { font-size: 18px; color: #1e293b; font-weight: bold; line-height: 1.6; margin: 12px 0; }
-          .rating { font-size: 16px; color: #06392c; font-weight: 900; background: #e6f4ea; padding: 6px 18px; border-radius: 20px; display: inline-block; border: 1px solid #34a853; }
-          .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e2e8f0; padding-top: 15px; }
-          .signature { text-align: center; }
-          .signature-name { font-size: 16px; font-weight: 900; color: #06392c; margin-top: 4px; }
-          .cert-meta { font-size: 11px; color: #64748b; font-family: monospace; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="cert-container">
-          <div class="header">
-            <p>منصة مَسَار للتأهيل والتعليم الذكي · فصل د. إسماعيل عيسى</p>
-            <h1>${cert.title || 'شهادة تفوق وتميز صفي 🏆'}</h1>
-            <p>${cert.subTitle || 'تحت إشراف والتوجيه الأكاديمي المباشر من د. إسماعيل عيسى'}</p>
-          </div>
-          <div class="body-content">
-            <p style="font-size: 16px; color: #475569; margin: 0;">تشهد المنصة وإدارة الفصل بأن الطالب البطل المتفوق:</p>
-            <div class="student-name">${cert.studentName || studentName}</div>
-            <p style="font-size: 14px; color: #64748b; margin: 4px 0;">${cert.gradeLabel || grade}</p>
-            <div class="achievement">
-              قد حقق التميز والتفوق المستحق وجدارة الأداء العالي في:<br/>
-              <span style="color: #042e20; font-size: 20px; font-weight: 900;">${cert.achievement || cert.programTitle || 'التفوق الدراسي العام والالتزام'}</span>
-            </div>
-            <div class="rating">${cert.ratingText || 'ممتاز مع مرتبة الشرف 🌟'} (%${cert.score || 100})</div>
-            ${cert.note ? `<p style="font-size: 13px; color: #475569; font-style: italic; margin-top: 10px;">"${cert.note}"</p>` : ''}
-          </div>
-          <div class="footer">
-            <div class="cert-meta">
-              رقم الشهادة: ${cert.certNumber || 'NSR-CERT-2026'}<br/>
-              تاريخ الاعتماد: ${cert.completionDate || new Date().toLocaleDateString('ar-EG')}
-            </div>
-            <div class="signature">
-              <span style="font-size: 12px; color: #64748b;">المشرف الأكاديمي والمعلم</span>
-              <div class="signature-name">${cert.doctorName || 'د. إسماعيل عيسى'}</div>
-              <span style="font-size: 10px; color: #059669; font-weight: bold;">معتمد رسمياً ✓</span>
-            </div>
-          </div>
-        </div>
-        <script>
-          window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 400); });
-        </script>
-      </body>
-      </html>
-    `;
-
+    const certificate = printFrameRef.current?.querySelector('#printable-certificate')?.outerHTML;
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join('\n');
     const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(certHtml);
+
+    win.document.write(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>شهادة تفوق وتقدير - ${cert.studentName || studentName}</title>
+  ${styles}
+  <style>
+    @page { size: 297mm 210mm; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', Arial, sans-serif; }
+    html, body {
+      width: 297mm;
+      height: 210mm;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    #printable-certificate {
+      width: 285mm !important;
+      height: 198mm !important;
+      margin: 6mm auto !important;
+    }
+  </style>
+</head>
+<body>
+  ${certificate || ''}
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); }, 400);
+    });
+  </script>
+</body>
+</html>`);
     win.document.close();
   };
 
@@ -277,7 +201,7 @@ export default function StudentAchievementsTab({
             <div className="h-8 w-[1px] bg-white/20" />
             <div className="text-center px-3">
               <div className="text-2xl font-black text-amber-300 font-mono">
-                {badgesList.filter((b) => b.unlocked).length}
+                {badges.length}
               </div>
               <div className="text-[11px] font-bold text-emerald-100">أوسمة محققة</div>
             </div>
@@ -314,20 +238,7 @@ export default function StudentAchievementsTab({
             }`}
           >
             <Medal size={15} />
-            لوحة الأوسمة والميداليات ({badgesList.filter((b) => b.unlocked).length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSection('awards')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
-              activeSection === 'awards'
-                ? 'bg-amber-400 text-slate-950 shadow-md font-black'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <Gift size={15} />
-            حائط الجوائز والتكريمات المستقبلية 🎁
+            لوحة الأوسمة والميداليات ({badges.length})
           </button>
         </div>
       </div>
@@ -458,194 +369,111 @@ export default function StudentAchievementsTab({
       ══════════════════════════════════════════════════════════════════ */}
       {activeSection === 'badges' && (
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {badgesList.map((badge) => (
-              <div
-                key={badge.id}
-                className={`rounded-3xl border p-5 shadow-xs transition space-y-3 flex flex-col justify-between ${
-                  badge.unlocked
-                    ? 'border-amber-300 bg-white hover:border-amber-400'
-                    : 'border-slate-200 bg-slate-50 opacity-60'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div
-                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${badge.color} text-white flex items-center justify-center text-2xl shadow-sm`}
-                    >
-                      {badge.icon}
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-[11px] font-black border ${
-                        badge.unlocked
-                          ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                          : 'bg-slate-200 text-slate-600 border-slate-300'
-                      }`}
-                    >
-                      {badge.unlocked ? 'محقق وممنوح ✓' : 'قيد التحدي 🔒'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                      {badge.category}
-                    </span>
-                    <h4 className="font-black text-sm text-slate-950 mt-1">{badge.title}</h4>
-                    <p className="text-xs font-bold text-slate-500 mt-1 leading-relaxed">
-                      {badge.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-black">
-                  <span className="text-amber-700 flex items-center gap-1">
-                    <Star size={13} className="fill-amber-400 text-amber-500" /> {badge.points} نقطة
-                  </span>
-                  {badge.unlockedAt && (
-                    <span className="text-[11px] font-bold text-slate-400">{badge.unlockedAt}</span>
-                  )}
-                </div>
+          {badges.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center space-y-4 shadow-sm">
+              <div className="w-20 h-20 rounded-3xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto text-4xl shadow-sm">
+                🏅
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════
-          SECTION 3: FUTURE AWARDS & HONORS WALL
-      ══════════════════════════════════════════════════════════════════ */}
-      {activeSection === 'awards' && (
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-slate-950 text-base flex items-center gap-2">
-                  <Gift className="text-amber-600" size={20} />
-                  سجل التكريمات والجوائز العينية والمستقبلية 🎁
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="font-black text-lg text-slate-900">
+                  لم يتم منح أي وسام بعد
                 </h3>
-                <p className="text-xs font-bold text-slate-500 mt-1">
-                  ركن خاص لتسجيل الهدايا، التكريمات الخاصة، وأوسمة الشرف الإضافية الممنوحة للبطل {studentName}.
+                <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                  عندما يمنح د. إسماعيل عيسى {studentName} وساماً أو ميدالية، ستظهر هنا فوراً.
                 </p>
-              </div>
-              <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-1 text-xs font-black">
-                لوحة الشرف 🌟
-              </span>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                <div className="text-3xl">🎁</div>
-                <h4 className="font-black text-sm text-slate-900">جائزة بطل القراءة</h4>
-                <p className="text-xs font-bold text-slate-500">
-                  كتاب قصصي وتكريم صفي خاص عند إتمام قراءة 10 نصوص بطلاقة.
-                </p>
-                <span className="inline-block text-[11px] font-black text-emerald-700 bg-emerald-100 px-3 py-0.5 rounded-full">
-                  متاح للبطل
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                <div className="text-3xl">⭐</div>
-                <h4 className="font-black text-sm text-slate-900">وسام نجم الأسبوع</h4>
-                <p className="text-xs font-bold text-slate-500">
-                  يُمنح أسبوعياً للطالب الأكثر التزاماً بحل الواجبات والتفاعل.
-                </p>
-                <span className="inline-block text-[11px] font-black text-amber-800 bg-amber-100 px-3 py-0.5 rounded-full">
-                  قيد التقييم الأسبوعي
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                <div className="text-3xl">🏆</div>
-                <h4 className="font-black text-sm text-slate-900">كأس التميز النهائي</h4>
-                <p className="text-xs font-bold text-slate-500">
-                  درع وتكريم رسمي في ختام البرنامج التعليمي مع د. إسماعيل عيسى.
-                </p>
-                <span className="inline-block text-[11px] font-black text-indigo-800 bg-indigo-100 px-3 py-0.5 rounded-full">
-                  الختام السنوي
-                </span>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className="rounded-3xl border border-amber-300 bg-white hover:border-amber-400 p-5 shadow-xs transition space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div
+                        className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${badge.color} text-white flex items-center justify-center text-2xl shadow-sm`}
+                      >
+                        {badge.icon}
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-[11px] font-black border bg-emerald-100 text-emerald-900 border-emerald-300">
+                        محقق وممنوح ✓
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {badge.category}
+                      </span>
+                      <h4 className="font-black text-sm text-slate-950 mt-1">{badge.title}</h4>
+                      <p className="text-xs font-bold text-slate-500 mt-1 leading-relaxed">
+                        {badge.description}
+                      </p>
+                      {badge.note && (
+                        <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mt-2 italic">
+                          &quot;{badge.note}&quot;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-black">
+                    <span className="text-amber-700 flex items-center gap-1">
+                      <Star size={13} className="fill-amber-400 text-amber-500" /> {badge.points} نقطة
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {new Date(badge.awardedAt).toLocaleDateString('ar-SA')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
+
       {/* ══════════════════════════════════════════════════════════════════
-          CERTIFICATE FULL PREVIEW MODAL
+          CERTIFICATE FULL PREVIEW MODAL (OFFICIAL MASAR DESIGN)
       ══════════════════════════════════════════════════════════════════ */}
       {selectedCert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl space-y-5 border border-slate-200 animate-scale-in my-8" dir="rtl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="w-full max-w-4xl rounded-3xl bg-slate-950 p-5 sm:p-7 shadow-2xl space-y-4 border border-emerald-900/50 animate-scale-in my-6" dir="rtl">
+            <div className="flex items-center justify-between border-b border-emerald-900/50 pb-3">
               <div className="flex items-center gap-2">
-                <Trophy className="text-amber-500" size={20} />
-                <h3 className="font-black text-slate-950 text-base">معاينة شهادة التفوق الرسمية</h3>
+                <Trophy className="text-amber-400" size={20} />
+                <h3 className="font-black text-white text-base">معاينة شهادة التفوق الرسمية المعتمدة 🏆</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedCert(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Certificate Visual Frame */}
-            <div className="rounded-2xl border-4 border-double border-[#06392c] bg-radial from-[#fcfbf7] to-white p-6 sm:p-8 text-center space-y-4 shadow-inner relative overflow-hidden">
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-amber-800">منصة مَسَار للتأهيل والتعليم الذكي · فصل د. إسماعيل عيسى</p>
-                <h2 className="text-xl sm:text-2xl font-black text-[#06392c]">{selectedCert.title}</h2>
-                <p className="text-xs font-bold text-slate-500">{selectedCert.subTitle || 'تحت إشراف د. إسماعيل عيسى'}</p>
-              </div>
-
-              <div className="py-3 border-y border-dashed border-amber-300 space-y-2">
-                <p className="text-xs font-bold text-slate-600">تشهد المنصة بأن الطالب البطل المتفوق:</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-[#0b4d3c] tracking-wide">
-                  {selectedCert.studentName || studentName}
-                </h3>
-                <p className="text-xs font-bold text-slate-500">{selectedCert.gradeLabel || grade}</p>
-                <div className="pt-2 text-xs sm:text-sm font-bold text-slate-800">
-                  قد حقق التميز والتفوق المستحق في:
-                  <div className="text-base sm:text-lg font-black text-[#042e20] mt-1">
-                    {selectedCert.achievement || selectedCert.programTitle}
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <span className="inline-block rounded-full bg-emerald-100 border border-emerald-300 px-4 py-1 text-xs font-black text-emerald-900">
-                    {selectedCert.ratingText || 'ممتاز مع مرتبة الشرف 🌟'} (%{selectedCert.score || 100})
-                  </span>
-                </div>
-                {selectedCert.note && (
-                  <p className="text-xs font-bold text-slate-600 italic pt-2">"{selectedCert.note}"</p>
-                )}
-              </div>
-
-              <div className="flex items-end justify-between pt-2 text-right">
-                <div className="text-[11px] font-mono font-bold text-slate-400">
-                  رقم: {selectedCert.certNumber || 'NSR-CERT-2026'}<br/>
-                  تاريخ: {selectedCert.completionDate || new Date().toLocaleDateString('ar-EG')}
-                </div>
-                <div className="text-center">
-                  <span className="text-[11px] font-bold text-slate-500">المشرف الأكاديمي</span>
-                  <div className="font-black text-xs text-[#06392c]">{selectedCert.doctorName || 'د. إسماعيل عيسى'}</div>
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">معتمد ✓</span>
-                </div>
+            {/* Official Certificate Visual Canvas */}
+            <div ref={printFrameRef} className="overflow-x-auto py-2 flex justify-center">
+              <div className="w-full max-w-3xl">
+                <OfficialMasarCertificateDesign form={toCertData(selectedCert)} isPrintTarget={true} />
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => handlePrintCertificate(selectedCert)}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white py-3 text-xs font-black transition cursor-pointer shadow-sm"
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 py-3.5 text-xs font-black transition cursor-pointer shadow-lg active:scale-95"
               >
-                <Printer size={15} /> طباعة الشهادة الرسمية / تحميل PDF
+                <Printer size={16} /> طباعة الشهادة الرسمية / تحميل PDF 🖨️
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedCert(null)}
-                className="px-5 rounded-xl border border-slate-200 text-slate-700 py-3 text-xs font-black hover:bg-slate-50 transition cursor-pointer"
+                className="px-6 rounded-2xl border border-slate-700 text-slate-300 py-3.5 text-xs font-black hover:bg-white/10 transition cursor-pointer"
               >
                 إغلاق
               </button>

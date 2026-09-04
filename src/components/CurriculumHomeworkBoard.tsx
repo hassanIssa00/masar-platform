@@ -23,6 +23,7 @@ import {
 } from '@/lib/classDb';
 import { saveMessage } from '@/lib/cloudStore';
 import { saveHomeworkSnapshot } from '@/lib/dailyArchive';
+import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 
 type CurriculumAssignment = {
   id?: string;
@@ -78,6 +79,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
   const [feedbackInput, setFeedbackInput] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [viewingAssignment, setViewingAssignment] = useState<CurriculumAssignment | null>(null);
 
   function refresh() {
     const raw = readAssignments();
@@ -342,6 +344,14 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
                           : isSubmitted ? 'bg-amber-100 text-amber-800 border-amber-300'
                           : 'bg-rose-100 text-rose-800 border-rose-300'
                         }`}>{isGraded ? '✅ تم التصحيح' : isSubmitted ? '📬 مسلّم' : '⏳ لم يُسلّم'}</span>
+                        <button
+                          onClick={() => setViewingAssignment(a)}
+                          className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs"
+                          title="استعراض صفحات الكتاب وحل الطالب بالقلم"
+                        >
+                          <BookOpen size={13} className="text-emerald-700" />
+                          <span>👁️ استعراض حل الطالب بالكتاب</span>
+                        </button>
                         {!isSubmitted && (
                           <button
                             onClick={() => handleMarkSubmitted(a)}
@@ -379,9 +389,20 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
                   {gradingTarget.assignment.studentName} · {gradingTarget.assignment.subjectTitle} (ص {gradingTarget.assignment.fromPage}–{gradingTarget.assignment.toPage})
                 </p>
               </div>
-              <button onClick={() => setGradingTarget(null)} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingAssignment(gradingTarget.assignment)}
+                  className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs"
+                  title="استعراض صفحات الكتاب وحل الطالب بالقلم"
+                >
+                  <BookOpen size={13} className="text-emerald-700" />
+                  <span>حل الطالب 👁️</span>
+                </button>
+                <button onClick={() => setGradingTarget(null)} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -447,6 +468,23 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* STUDENT BOOK PAGES & DRAWINGS VIEWER MODAL */}
+      {viewingAssignment && (
+        <ParentHomeworkPagesViewerModal
+          homework={{
+            subjectSlug: viewingAssignment.subjectSlug,
+            subjectTitle: viewingAssignment.subjectTitle,
+            fromPage: viewingAssignment.fromPage,
+            toPage: viewingAssignment.toPage,
+            title: `واجب ${viewingAssignment.subjectTitle} (ص ${viewingAssignment.fromPage}–${viewingAssignment.toPage})`,
+            description: `مراجعة حل الطالب (${viewingAssignment.studentName}) وتصحيح صفحات الكتاب المدرسي التفاعلي.`,
+          }}
+          studentId={viewingAssignment.studentId}
+          studentName={viewingAssignment.studentName}
+          onClose={() => setViewingAssignment(null)}
+        />
       )}
     </div>
   );
