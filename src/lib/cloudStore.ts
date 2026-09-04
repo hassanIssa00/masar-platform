@@ -417,6 +417,11 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     linkedParentEmail,
     email: student.email || existing?.email || duplicate?.email,
     parentEmail: student.parentEmail || existing?.parentEmail || duplicate?.parentEmail,
+    media: {
+      ...(duplicate?.media || {}),
+      ...(existing?.media || {}),
+      ...(student.media || {}),
+    },
     id: existing?.id ?? student.id ?? duplicate?.id ?? studentAccountId ?? createId('student'),
     createdAt: existing?.createdAt ?? duplicate?.createdAt ?? now,
     updatedAt: now,
@@ -465,6 +470,10 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
   const next: StudentRecord = {
     ...existing,
     ...cleanUpdates,
+    media: {
+      ...(existing.media || {}),
+      ...(cleanUpdates.media || {}),
+    },
     id: existing.id,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),

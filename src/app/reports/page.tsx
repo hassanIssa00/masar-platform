@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowRight, FilePlus2, Printer, Trash2 } from 'lucide-react';
+import { ArrowRight, FilePlus2, Headphones, Printer, Trash2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import PrintableReportModal from '@/components/PrintableReportModal';
@@ -12,6 +12,8 @@ import { getDecisionFromScore } from '@/data/assessmentModel';
 import { deleteReport, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/cloudStore';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+import { isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
+import { getPlayableAudioUrl } from '@/app/assessment/page';
 
 const REPORTS_SYNC_KEYS = ['students', 'reports', 'surveys'] as const;
 
@@ -104,8 +106,70 @@ function ReportsContent() {
   }, [searchParams, router]);
 
   const selected = reports.find((report) => report && report.id === selectedId);
-  const selectedStudent = selected ? students.find((student) => student && (student.id === selected.studentId || student.fullName === selected.studentName)) : null;
-  const printStudent = printReport ? students.find((student) => student && (student.id === printReport.studentId || student.fullName === printReport.studentName)) : null;
+  const selectedStudent = useMemo(() => {
+    if (!selected) return null;
+    const repNorm = normalizeArabicText(selected.studentName);
+    return students.find((student) => {
+      if (!student) return false;
+      if (student.id === selected.studentId) return true;
+      const stNorm = normalizeArabicText(student.fullName);
+      if (stNorm && stNorm === repNorm) return true;
+      if (isParentChildNameMatch(student.fullName, selected.studentName) || isParentChildNameMatch(selected.studentName, student.fullName)) return true;
+      return false;
+    }) || null;
+  }, [selected, students]);
+
+  const printStudent = useMemo(() => {
+    if (!printReport) return null;
+    const repNorm = normalizeArabicText(printReport.studentName);
+    return students.find((student) => {
+      if (!student) return false;
+      if (student.id === printReport.studentId) return true;
+      const stNorm = normalizeArabicText(student.fullName);
+      if (stNorm && stNorm === repNorm) return true;
+      if (isParentChildNameMatch(student.fullName, printReport.studentName) || isParentChildNameMatch(printReport.studentName, student.fullName)) return true;
+      return false;
+    }) || null;
+  }, [printReport, students]);
+
+  const reportMediaItems = useMemo(() => {
+    if (!selected) return [];
+    const items: Array<{ id: string; type: 'audio' | 'image'; dataUrl: string; label: string; categoryLabel?: string }> = [];
+    if (selected.media) {
+      Object.entries(selected.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl)) {
+          items.push({ id: k, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (selectedStudent?.media) {
+      Object.entries(selectedStudent.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl) && !items.some((i) => i.dataUrl === v.dataUrl)) {
+          items.push({ id: `stu_${k}`, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (Array.isArray(selected.answers)) {
+      selected.answers.forEach((ans, idx) => {
+        if (!ans || !ans.answer) return;
+        const isAudio = ans.answer.includes('مرفق: تسجيل صوتي') || ans.answer.includes('تسجيل صوتي محفوظ');
+        const isImage = ans.answer.includes('مرفق: رسم') || ans.answer.includes('رسم محفوظ');
+        if (isAudio || isImage) {
+          const label = ans.question || `بند تقييم ${idx + 1}`;
+          if (!items.some((i) => i.label === label)) {
+            items.push({
+              id: `ans_${selected.id}_${idx}`,
+              type: isAudio ? 'audio' : 'image',
+              dataUrl: '',
+              label,
+              categoryLabel: isAudio ? 'استجابة شفهية موثقة' : 'رسم وتوصيل موثق',
+            });
+          }
+        }
+      });
+    }
+    return items;
+  }, [selected, selectedStudent]);
 
   useLayoutEffect(() => {
     if (!selectedId) return;
@@ -188,6 +252,55 @@ function ReportsContent() {
                 )}
               </div>
             </div>
+
+            {/* Media Recordings & Attachments Banner (Only for Doctor/Parent on-screen review, hidden on Print) */}
+            {reportMediaItems.length > 0 && (
+              <div className="no-print mb-6 rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-xs">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-600 text-white shadow-xs">
+                      <Headphones size={16} />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-blue-950">التسجيلات الصوتية ومرفقات الاختبار ({reportMediaItems.length})</h3>
+                      <p className="text-xs font-bold text-blue-800/80">إجابات الطالب الشفهية والرسومات المحفوظة للمراجعة</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {reportMediaItems.map((item) => (
+                    <div key={item.id} className="rounded-xl border border-blue-200/80 bg-white p-3.5 shadow-2xs">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-black text-blue-700">
+                          {item.categoryLabel || (item.type === 'audio' ? 'استجابة صوتية' : 'رسم يدوي')}
+                        </span>
+                      </div>
+                      <p className="text-xs font-black text-slate-800 mb-2">{item.label}</p>
+                      {item.type === 'audio' ? (
+                        item.dataUrl ? (
+                          <audio controls preload="metadata" className="w-full" src={getPlayableAudioUrl(item.dataUrl)} />
+                        ) : (
+                          <div className="rounded-lg bg-slate-50 p-2.5 text-[11px] font-bold text-slate-600 flex items-center gap-2">
+                            <span>🎙️</span>
+                            <span>استجابة شفهية مسجلة وموثقة ضمن بنود هذا التقرير.</span>
+                          </div>
+                        )
+                      ) : (
+                        item.dataUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={item.dataUrl} alt={item.label} className="h-36 w-full rounded-lg object-contain bg-slate-50 border border-slate-200" />
+                        ) : (
+                          <div className="rounded-lg bg-slate-50 p-2.5 text-[11px] font-bold text-slate-600 flex items-center justify-center gap-2 h-24">
+                            <span>🎨</span>
+                            <span>رسم يدوي وتوصيل موثق ضمن هذا التقرير.</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <ReportPrintDocument report={selected} student={selectedStudent} />
 

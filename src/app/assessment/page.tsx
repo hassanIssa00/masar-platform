@@ -354,7 +354,13 @@ function DrawingPad({
   const stop = () => {
     if (!drawingRef.current || !canvasRef.current) return;
     drawingRef.current = false;
-    onSave(canvasRef.current.toDataURL('image/png'));
+    let dataUrl = '';
+    try {
+      dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.7);
+    } catch {
+      dataUrl = canvasRef.current.toDataURL('image/png');
+    }
+    onSave(dataUrl);
   };
 
   const clear = () => {
@@ -449,6 +455,8 @@ function PlacementAssessmentContent() {
   const recordingPromptRef = useRef('');
   const recordingCategoryRef = useRef('');
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const mediaAnswersRef = useRef<Record<string, MediaAnswer>>({});
+  const recordingCompleteResolverRef = useRef<(() => void) | null>(null);
 
   const assessment = placementAssessments.find((item) => item.key === gradeKey) ?? placementAssessments[0];
 
@@ -638,7 +646,7 @@ function PlacementAssessmentContent() {
     setMediaAnswers((currentMedia) => {
       const next = { ...currentMedia };
       if (dataUrl) {
-        next[current.id] = {
+        const item: MediaAnswer = {
           type: 'image',
           dataUrl,
           label: current.prompt,
@@ -646,8 +654,11 @@ function PlacementAssessmentContent() {
           categoryLabel: current.categoryLabel,
           createdAt: new Date().toISOString(),
         };
+        next[current.id] = item;
+        mediaAnswersRef.current[current.id] = item;
       } else {
         delete next[current.id];
+        delete mediaAnswersRef.current[current.id];
       }
       return next;
     });
@@ -765,19 +776,25 @@ function PlacementAssessmentContent() {
           if (dataUrl) {
             dataUrl = sanitizeAudioSrc(dataUrl);
             blobUrlCache.set(dataUrl, blobUrl);
+            const mediaItem: MediaAnswer = {
+              type: 'audio',
+              dataUrl,
+              blobUrl,
+              label: qPrompt,
+              questionId: qId,
+              categoryLabel: qCategory,
+              createdAt: new Date().toISOString(),
+            };
+            mediaAnswersRef.current[qId] = mediaItem;
             setMediaAnswers((currentMedia) => ({
               ...currentMedia,
-              [qId]: {
-                type: 'audio',
-                dataUrl,
-                blobUrl,
-                label: qPrompt,
-                questionId: qId,
-                categoryLabel: qCategory,
-                createdAt: new Date().toISOString(),
-              },
+              [qId]: mediaItem,
             }));
             setAnswers((currentAnswers) => ({ ...currentAnswers, [qId]: 'تسجيل صوتي محفوظ للمراجعة' }));
+          }
+          if (recordingCompleteResolverRef.current) {
+            recordingCompleteResolverRef.current();
+            recordingCompleteResolverRef.current = null;
           }
         };
         reader.readAsDataURL(blob);
@@ -835,21 +852,17 @@ function PlacementAssessmentContent() {
       const done = () => {
         if (!resolved) {
           resolved = true;
+          recordingCompleteResolverRef.current = null;
           resolve();
         }
       };
 
-      const checkInterval = setInterval(() => {
-        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
-          clearInterval(checkInterval);
-          setTimeout(done, 150);
-        }
-      }, 50);
+      recordingCompleteResolverRef.current = done;
 
-      setTimeout(() => {
-        clearInterval(checkInterval);
+      // Fallback timer if onstop/reader takes longer than expected
+      const fallbackTimer = setTimeout(() => {
         done();
-      }, 2500);
+      }, 3000);
 
       stopRecording();
     });
@@ -875,7 +888,8 @@ function PlacementAssessmentContent() {
     const all = getStudents();
     const targetStudentId = student?.id || studentIdParam;
     const existing = all.find((s) => s.id === targetStudentId);
-    const studentMedia = { ...(existing?.media || {}), ...(student?.media || {}), ...mediaAnswers };
+    const currentMediaAnswers = { ...mediaAnswersRef.current, ...mediaAnswers };
+    const studentMedia = { ...(existing?.media || {}), ...(student?.media || {}), ...currentMediaAnswers };
     let savedStudent: StudentRecord;
 
     const isGeneric = (n?: string | null) => !n || n.includes('جديد') || n.includes('الاختبار') || n === 'طالب' || n === 'الطالب';
@@ -924,7 +938,7 @@ function PlacementAssessmentContent() {
       score: Math.round((answeredCount / activeQuestions.length) * 100),
       status: 'pending',
       type: 'student-assessment-answers',
-      media: mediaAnswers,
+      media: currentMediaAnswers,
       summary: 'تقرير إجابات تفصيلي يحتوي على إجابات الطالب والتسجيلات الصوتية في اختبار تحديد المستوى المباشر، مخصص لمراجعة د. إسماعيل.',
       recommendations: [
         'الاستماع للتسجيلات الصوتية ومراجعة الرسومات المرفقة من الطالب.',
@@ -939,7 +953,7 @@ function PlacementAssessmentContent() {
           response.question.expectedResponse ? `النموذج المتوقع: ${response.question.expectedResponse}` : '',
           response.scoreStatus === 'manual' ? `درجة المصحح: ${response.scoreValue} من ${response.maxScore}` : '',
           response.scoreStatus === 'auto' ? `الدرجة التلقائية: ${response.scoreValue} من ${response.maxScore}` : '',
-          mediaAnswers[response.question.id] ? `مرفق: ${mediaAnswers[response.question.id].type === 'audio' ? 'تسجيل صوتي' : 'رسم/كتابة يدوية'}` : '',
+          currentMediaAnswers[response.question.id] ? `مرفق: ${currentMediaAnswers[response.question.id].type === 'audio' ? 'تسجيل صوتي' : 'رسم/كتابة يدوية'}` : '',
           response.question.countsForScore === false ? 'بند ملاحظة لا يدخل في الدرجة' : response.scoreStatus === 'pending' ? 'موثق وينتظر التصحيح' : response.correct ? (isManualAssessment ? 'مصَحح وموثق للمراجعة' : 'صحيح') : 'يحتاج مراجعة',
           `المهارة: ${response.question.skill}`,
         ].filter(Boolean).join(' | '),
@@ -956,6 +970,7 @@ function PlacementAssessmentContent() {
       score,
       status: isStudentFlow ? 'pending' : 'completed',
       type: isStudentFlow ? 'student-assessment-analysis' : 'placement',
+      media: currentMediaAnswers,
       summary: buildPlacementSummary({
         assessmentTitle: assessment.title,
         score,

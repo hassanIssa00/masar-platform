@@ -132,34 +132,45 @@ export default function StudentProfilePage() {
         } as StudentRecord;
       }
 
-      // 5. Deeply enrich student with twin data (photo, dateOfBirth, nationalId)
+      // 5. Deeply enrich student with twin data (photo, dateOfBirth, nationalId, media)
       if (found) {
-        const norm = normalizeArabicText(found.fullName);
+        const foundRecord = found as any;
+        const foundName = foundRecord.fullName || '';
+        const norm = normalizeArabicText(foundName);
         const twins = allKnown.filter((s: any) =>
-          normalizeArabicText(s.fullName) === norm
+          normalizeArabicText(s.fullName) === norm ||
+          isParentChildNameMatch(s.fullName, foundName) ||
+          isParentChildNameMatch(foundName, s.fullName)
         );
 
         const bestPhoto =
-          found.photoUrl ||
+          foundRecord.photoUrl ||
           twins.find((t: any) => t.photoUrl)?.photoUrl ||
           allAcc.find((a) => a.photoUrl && normalizeArabicText(a.name) === norm)?.photoUrl ||
           '';
 
         const bestDob =
-          found.dateOfBirth ||
+          foundRecord.dateOfBirth ||
           twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
           '';
 
         const bestNationalId =
-          found.nationalId ||
+          foundRecord.nationalId ||
           twins.find((t: any) => t.nationalId)?.nationalId ||
           '';
 
+        const foundMedia = foundRecord.media || {};
+        const mergedMedia = {
+          ...(twins.reduce((acc: any, t: any) => ({ ...acc, ...(t.media || {}) }), {})),
+          ...foundMedia,
+        };
+
         found = {
-          ...found,
+          ...foundRecord,
           photoUrl: bestPhoto,
           dateOfBirth: bestDob,
           nationalId: bestNationalId,
+          media: Object.keys(mergedMedia).length > 0 ? mergedMedia : foundMedia,
         };
       }
 
@@ -184,25 +195,39 @@ export default function StudentProfilePage() {
     // 1. From student's own media
     if (student?.media) {
       Object.entries(student.media).forEach(([key, val]) => {
-        if (val?.dataUrl) {
+        if (val && (val.dataUrl || (val as any).blobUrl)) {
           list.push({ id: key, ...val });
         }
       });
     }
 
-    // 2. From all matching reports
+    // 2. From all matching reports (combining state reports + getReports with full patronymic matching)
     const allReports = getReports();
-    const matchingReports = allReports.filter(
-      (rep) =>
-        (student && (rep.studentId === student.id || normalizeArabicText(rep.studentName) === norm)) ||
-        rep.studentId === params.id
-    );
+    const matchingReports = [
+      ...reports,
+      ...allReports.filter((rep) => {
+        if (reports.some((r) => r.id === rep.id)) return false;
+        if (rep.studentId === params.id) return true;
+        if (student) {
+          if (rep.studentId === student.id) return true;
+          if (normalizeArabicText(rep.studentName) === norm) return true;
+          if (
+            isParentChildNameMatch(rep.studentName, student.fullName) ||
+            isParentChildNameMatch(student.fullName, rep.studentName)
+          ) return true;
+        }
+        return false;
+      }),
+    ];
 
     matchingReports.forEach((rep) => {
       if (rep.media) {
         Object.entries(rep.media).forEach(([key, val]) => {
-          if (val?.dataUrl && !list.some((item) => item.dataUrl === val.dataUrl)) {
-            list.push({ id: `${rep.id}_${key}`, ...val });
+          if (val && (val.dataUrl || (val as any).blobUrl)) {
+            const isDup = list.some((item) => (item.dataUrl && item.dataUrl === val.dataUrl) || item.id === `${rep.id}_${key}`);
+            if (!isDup) {
+              list.push({ id: `${rep.id}_${key}`, ...val });
+            }
           }
         });
       }
@@ -210,12 +235,49 @@ export default function StudentProfilePage() {
 
     // 3. From twin records
     const allSt = getStudents();
-    const twins = allSt.filter((s) => normalizeArabicText(s.fullName) === norm);
+    const twins = allSt.filter((s) =>
+      s.id === params.id ||
+      (student && s.id === student.id) ||
+      normalizeArabicText(s.fullName) === norm ||
+      (student && (
+        isParentChildNameMatch(s.fullName, student.fullName) ||
+        isParentChildNameMatch(student.fullName, s.fullName)
+      ))
+    );
+
     twins.forEach((t) => {
       if (t.media) {
         Object.entries(t.media).forEach(([key, val]) => {
-          if (val?.dataUrl && !list.some((item) => item.dataUrl === val.dataUrl)) {
-            list.push({ id: `twin_${key}`, ...val });
+          if (val && (val.dataUrl || (val as any).blobUrl)) {
+            const isDup = list.some((item) => (item.dataUrl && item.dataUrl === val.dataUrl) || item.id === `twin_${t.id}_${key}`);
+            if (!isDup) {
+              list.push({ id: `twin_${t.id}_${key}`, ...val });
+            }
+          }
+        });
+      }
+    });
+
+    // 4. From report answers (if answers recorded oral/drawing attachments)
+    matchingReports.forEach((rep) => {
+      if (Array.isArray(rep.answers)) {
+        rep.answers.forEach((ans, idx) => {
+          if (!ans || !ans.answer) return;
+          const isAudio = ans.answer.includes('مرفق: تسجيل صوتي') || ans.answer.includes('تسجيل صوتي محفوظ');
+          const isImage = ans.answer.includes('مرفق: رسم') || ans.answer.includes('رسم محفوظ');
+          if (isAudio || isImage) {
+            const label = ans.question || `بند تقييم ${idx + 1}`;
+            const alreadyExists = list.some((item) => item.label === label);
+            if (!alreadyExists) {
+              list.push({
+                id: `ans_${rep.id}_${idx}`,
+                type: isAudio ? 'audio' : 'image',
+                dataUrl: '', // Documented in clinical report
+                label,
+                categoryLabel: isAudio ? 'استجابة شفهية موثقة بالتقرير' : 'رسم يدوي موثق بالتقرير',
+                createdAt: rep.date,
+              });
+            }
           }
         });
       }
@@ -362,7 +424,14 @@ export default function StudentProfilePage() {
                           )}
                         </div>
                         <p className="text-sm font-black text-slate-900 mb-3">{item.label}</p>
-                        <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(item.dataUrl)} />
+                        {item.dataUrl ? (
+                          <audio controls preload="metadata" className="w-full" src={sanitizeAudioSrc(item.dataUrl)} />
+                        ) : (
+                          <div className="rounded-lg bg-blue-50/70 border border-blue-200 p-3 text-xs font-bold text-blue-900 flex items-center gap-2">
+                            <span className="text-base">🎙️</span>
+                            <span>استجابة شفهية مسجلة وموثقة ضمن تقرير التقييم الإكلينيكي المعتمد.</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -375,9 +444,26 @@ export default function StudentProfilePage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     {imageList.map((item, idx) => (
                       <div key={item.id || idx} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="rounded-md bg-teal-50 px-2.5 py-1 text-xs font-black text-teal-700">
+                            {item.categoryLabel || 'رسم يدوي'}
+                          </span>
+                          {item.createdAt && (
+                            <span className="text-xs font-bold text-slate-400">
+                              {new Date(item.createdAt).toLocaleDateString('ar-EG')}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm font-black text-slate-900 mb-2">{item.label}</p>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.dataUrl} alt={item.label} className="h-48 w-full rounded-lg object-contain bg-slate-50 border border-slate-200" />
+                        {item.dataUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={item.dataUrl} alt={item.label} className="h-48 w-full rounded-lg object-contain bg-slate-50 border border-slate-200" />
+                        ) : (
+                          <div className="rounded-lg bg-teal-50/70 border border-teal-200 p-4 text-xs font-bold text-teal-900 flex items-center justify-center gap-2 h-32">
+                            <span className="text-base">🎨</span>
+                            <span>رسم وتوصيل يدوي موثق ضمن بنود تقرير التقييم المباشر.</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

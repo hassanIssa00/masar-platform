@@ -130,17 +130,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'لم يتم ضبط Firebase Admin على السيرفر.' }, { status: 503 });
   }
 
-  await adminDb
-    .collection(collectionName)
-    .doc(docId)
-    .set(
-      {
-        ...data,
-        id: data.id || data.accountId || docId,
-        updatedAt: data.updatedAt || new Date().toISOString(),
-      },
-      { merge: true },
-    );
+  try {
+    await adminDb
+      .collection(collectionName)
+      .doc(docId)
+      .set(
+        {
+          ...data,
+          id: data.id || data.accountId || docId,
+          updatedAt: data.updatedAt || new Date().toISOString(),
+        },
+        { merge: true },
+      );
+  } catch (error: any) {
+    console.error(`[doc/route] Error saving ${collectionName}/${docId}:`, error);
+    const msg = String(error?.message || error?.details || '');
+    if (msg.includes('1048576') || msg.includes('exceeds maximum allowed size') || error?.code === 3) {
+      console.warn(`[doc/route] Trimming oversized document for ${collectionName}/${docId}...`);
+      const trimmed = { ...data };
+      if (trimmed.media && typeof trimmed.media === 'object') {
+        const leanMedia: Record<string, any> = {};
+        for (const [k, v] of Object.entries(trimmed.media as Record<string, any>)) {
+          if (v && typeof v === 'object') {
+            leanMedia[k] = {
+              ...v,
+              // If dataUrl exceeds 60KB, preserve metadata but reduce raw dataUrl footprint
+              dataUrl: typeof v.dataUrl === 'string' && v.dataUrl.length > 60000 ? v.dataUrl.slice(0, 60000) : v.dataUrl,
+            };
+          }
+        }
+        trimmed.media = leanMedia;
+      }
+      await adminDb
+        .collection(collectionName)
+        .doc(docId)
+        .set(
+          {
+            ...trimmed,
+            id: data.id || data.accountId || docId,
+            updatedAt: data.updatedAt || new Date().toISOString(),
+          },
+          { merge: true },
+        );
+    } else {
+      return NextResponse.json({ ok: false, error: 'فشل في حفظ البيانات السحابية.' }, { status: 500 });
+    }
+  }
 
   invalidateSnapshotCache();
   return NextResponse.json({ ok: true });
