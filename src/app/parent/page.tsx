@@ -217,16 +217,6 @@ export default function ParentDashboard() {
         const targetId = (activeId && myStudents.some((s) => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
 
-        const isParentProfileComplete = Boolean(
-          (parentAcc as any)?.parentProfileComplete ||
-          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
-        );
-
-        if (!isParentProfileComplete || (session as any)?.onboardingRequired) {
-          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(targetId)}`);
-          return;
-        }
-
         const allSurveys = getSurveys();
         const surveyDone = allSurveys.some(
           (s) => s.studentId === targetId ||
@@ -235,7 +225,19 @@ export default function ParentDashboard() {
         );
         setHasSurvey(surveyDone);
 
-        // If survey is NOT done, redirect parent to complete it first
+        const isParentProfileComplete = Boolean(
+          (parentAcc as any)?.parentProfileComplete ||
+          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
+        );
+
+        // Only redirect to data form if profile is NOT complete AND survey is also NOT done.
+        // If survey is already done, the parent went through the full flow already — don't loop them back.
+        if ((!isParentProfileComplete || (session as any)?.onboardingRequired) && !surveyDone) {
+          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(targetId)}`);
+          return;
+        }
+
+        // If survey is NOT done (and profile IS complete), redirect to survey
         if (!surveyDone) {
           router.replace(`/survey?student=${encodeURIComponent(targetId)}&flow=parent`);
           return;

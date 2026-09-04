@@ -389,7 +389,29 @@ export default function NewStudentPage() {
       await syncDocToCloud('accounts', updatedAcc.id, updatedAcc);
     }
 
-    router.push(nextFlow === 'student-test' ? `/assessment?student=${savedStudent.id}&flow=student` : `/survey?student=${savedStudent.id}&flow=parent`);
+    if (nextFlow === 'student-test') {
+      router.push(`/assessment?student=${savedStudent.id}&flow=student`);
+    } else {
+      // Check if the survey was already completed before redirecting
+      const allSurveys = getSurveys();
+      const surveyAlreadyDone = allSurveys.some(
+        (s) =>
+          s.studentId === savedStudent.id ||
+          (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
+          (session?.phone && s.parentPhone === session.phone)
+      );
+      if (surveyAlreadyDone) {
+        // Survey already exists — go straight to dashboard, skip survey
+        const branch = (session as any)?.schoolBranch || savedStudent.schoolBranch || 'MASAR';
+        router.push(
+          branch === 'IKHLAS_JEDDAH'
+            ? `/school-parent?student=${savedStudent.id}`
+            : `/parent?student=${savedStudent.id}`
+        );
+      } else {
+        router.push(`/survey?student=${savedStudent.id}&flow=parent`);
+      }
+    }
   };
 
   return (
