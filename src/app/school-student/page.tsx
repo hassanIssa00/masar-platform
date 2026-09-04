@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import { curriculaList } from '@/data/curriculaData';
+import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
 import { getCurriculumFiles } from '@/lib/curriculumDb';
 import {
@@ -161,25 +162,14 @@ export default function StudentDashboard() {
     const allHw = getLocalHomework();
     const logs = id ? getStudentHomeworkLogs(id) : [];
 
-    // Strategy 1: exact match by studentId or name
-    const exact = allHw.filter(hw => {
-      if (!hw.studentId || hw.studentId === '' || hw.studentId === 'all') return true;
-      if (hw.studentId === id) return true;
-      if (hw.studentName && normalizeArabicText(hw.studentName) === normalizeArabicText(name)) return true;
+    // Strategy 1: ONLY homework assigned explicitly to this student
+    let merged = allHw.filter(hw => {
+      if (id && hw.studentId === id) return true;
+      if (name && hw.studentName && normalizeArabicText(hw.studentName) === normalizeArabicText(name)) return true;
       return false;
     });
 
-    // Strategy 2: if nothing found, show all class homework deduplicated by title
-    let merged = exact.length > 0 ? exact : (() => {
-      const seenTitles = new Set<string>();
-      return allHw.filter(hw => {
-        if (seenTitles.has(hw.title)) return false;
-        seenTitles.add(hw.title);
-        return true;
-      });
-    })();
-
-    // Strategy 2.5: Homework logs from Doctor assignments
+    // Strategy 2: Homework logs from Doctor assignments specifically for this student
     logs.forEach((log) => {
       const existing = merged.find(
         (x) => x.title === log.title || x.id === log.id
@@ -203,13 +193,13 @@ export default function StudentDashboard() {
       }
     });
 
-    // Strategy 3: Also load from curriculumAssignments
+    // Strategy 3: ONLY curriculum assignments explicitly assigned to THIS student
     const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
     const studentCurrAssignments = currAssignments.filter((a: any) =>
-      !a.studentId || a.studentId === 'all' || a.studentId === id ||
-      (a.studentName && normalizeArabicText(a.studentName) === normalizeArabicText(name))
+      (id && a.studentId === id) ||
+      (name && a.studentName && normalizeArabicText(a.studentName) === normalizeArabicText(name))
     );
-    const currAsHomework: any[] = (studentCurrAssignments.length > 0 ? studentCurrAssignments : currAssignments).map((a: any) => {
+    const currAsHomework: any[] = studentCurrAssignments.map((a: any) => {
       const matchLog = logs.find(l => l.studentId === a.studentId && l.subject === a.subjectTitle);
       const isSubmitted = matchLog?.status === 'submitted';
       return {
@@ -233,30 +223,10 @@ export default function StudentDashboard() {
       if (!existing) {
         merged = [...merged, ca];
       } else {
-        // preserve curriculum page properties if existing lacks them
         (existing as any).subjectSlug = (existing as any).subjectSlug || ca.subjectSlug;
         (existing as any).fromPage = (existing as any).fromPage || ca.fromPage;
         (existing as any).toPage = (existing as any).toPage || ca.toPage;
       }
-    }
-
-    // Strategy 4: also check ikhlas posts for homework type
-    const posts = getIkhlasPosts();
-    const fromPosts: HomeworkRecord[] = posts
-      .filter(p => p.type === 'homework')
-      .map(p => ({
-        id: p.id,
-        studentId: 'all',
-        studentName: '',
-        title: p.title,
-        description: p.content || '',
-        dueDate: p.dueDate || p.createdAt?.slice(0, 10) || '',
-        status: 'assigned' as const,
-        createdAt: p.createdAt,
-      }));
-
-    for (const p of fromPosts) {
-      if (!merged.find(h => h.title === p.title)) merged = [...merged, p];
     }
 
     setHomeworks(merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -268,16 +238,13 @@ export default function StudentDashboard() {
     }
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
 
-    // Match by studentId OR by student name
+    // Match strictly by studentId OR by student name only
     const mine = allCerts.filter(c =>
-      c.studentId === id ||
-      (c.studentName && normalizeArabicText(c.studentName) === normalizeArabicText(name))
+      (id && c.studentId === id) ||
+      (name && c.studentName && normalizeArabicText(c.studentName) === normalizeArabicText(name))
     );
 
-    // If nothing found and there are certs, show all (could be linked differently)
-    const result = mine.length > 0 ? mine : allCerts;
-
-    setCertificates(result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    setCertificates(mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   }, []);
 
   const handleLogout = () => { clearSession(); router.push('/login'); };
@@ -285,11 +252,11 @@ export default function StudentDashboard() {
   const isIkhlas = studentRecord?.schoolBranch === 'IKHLAS_JEDDAH';
 
   const tabs: Array<{ key: Tab; label: string; icon: any }> = [
-    { key: 'home',         label: 'الرئيسية',  icon: Home },
-    { key: 'homework',     label: 'الواجبات',  icon: BookOpen },
+    { key: 'home',         label: 'الرئيسية',                                icon: Home },
+    { key: 'homework',     label: 'الواجبات',                                icon: BookOpen },
     ...(isIkhlas ? [{ key: 'schedule' as Tab, label: 'الجدول', icon: Clock }] : []),
-    { key: 'curriculum',   label: 'المناهج',   icon: BookMarked },
-    { key: 'certificates', label: 'شهاداتي',   icon: Trophy },
+    { key: 'curriculum',   label: isIkhlas ? 'المناهج' : 'المسار المعتمد',   icon: isIkhlas ? BookMarked : Award },
+    { key: 'certificates', label: 'شهاداتي',                                 icon: Trophy },
   ];
 
   // ── Home Tab ───────────────────────────────────────────────────────────────
@@ -377,37 +344,44 @@ export default function StudentDashboard() {
       ) : (
         /* Masar Platform Student Cards */
         <div className="space-y-4">
-          {/* Quick Curriculum Access */}
+          {/* Quick Approved Track Access */}
           <div className="bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-800 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
             <div className="absolute -left-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <BookMarked size={20} className="text-teal-200" />
-                <h3 className="font-black text-sm">المناهج والكتب المعتمدة 📚</h3>
+                <Award size={20} className="text-teal-200" />
+                <h3 className="font-black text-sm">مسار الطالب المعتمد 🎯</h3>
               </div>
               <button
                 onClick={() => setActiveTab('curriculum')}
                 className="text-xs font-black bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-full transition cursor-pointer"
               >
-                فتح المناهج ↗
+                عرض المسار المعتمد ↗
               </button>
             </div>
             <p className="text-xs text-teal-100 font-bold mb-3">
-              استعرض الكتب الدراسية والأنشطة والتدريبات التفاعلية الخاصة بصفك الدراسي.
+              خطة التأهيل والتعليم الفردي المعتمدة للبطل تحت إشراف د. إسماعيل عيسى.
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {curriculaList.slice(0, 3).map((sub) => (
-                <div
-                  key={sub.slug}
-                  onClick={() => setActiveTab('curriculum')}
-                  className="bg-white/10 hover:bg-white/20 rounded-2xl p-2.5 text-center border border-white/15 cursor-pointer transition active:scale-95"
-                >
-                  <span className="text-xl block mb-1">
-                    {sub.slug === 'lughati' ? '📖' : sub.slug === 'math' ? '🔢' : '🕌'}
-                  </span>
-                  <span className="text-[11px] font-black text-white truncate block">{sub.title}</span>
+            <div className="bg-white/10 rounded-2xl p-3 border border-white/15 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">🌱</span>
+                <div>
+                  <h4 className="font-black text-xs text-white">
+                    {studentRecord?.grade === 'صعوبات التعلم'
+                      ? 'برنامج صعوبات التعلم والخطة الفردية'
+                      : studentRecord?.assignedProgram
+                      ? (curriculumPrograms.find(p => p.slug === studentRecord.assignedProgram)?.title || 'المسار التعليمي المعتمد')
+                      : 'المسار التعليمي والتأهيلي الفردي'}
+                  </h4>
+                  <p className="text-[10px] font-bold text-teal-200">معتمد وموثق لدى منصة مسار الذكية ✓</p>
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => setActiveTab('curriculum')}
+                className="text-[11px] font-black bg-white text-teal-900 px-3 py-1.5 rounded-xl shadow-xs hover:bg-teal-50 transition cursor-pointer shrink-0"
+              >
+                فتح المسار
+              </button>
             </div>
           </div>
 
@@ -566,6 +540,143 @@ export default function StudentDashboard() {
   };
 
 
+  // ── Approved Track Tab (طالب مسار — المسار المعتمد) ──────────────────────
+  const renderApprovedTrackTab = () => {
+    // Determine approved programs for Masar student
+    const assignedSlugs = studentRecord?.assignedPrograms || (studentRecord?.assignedProgram ? [studentRecord.assignedProgram] : []);
+    
+    // Fallback: If no assigned programs yet, but student grade or notes indicate 'صعوبات التعلم'
+    let resolvedPrograms = curriculumPrograms.filter((p) => assignedSlugs.includes(p.slug));
+    if (resolvedPrograms.length === 0) {
+      const isDifficulties =
+        studentRecord?.grade === 'صعوبات التعلم' ||
+        studentRecord?.notes?.includes('صعوبات التعلم') ||
+        (studentRecord as any)?.targetProgram === 'learning-difficulties';
+      if (isDifficulties) {
+        resolvedPrograms = curriculumPrograms.filter((p) => p.slug === 'learning-difficulties');
+      }
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Banner */}
+        <div className="bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="absolute -left-8 -bottom-8 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 bg-white/15 rounded-2xl backdrop-blur-xs text-xl">🎯</span>
+              <div>
+                <h2 className="text-base md:text-lg font-black">المسار التعليمي والتأهيلي المعتمد</h2>
+                <p className="text-xs text-teal-100 font-bold">منصة مَسَار الذكية · التعليم الفردي المتخصص</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-black bg-emerald-400/30 border border-emerald-300/40 text-emerald-100 px-3 py-1 rounded-full">
+              {resolvedPrograms.length > 0 ? 'مسار معتمد ✓' : 'قيد التقييم ⏳'}
+            </span>
+          </div>
+          <p className="text-xs text-teal-100/90 leading-relaxed mt-2 font-medium">
+            {resolvedPrograms.length > 0
+              ? 'الخطة الفردية المعتمدة للبطل تحت الإشراف المباشر لاستشاري التعليم الحديث وصعوبات التعلم د. إسماعيل عيسى.'
+              : 'يقوم د. إسماعيل عيسى بمراجعة بيانات وتقييم الطالب لاعتماد المسار المناسب والخطة الفردية.'}
+          </p>
+        </div>
+
+        {resolvedPrograms.length > 0 ? (
+          <div className="space-y-4">
+            {resolvedPrograms.map((prog) => (
+              <div key={prog.slug} className="bg-white rounded-3xl border border-slate-200 p-5 md:p-6 shadow-sm space-y-5">
+                {/* Program Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                        {prog.tag || 'خطة فردية متخصصة'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">⏱️ {prog.duration}</span>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900">{prog.title}</h3>
+                    <p className="text-xs font-bold text-slate-500 mt-1">المستوى: {prog.level}</p>
+                  </div>
+                  <div className="shrink-0">
+                    <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 font-black text-xs px-3 py-1.5 rounded-2xl shadow-2xs">
+                      <CheckCircle size={14} className="text-emerald-600" /> مسار معتمد رسمياً
+                    </span>
+                  </div>
+                </div>
+
+                {/* Promise / Overview */}
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <p className="text-xs font-black text-slate-700 mb-1">💡 فكرة المسار والهدف العام:</p>
+                  <p className="text-xs font-bold text-slate-600 leading-relaxed">{prog.promise}</p>
+                </div>
+
+                {/* Expected Outcomes */}
+                {prog.outcomes && prog.outcomes.length > 0 && (
+                  <div className="space-y-2.5">
+                    <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <span>🎯 أهداف ومخرجات المسار المعتمد:</span>
+                    </h4>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {prog.outcomes.map((outcome, idx) => (
+                        <div key={idx} className="flex items-start gap-2 p-2.5 rounded-xl bg-teal-50/50 border border-teal-100/80 text-xs font-bold text-slate-800">
+                          <span className="text-teal-700 font-black shrink-0 mt-0.5">✓</span>
+                          <span>{outcome}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Training Plan Stages / Modules */}
+                {prog.modules && prog.modules.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <span>📋 مراحل الخطة التدريبية المعتمدة:</span>
+                    </h4>
+                    <div className="space-y-2.5">
+                      {prog.modules.map((mod, idx) => (
+                        <div key={idx} className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-teal-800 bg-teal-100/70 px-2.5 py-0.5 rounded-lg">
+                              {mod.week.startsWith('المرحلة') || mod.week.startsWith('الأسبوع') ? mod.week : `المرحلة: ${mod.week}`}
+                            </span>
+                            <span className="text-xs font-black text-slate-900">{mod.title}</span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-600">🎯 الهدف: {mod.goal}</p>
+                          {mod.mastery && (
+                            <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl inline-block">
+                              🏆 معيار الإتقان: {mod.mastery}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Empty / Pending Doctor Review State */
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm space-y-4">
+            <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+              ⏳
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-slate-900">ملف الطالب قيد مراجعة د. إسماعيل عيسى</h3>
+              <p className="text-xs font-bold text-slate-500 max-w-md mx-auto leading-relaxed">
+                يقوم استشاري التعليم وصعوبات التعلم د. إسماعيل عيسى حالياً بمراجعة تقييم الطالب لتحديد واعتماد المسار التأهيلي الأنسب (مثل صعوبات التعلم، تأسيس القراءة، أو الحساب الذهني). ستظهر الخطة الفردية المعتمدة هنا فور الاعتماد.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2 rounded-2xl text-xs font-black">
+              <span>الحالة: قيد التدقيق الإكلينيكي والاعتماد</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ── Certificates Tab ───────────────────────────────────────────────────────
   const renderCertificatesTab = () => (
     <StudentAchievementsTab
@@ -626,7 +737,7 @@ export default function StudentDashboard() {
             {activeTab === 'home'         && renderHomeTab()}
             {activeTab === 'homework'     && renderHomeworkTab()}
             {activeTab === 'schedule'     && isIkhlas && renderScheduleTab()}
-            {activeTab === 'curriculum'   && renderCurriculumTab()}
+            {activeTab === 'curriculum'   && (isIkhlas ? renderCurriculumTab() : renderApprovedTrackTab())}
             {activeTab === 'certificates' && renderCertificatesTab()}
           </>
         )}
