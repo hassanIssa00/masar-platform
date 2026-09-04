@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -251,11 +251,21 @@ export default function StudentDashboard() {
 
   const isIkhlas = studentRecord?.schoolBranch === 'IKHLAS_JEDDAH';
 
+  const assignedSlugs = useMemo(() => {
+    return studentRecord?.assignedPrograms || (studentRecord?.assignedProgram ? [studentRecord.assignedProgram] : []);
+  }, [studentRecord?.assignedPrograms, studentRecord?.assignedProgram]);
+
+  const resolvedApprovedPrograms = useMemo(() => {
+    return curriculumPrograms.filter((p) => assignedSlugs.includes(p.slug));
+  }, [assignedSlugs]);
+
+  const hasApprovedTrack = resolvedApprovedPrograms.length > 0;
+
   const tabs: Array<{ key: Tab; label: string; icon: any }> = [
     { key: 'home',         label: 'الرئيسية',                                icon: Home },
     { key: 'homework',     label: 'الواجبات',                                icon: BookOpen },
     ...(isIkhlas ? [{ key: 'schedule' as Tab, label: 'الجدول', icon: Clock }] : []),
-    { key: 'curriculum',   label: isIkhlas ? 'المناهج' : 'المسار المعتمد',   icon: isIkhlas ? BookMarked : Award },
+    { key: 'curriculum',   label: isIkhlas ? 'المناهج' : (hasApprovedTrack ? 'المسار المعتمد' : 'مسار الطالب'), icon: isIkhlas ? BookMarked : Award },
     { key: 'certificates', label: 'شهاداتي',                                 icon: Trophy },
   ];
 
@@ -344,46 +354,76 @@ export default function StudentDashboard() {
       ) : (
         /* Masar Platform Student Cards */
         <div className="space-y-4">
-          {/* Quick Approved Track Access */}
-          <div className="bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-800 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
-            <div className="absolute -left-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Award size={20} className="text-teal-200" />
-                <h3 className="font-black text-sm">مسار الطالب المعتمد 🎯</h3>
-              </div>
-              <button
-                onClick={() => setActiveTab('curriculum')}
-                className="text-xs font-black bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-full transition cursor-pointer"
-              >
-                عرض المسار المعتمد ↗
-              </button>
-            </div>
-            <p className="text-xs text-teal-100 font-bold mb-3">
-              خطة التأهيل والتعليم الفردي المعتمدة للبطل تحت إشراف د. إسماعيل عيسى.
-            </p>
-            <div className="bg-white/10 rounded-2xl p-3 border border-white/15 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl">🌱</span>
-                <div>
-                  <h4 className="font-black text-xs text-white">
-                    {studentRecord?.grade === 'صعوبات التعلم'
-                      ? 'برنامج صعوبات التعلم والخطة الفردية'
-                      : studentRecord?.assignedProgram
-                      ? (curriculumPrograms.find(p => p.slug === studentRecord.assignedProgram)?.title || 'المسار التعليمي المعتمد')
-                      : 'المسار التعليمي والتأهيلي الفردي'}
-                  </h4>
-                  <p className="text-[10px] font-bold text-teal-200">معتمد وموثق لدى منصة مسار الذكية ✓</p>
+          {hasApprovedTrack ? (
+            /* Quick Approved Track Access */
+            <div className="bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-800 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
+              <div className="absolute -left-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Award size={20} className="text-teal-200" />
+                  <h3 className="font-black text-sm">مسار الطالب المعتمد 🎯</h3>
                 </div>
+                <button
+                  onClick={() => setActiveTab('curriculum')}
+                  className="text-xs font-black bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-full transition cursor-pointer"
+                >
+                  عرض المسار المعتمد ↗
+                </button>
               </div>
-              <button
-                onClick={() => setActiveTab('curriculum')}
-                className="text-[11px] font-black bg-white text-teal-900 px-3 py-1.5 rounded-xl shadow-xs hover:bg-teal-50 transition cursor-pointer shrink-0"
-              >
-                فتح المسار
-              </button>
+              <p className="text-xs text-teal-100 font-bold mb-3">
+                خطة التأهيل والتعليم الفردي المعتمدة للبطل تحت إشراف د. إسماعيل عيسى.
+              </p>
+              <div className="bg-white/10 rounded-2xl p-3 border border-white/15 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🌱</span>
+                  <div>
+                    <h4 className="font-black text-xs text-white">
+                      {resolvedApprovedPrograms.map((p) => p.title).join(' + ')}
+                    </h4>
+                    <p className="text-[10px] font-bold text-teal-200">معتمد وموثق لدى منصة مسار الذكية ✓</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('curriculum')}
+                  className="text-[11px] font-black bg-white text-teal-900 px-3 py-1.5 rounded-xl shadow-xs hover:bg-teal-50 transition cursor-pointer shrink-0"
+                >
+                  فتح المسار
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Pending Doctor Review & Track Assignment */
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-5 text-white shadow-md relative overflow-hidden border border-slate-700/60">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center justify-center text-sm font-bold">
+                    ⏳
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-white">ملف الطالب قيد مراجعة د. إسماعيل عيسى</h3>
+                    <p className="text-[11px] font-bold text-amber-300">بانتظار تدقيق التقييم واعتماد المسار</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black bg-amber-400/20 border border-amber-400/30 text-amber-300 px-2.5 py-1 rounded-full">
+                  قيد التقييم ⏳
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 font-medium leading-relaxed mb-3.5">
+                يقوم استشاري التعليم وصعوبات التعلم د. إسماعيل عيسى حالياً بدراسة تقييم الطالب لتحديد واعتماد المسار التأهيلي الأنسب (صعوبات تعلم، تأسيس قراءة، أو حساب ذهني). ستظهر الخطة هنا فور اعتمادها.
+              </p>
+              <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-400 text-xs font-bold">⚠️ لم يتم اعتماد مسار للطالب بعد</span>
+                </div>
+                <button
+                  onClick={() => setActiveTab('curriculum')}
+                  className="text-[11px] font-black bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl transition cursor-pointer"
+                >
+                  متابعة حالة الاعتماد ↗
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Educational Games & Challenges */}
           <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
@@ -542,21 +582,6 @@ export default function StudentDashboard() {
 
   // ── Approved Track Tab (طالب مسار — المسار المعتمد) ──────────────────────
   const renderApprovedTrackTab = () => {
-    // Determine approved programs for Masar student
-    const assignedSlugs = studentRecord?.assignedPrograms || (studentRecord?.assignedProgram ? [studentRecord.assignedProgram] : []);
-    
-    // Fallback: If no assigned programs yet, but student grade or notes indicate 'صعوبات التعلم'
-    let resolvedPrograms = curriculumPrograms.filter((p) => assignedSlugs.includes(p.slug));
-    if (resolvedPrograms.length === 0) {
-      const isDifficulties =
-        studentRecord?.grade === 'صعوبات التعلم' ||
-        studentRecord?.notes?.includes('صعوبات التعلم') ||
-        (studentRecord as any)?.targetProgram === 'learning-difficulties';
-      if (isDifficulties) {
-        resolvedPrograms = curriculumPrograms.filter((p) => p.slug === 'learning-difficulties');
-      }
-    }
-
     return (
       <div className="space-y-4">
         {/* Banner */}
@@ -566,24 +591,24 @@ export default function StudentDashboard() {
             <div className="flex items-center gap-2.5">
               <span className="p-2 bg-white/15 rounded-2xl backdrop-blur-xs text-xl">🎯</span>
               <div>
-                <h2 className="text-base md:text-lg font-black">المسار التعليمي والتأهيلي المعتمد</h2>
+                <h2 className="text-base md:text-lg font-black">{hasApprovedTrack ? 'المسار التعليمي والتأهيلي المعتمد' : 'مسار الطالب الفردي'}</h2>
                 <p className="text-xs text-teal-100 font-bold">منصة مَسَار الذكية · التعليم الفردي المتخصص</p>
               </div>
             </div>
             <span className="text-[11px] font-black bg-emerald-400/30 border border-emerald-300/40 text-emerald-100 px-3 py-1 rounded-full">
-              {resolvedPrograms.length > 0 ? 'مسار معتمد ✓' : 'قيد التقييم ⏳'}
+              {hasApprovedTrack ? 'مسار معتمد ✓' : 'قيد التقييم ⏳'}
             </span>
           </div>
           <p className="text-xs text-teal-100/90 leading-relaxed mt-2 font-medium">
-            {resolvedPrograms.length > 0
+            {hasApprovedTrack
               ? 'الخطة الفردية المعتمدة للبطل تحت الإشراف المباشر لاستشاري التعليم الحديث وصعوبات التعلم د. إسماعيل عيسى.'
               : 'يقوم د. إسماعيل عيسى بمراجعة بيانات وتقييم الطالب لاعتماد المسار المناسب والخطة الفردية.'}
           </p>
         </div>
 
-        {resolvedPrograms.length > 0 ? (
+        {hasApprovedTrack ? (
           <div className="space-y-4">
-            {resolvedPrograms.map((prog) => (
+            {resolvedApprovedPrograms.map((prog) => (
               <div key={prog.slug} className="bg-white rounded-3xl border border-slate-200 p-5 md:p-6 shadow-sm space-y-5">
                 {/* Program Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
