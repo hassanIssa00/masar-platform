@@ -8,7 +8,7 @@ import {
   ArrowLeft, ClipboardCheck, FileText, Home, MessageSquareText, UserRoundPlus,
   Send, CheckCircle2, Sparkles, MessageSquare, LogOut, ScanFace, Camera,
   User, BookOpen, Clock, Star, ShieldCheck, GraduationCap, Phone, Video, ExternalLink,
-  Trophy, Medal, Award, Gift
+  Trophy, Medal, Award, Gift, KeyRound
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SyncStatus from '@/components/SyncStatus';
@@ -23,6 +23,7 @@ import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
 function isGeneratedAlias(email?: string | null) {
@@ -43,6 +44,8 @@ export default function ParentDashboard() {
   const [parentName, setParentName] = useState<string>('');
   const [replyText, setReplyText] = useState('');
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState('');
 
   const handleLogout = () => {
     clearSession();
@@ -58,6 +61,7 @@ export default function ParentDashboard() {
 
       // Get session (local cache first, server fallback)
       const session = getSession() ?? await hydrateSessionFromServer();
+      if (session?.email) setSessionEmail(session.email);
       if (cancelled) return;
 
       if (!session) { router.replace('/login'); return; }
@@ -471,6 +475,15 @@ export default function ParentDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowChangePassword(true)}
+                className="flex items-center gap-1.5 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-800 hover:bg-teal-100 transition shadow-2xs cursor-pointer"
+                title="تغيير كلمة المرور للحساب"
+              >
+                <KeyRound size={16} />
+                <span>كلمة المرور</span>
+              </button>
               <Link
                 href="/face-enroll"
                 className="flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
@@ -1104,6 +1117,12 @@ export default function ParentDashboard() {
           })}
         </div>
       </div>
+
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        userEmail={sessionEmail}
+      />
     </div>
   );
 }

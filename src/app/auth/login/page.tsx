@@ -8,18 +8,14 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  KeyRound,
   LogIn,
   ShieldCheck,
   UserRound,
   ScanFace,
-  Mail,
-  Phone,
-  X,
   Loader2,
 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
-import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft, sendPasswordReset } from '@/lib/auth';
+import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
 import { getAccounts, getReports, getStudents, getSurveys, setSession } from '@/lib/cloudStore';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
@@ -65,25 +61,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'find' | 'verify' | 'success'>('find');
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotPhone, setForgotPhone] = useState('');
-  const [forgotNewPassword, setForgotNewPassword] = useState('');
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
-  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState('');
-  const [foundAccount, setFoundAccount] = useState<{
-    name: string;
-    role: string;
-    email: string;
-    hasPhone: boolean;
-    maskedPhone: string;
-    phoneHint: string;
-    linkedStudentName?: string;
-  } | null>(null);
-  const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
   const [message, setMessage] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
@@ -311,112 +288,6 @@ export default function LoginPage() {
     }
   };
 
-  // ─── Forgot Password / Account Recovery ──────────────────────────────────────
-  const handleFindAccount = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const clean = forgotEmail.trim().toLowerCase();
-    if (!clean || !clean.includes('@')) {
-      setForgotError('يرجى إدخال بريد إلكتروني صحيح.');
-      return;
-    }
-    setForgotError('');
-    setForgotLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: clean }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.ok) {
-        setForgotError(data.error || 'لم يتم العثور على حساب مسجل بهذا البريد.');
-        setForgotLoading(false);
-        return;
-      }
-
-      setFoundAccount(data);
-      setForgotStep('verify');
-      setForgotError('');
-      setForgotLoading(false);
-    } catch {
-      setForgotError('تعذر الاتصال بالخادم. تحقق من اتصال الإنترنت وحاول مرة أخرى.');
-      setForgotLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (forgotLoading) return;
-    setForgotError('');
-
-    if (foundAccount?.hasPhone && !forgotPhone.trim()) {
-      setForgotError('يرجى إدخال رقم الجوال المسجل لتأكيد هويتك.');
-      return;
-    }
-
-    if (forgotNewPassword.length < 6) {
-      setForgotError('كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف.');
-      return;
-    }
-
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotError('كلمتا المرور غير متطابقتين.');
-      return;
-    }
-
-    setForgotLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: forgotEmail.trim().toLowerCase(),
-          phone: forgotPhone.trim(),
-          newPassword: forgotNewPassword.trim(),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.ok) {
-        setForgotError(data.error || 'تعذر إعادة تعيين كلمة المرور. تحقق من البيانات وحاول ثانية.');
-        setForgotLoading(false);
-        return;
-      }
-
-      setForgotStep('success');
-      setForgotSuccessMsg(data.message || 'تم تحديث كلمة المرور بنجاح! جاري التوجيه إلى حسابك...');
-      setForgotLoading(false);
-
-      if (data.account) {
-        setSession(data.account, true, false);
-        setTimeout(async () => {
-          closeForgot();
-          await redirectAfterLogin(data.account);
-        }, 1500);
-      }
-    } catch {
-      setForgotError('حدث خطأ أثناء الاتصال بالخادم.');
-      setForgotLoading(false);
-    }
-  };
-
-  const closeForgot = () => {
-    setForgotOpen(false);
-    setForgotStep('find');
-    setForgotEmail('');
-    setForgotPhone('');
-    setForgotNewPassword('');
-    setForgotConfirmPassword('');
-    setShowForgotNewPassword(false);
-    setForgotError('');
-    setForgotLoading(false);
-    setFoundAccount(null);
-    setForgotSuccessMsg('');
-  };
-
   return (
     <div
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50/80 via-slate-50 to-emerald-50/70 p-4 text-slate-900"
@@ -597,14 +468,6 @@ export default function LoginPage() {
                 />
                 تذكرني على هذا الجهاز
               </label>
-              <button
-                type="button"
-                id="btn-forgot-password"
-                onClick={() => { setForgotOpen(true); setForgotEmail(email); }}
-                className="font-black text-teal-700 hover:underline"
-              >
-                نسيت كلمة المرور؟
-              </button>
             </div>
 
             <button
@@ -633,208 +496,6 @@ export default function LoginPage() {
           onCancel={() => setFaceLoginOpen(false)}
           onFallback={() => setFaceLoginOpen(false)}
         />
-      )}
-
-      {/* ── Forgot Password Modal (Instant Account Recovery) ── */}
-      {forgotOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 text-right">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div>
-                <p className="text-xs font-black text-teal-700">استعادة الحساب</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-900">
-                  {forgotStep === 'find' ? 'نسيت كلمة المرور؟' : forgotStep === 'verify' ? 'تعيين كلمة المرور الجديدة' : 'تم استعادة الحساب'}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={closeForgot}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Error Message */}
-            {forgotError && (
-              <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-xs font-bold text-rose-700 leading-relaxed">
-                <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                <span>{forgotError}</span>
-              </div>
-            )}
-
-            {/* Step 1: Find Account */}
-            {forgotStep === 'find' && (
-              <form onSubmit={handleFindAccount} className="space-y-4">
-                <p className="text-sm font-bold text-slate-600 leading-relaxed">
-                  أدخل بريدك الإلكتروني المسجل في المنصة للبحث عن حسابك والبدء في استعادته فوراً.
-                </p>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black text-slate-700">البريد الإلكتروني</span>
-                  <div className="relative">
-                    <Mail size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                      id="input-forgot-email"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      type="email"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
-                      placeholder="name@example.com"
-                      required
-                      autoFocus
-                    />
-                  </div>
-                </label>
-
-                <button
-                  id="btn-find-account"
-                  type="submit"
-                  disabled={forgotLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition disabled:opacity-60 shadow-md shadow-teal-600/20"
-                >
-                  {forgotLoading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <KeyRound size={18} />
-                  )}
-                  {forgotLoading ? 'جارٍ البحث عن الحساب...' : 'متابعة استعادة الحساب 🔍'}
-                </button>
-              </form>
-            )}
-
-            {/* Step 2: Verify Phone & Set New Password */}
-            {forgotStep === 'verify' && foundAccount && (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                {/* Account Info Card */}
-                <div className="rounded-2xl bg-teal-50 border border-teal-200/80 p-3.5 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
-                      {foundAccount.name?.slice(0, 1) || '👤'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black text-teal-950 truncate">
-                        {foundAccount.name}
-                      </p>
-                      <p className="text-[11px] font-bold text-teal-700 truncate" dir="ltr">
-                        {foundAccount.email}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setForgotStep('find'); setForgotError(''); }}
-                    className="text-[11px] font-black text-slate-500 hover:text-teal-800 underline shrink-0 transition"
-                  >
-                    تغيير البريد
-                  </button>
-                </div>
-
-                <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                  {foundAccount.hasPhone
-                    ? `لتأكيد ملكيتك للحساب، أدخل رقم الجوال المسجل بحسابك ${foundAccount.phoneHint ? `(ينتهي بـ ${foundAccount.phoneHint})` : ''} ثم عيّن كلمة المرور الجديدة:`
-                    : 'قم بتعيين كلمة المرور الجديدة لحسابك:'}
-                </p>
-
-                {foundAccount.hasPhone && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-black text-slate-700">رقم الجوال المسجل</span>
-                    <div className="relative">
-                      <Phone size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      <input
-                        id="input-forgot-phone"
-                        value={forgotPhone}
-                        onChange={(e) => setForgotPhone(e.target.value)}
-                        type="tel"
-                        dir="ltr"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition text-right"
-                        placeholder={foundAccount.maskedPhone ? `مثال: ${foundAccount.maskedPhone}` : '05xxxxxxxx'}
-                        required
-                        autoFocus
-                      />
-                    </div>
-                  </label>
-                )}
-
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-black text-slate-700">كلمة المرور الجديدة</span>
-                  <div className="relative">
-                    <KeyRound size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                      id="input-forgot-new-pass"
-                      value={forgotNewPassword}
-                      onChange={(e) => setForgotNewPassword(e.target.value)}
-                      type={showForgotNewPassword ? 'text' : 'password'}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-10 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
-                      placeholder="6 أحرف أو أكثر"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                      tabIndex={-1}
-                    >
-                      {showForgotNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </label>
-
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-black text-slate-700">تأكيد كلمة المرور الجديدة</span>
-                  <div className="relative">
-                    <KeyRound size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                      id="input-forgot-confirm-pass"
-                      value={forgotConfirmPassword}
-                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                      type={showForgotNewPassword ? 'text' : 'password'}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition"
-                      placeholder="أعد كتابة كلمة المرور"
-                      required
-                    />
-                  </div>
-                </label>
-
-                <button
-                  id="btn-save-new-password"
-                  type="submit"
-                  disabled={forgotLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3.5 font-black text-white hover:bg-teal-700 transition disabled:opacity-60 shadow-md shadow-teal-600/20"
-                >
-                  {forgotLoading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <CheckCircle2 size={18} />
-                  )}
-                  {forgotLoading ? 'جارٍ تحديث كلمة المرور...' : 'حفظ كلمة المرور والدخول لحسابي 🚀'}
-                </button>
-              </form>
-            )}
-
-            {/* Step 3: Success State */}
-            {forgotStep === 'success' && (
-              <div className="text-center py-4 space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                  <CheckCircle2 size={36} className="text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-lg font-black text-slate-900">
-                    تم استعادة الحساب بنجاح! 🎉
-                  </p>
-                  <p className="mt-2 text-sm font-bold text-slate-600 leading-relaxed">
-                    {forgotSuccessMsg}
-                  </p>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-xs font-black text-teal-700 pt-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>جاري توجيهك إلى حسابك تلقائياً...</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );

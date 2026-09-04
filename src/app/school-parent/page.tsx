@@ -8,7 +8,7 @@ import {
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
-  Trophy, Medal, Award, Gift
+  Trophy, Medal, Award, Gift, KeyRound
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
@@ -22,6 +22,7 @@ import { getStudentHomeworkLogs } from '@/lib/classDb';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -40,6 +41,8 @@ export default function SchoolParentPage() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [hasSurvey, setHasSurvey] = useState(true);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState('');
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
   const [branch, setBranch] = useState<string>('MASAR');
 
@@ -74,6 +77,7 @@ export default function SchoolParentPage() {
 
       // Set parent name from session directly
       setParentName(session.name || 'ولي الأمر');
+      if (session.email) setSessionEmail(session.email);
 
       // Pull latest data from cloud before searching
       await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges']).catch(() => {});
@@ -251,6 +255,15 @@ export default function SchoolParentPage() {
             {/* Live Notifications Bell */}
             <NotificationBell role="parent" studentId={studentRecord?.id || studentId} />
 
+            {/* Change Password Button */}
+            <button
+              onClick={() => setShowChangePassword(true)}
+              title="تغيير كلمة المرور للحساب"
+              className="w-10 h-10 rounded-2xl bg-teal-50 hover:bg-teal-100 border-2 border-teal-400/60 flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-teal-500/20 text-teal-800"
+            >
+              <KeyRound className="w-5 h-5" />
+            </button>
+
             {/* Student Info Button (User Icon) */}
             <button
               onClick={() => setShowStudentModal(true)}
@@ -263,7 +276,7 @@ export default function SchoolParentPage() {
             <button
               onClick={handleLogout}
               title="تسجيل الخروج"
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>خروج</span>
@@ -836,6 +849,12 @@ export default function SchoolParentPage() {
           </div>
         </div>
       )}
+
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        userEmail={sessionEmail}
+      />
     </div>
   );
 }

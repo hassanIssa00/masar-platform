@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, Shield, Lock, Check, LogOut, LayoutDashboard } from 'lucide-react';
+import { Menu, Shield, Lock, Check, LogOut, LayoutDashboard, KeyRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import Sidebar from '@/components/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { getSession, getStudents, StudentRecord, clearSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 import { findStudentsForParent, findMatchingStudentForParent } from '@/lib/nameMatching';
 
@@ -15,6 +16,8 @@ export default function Navbar({ hideSidebarToggle = false }: { hideSidebarToggl
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [sessionEmail, setSessionEmail] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [mode, setMode] = useState<'parent' | 'student'>('parent');
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [activeStudentId, setActiveStudentId] = useState<string>('');
@@ -31,6 +34,7 @@ export default function Navbar({ hideSidebarToggle = false }: { hideSidebarToggl
     let cancelled = false;
     const loadHeaderState = async () => {
       const session = getSession() ?? await hydrateSessionFromServer();
+      if (session?.email) setSessionEmail(session.email);
       if (cancelled) return;
       const role = session?.role || 'parent';
       const resolvedMode: 'parent' | 'student' = role === 'student' ? 'student' : 'parent';
@@ -173,6 +177,16 @@ export default function Navbar({ hideSidebarToggle = false }: { hideSidebarToggl
               </>
             )}
 
+            {/* Change Password Button */}
+            <button
+              onClick={() => setShowChangePassword(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-black text-teal-800 hover:bg-teal-100 transition shadow-2xs cursor-pointer"
+              title="تغيير كلمة المرور للحساب"
+            >
+              <KeyRound size={15} />
+              <span className="hidden sm:inline">كلمة المرور</span>
+            </button>
+
             {/* Always Visible Direct Logout Button */}
             <button
               onClick={handleLogout}
@@ -188,6 +202,12 @@ export default function Navbar({ hideSidebarToggle = false }: { hideSidebarToggl
         </div>
 
       </nav>
+
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        userEmail={sessionEmail}
+      />
     </>
   );
 }
