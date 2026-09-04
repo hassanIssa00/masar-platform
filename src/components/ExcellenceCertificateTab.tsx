@@ -727,14 +727,22 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 /* ════════════════════════════════════════════════════════════════
    OFFICIAL MASAR PLATFORM CERTIFICATE DESIGN
 ════════════════════════════════════════════════════════════════ */
-export function OfficialMasarCertificateDesign({ form, isPrintTarget = false }: { form: CertData; isPrintTarget?: boolean }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
+export function OfficialMasarCertificateDesign({
+  form,
+  isPrintTarget = false,
+  customId,
+}: {
+  form: CertData;
+  isPrintTarget?: boolean;
+  customId?: string;
+}) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
   const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}`;
 
   return (
     <div
-      id={isPrintTarget ? 'printable-certificate' : 'certificate-preview-only'}
+      id={customId || (isPrintTarget ? 'printable-certificate' : 'certificate-preview-only')}
       dir="rtl"
       style={{
         background: '#ffffff',

@@ -29,6 +29,7 @@ import { normalizeArabicText } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHomeworkModal';
+import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -566,78 +567,12 @@ export default function StudentDashboard() {
 
   // ── Certificates Tab ───────────────────────────────────────────────────────
   const renderCertificatesTab = () => (
-    <div className="space-y-4">
-      <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Trophy size={22} />
-            <h2 className="text-base font-black">شهادات التميز 🏆</h2>
-          </div>
-          <p className="text-xs text-amber-100 font-bold">شهادات التفوق والإنجاز الخاصة بك</p>
-          <p className="text-xs text-amber-100 mt-1">{studentRecord?.fullName || studentName}</p>
-        </div>
-        <button
-          onClick={() => loadCertificates(studentId, studentName, true)}
-          className="flex items-center gap-1 text-xs font-black text-amber-900 bg-white/90 hover:bg-white px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer"
-        >
-          <RefreshCw size={12} /> تحديث
-        </button>
-      </div>
-
-      {certificates.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm space-y-3">
-          <div className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto text-4xl">🏅</div>
-          <h3 className="text-base font-black text-slate-900">لا توجد شهادات بعد</h3>
-          <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
-            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH'
-              ? 'ستظهر شهادات التميز هنا فور منحها لك من د. إسماعيل عيسى. واصل التفوق يا بطل! ⭐'
-              : 'ستظهر شهادات التميز هنا فور منحها لك من معلميك في منصة مَسَار. واصل التفوق يا بطل! ⭐'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {certificates.map(cert => (
-            <div key={cert.id} className="bg-white rounded-3xl border border-amber-200 shadow-sm overflow-hidden">
-              {/* Certificate header */}
-              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 border-b border-amber-100 flex items-center gap-3">
-                <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-2xl">{cert.badge || '🏅'}</div>
-                <div className="flex-1">
-                  <h3 className="font-black text-sm text-slate-900">{cert.title}</h3>
-                  <p className="text-xs font-bold text-amber-700">{cert.programTitle}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-500">{cert.completionDate}</p>
-                  {cert.score > 0 && (
-                    <div className="flex items-center gap-1 justify-end mt-1">
-                      <Star size={10} className="fill-amber-500 text-amber-500" />
-                      <span className="text-xs font-black text-amber-700">{cert.score}%</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Certificate body */}
-              <div className="p-4 space-y-2">
-                {cert.achievement && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-3 py-2">
-                    <p className="text-xs font-black text-emerald-800">🎯 {cert.achievement}</p>
-                  </div>
-                )}
-                {cert.ratingText && <p className="text-xs font-bold text-slate-600">التقدير: {cert.ratingText}</p>}
-                {cert.note && <p className="text-xs text-slate-500 leading-relaxed italic">"{cert.note}"</p>}
-                {cert.doctorName && (
-                  <p className="text-[10px] font-bold text-slate-400 text-left ltr">
-                    — {cert.doctorName} {cert.doctorTitle ? `· ${cert.doctorTitle}` : ''}
-                  </p>
-                )}
-                {cert.certNumber && (
-                  <p className="text-[10px] font-mono text-slate-400">رقم الشهادة: {cert.certNumber}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <StudentAchievementsTab
+      studentId={studentId || studentRecord?.id || ''}
+      studentName={studentRecord?.fullName || studentName}
+      grade={studentRecord?.grade}
+      variant="student"
+    />
   );
 
   return (

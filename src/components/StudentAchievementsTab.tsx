@@ -124,7 +124,15 @@ export default function StudentAchievementsTab({
 
   // Print certificate handler with official Masar design
   const handlePrintCertificate = (cert: StudentCertificateLog) => {
-    const certificate = printFrameRef.current?.querySelector('#printable-certificate')?.outerHTML;
+    let certElement = document.getElementById(`official-cert-${cert.id}`);
+    if (!certElement) {
+      certElement = printFrameRef.current?.querySelector('#printable-certificate') ||
+                    document.querySelector('#printable-certificate') ||
+                    document.querySelector('#certificate-preview-only');
+    }
+    const certificate = certElement?.outerHTML;
+    if (!certificate) return;
+
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((node) => node.outerHTML)
       .join('\n');
@@ -148,15 +156,22 @@ export default function StudentAchievementsTab({
       overflow: hidden;
       background: #ffffff;
     }
-    #printable-certificate {
+    #printable-certificate, [id^="official-cert-"], #certificate-preview-only {
       width: 285mm !important;
       height: 198mm !important;
+      min-height: 0 !important;
       margin: 6mm auto !important;
+      border: 1.2mm double #06392c !important;
+      border-radius: 3.5mm !important;
+      box-shadow:
+        inset 0 0 0 0.45mm #d6a83f,
+        inset 0 0 0 1.25mm rgba(6, 57, 44, 0.16) !important;
+      overflow: hidden !important;
     }
   </style>
 </head>
 <body>
-  ${certificate || ''}
+  ${certificate}
   <script>
     window.addEventListener('load', function() {
       setTimeout(function() { window.print(); }, 400);
@@ -278,87 +293,94 @@ export default function StudentAchievementsTab({
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {certificates.map((cert) => (
-                <div
-                  key={cert.id}
-                  className="relative overflow-hidden rounded-3xl border-2 border-amber-300/70 bg-gradient-to-br from-amber-50/30 via-white to-emerald-50/30 p-6 shadow-sm hover:shadow-md transition space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="space-y-8">
+              {certificates.map((cert) => {
+                const certData = toCertData(cert);
+                const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org'}/verify/${certData.certNumber}?name=${encodeURIComponent(certData.studentName)}&prog=${encodeURIComponent(certData.achievement)}&score=${certData.score}&date=${encodeURIComponent(certData.date)}`;
+
+                return (
+                  <div
+                    key={cert.id}
+                    className="rounded-3xl border-2 border-emerald-800/50 bg-gradient-to-br from-[#06392c] via-[#094838] to-[#04281e] p-4 sm:p-6 shadow-2xl text-white space-y-4"
+                  >
+                    {/* Top Bar with Badge, Title, and Action Buttons */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-emerald-700/50 pb-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black text-xl shadow-sm">
+                        <div className="w-11 h-11 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-2xl shadow-md shrink-0">
                           🏆
                         </div>
                         <div>
-                          <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-                            شهادة تفوق رسمية ✓
-                          </span>
-                          <h4 className="font-black text-base text-slate-950 mt-1">{cert.title}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs bg-emerald-500/30 text-emerald-200 font-black px-2.5 py-0.5 rounded-lg border border-emerald-400/30">
+                              وثيقة تفوق رسمية معتمدة ✓
+                            </span>
+                            <span className="text-xs text-amber-300 font-mono font-black">
+                              {certData.certNumber}
+                            </span>
+                          </div>
+                          <h3 className="font-black text-base sm:text-lg text-white mt-1">
+                            {certData.certTitle} — للبطل {certData.studentName}
+                          </h3>
                         </div>
                       </div>
 
-                      <span className="rounded-full bg-amber-100 border border-amber-300 text-amber-900 px-3 py-1 text-xs font-black font-mono">
-                        %{cert.score || 100}
+                      <div className="flex items-center gap-2 mr-auto sm:mr-0 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handlePrintCertificate(cert)}
+                          className="flex items-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 text-xs font-black transition cursor-pointer shadow-lg active:scale-95"
+                          title="طباعة الشهادة الرسمية أو حفظها بصيغة PDF"
+                        >
+                          <Printer size={15} />
+                          <span>طباعة / تحميل PDF 🖨️</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleShareWhatsApp(cert)}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2.5 text-xs font-black transition cursor-pointer shadow-md active:scale-95"
+                          title="مشاركة الشهادة عبر واتساب"
+                        >
+                          <Send size={14} />
+                          <span>واتساب</span>
+                        </button>
+
+                        <a
+                          href={verifyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-200 hover:text-white px-3.5 py-2.5 text-xs font-black transition border border-white/15 cursor-pointer shadow-xs"
+                          title="التحقق الرقمي ومسح الـ QR"
+                        >
+                          <ShieldCheck size={14} />
+                          <span className="hidden md:inline">التحقق بالـ QR</span>
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* ── THE OFFICIAL MASAR CERTIFICATE DISPLAY ── */}
+                    <div className="overflow-x-auto rounded-2xl bg-slate-900/70 p-2 sm:p-4 border border-emerald-700/40 flex justify-center shadow-inner">
+                      <div className="w-full max-w-4xl min-w-[680px]">
+                        <OfficialMasarCertificateDesign
+                          form={certData}
+                          isPrintTarget={false}
+                          customId={`official-cert-${cert.id}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom Verification & Metadata Line */}
+                    <div className="flex items-center justify-between text-xs text-emerald-200/90 px-2 pt-1 flex-wrap gap-2 border-t border-emerald-800/40">
+                      <span>
+                        ✍️ اعتماد وتوثيق: <strong className="text-white">{certData.doctorName}</strong> ({certData.doctorTitle})
                       </span>
-                    </div>
-
-                    {/* Achievement Details */}
-                    <div className="rounded-2xl bg-white/80 border border-slate-200 p-4 space-y-2">
-                      <div className="text-xs font-bold text-slate-500">مجال التميز والتكريم:</div>
-                      <div className="text-sm font-black text-emerald-950">
-                        {cert.achievement || cert.programTitle || 'التميز الدراسي والأكاديمي'}
-                      </div>
-                      <div className="text-xs font-black text-amber-700">
-                        ⭐ التقدير: {cert.ratingText || 'ممتاز مع مرتبة الشرف'}
-                      </div>
-                      {cert.note && (
-                        <p className="text-xs font-bold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
-                          "{cert.note}"
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Metadata */}
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1">
-                      <span>المشرف: {cert.doctorName || 'د. إسماعيل عيسى'}</span>
-                      <span className="font-mono">
-                        {cert.completionDate || new Date(cert.createdAt).toLocaleDateString('ar-EG')}
+                      <span>
+                        📅 تاريخ الإصدار: <strong className="text-amber-300">{certData.date}</strong>
                       </span>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCert(cert)}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-white py-2.5 text-xs font-black transition cursor-pointer shadow-xs"
-                    >
-                      <Eye size={14} /> معاينة الشهادة
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handlePrintCertificate(cert)}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-black transition cursor-pointer shadow-xs"
-                      title="طباعة الشهادة الرسمية"
-                    >
-                      <Printer size={14} /> طباعة / PDF
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleShareWhatsApp(cert)}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 text-xs font-black transition cursor-pointer shadow-xs"
-                      title="مشاركة على WhatsApp"
-                    >
-                      <Send size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
