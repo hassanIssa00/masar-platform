@@ -144,7 +144,6 @@ export default function LoginPage() {
       // ── Parent login ──
       await pullCloudDataToLocal(['students', 'accounts', 'surveys']).catch(() => {});
       const allStudents = getStudents();
-      const allSurveys = getSurveys();
       const parentProfile = {
         ...account,
         id: account.id,
@@ -156,30 +155,9 @@ export default function LoginPage() {
         ? allStudents.find((s) => s.id === account.linkedStudentId)
         : findMatchingStudentForParent(parentProfile, allStudents);
 
-      const hasSurvey = linkedStudent ? allSurveys.some(
-        (s) => s.studentId === linkedStudent.id ||
-        (account.email && s.parentEmail?.toLowerCase() === account.email.toLowerCase()) ||
-        (account.phone && s.parentPhone === account.phone)
-      ) : false;
-
-      // Check if parent has completed their personal profile (name, age, children count, national ID)
-      const isParentProfileComplete = Boolean(
-        (account as any)?.parentProfileComplete ||
-        ((account as any)?.parentAge && (account as any)?.childrenCount && (account as any)?.parentNationalId)
-      );
-
-      if (!isParentProfileComplete || account.onboardingRequired || isPlaceholder(account.name)) {
-        // STEP 1: Parent must complete their own profile data first (age, children count, national ID, etc.)
-        const sid = linkedStudent?.id || account.linkedStudentId || '';
-        targetUrl = `/student/new?flow=parent${sid ? `&student=${encodeURIComponent(sid)}` : ''}`;
-      } else if (!hasSurvey && linkedStudent) {
-        // STEP 2: Parent data filled, but no survey → go to survey
-        targetUrl = `/survey?student=${encodeURIComponent(linkedStudent.id)}&flow=parent`;
-      } else {
-        // STEP 3: Everything is complete → go to parent dashboard
-        const sParam = linkedStudent ? `?student=${encodeURIComponent(linkedStudent.id)}` : '';
-        targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
-      }
+      // Direct parents directly to their dashboard without looping to registration wizard
+      const sParam = linkedStudent ? `?student=${encodeURIComponent(linkedStudent.id)}` : '';
+      targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
     }
 
     if (typeof window !== 'undefined') {

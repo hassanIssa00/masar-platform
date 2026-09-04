@@ -546,7 +546,8 @@ async function getOnboardingRequiredForLinkedStudent(
   if (!hasCompletedStudentProfile(student)) return true;
 
   if (role === 'parent') {
-    return !(await hasStudentSurvey(adminDb, student, account));
+    // If parent has a linked student, they do not require onboarding (surveys are optional/in-portal)
+    return false;
   }
 
   return !(await hasStudentReport(adminDb, student, ['student-assessment-answers', 'student-assessment-analysis', 'placement']));

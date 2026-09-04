@@ -120,40 +120,7 @@ export default function SchoolParentPage() {
 
       if (linked) {
         setStudentRecord(linked);
-
-        const allSurveys = getSurveys();
-        // surveyDone: check survey records OR onboardingRequired===false (set by survey page before navigation)
-        const surveyRecordFound = allSurveys.some(
-          (s) => s.studentId === linked?.id ||
-          (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
-          (session?.phone && s.parentPhone === session.phone)
-        );
-        const surveyDone = surveyRecordFound || (session as any)?.onboardingRequired === false;
-        setHasSurvey(surveyDone);
-
-        const isParentProfileComplete = Boolean(
-          (parentAcc as any)?.parentProfileComplete ||
-          (session as any)?.parentProfileComplete ||
-          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId) ||
-          ((session as any)?.parentAge && (session as any)?.childrenCount && (session as any)?.parentNationalId)
-        );
-
-        // Only redirect to data form if profile is NOT complete AND survey is also NOT done.
-        // If survey is already done, the parent went through the full flow — don't loop them back.
-        if (!isParentProfileComplete && !surveyDone) {
-          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(linked.id)}`);
-          return;
-        }
-
-        // If survey is NOT done (and profile IS complete), redirect to complete the survey first
-        if (!surveyDone) {
-          router.replace(`/survey?student=${encodeURIComponent(linked.id)}&flow=parent`);
-          return;
-        }
-      } else {
-        // No linked student found — redirect to data form to fill student info
-        router.replace('/student/new?flow=parent');
-        return;
+        setHasSurvey(true);
       }
     };
     void loadSchoolParent();

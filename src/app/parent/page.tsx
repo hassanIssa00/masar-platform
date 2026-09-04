@@ -229,29 +229,6 @@ export default function ParentDashboard() {
         const surveyDone = surveyRecordFound || (session as any)?.onboardingRequired === false;
         setHasSurvey(surveyDone);
 
-        const isParentProfileComplete = Boolean(
-          (parentAcc as any)?.parentProfileComplete ||
-          (session as any)?.parentProfileComplete ||
-          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId) ||
-          ((session as any)?.parentAge && (session as any)?.childrenCount && (session as any)?.parentNationalId)
-        );
-
-        // Only redirect to data form if profile is NOT complete AND survey is also NOT done.
-        // If survey is already done, the parent went through the full flow already — don't loop them back.
-        if ((!isParentProfileComplete) && !surveyDone) {
-          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(targetId)}`);
-          return;
-        }
-
-        // If survey is NOT done (and profile IS complete), redirect to survey
-        if (!surveyDone) {
-          router.replace(`/survey?student=${encodeURIComponent(targetId)}&flow=parent`);
-          return;
-        }
-      } else {
-        // No linked students found — redirect to data form
-        router.replace('/student/new?flow=parent');
-        return;
       }
       const localHw = getLocalHomework();
       const allClassHw: HomeworkRecord[] = getStudentHomeworkLogs(selectedStudentId || (myStudents[0] ? myStudents[0].id : '')).map((h) => ({
@@ -532,6 +509,28 @@ export default function ParentDashboard() {
             >
               <span>تعبئة الاستبيان الآن</span>
               <ArrowLeft size={14} />
+            </Link>
+          </div>
+        )}
+
+        {/* Empty state when no student is linked yet */}
+        {students.length === 0 && (
+          <div className="rounded-3xl border-2 border-dashed border-teal-200 bg-teal-50/60 p-8 text-center space-y-4 animate-fade-in">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-teal-100 text-teal-800 flex items-center justify-center text-3xl font-black shadow-inner">
+              👨‍👧
+            </div>
+            <div className="max-w-md mx-auto">
+              <h3 className="text-base font-black text-slate-900">لم يتم ربط طالب بحسابك بعد</h3>
+              <p className="text-xs font-bold text-slate-600 mt-1">
+                يمكنك تسجيل بيانات طفلك أو ربط حسابه لمتابعة تقاريره وخطته التعليمية مباشرة مع د. إسماعيل عيسى.
+              </p>
+            </div>
+            <Link
+              href="/student/new?flow=parent"
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 hover:bg-teal-800 px-6 py-3 text-xs font-black text-white transition shadow-md"
+            >
+              <span>تسجيل بيانات طفل جديد</span>
+              <ArrowLeft size={16} />
             </Link>
           </div>
         )}

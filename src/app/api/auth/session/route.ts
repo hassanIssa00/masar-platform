@@ -64,7 +64,7 @@ async function getOnboardingRequired(
   if (role !== 'parent' && role !== 'student') return false;
   if (!student) return true;
   if (!hasCompletedStudentProfile(student)) return true;
-  if (role === 'parent') return !(await hasParentSurvey(adminDb, student, account.email, account.phone));
+  if (role === 'parent') return false;
   return !(await hasReportType(adminDb, student, ['student-assessment-answers', 'student-assessment-analysis', 'placement']));
 }
 
