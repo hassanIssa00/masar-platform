@@ -18,6 +18,11 @@ export type AccountRecord = {
   lastLoginAt?: string;
   photoUrl?: string;
   onboardingRequired?: boolean;
+  parentProfileComplete?: boolean;
+  parentAge?: string | number;
+  childrenCount?: string | number;
+  parentNationalId?: string;
+  parentNotes?: string;
   linkedStudentId?: string;
   linkedStudentEmail?: string;
   linkedStudentName?: string;
@@ -39,6 +44,9 @@ export type StudentRecord = {
   parentEmail?: string;
   parentName?: string;
   parentPhone?: string;
+  parentAge?: string | number;
+  childrenCount?: string | number;
+  parentNationalId?: string;
   photoUrl?: string;
   notes?: string;
   reviewStatus?: 'awaiting-survey' | 'awaiting-doctor-review' | 'program-assigned';

@@ -147,21 +147,22 @@ export default function LoginPage() {
         (account.phone && s.parentPhone === account.phone)
       ) : false;
 
-      const studentProfileComplete = linkedStudent && !isPlaceholder(linkedStudent.fullName);
+      // Check if parent has completed their personal profile (name, age, children count, national ID)
+      const isParentProfileComplete = Boolean(
+        (account as any)?.parentProfileComplete ||
+        ((account as any)?.parentAge && (account as any)?.childrenCount && (account as any)?.parentNationalId)
+      );
 
-      if (!linkedStudent || isPlaceholder(linkedStudent?.fullName)) {
-        // STEP 1: Student profile not yet filled → go to data form
+      if (!isParentProfileComplete || account.onboardingRequired || isPlaceholder(account.name)) {
+        // STEP 1: Parent must complete their own profile data first (age, children count, national ID, etc.)
         const sid = linkedStudent?.id || account.linkedStudentId || '';
         targetUrl = `/student/new?flow=parent${sid ? `&student=${encodeURIComponent(sid)}` : ''}`;
-      } else if (account.onboardingRequired || isPlaceholder(account.name)) {
-        // STEP 2: Student profile is filled, but parent hasn't filled their OWN data yet → data form (parent-only fields)
-        targetUrl = `/student/new?flow=parent&student=${encodeURIComponent(linkedStudent.id)}`;
-      } else if (!hasSurvey) {
-        // STEP 3: Parent data filled, but no survey → go to survey
+      } else if (!hasSurvey && linkedStudent) {
+        // STEP 2: Parent data filled, but no survey → go to survey
         targetUrl = `/survey?student=${encodeURIComponent(linkedStudent.id)}&flow=parent`;
       } else {
-        // STEP 4: Everything is complete → go to parent dashboard
-        const sParam = `?student=${encodeURIComponent(linkedStudent.id)}`;
+        // STEP 3: Everything is complete → go to parent dashboard
+        const sParam = linkedStudent ? `?student=${encodeURIComponent(linkedStudent.id)}` : '';
         targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
       }
     }

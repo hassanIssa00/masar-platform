@@ -117,6 +117,17 @@ export default function SchoolParentPage() {
 
       if (linked) {
         setStudentRecord(linked);
+
+        const isParentProfileComplete = Boolean(
+          (parentAcc as any)?.parentProfileComplete ||
+          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
+        );
+
+        if (!isParentProfileComplete || (session as any)?.onboardingRequired) {
+          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(linked.id)}`);
+          return;
+        }
+
         const allSurveys = getSurveys();
         const surveyDone = allSurveys.some(
           (s) => s.studentId === linked?.id ||

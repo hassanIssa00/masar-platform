@@ -216,6 +216,17 @@ export default function ParentDashboard() {
       if (myStudents.length > 0) {
         const targetId = (activeId && myStudents.some((s) => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
+
+        const isParentProfileComplete = Boolean(
+          (parentAcc as any)?.parentProfileComplete ||
+          ((parentAcc as any)?.parentAge && (parentAcc as any)?.childrenCount && (parentAcc as any)?.parentNationalId)
+        );
+
+        if (!isParentProfileComplete || (session as any)?.onboardingRequired) {
+          router.replace(`/student/new?flow=parent&student=${encodeURIComponent(targetId)}`);
+          return;
+        }
+
         const allSurveys = getSurveys();
         const surveyDone = allSurveys.some(
           (s) => s.studentId === targetId ||

@@ -157,21 +157,11 @@ export default function RegisterPage() {
   const routeRegisteredAccount = (type: typeof accountType, branch: typeof schoolBranch) => {
     if (type === 'parent') {
       const allStudents = getStudents();
-      const allSurveys = getSurveys();
       const session = getSession();
       const matched = findMatchingStudentForParent(session || { name: parentName, phone, email }, allStudents);
-      if (matched) {
-        const hasSurvey = allSurveys.some(
-          (s) => s.studentId === matched.id ||
-          (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
-          (session?.phone && s.parentPhone === session.phone)
-        );
-        if (!hasSurvey) {
-          router.push(`/survey?student=${matched.id}&flow=parent`);
-          return;
-        }
-      }
-      router.push(matched ? `/student/new?flow=parent&student=${matched.id}` : getMasarStartPath(type));
+      const studentParam = matched?.id || (session as any)?.linkedStudentId || '';
+      // Always direct parent to complete parent profile (name, age, children count, national ID, phone) first
+      router.push(`/student/new?flow=parent${studentParam ? `&student=${encodeURIComponent(studentParam)}` : ''}`);
       return;
     }
     if (type === 'student') {
