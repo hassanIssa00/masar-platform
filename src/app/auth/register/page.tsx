@@ -504,18 +504,6 @@ export default function RegisterPage() {
 
     setTimeout(() => {
       if (accountType === 'parent') {
-        if (matchingStudent) {
-          const allSurveys = getSurveys();
-          const hasSurvey = allSurveys.some(
-            (s) => s.studentId === matchingStudent.id ||
-            (cleanEmail && s.parentEmail?.toLowerCase() === cleanEmail) ||
-            (fullPhone && s.parentPhone === fullPhone)
-          );
-          if (!hasSurvey) {
-            router.push(`/survey?student=${matchingStudent.id}&flow=parent`);
-            return;
-          }
-        }
         router.push(matchingStudent ? `/student/new?flow=parent&student=${matchingStudent.id}` : '/student/new?flow=parent');
       } else if (accountType === 'student') {
         router.push(matchingStudent ? `/student/new?flow=student&student=${matchingStudent.id}` : '/student/new?flow=student');
