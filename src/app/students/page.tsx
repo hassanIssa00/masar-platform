@@ -393,46 +393,77 @@ export default function StudentsControlPage() {
 
   const handleDeleteStudent = async (studentId: string) => {
     setConfirmDeleteId(null);
-    await deleteStudent(studentId);
-    await refresh();
-    setMessage('تم حذف ملف الطالب وكافة بياناته وسجلاته بنجاح.');
-    setTimeout(() => setMessage(''), 4000);
-  };
-
-  const handleDeleteAllStudents = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل من قاعدة البيانات السحابية؟ سيتم مسح ملفات الطلاب وحسابات الطلاب وأولياء الأمور والتقارير المرتبطة.')) return;
     setLoading(true);
     try {
       const response = await fetch('/api/students/purge', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'students' }),
+        body: JSON.stringify({ studentId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || 'تعذر حذف الطالب من السحابة.');
+      }
+      await deleteStudent(studentId);
+      clearCloudCache();
+      clearSnapshotBackoff();
+      if (selectedId === studentId) {
+        setSelectedId('');
+      }
+      await refresh();
+      setMessage('تم حذف ملف الطالب وحسابه وحساب ولي أمره وكافة بياناته وسجلاته نهائياً بنجاح ✅.');
+    } catch (err: any) {
+      await deleteStudent(studentId);
+      await refresh();
+      setMessage(err?.message || 'تم حذف ملف الطالب وسجلاته.');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(''), 5000);
+    }
+  };
+
+  const handleDeleteAllStudents = async () => {
+    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل من قاعدة البيانات السحابية؟ سيتم مسح ملفات الطلاب وحسابات الطلاب وأولياء الأمور بالكامل وحذفها نهائياً من قاعدة البيانات.')) return;
+    setLoading(true);
+    try {
+      const response = await fetch('/api/students/purge', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'all' }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.error || 'تعذر حذف الطلاب من السحابة.');
       }
-      // Clear all local caches including class students — deleted data must never return
       clearCloudCache();
       clearSnapshotBackoff();
-      // Also wipe every key the server says to clear
+      // Wipe every key the server says to clear
       if (payload.clientCacheToClear && Array.isArray(payload.clientCacheToClear)) {
         payload.clientCacheToClear.forEach((key: string) => {
           try { localStorage.removeItem(key); } catch {}
           try { sessionStorage.removeItem(key); } catch {}
         });
       }
+      // Preserve doctor accounts locally
+      const allAccounts = getAccounts();
+      const nonStudentAccounts = allAccounts.filter((a) => a.role === 'doctor' || a.email?.toLowerCase().includes('ismail'));
+      localStorage.setItem('masar.accounts.v1', JSON.stringify(nonStudentAccounts));
+      localStorage.setItem('masar.students.v1', JSON.stringify([]));
+      localStorage.setItem('masar.reports.v1', JSON.stringify([]));
+      localStorage.setItem('masar.surveys.v1', JSON.stringify([]));
+
       setStudents([]);
       setReports([]);
       setSelectedId('');
-      setMessage(`تم حذف جميع الطلاب نهائياً من قاعدة البيانات السحابية (${payload.deletedStudents || 0} طالب).`);
+      setMessage(`تم حذف جميع الطلاب وحساباتهم وحسابات أولياء أمورهم بالكامل من قاعدة البيانات (${payload.deletedStudents || 0} طالب، ${payload.deletedAccounts || 0} حساب).`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'تعذر حذف جميع الطلاب من السحابة.');
     } finally {
       setLoading(false);
     }
-    setTimeout(() => setMessage(''), 4000);
+    setTimeout(() => setMessage(''), 5000);
   };
 
   const handleBroadcastAssessment = async () => {
@@ -1185,7 +1216,11 @@ export default function StudentsControlPage() {
               <h3 className="text-xl font-black text-slate-900">تأكيد حذف الطالب</h3>
             </div>
             <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed">
-              هل أنت تأكد من حذف ملف الطالب <span className="font-black text-slate-900">"{selectedStudent?.fullName}"</span> بشكل نهائي؟ ستلغى جميع التقارير والرسائل الخاصة به.
+              هل أنت متأكد من حذف ملف الطالب <span className="font-black text-slate-900">&quot;{students.find((s) => s.id === confirmDeleteId)?.fullName || selectedStudent?.fullName}&quot;</span> نهائياً؟
+              <br />
+              <span className="text-rose-600 font-black mt-1.5 block">
+                ⚠️ سيتم حذف ملف الطالب وحسابه وحساب ولي أمره وكافة التقارير والاستبيانات نهائياً من قاعدة البيانات.
+              </span>
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button

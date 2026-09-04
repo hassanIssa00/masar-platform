@@ -1,6 +1,6 @@
 'use client';
 
-import { clearCloudCache, deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
+import { clearCloudCache, clearSnapshotBackoff, deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export type UserRole = 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
 
@@ -493,6 +493,9 @@ export async function deleteStudent(studentId: string) {
     .replace(/ى/g, 'ي')
     .replace(/\s+/g, ' ')
     .trim();
+  const cleanPhone = (v?: string | null) => (v || '').replace(/\D/g, '');
+  const cleanEmail = (v?: string | null) => (v || '').trim().toLowerCase();
+
   const targetName = normalizeName(student?.fullName);
   const studentsToDelete = students.filter((item) =>
     item.id === studentId ||
@@ -500,24 +503,87 @@ export async function deleteStudent(studentId: string) {
     item.linkedStudentId === studentId ||
     (targetName && normalizeName(item.fullName) === targetName)
   );
-  const studentIdsToDelete = new Set([studentId, ...studentsToDelete.map((item) => item.id), ...studentsToDelete.map((item) => item.studentAccountId || ''), ...studentsToDelete.map((item) => item.linkedStudentId || '')].filter(Boolean));
+  const studentIdsToDelete = new Set([
+    studentId,
+    ...studentsToDelete.map((item) => item.id),
+    ...studentsToDelete.map((item) => item.studentAccountId || ''),
+    ...studentsToDelete.map((item) => item.linkedStudentId || ''),
+  ].filter(Boolean));
   const studentNamesToDelete = new Set(studentsToDelete.map((item) => normalizeName(item.fullName)).filter(Boolean));
-  
-  // 1. Remove the student and any hidden duplicate records locally and in the cloud.
+  const parentAccountIdsToDelete = new Set([
+    ...studentsToDelete.map((item) => item.parentAccountId || ''),
+    ...studentsToDelete.map((item) => item.linkedParentId || ''),
+  ].filter(Boolean));
+  const parentNamesToDelete = new Set(studentsToDelete.map((item) => normalizeName(item.parentName)).filter(Boolean));
+  const parentPhoneSuffixes = new Set(studentsToDelete.map((item) => cleanPhone(item.parentPhone).slice(-8)).filter(Boolean));
+  const parentEmailsToDelete = new Set(studentsToDelete.map((item) => cleanEmail(item.parentEmail)).filter(Boolean));
+  const studentEmailsToDelete = new Set([
+    ...studentsToDelete.map((item) => cleanEmail(item.email)),
+    ...studentsToDelete.map((item) => cleanEmail(item.recoveryEmail)),
+    ...studentsToDelete.map((item) => cleanEmail(item.linkedStudentEmail)),
+  ].filter(Boolean));
+
+  // 1. Trigger server-side purge (Firestore + Firebase Auth + all 22 collections)
+  if (typeof window !== 'undefined') {
+    try {
+      await fetch('/api/students/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ studentId }),
+      });
+    } catch (e) {
+      console.warn('[deleteStudent] Server purge call error:', e);
+    }
+  }
+
+  // 2. Remove the student and any hidden duplicate records locally and in the cloud
   writeList(KEYS.students, students.filter((item) => !studentIdsToDelete.has(item.id) && !studentNamesToDelete.has(normalizeName(item.fullName))));
   for (const id of studentIdsToDelete) {
     await deleteDocFromCloud('students', id);
   }
 
-  // 2. Remove matching student accounts
+  // 3. Remove student accounts AND parent accounts locally and in the cloud
   const accounts = getAccounts();
-  const matchingAccounts = accounts.filter((a) => studentIdsToDelete.has(a.id) || (a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId)));
+  const matchingAccounts = accounts.filter((a) => {
+    const role = (a.role || '').toLowerCase();
+    const isDoctor = role === 'doctor' || cleanEmail(a.email).includes('ismail');
+    if (isDoctor) return false; // NEVER delete doctor accounts
+
+    const email = cleanEmail(a.email);
+    const phoneSuffix = cleanPhone(a.phone).slice(-8);
+    const nameNorm = normalizeName(a.name);
+
+    // Is it the student account?
+    const isStudentAcc =
+      role === 'student' && (
+        studentIdsToDelete.has(a.id) ||
+        (!!a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId)) ||
+        (!!email && studentEmailsToDelete.has(email)) ||
+        (!!nameNorm && studentNamesToDelete.has(nameNorm))
+      );
+
+    // Is it the parent account?
+    const isParentAcc =
+      role === 'parent' && (
+        parentAccountIdsToDelete.has(a.id) ||
+        studentIdsToDelete.has(a.id) ||
+        (!!a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId)) ||
+        (!!email && parentEmailsToDelete.has(email)) ||
+        (!!phoneSuffix && parentPhoneSuffixes.has(phoneSuffix)) ||
+        (!!nameNorm && parentNamesToDelete.has(nameNorm))
+      );
+
+    return isStudentAcc || isParentAcc || studentIdsToDelete.has(a.id) || parentAccountIdsToDelete.has(a.id);
+  });
+
   for (const acc of matchingAccounts) {
     await deleteDocFromCloud('accounts', acc.id);
   }
-  writeList(KEYS.accounts, accounts.filter((a) => !studentIdsToDelete.has(a.id) && !(a.linkedStudentId && studentIdsToDelete.has(a.linkedStudentId))));
+  const matchingAccountIds = new Set(matchingAccounts.map((a) => a.id));
+  writeList(KEYS.accounts, accounts.filter((a) => !matchingAccountIds.has(a.id)));
 
-  // 3. Remove all their reports
+  // 4. Remove all their reports
   const reports = readList<ReportRecord>(KEYS.reports);
   const studentReps = reports.filter((item) => (item.studentId && studentIdsToDelete.has(item.studentId)) || studentNamesToDelete.has(normalizeName(item.studentName)));
   for (const r of studentReps) {
@@ -525,7 +591,7 @@ export async function deleteStudent(studentId: string) {
   }
   writeList(KEYS.reports, reports.filter((item) => !(item.studentId && studentIdsToDelete.has(item.studentId)) && !studentNamesToDelete.has(normalizeName(item.studentName))));
 
-  // 4. Remove all their messages
+  // 5. Remove all their messages
   const messages = readList<MessageRecord>(KEYS.messages);
   const studentMsgs = messages.filter((item) => Boolean(item.studentId && studentIdsToDelete.has(item.studentId)));
   for (const m of studentMsgs) {
@@ -533,13 +599,17 @@ export async function deleteStudent(studentId: string) {
   }
   writeList(KEYS.messages, messages.filter((item) => !item.studentId || !studentIdsToDelete.has(item.studentId)));
 
-  // 5. Remove all their surveys
+  // 6. Remove all their surveys
   const surveys = readList<SurveySubmission>(KEYS.surveys);
   const studentSurveys = surveys.filter((item) => (item.studentId && studentIdsToDelete.has(item.studentId)) || studentNamesToDelete.has(normalizeName(item.studentName)));
   for (const s of studentSurveys) {
     await deleteDocFromCloud('surveys', s.id);
   }
   writeList(KEYS.surveys, surveys.filter((item) => !(item.studentId && studentIdsToDelete.has(item.studentId)) && !studentNamesToDelete.has(normalizeName(item.studentName))));
+
+  // 7. Clear cloud cache and backoff to ensure fresh reads
+  clearCloudCache();
+  clearSnapshotBackoff();
 
   if (student) {
     saveActivity({

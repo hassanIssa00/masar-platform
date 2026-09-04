@@ -19,7 +19,7 @@ import {
   type AnalyticsSummary, type AnalyticsEvent, type PlatformConfig, DEFAULT_CONFIG,
 } from '@/lib/analyticsTracker';
 import { getAccounts, getStudents, getReports, getSurveys, saveAccount, saveStudent, clearAllMockData, type AccountRecord } from '@/lib/cloudStore';
-import { clearCloudCache, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
+import { clearCloudCache, clearSnapshotBackoff, deleteDocFromCloud, pullServerSnapshotToLocal } from '@/lib/firestoreSync';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -1004,11 +1004,25 @@ export default function PlatformSettingsPage() {
                               <td className="px-4 py-3">
                                 <button
                                   onClick={async () => {
-                                    if (!confirm(`هل تريد حذف حساب "${acc.name}"؟`)) return;
+                                    if (!confirm(`هل تريد حذف حساب "${acc.name}" نهائياً من قاعدة البيانات والسحابة؟`)) return;
+                                    try {
+                                      await fetch('/api/students/purge', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({ accountId: acc.id }),
+                                      });
+                                    } catch {}
                                     await deleteDocFromCloud('accounts', acc.id);
                                     setAccounts((prev) => prev.filter((a) => a.id !== acc.id));
+                                    try {
+                                      const cur = getAccounts().filter((a) => a.id !== acc.id);
+                                      localStorage.setItem('masar.accounts.v1', JSON.stringify(cur));
+                                    } catch {}
+                                    clearCloudCache();
+                                    clearSnapshotBackoff();
                                   }}
-                                  className="flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-black text-rose-700 hover:bg-rose-100 transition"
+                                  className="flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-black text-rose-700 hover:bg-rose-100 transition cursor-pointer"
                                 >
                                   <UserMinus size={12} /> حذف
                                 </button>

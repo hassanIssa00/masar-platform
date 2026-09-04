@@ -77,13 +77,18 @@ export async function POST(req: NextRequest) {
     // 2. Clean test accounts from Firestore (keep Dr. Ismail and doctor accounts)
     try {
       const accSnap = await adminDb.collection('accounts').get();
+      const isDoctor = (email?: string | null, role?: string | null) => {
+        const e = (email || '').trim().toLowerCase();
+        const r = (role || '').trim().toLowerCase();
+        return r === 'doctor' || e === 'dr.ismail@masar.com' || e === 'ismail@masarplatform.com' || e.startsWith('dr.ismail@');
+      };
+
       if (!accSnap.empty) {
         const batch = adminDb.batch();
         let deleted = false;
         accSnap.docs.forEach((doc) => {
           const data = doc.data();
-          const email = (data.email || '').toLowerCase();
-          if (email !== 'dr.ismail@masar.com' && data.role !== 'doctor') {
+          if (!isDoctor(data.email, data.role)) {
             batch.delete(doc.ref);
             deleted = true;
           }
@@ -104,7 +109,7 @@ export async function POST(req: NextRequest) {
           credSnap.docs.forEach((doc) => {
             const data = doc.data();
             const email = (data.email || '').toLowerCase();
-            if (email !== 'dr.ismail@masar.com') {
+            if (email !== 'dr.ismail@masar.com' && email !== 'ismail@masarplatform.com') {
               batch.delete(doc.ref);
               deleted = true;
             }
@@ -116,13 +121,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Clean Firebase Auth users (keep Dr. Ismail)
+    // 4. Clean Firebase Auth users (keep Dr. Ismail and doctor accounts)
     try {
       const adminAuth = await getAdminAuth();
       if (adminAuth) {
         const listUsersResult = await adminAuth.listUsers(1000);
         const uidsToDelete = listUsersResult.users
-          .filter((u) => (u.email || '').toLowerCase() !== 'dr.ismail@masar.com')
+          .filter((u) => {
+            const em = (u.email || '').toLowerCase();
+            return em !== 'dr.ismail@masar.com' && em !== 'ismail@masarplatform.com' && !em.startsWith('dr.ismail@');
+          })
           .map((u) => u.uid);
         if (uidsToDelete.length > 0) {
           // Delete users in chunks of 500
