@@ -1,8 +1,19 @@
 'use client';
 
-import { readCloudCache, syncDocToCloud, subscribeToCloudCollection, writeCloudCache } from './firestoreSync';
+import { readCloudCache, syncDocToCloud, subscribeToCloudCollection, writeCloudCache, deleteDocFromCloud } from './firestoreSync';
 
-export type NotificationType = 'survey' | 'report' | 'meeting' | 'message' | 'student' | 'system' | 'achievement';
+export type NotificationType =
+  | 'survey'
+  | 'report'
+  | 'meeting'
+  | 'message'
+  | 'student'
+  | 'system'
+  | 'achievement'
+  | 'homework'
+  | 'assessment';
+
+export type TargetRole = 'doctor' | 'parent' | 'student' | 'all';
 
 export interface AppNotification {
   id: string;
@@ -12,16 +23,20 @@ export interface AppNotification {
   link?: string;
   read: boolean;
   createdAt: string;
+  targetRole?: TargetRole;
+  studentId?: string;
+  studentName?: string;
+  targetUserId?: string;
 }
 
 const LOCAL_KEY = 'masar.notifications.v1';
 
-function getLocalNotifications(): AppNotification[] {
+export function getLocalNotifications(): AppNotification[] {
   if (typeof window === 'undefined') return [];
   return readCloudCache<AppNotification>(LOCAL_KEY);
 }
 
-function saveLocalNotifications(items: AppNotification[]) {
+export function saveLocalNotifications(items: AppNotification[]) {
   if (typeof window === 'undefined') return;
   writeCloudCache(LOCAL_KEY, items);
 }
@@ -35,7 +50,7 @@ export async function createNotification(notif: Omit<AppNotification, 'id' | 're
   };
 
   const current = getLocalNotifications();
-  saveLocalNotifications([item, ...current].slice(0, 50));
+  saveLocalNotifications([item, ...current].slice(0, 60));
 
   await syncDocToCloud('notifications', item.id, item);
   return item;
@@ -46,7 +61,7 @@ export function subscribeToNotifications(cb: (notifs: AppNotification[]) => void
 
   cb(getLocalNotifications());
   return subscribeToCloudCollection<AppNotification>('notifications', 'notifications', (items) => {
-    const sorted = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
+    const sorted = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 60);
     saveLocalNotifications(sorted);
     cb(sorted);
   });
@@ -62,9 +77,70 @@ export async function markNotificationAsRead(id: string) {
 
 export async function clearAllNotifications() {
   const current = getLocalNotifications();
-  // Clear local cache first
   saveLocalNotifications([]);
-  // Delete each notification from Firestore so they don't reappear on next sync
-  const { deleteDocFromCloud } = await import('./firestoreSync');
   await Promise.allSettled(current.map(n => deleteDocFromCloud('notifications', n.id)));
+}
+
+export async function clearNotificationsForRole(role: 'doctor' | 'parent' | 'student', studentId?: string) {
+  const current = getLocalNotifications();
+  const matching = current.filter(n => matchesNotificationRole(n, role, studentId));
+  const remaining = current.filter(n => !matchesNotificationRole(n, role, studentId));
+  saveLocalNotifications(remaining);
+  await Promise.allSettled(matching.map(n => deleteDocFromCloud('notifications', n.id)));
+}
+
+/**
+ * Filter notifications strictly according to the recipient's role and student link.
+ * Doctor NEVER sees parent-targeted praise/certificates ("ابنكم البطل", etc.).
+ */
+export function matchesNotificationRole(
+  n: AppNotification,
+  role: 'doctor' | 'parent' | 'student',
+  studentId?: string
+): boolean {
+  // 1. Explicit targetRole check
+  if (n.targetRole) {
+    if (n.targetRole !== 'all' && n.targetRole !== role) {
+      return false;
+    }
+    // If student/parent notification is bound to a specific student, ensure match
+    if ((role === 'parent' || role === 'student') && n.studentId && n.studentId !== 'all') {
+      if (studentId && n.studentId !== studentId) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // 2. Legacy fallback heuristics for notifications created without explicit targetRole
+  const text = `${n.title || ''} ${n.body || ''} ${n.link || ''}`.toLowerCase();
+  const isParentSpecific = /ابنكم|ولي\s*الأمر|ولي\s*أمر|عزيزي ولي|لوحة ولي|school-parent/i.test(text);
+  const isDoctorSpecific = /تسليم واجب|سلّم الطالب|حل وتسليم|قام الطالب|استبيان جديد|طلب تسجيل|ikhlas-jeddah/i.test(text);
+  const isStudentSpecific = /يا بطل|شهاداتي|بوابة الطالب|school-student/i.test(text);
+
+  if (role === 'doctor') {
+    // Dr. Ismail must NEVER see messages directed at parents or encouraging students
+    if (isParentSpecific || isStudentSpecific) return false;
+    // Show doctor alerts (homework submissions, surveys, parent inquiries)
+    return isDoctorSpecific;
+  }
+
+  if (role === 'parent') {
+    // Parent shouldn't see doctor-only submissions
+    if (isDoctorSpecific && !isParentSpecific) return false;
+    if (n.studentId && studentId && n.studentId !== 'all' && n.studentId !== studentId) {
+      return false;
+    }
+    return isParentSpecific || !isStudentSpecific;
+  }
+
+  if (role === 'student') {
+    if (isParentSpecific || (isDoctorSpecific && !isStudentSpecific)) return false;
+    if (n.studentId && studentId && n.studentId !== 'all' && n.studentId !== studentId) {
+      return false;
+    }
+    return isStudentSpecific;
+  }
+
+  return true;
 }

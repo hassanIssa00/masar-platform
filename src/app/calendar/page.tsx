@@ -76,12 +76,24 @@ export default function DoctorCalendarPage() {
     saveCalendarSessions(next);
     setShowModal(false);
 
-    // Trigger notification
-    createNotification({
+    // Trigger notification for doctor and parent
+    void createNotification({
       type: 'meeting',
       title: 'جدولة جلسة علاجية جديدة',
       body: `تم جدولة جلسة لـ ${newSession.studentName} في ${newSession.date} الساعة ${newSession.time}`,
       link: '/calendar',
+      targetRole: 'doctor',
+      studentId: newSession.studentId,
+      studentName: newSession.studentName,
+    });
+    void createNotification({
+      type: 'meeting',
+      title: `موعد جلسة جديدة للبطل ${newSession.studentName}`,
+      body: `تم تحديد موعد جلسة علاجية بتاريخ ${newSession.date} الساعة ${newSession.time}`,
+      link: '/school-parent',
+      targetRole: 'parent',
+      studentId: newSession.studentId,
+      studentName: newSession.studentName,
     });
   };
 

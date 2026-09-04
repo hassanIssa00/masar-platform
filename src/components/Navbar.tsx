@@ -133,7 +133,7 @@ export default function Navbar() {
           {/* Profile Header Bar */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <NotificationBell />
+            <NotificationBell role="doctor" />
 
             {isStaff ? (
               /* Staff / Doctor Badge (Clickable link to Dashboard) */

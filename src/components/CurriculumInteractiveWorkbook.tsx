@@ -498,11 +498,26 @@ export default function CurriculumInteractiveWorkbook({
       })
     );
 
+    // In-app notification for Parent
     void createNotification({
-      type: 'message',
+      type: 'homework',
       title: `📝 واجب جديد للبطل ${student.fullName}: ${curriculum.title}`,
       body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
       link: `/school-parent?student=${student.id}&tab=homework`,
+      targetRole: 'parent',
+      studentId: student.id,
+      studentName: student.fullName,
+    });
+
+    // In-app notification for Student
+    void createNotification({
+      type: 'homework',
+      title: `📝 واجب تفاعلي جديد: ${curriculum.title} (ص ${cleanFrom}–${cleanTo})`,
+      body: `كلفك د. إسماعيل عيسى بحل الصفحات (${cleanFrom} إلى ${cleanTo}) بالكتاب التفاعلي.`,
+      link: `/school-student?tab=homework`,
+      targetRole: 'student',
+      studentId: student.id,
+      studentName: student.fullName,
     });
 
     setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) وإشعار ولي أمره بنجاح!`);

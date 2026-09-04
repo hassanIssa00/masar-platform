@@ -42,11 +42,25 @@ export default function HomeworkPage() {
     setShowModal(false);
 
     // Notify parent
-    createNotification({
-      type: 'report',
-      title: 'واجب / نشاط منزلي جديد',
-      body: `تم إسناد واجب منزلي جديد لـ ${st?.fullName}: ${title}`,
-      link: '/homework',
+    void createNotification({
+      type: 'homework',
+      title: `📝 واجب جديد للبطل ${st?.fullName || 'الطالب'}`,
+      body: `تم إسناد واجب منزلي جديد (${title}) من قبل د. إسماعيل عيسى. موعد التسليم: ${dueDate}.`,
+      link: `/school-parent?student=${studentId}&tab=homework`,
+      targetRole: 'parent',
+      studentId,
+      studentName: st?.fullName,
+    });
+
+    // Notify student
+    void createNotification({
+      type: 'homework',
+      title: `📝 واجب منزلي جديد: ${title}`,
+      body: `كلفك د. إسماعيل عيسى بواجب جديد. موعد التسليم: ${dueDate}.`,
+      link: `/school-student?tab=homework`,
+      targetRole: 'student',
+      studentId,
+      studentName: st?.fullName,
     });
   };
 

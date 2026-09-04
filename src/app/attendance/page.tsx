@@ -75,7 +75,10 @@ export default function AttendancePage() {
         type: 'student',
         title: 'إشعار غياب جلسة',
         body: `تم تسجيل غياب الطالب ${studentName} عن الجلسة المحددة بتاريخ ${selectedDate}`,
-        link: '/attendance',
+        link: '/school-parent',
+        targetRole: 'parent',
+        studentId,
+        studentName,
       });
       showToast(`تم تسجيل غياب ${studentName} وإرسال إشعار لولي الأمر`);
     } else {

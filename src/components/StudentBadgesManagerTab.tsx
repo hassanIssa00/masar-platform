@@ -100,12 +100,35 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
           read: false,
         });
 
-        // 2. In-app notification
+        // 2. Notify student in chat
+        saveMessage({
+          studentId: st.id,
+          from: 'doctor',
+          to: 'student',
+          body: `🎉 مبروك يا بطل (${st.name})! لقد منحك د. إسماعيل عيسى وسام تكريم (${currentTemplate.title} ${currentTemplate.icon}) تقديراً لتميزك! 🌟`,
+          read: false,
+        });
+
+        // 3. In-app notification for Parent
         void createNotification({
           type: 'achievement',
           title: `🎖️ وسام تكريم جديد للبطل ${st.name}`,
           body: `منح د. إسماعيل عيسى ابنكم (${currentTemplate.title} ${currentTemplate.icon})`,
           link: `/school-parent?tab=achievements`,
+          targetRole: 'parent',
+          studentId: st.id,
+          studentName: st.name,
+        });
+
+        // 4. In-app notification for Student
+        void createNotification({
+          type: 'achievement',
+          title: `🎖️ مبروك يا بطل! حصلت على وسام تكريم ${currentTemplate.icon}`,
+          body: `منحك د. إسماعيل عيسى (${currentTemplate.title}) تقديراً لتميزك!`,
+          link: `/school-student?tab=home`,
+          targetRole: 'student',
+          studentId: st.id,
+          studentName: st.name,
         });
       }
 

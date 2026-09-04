@@ -269,7 +269,7 @@ export default function SchoolParentPage() {
           
           <div className="flex items-center gap-2">
             {/* Live Notifications Bell */}
-            <NotificationBell />
+            <NotificationBell role="parent" studentId={studentRecord?.id || studentId} />
 
             {/* Student Info Button (User Icon) */}
             <button

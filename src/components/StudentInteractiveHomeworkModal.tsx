@@ -271,13 +271,27 @@ export default function StudentInteractiveHomeworkModal({
 
         // 3. Notify Doctor
         void createNotification({
-          type: 'message',
+          type: 'homework',
           title: `📬 تسليم واجب جديد: ${studentName}`,
           body: `قام الطالب البطل ${studentName} بحل وتسليم واجب ${parsed.subjectTitle} (ص ${parsed.fromPage}–${parsed.toPage}) على الكتاب التفاعلي.`,
           link: `/branches/ikhlas-jeddah`,
+          targetRole: 'doctor',
+          studentId,
+          studentName,
         });
 
-        // 4. Send Message to Doctor
+        // 4. Confirmation Notification to Parent
+        void createNotification({
+          type: 'homework',
+          title: `✅ تم تسليم واجب: ${parsed.subjectTitle}`,
+          body: `قام ابنكم البطل ${studentName} بحل وتسليم واجب ${parsed.subjectTitle} (ص ${parsed.fromPage}–${parsed.toPage}) بنجاح!`,
+          link: `/school-parent?tab=homework`,
+          targetRole: 'parent',
+          studentId,
+          studentName,
+        });
+
+        // 5. Send Message to Doctor
         saveMessage({
           studentId,
           from: 'student',
@@ -298,11 +312,26 @@ export default function StudentInteractiveHomeworkModal({
           status: 'submitted',
         });
 
+        // Notify Doctor
         void createNotification({
-          type: 'message',
+          type: 'homework',
           title: `📬 تسليم واجب: ${studentName}`,
           body: `سلّم الطالب ${studentName} واجب: ${hw.title}`,
           link: `/branches/ikhlas-jeddah`,
+          targetRole: 'doctor',
+          studentId,
+          studentName,
+        });
+
+        // Confirmation to Parent
+        void createNotification({
+          type: 'homework',
+          title: `✅ تم تسليم الواجب: ${hw.title}`,
+          body: `سلّم ابنكم البطل ${studentName} واجب: ${hw.title} بنجاح!`,
+          link: `/school-parent?tab=homework`,
+          targetRole: 'parent',
+          studentId,
+          studentName,
         });
       }
 

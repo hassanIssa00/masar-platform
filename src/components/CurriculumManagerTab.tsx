@@ -163,10 +163,24 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
 
     // 3. In-app Notification for parent
     void createNotification({
-      type: 'message',
+      type: 'homework',
       title: `📝 واجب جديد للبطل ${targetStudent.name}: ${curriculum.title}`,
       body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
       link: `/school-parent?student=${targetStudent.id}&tab=homework`,
+      targetRole: 'parent',
+      studentId: targetStudent.id,
+      studentName: targetStudent.name,
+    });
+
+    // 4. In-app Notification for student
+    void createNotification({
+      type: 'homework',
+      title: `📝 واجب تفاعلي جديد: ${curriculum.title} (ص ${cleanFrom}–${cleanTo})`,
+      body: `كلفك د. إسماعيل عيسى بحل الصفحات (${cleanFrom} إلى ${cleanTo}) بالكتاب التفاعلي ✍️`,
+      link: `/school-student?tab=homework`,
+      targetRole: 'student',
+      studentId: targetStudent.id,
+      studentName: targetStudent.name,
     });
 
     setAssignNotice(`✅ تم إسناد الصفحات (${cleanFrom} إلى ${cleanTo}) في ${curriculum.title} للطالب (${targetStudent.name}) بنجاح!`);
@@ -239,10 +253,24 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
 
       // 4. In-app Notification for parent
       void createNotification({
-        type: 'message',
+        type: 'homework',
         title: `📝 واجب جديد للبطل ${s.name}: ${curriculum.title}`,
         body: `تم إسناد صفحات (${cleanFrom} إلى ${cleanTo}) في مادة ${curriculum.title} من قبل د. إسماعيل عيسى. موعد التسليم: ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ar-SA')}.`,
         link: `/school-parent?student=${s.id}&tab=homework`,
+        targetRole: 'parent',
+        studentId: s.id,
+        studentName: s.name,
+      });
+
+      // 5. In-app Notification for student
+      void createNotification({
+        type: 'homework',
+        title: `📝 واجب تفاعلي جديد: ${curriculum.title} (ص ${cleanFrom}–${cleanTo})`,
+        body: `كلفك د. إسماعيل عيسى بحل الصفحات (${cleanFrom} إلى ${cleanTo}) بالكتاب التفاعلي.`,
+        link: `/school-student?tab=homework`,
+        targetRole: 'student',
+        studentId: s.id,
+        studentName: s.name,
       });
 
       return item;

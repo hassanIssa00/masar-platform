@@ -30,6 +30,7 @@ import StudentProfileCard from '@/components/StudentProfileCard';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHomeworkModal';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
+import NotificationBell from '@/components/NotificationBell';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -599,6 +600,7 @@ export default function StudentDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell role="student" studentId={studentId || studentRecord?.id} />
             <Link href="/face-enroll"
               className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95">
               <ScanFace size={16} className="text-emerald-700" />

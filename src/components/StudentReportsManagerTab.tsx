@@ -125,6 +125,9 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
           title: `📋 تقرير أكاديمي شامل جديد للطالب: ${s.name}`,
           body: `أصدر د. إسماعيل عيسى التقرير الأكاديمي الشامل، تفقده الآن في حسابك.`,
           link: `/school-parent?tab=report`,
+          targetRole: 'parent',
+          studentId: s.id,
+          studentName: s.name,
         });
       }
 
@@ -193,6 +196,9 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       title: `📋 تقرير أكاديمي شامل جديد للطالب: ${s.name}`,
       body: `تم إرسال التقرير الأكاديمي الشامل من قِبَل د. إسماعيل عيسى لحسابك.`,
       link: `/school-parent?tab=report`,
+      targetRole: 'parent',
+      studentId: s.id,
+      studentName: s.name,
     });
 
     setSingleSentMsg(`✅ تم إرسال التقرير الشامل للطالب (${s.name}) إلى منصة وحساب ولي الأمر بنجاح!`);

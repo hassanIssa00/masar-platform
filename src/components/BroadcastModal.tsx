@@ -15,7 +15,8 @@ export default function BroadcastModal({ onClose }: { onClose: () => void }) {
       type: 'system',
       title,
       body,
-      link: '/parent',
+      link: '/school-parent',
+      targetRole: 'parent',
     });
     setSent(true);
     setTimeout(() => {

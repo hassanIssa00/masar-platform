@@ -232,12 +232,26 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         read: false,
       });
 
-      // 4. Create in-app push notification
+      // 4. Create in-app push notification for Parent
       void createNotification({
         type: 'achievement',
         title: `🏆 شهادة تفوق جديدة للبطل ${form.studentName}`,
         body: `منح د. إسماعيل عيسى ابنكم البطل شهادة (${form.certTitle}) في ${form.achievement}`,
         link: `/school-parent?tab=achievements`,
+        targetRole: 'parent',
+        studentId: targetStudentId,
+        studentName: form.studentName,
+      });
+
+      // 5. Create in-app push notification for Student
+      void createNotification({
+        type: 'achievement',
+        title: `🏆 مبروك يا بطل! حصلت على شهادة تفوق وتميز`,
+        body: `منحك د. إسماعيل عيسى شهادة (${form.certTitle}) في ${form.achievement}! 🌟`,
+        link: `/school-student?tab=certificates`,
+        targetRole: 'student',
+        studentId: targetStudentId,
+        studentName: form.studentName,
       });
 
       setDirectSentMessage(`تم إرسال الشهادة بنجاح وتوثيقها في صفحة إنجازات البطل (${form.studentName}) وبوابة ولي الأمر (${parentName})! 🚀`);
@@ -284,11 +298,34 @@ export default function ExcellenceCertificateTab({ students }: Props) {
           read: false,
         });
 
+        saveMessage({
+          studentId: r.studentId,
+          from: 'doctor',
+          to: 'student',
+          body: `🎉 مبروك يا بطل (${r.studentName})! لقد منحك د. إسماعيل عيسى شهادة تفوق وتميز (${form.certTitle})! 🏆`,
+          read: false,
+        });
+
+        // In-app notification for Parent
         void createNotification({
           type: 'achievement',
           title: `🏆 شهادة تفوق جديدة للبطل ${r.studentName}`,
           body: `منح د. إسماعيل عيسى ابنكم البطل شهادة تفوق (${form.certTitle})`,
           link: `/school-parent?tab=achievements`,
+          targetRole: 'parent',
+          studentId: r.studentId,
+          studentName: r.studentName,
+        });
+
+        // In-app notification for Student
+        void createNotification({
+          type: 'achievement',
+          title: `🏆 مبروك يا بطل! حصلت على شهادة تفوق`,
+          body: `منحك د. إسماعيل عيسى شهادة تفوق (${form.certTitle}) 🌟`,
+          link: `/school-student?tab=certificates`,
+          targetRole: 'student',
+          studentId: r.studentId,
+          studentName: r.studentName,
         });
       });
 

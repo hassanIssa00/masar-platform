@@ -70,6 +70,9 @@ export default function ClassroomParentsTab() {
       title: `رسالة وتوجيه جديد من د. إسماعيل عيسى`,
       body: messageBody.trim().slice(0, 100),
       link: `/school-parent?tab=community`,
+      targetRole: 'parent',
+      studentId: sid,
+      studentName: selectedParent.studentName,
     });
 
     setActionSuccess(`تم إرسال الرسالة إلى حساب ومنصة ولي الأمر (${selectedParent.name}) بنجاح ✨`);
@@ -100,6 +103,9 @@ export default function ClassroomParentsTab() {
       title: `📹 دعوة لجلسة تفاعلية مباشرة مع د. إسماعيل`,
       body: `اضغط للدخول إلى رابط الجلسة المباشرة لـ ${selectedParent.studentName}`,
       link: zoomUrlInput.trim(),
+      targetRole: 'parent',
+      studentId: sid,
+      studentName: selectedParent.studentName,
     });
 
     setActionSuccess(`تم إرسال رابط البث المباشر / الجلسة لـ (${selectedParent.name}) عبر المنصة بنجاح 📹`);
@@ -185,6 +191,9 @@ export default function ClassroomParentsTab() {
         title: `📋 تقرير شامل جديد للطالب: ${selectedParent.studentName}`,
         body: `تم إصدار التقرير الشامل من قِبَل د. إسماعيل عيسى، متاح الآن في حسابك.`,
         link: `/school-parent?tab=report`,
+        targetRole: 'parent',
+        studentId: sid,
+        studentName: selectedParent.studentName,
       });
 
       saveActivity({

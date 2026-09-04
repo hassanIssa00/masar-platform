@@ -125,6 +125,17 @@ export async function broadcastScheduleToParents(
       body,
       read: false,
     });
+
+    void createNotification({
+      type: 'system',
+      title: `📅 جدول الحصص للبطل ${t.name}`,
+      body: `تم إرسال جدول الحصص المعتمد من قِبَل د. إسماعيل عيسى، تفقده الآن!`,
+      link: `/school-parent`,
+      targetRole: 'parent',
+      studentId: t.id,
+      studentName: t.name,
+    });
+
     sentCount++;
   }
 
@@ -191,6 +202,7 @@ export async function broadcastScheduleToStudents(
       link: '/school-student?tab=schedule',
       read: false,
       createdAt: new Date().toISOString(),
+      targetRole: 'student',
     });
 
     sentCount++;
@@ -279,11 +291,26 @@ export async function broadcastHomeworkToParents(hwData: {
       read: false,
     });
 
+    // In-app notification for Parent
     void createNotification({
-      type: 'message',
+      type: 'homework',
       title: `📝 واجب جديد للبطل ${t.name}: ${hwData.title}`,
       body: `تم إسناد واجب جديد (${hwData.title}) من قبل د. إسماعيل عيسى. موعد التسليم: ${hwData.dueDate}. يمكنك الاطلاع على التفاصيل من لوحة ولي الأمر.`,
       link: `/school-parent?student=${t.id}&tab=homework`,
+      targetRole: 'parent',
+      studentId: t.id,
+      studentName: t.name,
+    });
+
+    // In-app notification for Student
+    void createNotification({
+      type: 'homework',
+      title: `📝 واجب منزلي جديد: ${hwData.title}`,
+      body: `كلفك د. إسماعيل عيسى بواجب جديد (${hwData.title}). موعد التسليم: ${hwData.dueDate}.`,
+      link: `/school-student?tab=homework`,
+      targetRole: 'student',
+      studentId: t.id,
+      studentName: t.name,
     });
 
     sentCount++;
@@ -363,7 +390,7 @@ export async function broadcastAssessmentToStudentsAndParents(data: {
       read: false,
     });
 
-    // Also sync test notification to cloud
+    // Also sync test notification to cloud for student
     const notificationDoc = {
       id: `${baseAssessmentId}_${t.id}`,
       studentId: t.id,
@@ -374,8 +401,20 @@ export async function broadcastAssessmentToStudentsAndParents(data: {
       link: data.testLink || `/assessment?student=${t.id}&flow=student`,
       read: false,
       createdAt: new Date().toISOString(),
+      targetRole: 'student',
     };
     void syncDocToCloud('notifications', notificationDoc.id, notificationDoc);
+
+    // In-app notification for Parent
+    void createNotification({
+      type: 'assessment',
+      title: `🎯 اختبار جديد للبطل ${t.name}: ${data.testTitle}`,
+      body: data.instructions || `تم تكليف البطل باختبار (${data.testTitle}) من قِبَل د. إسماعيل عيسى.`,
+      link: `/school-parent`,
+      targetRole: 'parent',
+      studentId: t.id,
+      studentName: t.name,
+    });
 
     sentCount++;
   }

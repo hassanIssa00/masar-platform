@@ -23,6 +23,7 @@ import {
 } from '@/lib/classDb';
 import { saveMessage } from '@/lib/cloudStore';
 import { saveHomeworkSnapshot } from '@/lib/dailyArchive';
+import { createNotification } from '@/lib/notifications';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 
 type CurriculumAssignment = {
@@ -176,6 +177,28 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
       to: 'student',
       body: `🎉 تم تصحيح واجبك في مادة (${assignment.subjectTitle})!\nدرجتك: ${grade}/10${feedbackNote}`,
       read: false,
+    });
+
+    // In-app notification for Parent
+    void createNotification({
+      type: 'achievement',
+      title: `⭐ نتيجة تصحيح واجب: ${assignment.subjectTitle}`,
+      body: `حصل البطل (${assignment.studentName}) على درجة ${grade}/10 في مادة ${assignment.subjectTitle}.`,
+      link: `/school-parent?student=${assignment.studentId}&tab=homework`,
+      targetRole: 'parent',
+      studentId: assignment.studentId,
+      studentName: assignment.studentName,
+    });
+
+    // In-app notification for Student
+    void createNotification({
+      type: 'achievement',
+      title: `⭐ تم رصد درجتك: ${grade}/10 في ${assignment.subjectTitle}`,
+      body: `قام د. إسماعيل عيسى بتصحيح واعتماد حلّك للواجب بنجاح!`,
+      link: `/school-student?tab=homework`,
+      targetRole: 'student',
+      studentId: assignment.studentId,
+      studentName: assignment.studentName,
     });
     // 📁 Auto-save to Daily Homework Archive
     try {
