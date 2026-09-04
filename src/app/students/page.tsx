@@ -35,6 +35,7 @@ export default function StudentsControlPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteAllOpen, setConfirmDeleteAllOpen] = useState(false);
   const [showCertData, setShowCertData] = useState<{ studentName: string; studentNameEn?: string; programTitle: string; completionDate: string; score: number } | null>(null);
 
   // Broadcast Assessment Modal State
@@ -423,8 +424,8 @@ export default function StudentsControlPage() {
     }
   };
 
-  const handleDeleteAllStudents = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل من قاعدة البيانات السحابية؟ سيتم مسح ملفات الطلاب وحسابات الطلاب وأولياء الأمور بالكامل وحذفها نهائياً من قاعدة البيانات.')) return;
+  const handleExecuteDeleteAllStudents = async () => {
+    setConfirmDeleteAllOpen(false);
     setLoading(true);
     try {
       const response = await fetch('/api/students/purge', {
@@ -533,7 +534,7 @@ export default function StudentsControlPage() {
                 {students.length > 0 && (
                   <button
                     type="button"
-                    onClick={handleDeleteAllStudents}
+                    onClick={() => setConfirmDeleteAllOpen(true)}
                     className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer"
                   >
                     حذف جميع الطلاب ({students.length})
@@ -574,7 +575,7 @@ export default function StudentsControlPage() {
                   <h2 className="text-base font-black text-slate-950">قائمة الطلاب ({students.length})</h2>
                   <button
                     type="button"
-                    onClick={handleDeleteAllStudents}
+                    onClick={() => setConfirmDeleteAllOpen(true)}
                     className="text-xs font-black text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
                   >
                     مسح الكل
@@ -1236,6 +1237,54 @@ export default function StudentsControlPage() {
                 className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition shadow-md shadow-rose-600/20 cursor-pointer"
               >
                 تأكيد الحذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Students Confirmation Modal */}
+      {confirmDeleteAllOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-rose-100 text-center space-y-4 animate-in zoom-in-95 duration-200" dir="rtl">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 shadow-inner">
+              <Trash2 size={32} />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-xl font-black text-slate-950">حذف جميع الطلاب نهائياً</h3>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف جميع الطلاب المسجلين بالكامل ({students.length} طالب) من قاعدة البيانات السحابية؟
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-rose-50/80 border border-rose-200 p-3.5 text-right space-y-2">
+              <div className="flex items-center gap-2 text-rose-800 text-xs font-black">
+                <AlertTriangle size={16} className="shrink-0 text-rose-600" />
+                <span>تحذير هام - إجراء نهائي لا يمكن التراجع عنه:</span>
+              </div>
+              <ul className="text-[11px] font-bold text-rose-700 list-disc list-inside space-y-1 leading-relaxed">
+                <li>مسح ملفات وسجلات جميع الطلاب نهائياً</li>
+                <li>حذف حسابات الطلاب وأولياء الأمور المرتبطة بهم</li>
+                <li>مسح كافة الواجبات والتقارير ونتائج الاستبيانات</li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteAllOpen(false)}
+                className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-black text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteDeleteAllStudents}
+                className="rounded-xl bg-rose-600 px-4 py-3 text-xs font-black text-white hover:bg-rose-700 transition shadow-lg shadow-rose-600/25 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 size={15} />
+                <span>تأكيد الحذف الشامل</span>
               </button>
             </div>
           </div>

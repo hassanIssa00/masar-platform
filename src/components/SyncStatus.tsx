@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, DatabaseZap, FileText, UserRound, Trash2, Loader2 } from 'lucide-react';
+import { Activity, DatabaseZap, FileText, UserRound, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { clearAllMockData, getSyncSnapshot } from '@/lib/cloudStore';
 import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -31,6 +31,7 @@ export default function SyncStatus() {
   const [snapshot, setSnapshot] = useState({ students: 0, reports: 0, surveys: 0, activities: 0, lastSync: null as string | null });
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [isStaff, setIsStaff] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const refreshSnapshot = () => {
     queueMicrotask(() => setSnapshot(getSyncSnapshot()));
@@ -47,8 +48,8 @@ export default function SyncStatus() {
 
   if (!isStaff) return null;
 
-  const handleClearAll = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في تصفير وتفريغ جميع سجلات الطلاب والتقارير بالكامل من قاعدة البيانات السحابية؟')) return;
+  const handleExecuteClearAll = async () => {
+    setConfirmClearOpen(false);
     setStatus('loading');
     try {
       // 1️⃣ Purge from Server Firebase Admin
@@ -105,9 +106,9 @@ export default function SyncStatus() {
           </div>
 
           <button
-            onClick={handleClearAll}
+            onClick={() => setConfirmClearOpen(true)}
             disabled={status === 'loading'}
-            className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-xs disabled:opacity-60 disabled:cursor-wait"
+            className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-xs disabled:opacity-60 disabled:cursor-wait cursor-pointer"
             title="تصفير وتفريغ كامل — Firestore + Local"
           >
             {status === 'loading'
@@ -123,6 +124,54 @@ export default function SyncStatus() {
         <p className="mt-2 text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-lg p-2 text-center">
           ✅ تم تفريغ جميع البيانات من قاعدة البيانات السحابية والمتصفح نهائياً!
         </p>
+      )}
+
+      {/* Clear All Confirmation Modal */}
+      {confirmClearOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-rose-100 text-center space-y-4 animate-in zoom-in-95 duration-200" dir="rtl">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 shadow-inner">
+              <Trash2 size={32} />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-xl font-black text-slate-950">تصفير وتفريغ النظام نهائياً</h3>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed">
+                هل أنت متأكد من رغبتك في تصفير وتفريغ جميع سجلات الطلاب والتقارير بالكامل من قاعدة البيانات السحابية والمتصفح؟
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-rose-50/80 border border-rose-200 p-3.5 text-right space-y-2">
+              <div className="flex items-center gap-2 text-rose-800 text-xs font-black">
+                <AlertTriangle size={16} className="shrink-0 text-rose-600" />
+                <span>تحذير - سيتم تفريغ كافة البيانات:</span>
+              </div>
+              <ul className="text-[11px] font-bold text-rose-700 list-disc list-inside space-y-1 leading-relaxed">
+                <li>حذف جميع الطلاب والتقارير والاستبيانات</li>
+                <li>مسح سجلات الأنشطة والرسائل وغرف المتابعة</li>
+                <li>إعادة ضبط الذاكرة المحلية والغيوم السحابية</li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmClearOpen(false)}
+                className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-black text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteClearAll}
+                className="rounded-xl bg-rose-600 px-4 py-3 text-xs font-black text-white hover:bg-rose-700 transition shadow-lg shadow-rose-600/25 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 size={15} />
+                <span>تأكيد التصفير الشامل</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
