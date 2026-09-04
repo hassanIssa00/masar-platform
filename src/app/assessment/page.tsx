@@ -575,7 +575,7 @@ function PlacementAssessmentContent() {
     };
   }, [searchParams]);
 
-  const isStudentFlow = Boolean(studentIdParam);
+  const isStudentFlow = Boolean(studentIdParam) || searchParams.get('flow') === 'student';
 
   useEffect(() => {
     if (!finished) return;
@@ -1022,23 +1022,35 @@ function PlacementAssessmentContent() {
       <div className={isStudentFlow ? '' : 'flex'}>
       {!isStudentFlow && <Sidebar desktopOnly />}
       <main className={isStudentFlow ? 'mx-auto max-w-7xl px-4 py-6 lg:px-8' : 'min-w-0 flex-1 px-4 py-6 lg:px-8'}>
-        <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-black text-blue-700">{isStudentFlow ? 'اختبار الطالب بعد استبيان ولي الأمر' : 'اختبارات القبول وتحديد المستوى'}</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">{isStudentFlow ? 'اختبار مهارات الطالب' : '7 اختبارات مختلفة بتقرير تحليلي كامل'}</h1>
-              <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
-                {isStudentFlow
-                  ? 'ركّز في السؤال الحالي، واختر الإجابة المناسبة لك بدون عرض درجات أو تشخيص داخل تجربة الطالب.'
-                  : 'اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.'}
-              </p>
+        {isStudentFlow ? (
+          <header className="mb-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-3.5 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black text-blue-700">منصة مَسَار الذكية · اختبار مهارات الطالب</p>
+                <h1 className="mt-0.5 text-base font-black text-slate-950">ركّز في السؤال الحالي، واختر الإجابة المناسبة لك</h1>
+              </div>
+              <span className="shrink-0 rounded-xl bg-blue-700 px-3 py-1.5 text-xs font-black text-white shadow-xs">
+                {assessment.shortTitle}
+              </span>
             </div>
-            {!isStudentFlow && <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
-              فتح التقارير
-              <ArrowLeft size={17} />
-            </Link>}
-          </div>
-        </header>
+          </header>
+        ) : (
+          <header className="mb-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-black text-blue-700">اختبارات القبول وتحديد المستوى</p>
+                <h1 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">7 اختبارات مختلفة بتقرير تحليلي كامل</h1>
+                <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-slate-600">
+                  اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.
+                </p>
+              </div>
+              <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
+                فتح التقارير
+                <ArrowLeft size={17} />
+              </Link>
+            </div>
+          </header>
+        )}
 
         {!isStudentFlow && (
           <section className="mb-5 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -1111,39 +1123,21 @@ function PlacementAssessmentContent() {
                     </select>
                   </label>
                 </div>
+                {!selectedStudentId && (
+                  <div className="mt-3">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-black text-slate-600">اسم الطالب الجديد (اختياري)</span>
+                      <input
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="اكتب اسم الطالب..."
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold outline-none focus:border-blue-700"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="mb-5 grid gap-4 md:grid-cols-3">
-              <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">اسم الطالب</span>
-                <input value={studentName} onChange={(event) => setStudentName(event.target.value)} readOnly={isStudentFlow} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-blue-700 read-only:text-slate-500" placeholder="اسم الطالب" />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">العمر</span>
-                <input value={studentAge} onChange={(event) => setStudentAge(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-blue-700" placeholder="مثال: 8" />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-black text-slate-700">المستوى الحالي</span>
-                {isStudentFlow ? (
-                  <div className="w-full rounded-lg border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm font-black text-blue-950 shadow-2xs">
-                    {assessment.shortTitle}
-                  </div>
-                ) : (
-                  <select
-                    value={gradeKey}
-                    onChange={(e) => resetForGrade(e.target.value as PlacementGradeKey)}
-                    className="w-full rounded-lg border border-blue-300 bg-blue-50/70 px-4 py-3 text-sm font-black text-blue-950 outline-none focus:border-blue-700 cursor-pointer shadow-2xs"
-                  >
-                    {placementAssessments.map((item) => (
-                      <option key={item.key} value={item.key}>
-                        {item.shortTitle}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-            </div>
 
             {!finished ? (
               <article>
