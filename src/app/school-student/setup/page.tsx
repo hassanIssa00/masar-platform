@@ -12,6 +12,7 @@ import {
   saveStudent, StudentRecord, setSession
 } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
+import { extractFatherNameFromStudent, normalizeArabicText } from '@/lib/nameMatching';
 
 // Preset avatar options for quick selection
 const PRESET_AVATARS = [
@@ -113,7 +114,14 @@ export default function StudentSetupPage() {
         setFullName(linked.fullName || session.name || '');
         setNationalId(linked.nationalId || '');
         setGrade(linked.grade || 'الصف الأول');
-        setParentName(linked.parentName || '');
+        // Derive parent (father) name: strip first word from student name when parentName is missing or same as student name
+        const rawParentName = linked.parentName || '';
+        const derivedParentName =
+          !rawParentName ||
+          normalizeArabicText(rawParentName) === normalizeArabicText(linked.fullName)
+            ? extractFatherNameFromStudent(linked.fullName)
+            : rawParentName;
+        setParentName(derivedParentName || '');
         setParentPhone(linked.parentPhone || session.phone || '');
         // Only pre-fill recoveryEmail if it looks like a real human email (not auto-generated)
         const rawEmail = (linked as any).recoveryEmail || (linked as any).email || '';
@@ -304,7 +312,22 @@ export default function StudentSetupPage() {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    const prevName = fullName;
+                    setFullName(newName);
+                    const oldDerived = extractFatherNameFromStudent(prevName);
+                    if (
+                      !parentName ||
+                      normalizeArabicText(parentName) === normalizeArabicText(prevName) ||
+                      (oldDerived && normalizeArabicText(parentName) === normalizeArabicText(oldDerived))
+                    ) {
+                      const derived = extractFatherNameFromStudent(newName);
+                      if (derived && derived.length > 2) {
+                        setParentName(derived);
+                      }
+                    }
+                  }}
                   placeholder="الاسم الرباعي كاملاً"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black text-slate-900 outline-none focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 transition"
                 />

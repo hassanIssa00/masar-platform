@@ -8,7 +8,7 @@ import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
-import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
+import { extractFatherNameFromStudent, findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
 const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
@@ -21,6 +21,35 @@ function isGeneratedAlias(emailStr?: string): boolean {
   const e = emailStr.toLowerCase().trim();
   return e.includes('@masarplatform.org') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
 }
+
+/** Derive the father's name from student full name when parentName is missing or incorrectly set to student name */
+function deriveParentName(studentFullName?: string, existingParentName?: string, sessionName?: string): string {
+  const cleanExisting = existingParentName?.trim();
+  // Use existing parent name only if it's valid and NOT identical to the student name
+  if (
+    cleanExisting &&
+    !cleanExisting.includes('جديد') &&
+    !cleanExisting.includes('الاستبيان') &&
+    cleanExisting !== 'ولي الأمر' &&
+    cleanExisting !== 'ولي أمر' &&
+    normalizeArabicText(cleanExisting) !== normalizeArabicText(studentFullName)
+  ) {
+    return cleanExisting;
+  }
+  // Derive from student name: strip first word (student's own first name) to get father's name
+  if (studentFullName) {
+    const derived = extractFatherNameFromStudent(studentFullName);
+    if (derived && derived.length > 2) return derived;
+  }
+  // Fall back to session name only if it's valid AND different from student name
+  if (sessionName && !sessionName.includes('جديد') && sessionName !== 'ولي الأمر' && sessionName !== 'ولي أمر') {
+    if (normalizeArabicText(sessionName) !== normalizeArabicText(studentFullName)) {
+      return sessionName;
+    }
+  }
+  return '';
+}
+
 
 export default function NewStudentPage() {
   const router = useRouter();
@@ -89,9 +118,7 @@ export default function NewStudentPage() {
           // Smart redirect to survey or dashboard only happens after the parent submits the form.
 
           // Parent still needs to fill their own profile
-          const cleanParentName = (session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر')
-            ? session.name
-            : (found.parentName || '');
+          const cleanParentName = deriveParentName(found.fullName, found.parentName, session?.name);
           setParentAge(String((session as any)?.parentAge || (found as any)?.parentAge || ''));
           setChildrenCount(String((session as any)?.childrenCount || (found as any)?.childrenCount || ''));
           setParentNationalId(String((session as any)?.parentNationalId || (found as any)?.parentNationalId || ''));
@@ -160,9 +187,7 @@ export default function NewStudentPage() {
           '';
 
         const cleanFullName = (found.fullName && !found.fullName.includes('جديد') && !found.fullName.includes('الاستبيان') && found.fullName !== 'طالب' && found.fullName !== 'الطالب') ? found.fullName : '';
-        const cleanParentName = (found.parentName && !found.parentName.includes('جديد') && !found.parentName.includes('الاستبيان') && found.parentName !== 'ولي الأمر' && found.parentName !== 'ولي أمر')
-          ? found.parentName
-          : ((session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر') ? session.name : '');
+        const cleanParentName = deriveParentName(cleanFullName || found.fullName, found.parentName, session?.name);
 
         setStudent((prev) => ({
           ...prev,
@@ -182,7 +207,25 @@ export default function NewStudentPage() {
   }, [router]);
 
   const handleFieldChange = (key: keyof typeof student, value: string) => {
-    setStudent((current) => ({ ...current, [key]: value }));
+    setStudent((current) => {
+      const next = { ...current, [key]: value };
+      if (key === 'fullName') {
+        const prevFull = current.fullName?.trim() || '';
+        const curParent = current.parentName?.trim() || '';
+        const oldDerived = extractFatherNameFromStudent(prevFull);
+        if (
+          !curParent ||
+          normalizeArabicText(curParent) === normalizeArabicText(prevFull) ||
+          (oldDerived && normalizeArabicText(curParent) === normalizeArabicText(oldDerived))
+        ) {
+          const newDerived = extractFatherNameFromStudent(value);
+          if (newDerived && newDerived.length > 2) {
+            next.parentName = newDerived;
+          }
+        }
+      }
+      return next;
+    });
   };
 
   const parentLinkedStudentVisible = nextFlow === 'parent-survey' && studentResolved;
