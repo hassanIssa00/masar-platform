@@ -181,6 +181,7 @@ export default function ParentsManagementPage() {
         ...report,
         status: 'completed',
         dispatchedToParent: true,
+        dispatchedByDoctor: true,
         dispatchedAt: new Date().toISOString(),
       });
       const reportTitle = report.program || 'التقرير التشخيصي المعالج';

@@ -234,8 +234,56 @@ export default function ParentDashboard() {
       });
 
       setStudents(myStudents);
-      setReports(getReports());
-      setMessages(getMessages());
+      const allReps = getReports();
+      const allMsgs = getMessages();
+
+      // Ensure any auto-generated assessment or survey report that was never dispatched by Dr. Ismail
+      // is strictly kept as dispatchedToParent: false so the parent sees the true "under review" status
+      let repsRepaired = false;
+      const cleanReps = allReps.map((r) => {
+        const isExamOrSurvey =
+          r.type === 'student-assessment-answers' ||
+          r.type === 'student-assessment-analysis' ||
+          r.type === 'survey-answers' ||
+          r.type === 'clinical-analysis' ||
+          r.type === 'placement' ||
+          r.program?.includes('اختبار') ||
+          r.program?.includes('استبيان') ||
+          r.program?.includes('التقرير التحليلي الشامل');
+
+        if (isExamOrSurvey && r.dispatchedToParent === true && !r.dispatchedByDoctor) {
+          const hasDoctorDispatchMsg = allMsgs.some(
+            (m) =>
+              m.from === 'doctor' &&
+              (m.body.includes(r.id) ||
+                (r.program && m.body.includes(r.program)) ||
+                m.body.includes('التقرير الرسمي') ||
+                m.body.includes('تم اعتماد وإرسال تقرير رسمي'))
+          );
+          if (!hasDoctorDispatchMsg) {
+            repsRepaired = true;
+            return { ...r, dispatchedToParent: false, status: 'pending' as const };
+          }
+        }
+        return r;
+      });
+
+      if (repsRepaired) {
+        setReports(cleanReps);
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('masar_reports_v1', JSON.stringify(cleanReps));
+          }
+        } catch {}
+        cleanReps.forEach((r) => {
+          if (r.dispatchedToParent === false) {
+            void syncDocToCloud('reports', r.id, r);
+          }
+        });
+      } else {
+        setReports(allReps);
+      }
+      setMessages(allMsgs);
 
       const primary = myStudents[0];
       const isDrIsmailStudent = primary && (
@@ -429,11 +477,9 @@ export default function ParentDashboard() {
     return normalizeArabicText(selectedStudent?.fullName || '');
   }, [selectedStudent?.fullName]);
 
-  const studentReports = useMemo(() => {
-    if (!selectedStudent) return reports.filter((r) => r.dispatchedToParent === true);
-    return reports
-      .filter((r) => r.dispatchedToParent === true)
-      .filter((report) => {
+  const allStudentReports = useMemo(() => {
+    if (!selectedStudent) return reports;
+    return reports.filter((report) => {
       if (report.studentId && selectedStudentIds.has(report.studentId)) return true;
       const rName = normalizeArabicText(report.studentName || '');
       if (rName && selectedStudentNormName && (rName === selectedStudentNormName || rName.includes(selectedStudentNormName) || selectedStudentNormName.includes(rName))) return true;
@@ -442,6 +488,10 @@ export default function ParentDashboard() {
       return false;
     });
   }, [reports, selectedStudent, selectedStudentIds, selectedStudentNormName]);
+
+  const studentReports = useMemo(() => {
+    return allStudentReports.filter((r) => r.dispatchedToParent === true);
+  }, [allStudentReports]);
 
   const studentMessages = useMemo(() => {
     return messages
@@ -541,49 +591,6 @@ export default function ParentDashboard() {
       
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         
-        {/* Welcome Header */}
-        <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-black text-teal-800 border border-teal-200">
-                <Sparkles size={14} className="text-teal-600" />
-                <span>بوابة ولي الأمر التفاعلية</span>
-              </span>
-              <h1 className="mt-2 text-2xl md:text-3xl font-black text-slate-950">
-                أهلاً بك أ. {parentName} في منصة مَسَار 👋
-              </h1>
-              <p className="mt-1.5 text-xs md:text-sm font-bold text-slate-600">
-                متابعة الخطة التعليمية والتقارير الموثقة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowChangePassword(true)}
-                className="flex items-center gap-1.5 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-800 hover:bg-teal-100 transition shadow-2xs cursor-pointer"
-                title="تغيير كلمة المرور للحساب"
-              >
-                <KeyRound size={16} />
-                <span>كلمة المرور</span>
-              </button>
-              <Link
-                href="/face-enroll"
-                className="flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
-              >
-                <ScanFace size={16} />
-                <span>بصمة الوجه</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
-              >
-                <LogOut size={16} />
-                <span>خروج</span>
-              </button>
-            </div>
-          </div>
-        </header>
-
         {/* Required Survey Alert Banner */}
         {!hasSurvey && selectedStudent && (
           <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
@@ -654,6 +661,22 @@ export default function ParentDashboard() {
         {/* Tab 1: Home Overview */}
         {activeTab === 'home' && (
           <div className="space-y-6 animate-fade-in">
+            {/* Welcome Header (Visible ONLY on Home Tab) */}
+            <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-black text-teal-800 border border-teal-200 w-fit">
+                  <Sparkles size={14} className="text-teal-600" />
+                  <span>بوابة ولي الأمر التفاعلية</span>
+                </span>
+                <h1 className="mt-1 text-2xl md:text-3xl font-black text-slate-950">
+                  أهلاً بك أ. {parentName} في منصة مَسَار 👋
+                </h1>
+                <p className="mt-1 text-xs md:text-sm font-bold text-slate-600">
+                  متابعة الخطة التعليمية والتقارير الموثقة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
+                </p>
+              </div>
+            </header>
+
             {/* Prominent Hero Student Profile Card (Only displayed on Home tab) */}
             {selectedStudent && (
               <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -707,9 +730,9 @@ export default function ParentDashboard() {
                     تقارير
                   </span>
                 </div>
-                <p className="text-xs font-black text-slate-500">التقارير المتاحة</p>
+                <p className="text-xs font-black text-slate-500">التقارير المعتمدة المتاحة</p>
                 <p className="text-lg font-black text-slate-950">
-                  {studentReports.length} تقارير تشخيصية
+                  {studentReports.length > 0 ? `${studentReports.length} تقارير معتمدة` : 'قيد اعتماد الدكتور'}
                 </p>
               </article>
 
@@ -835,40 +858,52 @@ export default function ParentDashboard() {
                   {
                     title: 'إجابات الاستبيان التفصيلية',
                     description: 'نسخة الأسئلة والإجابات الشاملة التي سجلتها في الاستبيان الأولي.',
-                    report: studentReports.find((r) => r.type === 'survey-answers' || r.program === 'إجابات الاستبيان التفصيلية'),
+                    report: allStudentReports.find((r) => r.type === 'survey-answers' || r.program === 'إجابات الاستبيان التفصيلية'),
                   },
                   {
                     title: 'التقرير التحليلي الشامل',
                     description: 'التقرير الإكلينيكي الشامل وتوصيات د. إسماعيل عيسى.',
-                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل' || r.program?.includes('شامل') || r.program?.includes('أكاديمي')),
+                    report: allStudentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل' || r.program?.includes('شامل') || r.program?.includes('أكاديمي')),
                   },
                   {
                     title: 'إجابات اختبار الطالب التفصيلية',
                     description: 'إجابات الطالب المباشرة والتسجيلات الصوتية والرسومات.',
-                    report: studentReports.find((r) => r.type === 'student-assessment-answers' || r.program === 'إجابات اختبار الطالب التفصيلية'),
+                    report: allStudentReports.find((r) => r.type === 'student-assessment-answers' || r.program === 'إجابات اختبار الطالب التفصيلية'),
                   },
                   {
                     title: 'تحليل اختبار الطالب المباشر',
                     description: 'نتائج تقييم المهارات وتحديد المستوى المباشر للطالب.',
-                    report: studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'placement' || r.program === 'تحليل اختبار الطالب المباشر' || r.program === 'اختبار قبول وتحديد مستوى'),
+                    report: allStudentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'placement' || r.program === 'تحليل اختبار الطالب المباشر' || r.program === 'اختبار قبول وتحديد مستوى'),
                   },
                 ].map((slot) => {
                   const hasReport = Boolean(slot.report);
+                  const isDispatched = Boolean(slot.report && slot.report.dispatchedToParent === true);
                   return (
                     <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                       <div className="space-y-2">
-                        <FileText className={hasReport ? 'text-teal-700' : 'text-slate-400'} size={24} />
+                        <FileText className={isDispatched ? 'text-teal-700' : hasReport ? 'text-amber-600' : 'text-slate-400'} size={24} />
                         <h3 className="font-black text-slate-950 text-xs sm:text-sm leading-snug">{slot.title}</h3>
                         <p className="text-[11px] font-bold text-slate-500 leading-relaxed min-h-[34px]">{slot.description}</p>
                       </div>
 
-                      {hasReport ? (
+                      {isDispatched ? (
                         <Link
                           href={`/reports?report=${slot.report!.id}&mode=parent`}
-                          className="inline-flex w-full justify-center rounded-xl bg-teal-700 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-xs"
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-xs"
                         >
-                          فتح التقرير الموثق 📄
+                          <FileText size={14} />
+                          <span>فتح التقرير الموثق 📄</span>
                         </Link>
+                      ) : hasReport ? (
+                        <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-2.5 text-center space-y-0.5">
+                          <div className="flex items-center justify-center gap-1 text-[11px] font-black text-amber-900">
+                            <Clock size={13} className="text-amber-700 animate-pulse shrink-0" />
+                            <span>قيد التقييم والمراجعة من د. إسماعيل عيسى ⏳</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-amber-700">
+                            سيتم إتاحة التقرير هنا فور اعتماده وإرساله من الدكتور
+                          </p>
+                        </div>
                       ) : (
                         <div className="rounded-xl bg-white border border-slate-200 py-2.5 px-2 text-center text-[11px] font-black text-slate-400">
                           قيد الإعداد من الدكتور

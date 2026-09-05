@@ -939,6 +939,8 @@ function PlacementAssessmentContent() {
       status: 'pending',
       type: 'student-assessment-answers',
       media: currentMediaAnswers,
+      dispatchedToParent: false,
+      dispatchedByDoctor: false,
       summary: 'تقرير إجابات تفصيلي يحتوي على إجابات الطالب والتسجيلات الصوتية في اختبار تحديد المستوى المباشر، مخصص لمراجعة د. إسماعيل.',
       recommendations: [
         'الاستماع للتسجيلات الصوتية ومراجعة الرسومات المرفقة من الطالب.',
@@ -968,9 +970,11 @@ function PlacementAssessmentContent() {
       program: isStudentFlow ? 'تحليل اختبار الطالب المباشر' : 'اختبار قبول وتحديد مستوى',
       programColor: '#2563eb',
       score,
-      status: isStudentFlow ? 'pending' : 'completed',
+      status: 'pending',
       type: isStudentFlow ? 'student-assessment-analysis' : 'placement',
       media: currentMediaAnswers,
+      dispatchedToParent: false,
+      dispatchedByDoctor: false,
       summary: buildPlacementSummary({
         assessmentTitle: assessment.title,
         score,

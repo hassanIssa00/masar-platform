@@ -101,6 +101,7 @@ export type ReportRecord = {
   media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
   dispatchedToParent?: boolean;
   dispatchedAt?: string;
+  dispatchedByDoctor?: boolean;
   createdAt?: string;
   parentName?: string;
   parentPhone?: string;
@@ -784,7 +785,9 @@ export function dispatchReportToParent(reportId: string): ReportRecord | null {
   const updated: ReportRecord = {
     ...target,
     dispatchedToParent: true,
+    dispatchedByDoctor: true,
     dispatchedAt: new Date().toISOString(),
+    status: 'completed',
   };
   const nextList = reports.map((r) => (r.id === reportId ? updated : r));
   writeList(KEYS.reports, nextList);

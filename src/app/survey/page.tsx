@@ -405,6 +405,8 @@ function SurveyContent() {
       score: Math.round((Object.keys(answers).length / totalQuestions) * 100),
       status: 'pending',
       type: 'survey-answers',
+      dispatchedToParent: false,
+      dispatchedByDoctor: false,
       summary: 'ملف إجابات تفصيلي مخصص لد. إسماعيل لمراجعة كل إجابة قبل اعتماد المسار العلاجي.',
       recommendations: [
         'مراجعة الإجابات بجانب المقابلة الإكلينيكية قبل اعتماد أي مسار.',
@@ -429,6 +431,8 @@ function SurveyContent() {
       score: Math.round(clinicalDomains.reduce((total, domain) => total + domain.score, 0) / clinicalDomains.length),
       status: 'pending',
       type: 'clinical-analysis',
+      dispatchedToParent: false,
+      dispatchedByDoctor: false,
       summary: `تم استقبال الاستبيان وتحليل المؤشرات الأولية. أولويات المراجعة التخصصية: ${priorityText}. لا يتم فتح أي منهج للطالب قبل اعتماد د. إسماعيل للمسار المناسب.`,
       recommendations: buildClinicalRecommendations(priorityDomains),
       answers: [],
