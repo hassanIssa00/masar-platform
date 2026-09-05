@@ -47,6 +47,8 @@ export default function ParentDashboard() {
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [sessionEmail, setSessionEmail] = useState('');
+  // Prevents "no student linked" flash before cloud data loads
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleLogout = () => {
     clearSession();
@@ -333,6 +335,7 @@ export default function ParentDashboard() {
         createdAt: h.createdAt,
       }));
       setHomeworkList([...allClassHw, ...localHw]);
+      setIsLoading(false);
     };
     void loadParentPortal();
     const unsubscribe = subscribeToCloudUpdates(() => {
@@ -576,14 +579,31 @@ export default function ParentDashboard() {
 
   const childFirstName = (selectedStudent?.fullName || 'البطل').trim().split(' ')[0];
 
+  // Branch-aware supervisor label: IKHLAS uses Dr. Ismail, MASAR uses platform supervisor
+  const isIkhlas = selectedStudent?.schoolBranch === 'IKHLAS_JEDDAH';
+  const supervisorName = isIkhlas ? 'د. إسماعيل عيسى' : 'منصة مسار';
+  const supervisorShort = isIkhlas ? 'د. إسماعيل' : 'مسار';
+
   const tabs: Array<{ key: ParentTab; label: string; icon: any }> = [
     { key: 'home', label: 'الرئيسية', icon: Home },
     { key: 'achievements', label: `إنجازات البطل ${childFirstName} 🏆`, icon: Trophy },
     { key: 'reports', label: 'التقارير الموثقة', icon: FileText },
-    { key: 'chat', label: 'محادثة الدكتور', icon: MessageSquare },
+    { key: 'chat', label: isIkhlas ? 'محادثة الدكتور' : 'التواصل', icon: MessageSquare },
     { key: 'homework', label: 'الواجبات', icon: BookOpen },
     { key: 'profile', label: 'ملف الطفل', icon: User },
   ];
+
+  // Show spinner while data is loading to prevent "no student linked" flash
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center" dir="rtl">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold">جاري تحميل بوابة ولي الأمر…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-950" dir="rtl">
@@ -601,7 +621,7 @@ export default function ParentDashboard() {
               <div>
                 <h3 className="text-sm font-black text-amber-950">استبيان ولي الأمر مطلوب ⚠️</h3>
                 <p className="text-xs font-bold text-amber-800 mt-0.5">
-                  يرجى استكمال استبيان ولي الأمر عن الطالب (<strong>{selectedStudent.fullName}</strong>) لمساعدة د. إسماعيل عيسى في تخصيص الخطة والتقييم.
+                  يرجى استكمال استبيان ولي الأمر عن الطالب (<strong>{selectedStudent.fullName}</strong>) لمساعدة {supervisorName} في تخصيص الخطة والتقييم.
                 </p>
               </div>
             </div>
@@ -624,7 +644,7 @@ export default function ParentDashboard() {
             <div className="max-w-md mx-auto">
               <h3 className="text-base font-black text-slate-900">لم يتم ربط طالب بحسابك بعد</h3>
               <p className="text-xs font-bold text-slate-600 mt-1">
-                يمكنك تسجيل بيانات طفلك أو ربط حسابه لمتابعة تقاريره وخطته التعليمية مباشرة مع د. إسماعيل عيسى.
+                يمكنك تسجيل بيانات طفلك أو ربط حسابه لمتابعة تقاريره وخطته التعليمية مباشرة مع {isIkhlas ? 'د. إسماعيل عيسى' : 'منصة مسار التعليمية'}.
               </p>
             </div>
             <Link
@@ -672,7 +692,7 @@ export default function ParentDashboard() {
                   أهلاً بك أ. {parentName} في منصة مَسَار 👋
                 </h1>
                 <p className="mt-1 text-xs md:text-sm font-bold text-slate-600">
-                  متابعة الخطة التعليمية والتقارير الموثقة المباشرة من د. إسماعيل عيسى لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
+                  متابعة الخطة التعليمية والتقارير الموثقة المباشرة من {supervisorName} لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
                 </p>
               </div>
             </header>
@@ -749,7 +769,7 @@ export default function ParentDashboard() {
                 <p className="text-lg font-black text-slate-950">
                   {assignedProgramsList.length > 0
                     ? `${assignedProgramsList.length} مسارات معتمدة`
-                    : 'قيد مراجعة د. إسماعيل'}
+                    : `قيد مراجعة ${supervisorShort}`}
                 </p>
               </article>
             </section>
@@ -758,7 +778,7 @@ export default function ParentDashboard() {
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-base font-black text-slate-950">الوصول السريع لخدمات الطفل</h3>
-                <span className="text-xs font-bold text-teal-800">بوابة د. إسماعيل عيسى</span>
+                <span className="text-xs font-bold text-teal-800">{isIkhlas ? 'بوابة د. إسماعيل عيسى' : 'بوابة منصة مسار'}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <button
@@ -783,7 +803,7 @@ export default function ParentDashboard() {
                 >
                   <MessageSquare className="text-blue-700 mb-2" size={24} />
                   <span className="text-sm font-black text-slate-950">محادثة الشات المباشرة</span>
-                  <span className="text-[11px] font-bold text-slate-500 mt-1">تواصل فوري مع د. إسماعيل عيسى</span>
+                  <span className="text-[11px] font-bold text-slate-500 mt-1">تواصل فوري مع {supervisorName}</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('homework')}
@@ -820,7 +840,7 @@ export default function ParentDashboard() {
                   {assignedProgramsList.length > 0
                     ? `تم اعتماد المسارات: ${assignedProgramsList.map((p) => p.shortTitle).join(' و ')}`
                     : latestReport
-                    ? 'ملف الطالب قيد مراجعة د. إسماعيل عيسى'
+                    ? `ملف الطالب قيد مراجعة ${supervisorName}`
                     : 'لم يتم استكمال التقييم بعد'}
                 </h2>
               </div>
@@ -842,7 +862,7 @@ export default function ParentDashboard() {
                 </div>
               ) : (
                 <p className="text-xs font-bold leading-relaxed text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  سيظهر هنا تفاصيل المسارات التعليمية الموثقة فور قيام د. إسماعيل بمراجعة التقرير وتحديد الخطة المناسبة لطفلك.
+                  سيظهر هنا تفاصيل المسارات التعليمية الموثقة فور قيام {supervisorShort} بمراجعة التقرير وتحديد الخطة المناسبة لطفلك.
                 </p>
               )}
             </section>
@@ -851,7 +871,7 @@ export default function ParentDashboard() {
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
               <div>
                 <p className="text-xs font-black text-teal-800">تقارير الطفل الموثقة</p>
-                <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المعتمدة من د. إسماعيل</h2>
+                <h2 className="text-lg font-black text-slate-950 mt-0.5">الملفات والتقارير المعتمدة من {supervisorShort}</h2>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -863,7 +883,7 @@ export default function ParentDashboard() {
                   },
                   {
                     title: 'التقرير التحليلي الشامل',
-                    description: 'التقرير الإكلينيكي الشامل وتوصيات د. إسماعيل عيسى.',
+                    description: `التقرير الإكلينيكي الشامل وتوصيات ${supervisorName}.`,
                     report: allStudentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل' || r.program?.includes('شامل') || r.program?.includes('أكاديمي')),
                   },
                   {
