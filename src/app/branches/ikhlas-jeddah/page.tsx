@@ -911,7 +911,7 @@ export default function IkhlasJeddahPage() {
           <div className="max-w-7xl mx-auto space-y-6">
 
         {/* ════════════ الأرشيف اليومي الشامل (حضور، غياب، واجبات، كويزات) ════════════ */}
-        {activeTab === 'archive' && <DailyArchiveTab />}
+        {activeTab === 'archive' && <DailyArchiveTab students={classStudents} />}
 
         {/* ════════════ إدارة المناهج الدراسية وتوليد الواجبات الذكي ════════════ */}
         {activeTab === 'curriculum' && (
