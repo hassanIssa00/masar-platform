@@ -811,6 +811,7 @@ export default function StudentDashboard() {
       studentId={studentId || studentRecord?.id || ''}
       studentName={studentRecord?.fullName || studentName}
       grade={studentRecord?.grade}
+      schoolBranch={studentRecord?.schoolBranch || 'MASAR'}
       variant="student"
     />
   );

@@ -44,6 +44,10 @@ const COLLECTIONS_TO_PURGE = [
   'student_learning_activity',
   'simple_spelling_assignments',
   'simple_spelling_drawings',
+  'studentBadges',
+  'daily_attendance_archive',
+  'daily_homework_archive',
+  'daily_quiz_archive',
 ];
 
 export async function POST(req: NextRequest) {

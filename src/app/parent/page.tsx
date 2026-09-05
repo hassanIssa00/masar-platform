@@ -804,6 +804,7 @@ export default function ParentDashboard() {
             studentId={selectedStudent.id}
             studentName={selectedStudent.fullName}
             grade={selectedStudent.grade}
+            schoolBranch={selectedStudent.schoolBranch || 'MASAR'}
             variant="parent"
           />
         )}

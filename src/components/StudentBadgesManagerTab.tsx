@@ -70,23 +70,25 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
         });
       });
 
-      // 2. All platform students (masar.students.v1)
-      getStudents().forEach((s) => {
-        if (!s.id || !s.fullName) return;
-        const norm = normalizeArabicText(s.fullName);
-        const existing = Array.from(pool.values()).find((e) => normalizeArabicText(e.name) === norm);
-        if (!existing) {
-          pool.set(s.id, {
-            id: s.id,
-            name: s.fullName,
-            phone: s.parentPhone,
-            grade: s.grade,
-            studentAccountId: s.studentAccountId,
-            parentAccountId: s.parentAccountId || (s as any).linkedParentId,
-            parentName: s.parentName,
-          });
-        }
-      });
+      // 2. Only platform students explicitly assigned to IKHLAS_JEDDAH
+      getStudents()
+        .filter((s) => s.schoolBranch === 'IKHLAS_JEDDAH')
+        .forEach((s) => {
+          if (!s.id || !s.fullName) return;
+          const norm = normalizeArabicText(s.fullName);
+          const existing = Array.from(pool.values()).find((e) => normalizeArabicText(e.name) === norm);
+          if (!existing) {
+            pool.set(s.id, {
+              id: s.id,
+              name: s.fullName,
+              phone: s.parentPhone,
+              grade: s.grade,
+              studentAccountId: s.studentAccountId,
+              parentAccountId: s.parentAccountId || (s as any).linkedParentId,
+              parentName: s.parentName,
+            });
+          }
+        });
 
       // 3. Passed props
       if (passedStudents && passedStudents.length > 0) {
@@ -134,6 +136,7 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
         saveBadge({
           studentId: st.id,
           studentName: st.name,
+          schoolBranch: 'IKHLAS_JEDDAH',
           studentAccountId: st.studentAccountId,
           parentAccountId: st.parentAccountId,
           parentPhone: st.phone,

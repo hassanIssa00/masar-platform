@@ -218,7 +218,8 @@ export function deleteStudentHomeworkLog(id: string) {
 export function getStudentCertificateLogs(studentId: string, studentName?: string): StudentCertificateLog[] {
   const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => {
-    if (studentId && (c.studentId === studentId || c.studentId === 'all' || c.studentAccountId === studentId)) return true;
+    if (!c || c.studentId === 'all' || c.studentName === 'جميع طلاب الفصل') return false;
+    if (studentId && (c.studentId === studentId || c.studentAccountId === studentId)) return true;
     if (studentName && c.studentName && isStudentNameMatch(studentName, c.studentName)) return true;
     if (normSearchName && c.studentName && normalizeArabicText(c.studentName) === normSearchName) return true;
     return false;
@@ -439,6 +440,7 @@ export type StudentBadgeRecord = {
   id: string;
   studentId: string;
   studentName: string;
+  schoolBranch?: string;
   studentAccountId?: string;
   parentAccountId?: string;
   parentPhone?: string;
@@ -574,7 +576,8 @@ export function getStudentBadges(studentId: string, studentName?: string): Stude
   const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
   const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return all.filter((b) => {
-    if (studentId && (b.studentId === studentId || b.studentId === 'all' || b.studentAccountId === studentId)) return true;
+    if (!b || b.studentId === 'all' || b.studentName === 'جميع طلاب الفصل') return false;
+    if (studentId && (b.studentId === studentId || b.studentAccountId === studentId)) return true;
     if (studentName && b.studentName && isStudentNameMatch(studentName, b.studentName)) return true;
     if (normSearchName && b.studentName && normalizeArabicText(b.studentName) === normSearchName) return true;
     return false;

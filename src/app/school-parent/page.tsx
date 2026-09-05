@@ -900,9 +900,10 @@ export default function SchoolParentPage() {
         {/* ══════════════ إنجازات البطل ══════════════ */}
         {!loading && tab === 'achievements' && (
           <StudentAchievementsTab
-            studentId={studentRecord?.id || 'std_default'}
+            studentId={studentRecord?.id || ''}
             studentName={studentRecord?.fullName || 'البطل'}
-            grade={studentRecord?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى'}
+            grade={studentRecord?.grade || 'الصف الأول الابتدائي'}
+            schoolBranch={studentRecord?.schoolBranch || 'MASAR'}
             variant="parent"
           />
         )}

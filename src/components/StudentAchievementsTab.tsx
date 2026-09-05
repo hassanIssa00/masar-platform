@@ -32,6 +32,7 @@ interface Props {
   studentId: string;
   studentName: string;
   grade?: string;
+  schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH' | string;
   variant?: 'parent' | 'student';
 }
 
@@ -51,6 +52,7 @@ export default function StudentAchievementsTab({
   studentId,
   studentName,
   grade = 'الصف الأول الابتدائي',
+  schoolBranch,
   variant = 'parent',
 }: Props) {
   const [activeSection, setActiveSection] = useState<'certificates' | 'badges' | 'awards'>('certificates');
@@ -59,7 +61,13 @@ export default function StudentAchievementsTab({
   const [selectedCert, setSelectedCert] = useState<StudentCertificateLog | null>(null);
   const printFrameRef = useRef<HTMLDivElement>(null);
 
-  // Build a comprehensive set of valid student IDs by cross-referencing classStudents and students
+  // Multi-tenant and branch context resolution
+  const isIkhlas = schoolBranch === 'IKHLAS_JEDDAH' || (grade && grade.includes('إسماعيل'));
+  const supervisorName = isIkhlas ? 'د. إسماعيل عيسى' : 'المعلم المشرف';
+  const supervisorRole = isIkhlas ? 'المشرف العام — فصل الإخلاص بجدة' : 'إدارة منصة مَسَار التعليمية';
+  const supervisorFullTitle = isIkhlas ? 'د. إسماعيل عيسى — فصل الإخلاص بجدة' : 'المعلم المشرف وإدارة منصة مَسَار التعليمية';
+
+  // Build a comprehensive set of valid student IDs strictly for THIS specific student
   const buildValidStudentIds = () => {
     const sName = studentName ? normalizeArabicText(studentName) : '';
     const allKnown = [...getClassStudents(), ...getStudents()];
@@ -76,24 +84,31 @@ export default function StudentAchievementsTab({
         (c as any).linkedStudentId,
         (c as any).classStudentId,
       ].filter(Boolean)),
-      'all',
     ]);
   };
 
   const isStudentMatch = (targetId?: string, targetName?: string, record?: any) => {
+    if (!targetId && !targetName) return false;
+    // Strictly reject 'all', wildcard broadcasts or generic placeholders
+    if (targetId === 'all' || targetName === 'جميع طلاب الفصل' || record?.studentId === 'all') return false;
+
+    // Multi-tenant isolation: if record belongs to another branch, reject
+    if (record?.schoolBranch && schoolBranch && record.schoolBranch !== schoolBranch) return false;
+
     const validIds = buildValidStudentIds();
     if (targetId && validIds.has(targetId)) return true;
-    if (targetId === 'all') return true;
     if (record?.studentAccountId && validIds.has(record.studentAccountId)) return true;
+    if (record?.studentId && validIds.has(record.studentId)) return true;
+
     if (targetName && studentName && isStudentNameMatch(studentName, targetName)) return true;
     const sNorm = studentName ? normalizeArabicText(studentName) : '';
     const tNorm = targetName ? normalizeArabicText(targetName) : '';
-    if (sNorm && tNorm && (sNorm === tNorm || sNorm.includes(tNorm) || tNorm.includes(sNorm))) return true;
+    if (sNorm && tNorm && sNorm.length >= 3 && tNorm.length >= 3 && (sNorm === tNorm || sNorm.includes(tNorm) || tNorm.includes(sNorm))) return true;
     return false;
   };
 
   const loadCertificates = () => {
-    // 1. Read from classDb helper (which now supports name matching too)
+    // 1. Read from classDb helper
     const fromDb = getStudentCertificateLogs(studentId, studentName);
 
     // 2. Read directly from cloud cache key with resilient normalized Arabic matching
@@ -107,7 +122,9 @@ export default function StudentAchievementsTab({
       }
     });
 
-    setCertificates(merged);
+    // Sanitize any invalid/broadcast certificates
+    const cleaned = merged.filter(c => c && c.studentId !== 'all' && c.studentName !== 'جميع طلاب الفصل');
+    setCertificates(cleaned);
   };
 
   const loadBadges = () => {
@@ -121,7 +138,10 @@ export default function StudentAchievementsTab({
         merged.push(b);
       }
     });
-    setBadges(merged);
+
+    // Sanitize any invalid/broadcast badges
+    const cleaned = merged.filter(b => b && b.studentId !== 'all' && b.studentName !== 'جميع طلاب الفصل');
+    setBadges(cleaned);
   };
 
   useEffect(() => {
@@ -151,9 +171,9 @@ export default function StudentAchievementsTab({
 
   const toCertData = (cert: StudentCertificateLog): CertData => ({
     certTitle: cert.title || 'شهادة تفوق وتميز صفي 🏆',
-    subTitle: cert.subTitle || 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف',
-    doctorName: cert.doctorName || 'د. إسماعيل عيسى',
-    doctorTitle: cert.doctorTitle || 'التأهيل والتعليم الحديث',
+    subTitle: cert.subTitle || (isIkhlas ? 'تشهد منصة مَسَار للتأهيل والتعليم الذكي وتحت إشراف' : 'تشهد منصة مَسَار التعليمية وإدارة المدرسة الذكية'),
+    doctorName: cert.doctorName || supervisorName,
+    doctorTitle: cert.doctorTitle || (isIkhlas ? 'المشرف العام — فصل الإخلاص بجدة' : 'المعلم المشرف — منصة مَسَار'),
     studentPrefix: cert.studentPrefix || 'بأن الطالب المتفوق',
     studentName: cert.studentName || studentName,
     gradeLabel: cert.gradeLabel || grade,
@@ -227,7 +247,7 @@ export default function StudentAchievementsTab({
   };
 
   const handleShareWhatsApp = (cert: StudentCertificateLog) => {
-    const text = `🏆 *إنجاز وشهادة تفوق للبطل ${studentName}!*\n\n🎖️ *عنوان الشهادة:* ${cert.title}\n🎯 *مجال التميز:* ${cert.achievement || cert.programTitle}\n⭐ *التقدير المستحق:* ${cert.ratingText || 'ممتاز مع مرتبة الشرف'} (${cert.score}%)\n✍️ *المشرف:* ${cert.doctorName || 'د. إسماعيل عيسى'}\n\n_تم توثيق الشهادة في منصة مسار التعليمية 🌟_`;
+    const text = `🏆 *إنجاز وشهادة تفوق للبطل ${studentName}!*\n\n🎖️ *عنوان الشهادة:* ${cert.title}\n🎯 *مجال التميز:* ${cert.achievement || cert.programTitle}\n⭐ *التقدير المستحق:* ${cert.ratingText || 'ممتاز مع مرتبة الشرف'} (${cert.score}%)\n✍️ *المشرف:* ${cert.doctorName || supervisorName}\n\n_تم توثيق الشهادة في منصة مسار التعليمية 🌟_`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -248,7 +268,7 @@ export default function StudentAchievementsTab({
               إنجازات وجوائز البطل {studentName} 🏆
             </h2>
             <p className="mt-1.5 text-sm font-semibold text-emerald-100/90">
-              سجل فخري موثق يجمع شهادات التفوق، أوسمة التميز، والجوائز المعتمدة من د. إسماعيل عيسى.
+              سجل فخري موثق يجمع شهادات التفوق، أوسمة التميز، والجوائز المعتمدة من {supervisorFullTitle}.
             </p>
           </div>
 
@@ -314,10 +334,10 @@ export default function StudentAchievementsTab({
               </div>
               <div className="max-w-md mx-auto space-y-2">
                 <h3 className="font-black text-lg text-slate-900">
-                  شهادات التفوق قيد الإصدار من د. إسماعيل عيسى
+                  شهادات التفوق قيد الإصدار من {supervisorName}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                  عندما يُصدر د. إسماعيل عيسى شهادة تفوق أو تقدير للبطل {studentName} من لوحة المعلم، ستظهر هنا فوراً بأعلى جودة مع خيارات الطباعة الرسمية والمشاركة.
+                  عندما يُصدر {supervisorName} شهادة تفوق أو تقدير للبطل {studentName} من لوحة المعلم، ستظهر هنا فوراً بأعلى جودة مع خيارات الطباعة الرسمية والمشاركة.
                 </p>
               </div>
 
@@ -332,7 +352,7 @@ export default function StudentAchievementsTab({
                   </span>
                 </div>
                 <p className="text-xs font-bold text-slate-700">
-                  شهادة تفوق وتميز صفي في المهارات الأكاديمية وحل التمارين بنسبة 100% معتمدة بختم د. إسماعيل عيسى.
+                  شهادة تفوق وتميز صفي في المهارات الأكاديمية وحل التمارين بنسبة 100% معتمدة بختم {supervisorName}.
                 </p>
               </div>
             </div>
@@ -445,7 +465,7 @@ export default function StudentAchievementsTab({
                   لم يتم منح أي وسام بعد
                 </h3>
                 <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                  عندما يمنح د. إسماعيل عيسى {studentName} وساماً أو ميدالية، ستظهر هنا فوراً.
+                  عندما يمنح {supervisorName} {studentName} وساماً أو ميدالية، ستظهر هنا فوراً.
                 </p>
               </div>
             </div>

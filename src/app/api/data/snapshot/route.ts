@@ -157,8 +157,20 @@ function isLinkedToUser(
     }
   }
 
-  // Universal broadcasts
-  if (item?.studentId === 'all' || item?.studentId === 'student_assessment') return true;
+  // Universal broadcasts (for announcements/global notices only, NEVER personal badges, certs, or submissions)
+  if (item?.studentId === 'all' || item?.studentId === 'student_assessment') {
+    const isPersonalItem = Boolean(
+      item?.badgeId ||
+      item?.certNumber ||
+      item?.awardedBy ||
+      item?.submission ||
+      item?.studentHomeworkId ||
+      item?.score !== undefined ||
+      item?.points !== undefined
+    );
+    if (isPersonalItem) return false;
+    return true;
+  }
 
   const userEmail = (user.email || '').trim().toLowerCase();
   const linkedStudentEmail = cleanEmail(user.linkedStudentEmail);
@@ -339,11 +351,8 @@ export async function GET(req: NextRequest) {
     'smartSchedules',
     'parentsCommunityChat',
     'parentsChatSettings',
-    // ── Class data that students & parents MUST receive ──
-    'homework',              // homework assigned by teacher → students must see it
-    'studentCertLogs',       // certificates granted by doctor → students must see them
-    'studentBadges',         // badges & medals granted by doctor → students & parents must see them
-    'studentHomeworkLogs',   // homework submissions → doctor & parent must see them
+    // ── Class data that students & parents receive (general/broadcast) ──
+    'homework',              // homework assigned by teacher → students see based on grade/class
     'classStudents',         // class roster → needed to resolve student identity
     'curriculumAssignments', // curriculum tasks shared with students
     'curriculumDrawings',    // curriculum drawings shared with students
