@@ -92,15 +92,15 @@ export default function SchoolParentPage() {
         router.replace('/school-student');
         return;
       }
-      // If a Masar parent accidentally lands here, send them to the correct portal
-      if (session.role === 'parent' && (session as any).schoolBranch && (session as any).schoolBranch !== 'IKHLAS_JEDDAH') {
-        router.replace('/parent');
-        return;
-      }
-
       // Read branch from session
       const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
       setBranch(sessionBranch);
+
+      // If a Masar parent accidentally lands here, send them to the correct portal
+      if (session.role === 'parent' && sessionBranch !== 'IKHLAS_JEDDAH') {
+        router.replace('/parent');
+        return;
+      }
 
       // Set parent name from session directly
       setParentName(session.name || 'ولي الأمر');

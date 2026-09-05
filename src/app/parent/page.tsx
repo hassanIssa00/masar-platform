@@ -72,12 +72,16 @@ export default function ParentDashboard() {
 
       if (!session) { router.replace('/login'); return; }
       if (session.role === 'doctor' || session.role === 'specialist' || session.role === 'teacher') { router.push('/dashboard'); return; }
-      if (session.schoolBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') { router.replace('/school-parent'); return; }
+      
+      const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
+      if (sessionBranch === 'IKHLAS_JEDDAH' && session.role === 'parent') { router.replace('/school-parent'); return; }
 
       const allStudents = getStudents();
       const allAccounts = getAccounts();
-      const classStudents = getClassStudents();
-      const allKnown = [...allStudents, ...classStudents] as StudentRecord[];
+      const classStudents = sessionBranch === 'IKHLAS_JEDDAH' ? getClassStudents() : [];
+      const allKnown = (sessionBranch === 'IKHLAS_JEDDAH'
+        ? [...allStudents, ...classStudents]
+        : allStudents.filter(s => (s as any).schoolBranch !== 'IKHLAS_JEDDAH')) as StudentRecord[];
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
 
       // ─────────────────────────────────────────────────────
@@ -288,11 +292,8 @@ export default function ParentDashboard() {
       setMessages(allMsgs);
 
       const primary = myStudents[0];
-      const isDrIsmailStudent = primary && (
-        primary.schoolBranch === 'IKHLAS_JEDDAH' ||
-        classStudents.some((cs) => cs.id === primary.id || (cs.fullName && primary.fullName && normalizeArabicText(cs.fullName) === normalizeArabicText(primary.fullName)))
-      );
-      if (isDrIsmailStudent && primary) {
+      // Only redirect to school-parent if this session is explicitly for IKHLAS_JEDDAH
+      if (sessionBranch === 'IKHLAS_JEDDAH' && primary) {
         router.replace(`/school-parent?student=${encodeURIComponent(primary.id)}`);
         return;
       }

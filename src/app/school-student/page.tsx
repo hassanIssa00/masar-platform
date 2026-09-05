@@ -71,10 +71,12 @@ export default function StudentDashboard() {
       // Route parent by school branch: IKHLAS_JEDDAH → school-parent, MASAR → parent
       if (session.role === 'parent') { router.replace((session as any).schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent'); return; }
 
-      const classStudents = getClassStudents();
+      const sessionBranch = (session as any)?.schoolBranch || 'MASAR';
+      const isSessionIkhlas = sessionBranch === 'IKHLAS_JEDDAH';
+      const classStudents = isSessionIkhlas ? getClassStudents() : [];
       const allStudents = getStudents();
       const allAccounts = getAccounts();
-      const combined = [...classStudents, ...allStudents];
+      const combined = isSessionIkhlas ? [...classStudents, ...allStudents] : allStudents;
 
       const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const paramStudentId = urlParams?.get('student')?.trim() || '';
@@ -160,8 +162,8 @@ export default function StudentDashboard() {
         ...(linked || {}),
         fullName: finalName,
         photoUrl,
-        grade: linked?.grade || ((linked as any)?.schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
-        schoolBranch: (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR',
+        grade: linked?.grade || (isSessionIkhlas ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي'),
+        schoolBranch: isSessionIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR',
         parentName: linked?.parentName || '',
         parentPhone: linked?.parentPhone || session.phone || '',
         nationalId: linked?.nationalId || (session as any)?.nationalId || '',
