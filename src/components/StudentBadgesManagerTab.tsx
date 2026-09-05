@@ -23,16 +23,27 @@ import {
   BADGE_TEMPLATES,
   type StudentBadgeRecord,
 } from '@/lib/classDb';
-import { saveMessage } from '@/lib/cloudStore';
+import { saveMessage, getStudents } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
 import { deleteDocFromCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { normalizeArabicText } from '@/lib/nameMatching';
+
+interface StudentRecipient {
+  id: string;
+  name: string;
+  phone?: string;
+  grade?: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  parentName?: string;
+}
 
 interface Props {
   students?: { id: string; name: string; phone?: string; grade?: string }[];
 }
 
 export default function StudentBadgesManagerTab({ students: passedStudents }: Props) {
-  const [students, setStudents] = useState<{ id: string; name: string; phone?: string; grade?: string }[]>([]);
+  const [students, setStudents] = useState<StudentRecipient[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(BADGE_TEMPLATES[0].badgeId);
   const [customNote, setCustomNote] = useState<string>('');
@@ -42,18 +53,62 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
 
   // Load students and badge records
   useEffect(() => {
-    if (passedStudents && passedStudents.length > 0) {
-      setStudents(passedStudents);
-    } else {
-      const dbStudents = getClassStudents().map((s) => ({
-        id: s.id,
-        name: s.fullName,
-        phone: s.parentPhone,
-        grade: s.grade,
-      }));
-      setStudents(dbStudents);
-    }
+    const loadStudentsPool = () => {
+      const pool = new Map<string, StudentRecipient>();
+
+      // 1. Class students
+      getClassStudents().forEach((s) => {
+        if (!s.id || !s.fullName) return;
+        pool.set(s.id, {
+          id: s.id,
+          name: s.fullName,
+          phone: s.parentPhone,
+          grade: s.grade,
+          studentAccountId: (s as any).studentAccountId,
+          parentAccountId: (s as any).parentAccountId || (s as any).linkedParentId,
+          parentName: s.parentName,
+        });
+      });
+
+      // 2. All platform students (masar.students.v1)
+      getStudents().forEach((s) => {
+        if (!s.id || !s.fullName) return;
+        const norm = normalizeArabicText(s.fullName);
+        const existing = Array.from(pool.values()).find((e) => normalizeArabicText(e.name) === norm);
+        if (!existing) {
+          pool.set(s.id, {
+            id: s.id,
+            name: s.fullName,
+            phone: s.parentPhone,
+            grade: s.grade,
+            studentAccountId: s.studentAccountId,
+            parentAccountId: s.parentAccountId || (s as any).linkedParentId,
+            parentName: s.parentName,
+          });
+        }
+      });
+
+      // 3. Passed props
+      if (passedStudents && passedStudents.length > 0) {
+        passedStudents.forEach((s) => {
+          if (!pool.has(s.id)) {
+            pool.set(s.id, {
+              id: s.id,
+              name: s.name,
+              phone: s.phone,
+              grade: s.grade,
+            });
+          }
+        });
+      }
+
+      setStudents(Array.from(pool.values()));
+    };
+
+    loadStudentsPool();
     loadBadges();
+    window.addEventListener('storage', loadStudentsPool);
+    return () => window.removeEventListener('storage', loadStudentsPool);
   }, [passedStudents]);
 
   const loadBadges = () => {
@@ -79,6 +134,10 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
         saveBadge({
           studentId: st.id,
           studentName: st.name,
+          studentAccountId: st.studentAccountId,
+          parentAccountId: st.parentAccountId,
+          parentPhone: st.phone,
+          parentName: st.parentName,
           badgeId: currentTemplate.badgeId,
           title: currentTemplate.title,
           description: currentTemplate.description,
@@ -89,11 +148,17 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
           note: customNote.trim() || undefined,
           awardedBy: 'د. إسماعيل عيسى',
           awardedAt: now,
+          dispatchedToParent: true,
+          dispatchedAt: now,
         });
 
         // 1. Notify parent in chat
         saveMessage({
           studentId: st.id,
+          studentName: st.name,
+          parentAccountId: st.parentAccountId,
+          parentPhone: st.phone,
+          parentName: st.parentName,
           from: 'doctor',
           to: 'parent',
           body: `🎖️ *وسام شرف وتكريم للبطل (${st.name})*\n\nمنح د. إسماعيل عيسى ابنكم البطل: *${currentTemplate.title}* ${currentTemplate.icon}\n🏅 *المجال:* ${currentTemplate.category}\n⭐ *نقاط التميز:* +${currentTemplate.points} نقطة\n${customNote.trim() ? `\n💬 *كلمة د. إسماعيل:* "${customNote.trim()}"\n` : ''}\nيمكنكم استعراض الوسام في صفحة إنجازات البطل في المنصة 🌟`,
@@ -103,6 +168,7 @@ export default function StudentBadgesManagerTab({ students: passedStudents }: Pr
         // 2. Notify student in chat
         saveMessage({
           studentId: st.id,
+          studentName: st.name,
           from: 'doctor',
           to: 'student',
           body: `🎉 مبروك يا بطل (${st.name})! لقد منحك د. إسماعيل عيسى وسام تكريم (${currentTemplate.title} ${currentTemplate.icon}) تقديراً لتميزك! 🌟`,

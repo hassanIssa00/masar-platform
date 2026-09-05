@@ -238,6 +238,14 @@ export default function ParentDashboard() {
       setMessages(getMessages());
 
       const primary = myStudents[0];
+      const isDrIsmailStudent = primary && (
+        primary.schoolBranch === 'IKHLAS_JEDDAH' ||
+        classStudents.some((cs) => cs.id === primary.id || (cs.fullName && primary.fullName && normalizeArabicText(cs.fullName) === normalizeArabicText(primary.fullName)))
+      );
+      if (isDrIsmailStudent && primary) {
+        router.replace(`/school-parent?student=${encodeURIComponent(primary.id)}`);
+        return;
+      }
       const resolvedParentName =
         (primary?.parentName && !isPlaceholder(primary.parentName) ? primary.parentName : '') ||
         (session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر' ? session.name : '') ||
@@ -422,8 +430,10 @@ export default function ParentDashboard() {
   }, [selectedStudent?.fullName]);
 
   const studentReports = useMemo(() => {
-    if (!selectedStudent) return reports;
-    return reports.filter((report) => {
+    if (!selectedStudent) return reports.filter((r) => r.dispatchedToParent === true);
+    return reports
+      .filter((r) => r.dispatchedToParent === true)
+      .filter((report) => {
       if (report.studentId && selectedStudentIds.has(report.studentId)) return true;
       const rName = normalizeArabicText(report.studentName || '');
       if (rName && selectedStudentNormName && (rName === selectedStudentNormName || rName.includes(selectedStudentNormName) || selectedStudentNormName.includes(rName))) return true;
@@ -474,8 +484,11 @@ export default function ParentDashboard() {
 
   const isReportDispatchedByDoctor = (report?: ReportRecord | string | null) => {
     if (!report) return false;
-    // Any completed or existing report belonging to this student is ready for parent viewing
-    return true;
+    if (typeof report === 'string') {
+      const found = reports.find((r) => r.id === report);
+      return Boolean(found?.dispatchedToParent);
+    }
+    return Boolean(report.dispatchedToParent);
   };
 
   const handleSendReply = () => {

@@ -8,7 +8,7 @@ import {
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
-  Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send
+  Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send, Radio
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
@@ -296,7 +296,10 @@ export default function SchoolParentPage() {
         (r.studentName && resolvedNormName && (r.studentName.includes(resolvedNormName.split(' ')[0]) || resolvedNormName.includes((r.studentName || '').split(' ')[0]))) ||
         (parentPhoneSuffix && r.parentPhone && r.parentPhone.endsWith(parentPhoneSuffix));
       setStudentReports(
-        allReports.filter(matchesStudent).sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1))
+        allReports
+          .filter((r) => r.dispatchedToParent === true)
+          .filter(matchesStudent)
+          .sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1))
       );
       setStudentMessages(
         allMessages.filter(matchesStudent).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1))
@@ -479,7 +482,7 @@ export default function SchoolParentPage() {
     { key: 'achievements' as Tab,  label: `إنجازات ${childFirstName} 🏆`, icon: Trophy },
     { key: 'schedule' as Tab,      label: 'الجدول',    icon: Clock },
     { key: 'homework' as Tab,      label: 'الواجبات',  icon: BookOpen },
-    { key: 'meetings' as Tab,      label: 'الاجتماعات',icon: Video },
+    { key: 'meetings' as Tab,      label: 'البث واللقاءات', icon: Video },
     { key: 'community' as Tab,     label: 'المجتمع',   icon: MessageSquare },
     { key: 'photos' as Tab,        label: 'الصور',     icon: Camera },
     { key: 'report' as Tab,        label: 'التقارير',  icon: BarChart3 },
@@ -894,12 +897,41 @@ export default function SchoolParentPage() {
           </div>
         )}
 
-        {/* ══════════════ الاجتماعات ══════════════ */}
+        {/* ══════════════ الاجتماعات والبث المباشر ══════════════ */}
         {!loading && tab === 'meetings' && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Video className="w-4 h-4 text-emerald-600" /> اجتماعات الفيديو
-            </h2>
+          <div className="space-y-5">
+            {/* Live Stream Room Card */}
+            <div className="bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 rounded-3xl p-5 text-white shadow-lg border border-rose-500/40 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-inner text-2xl">
+                  📡
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-sm text-white">البث المباشر لفصل د. إسماعيل عيسى</h3>
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md border border-white/20 animate-pulse flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      مباشر
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-rose-100 opacity-90 mt-0.5">
+                    غرفة البث الصوتي والمرئي التفاعلي المباشر مع الدكتور والطلاب في الفصل
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/live?room=IKHLAS_JEDDAH"
+                className="shrink-0 bg-white text-rose-700 hover:bg-rose-50 font-black text-xs px-5 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <Radio className="w-4 h-4 text-rose-600" />
+                <span>دخول البث المباشر</span>
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Video className="w-4 h-4 text-emerald-600" /> اجتماعات الفيديو المجدولة
+              </h2>
             {dashboard?.upcomingMeetings?.map((m: any) => (
               <div key={m.id} className="bg-white border border-slate-200 rounded-3xl p-4.5 space-y-2 shadow-sm">
                 <p className="font-black text-slate-900 text-base">{m.title}</p>
@@ -915,6 +947,7 @@ export default function SchoolParentPage() {
                 لا توجد اجتماعات قادمة
               </div>
             )}
+            </div>
           </div>
         )}
 

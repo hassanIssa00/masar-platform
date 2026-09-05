@@ -745,8 +745,8 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
     parentPhone,
     parentName,
     parentAccountId,
-    parentEmail,
-    dispatchedToParent: report.dispatchedToParent ?? (report.status === 'completed' ? true : existing?.dispatchedToParent),
+    dispatchedToParent: report.dispatchedToParent !== undefined ? report.dispatchedToParent : (existing?.dispatchedToParent ?? false),
+    dispatchedAt: report.dispatchedAt ?? (report.dispatchedToParent ? (existing?.dispatchedAt ?? new Date().toISOString()) : existing?.dispatchedAt),
     date: report.date ?? existing?.date ?? new Date().toISOString().slice(0, 10),
   };
 
@@ -775,6 +775,24 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
     detail: `${next.studentName} - ${next.program} - ${next.score}%`,
   });
   return next;
+}
+
+export function dispatchReportToParent(reportId: string): ReportRecord | null {
+  const reports = getReports();
+  const target = reports.find((r) => r.id === reportId);
+  if (!target) return null;
+  const updated: ReportRecord = {
+    ...target,
+    dispatchedToParent: true,
+    dispatchedAt: new Date().toISOString(),
+  };
+  const nextList = reports.map((r) => (r.id === reportId ? updated : r));
+  writeList(KEYS.reports, nextList);
+  syncDocToCloud('reports', updated.id, updated);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collection: 'reports', id: updated.id } }));
+  }
+  return updated;
 }
 
 export function deleteReport(reportId: string) {

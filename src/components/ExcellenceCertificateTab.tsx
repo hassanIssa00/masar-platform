@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from 'react';
 import { Award, Printer, Sparkles, Trophy, ShieldCheck, RefreshCw, Send, UserCheck, CheckCircle2, PhoneCall, Users } from 'lucide-react';
 import BrandMark from './BrandMark';
 import { saveStudentCertificateLog, getClassStudents } from '@/lib/classDb';
-import { saveMessage } from '@/lib/cloudStore';
+import { saveMessage, getStudents } from '@/lib/cloudStore';
 import { readCloudCache } from '@/lib/firestoreSync';
 import { createNotification } from '@/lib/notifications';
+import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 
 /* ── Suggested Achievement Presets (User can pick or type custom) ── */
 const SUGGESTED_ACHIEVEMENTS = [
@@ -34,6 +35,8 @@ export interface ParentStudentEntry {
   parentName: string;
   phone: string;
   grade?: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
 }
 
 interface Props {
@@ -97,20 +100,43 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     const loadRecipients = () => {
       const map = new Map<string, ParentStudentEntry>();
 
-      // 1. From classDb — ONLY the registered class students (IKHLAS_JEDDAH)
+      // 1. From classDb — registered class students
       const clsStudents = getClassStudents();
       clsStudents.forEach(s => {
+        if (!s.id || !s.fullName) return;
         map.set(s.id, {
           id: s.id,
           studentId: s.id,
           studentName: s.fullName,
           parentName: s.parentName || `ولي أمر ${s.fullName}`,
-          phone: s.parentPhone || '966501234567',
+          phone: s.parentPhone || '',
           grade: s.grade,
+          studentAccountId: (s as any).studentAccountId,
+          parentAccountId: (s as any).parentAccountId || (s as any).linkedParentId,
         });
       });
 
-      // 2. From props if explicitly provided (e.g. teacher selects students)
+      // 2. From all platform students (masar.students.v1)
+      const allPlatformStudents = getStudents();
+      allPlatformStudents.forEach(s => {
+        if (!s.id || !s.fullName) return;
+        const normName = normalizeArabicText(s.fullName);
+        const existing = Array.from(map.values()).find(e => normalizeArabicText(e.studentName) === normName);
+        if (!existing) {
+          map.set(s.id, {
+            id: s.id,
+            studentId: s.id,
+            studentName: s.fullName,
+            parentName: s.parentName || `ولي أمر ${s.fullName}`,
+            phone: s.parentPhone || '',
+            grade: s.grade,
+            studentAccountId: s.studentAccountId,
+            parentAccountId: s.parentAccountId || (s as any).linkedParentId,
+          });
+        }
+      });
+
+      // 3. From props if explicitly provided (e.g. teacher selects students)
       if (students && students.length > 0) {
         students.forEach((s, idx) => {
           if (!map.has(s.id)) {
@@ -125,9 +151,6 @@ export default function ExcellenceCertificateTab({ students }: Props) {
           }
         });
       }
-
-      // NOTE: We do NOT fall back to masar.students.v1 (all platform students)
-      // Certificates must only go to students in THIS class.
 
       const list = Array.from(map.values());
       setRecipientList(list);
@@ -197,6 +220,10 @@ export default function ExcellenceCertificateTab({ students }: Props) {
       saveStudentCertificateLog({
         studentId: targetStudentId,
         studentName: form.studentName,
+        studentAccountId: recipient?.studentAccountId,
+        parentAccountId: recipient?.parentAccountId,
+        parentPhone: recipient?.phone,
+        parentName: parentName,
         title: form.certTitle,
         subTitle: form.subTitle,
         programTitle: form.achievement,
@@ -212,11 +239,17 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         note: form.note,
         certNumber: form.certNumber,
         badge: 'gold',
+        dispatchedToParent: true,
+        dispatchedAt: new Date().toISOString(),
       });
 
       // 2. Dispatch instant notification message to Parent portal
       saveMessage({
         studentId: targetStudentId,
+        studentName: form.studentName,
+        parentAccountId: recipient?.parentAccountId,
+        parentPhone: recipient?.phone,
+        parentName: parentName,
         from: 'doctor',
         to: 'parent',
         body: `🏆 تم منح ابنكم البطل (${form.studentName}) شهادة تفوق وتقدير رسمية!\n\n🎖️ عنوان التكريم: ${form.certTitle}\n🎯 مجال التميز: ${form.achievement}\n⭐ التقدير: ${form.ratingText} (%${form.score})\n✍️ الرقم التسلسلي: ${form.certNumber}\n\n💬 ملاحظات د. إسماعيل عيسى:\n"${form.note}"\n\nيمكنكم استعراض وطباعة الشهادة الرقمية مباشرة الآن من قسم "إنجازات البطل" في بوابتكم 🌟`,
@@ -226,6 +259,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
       // 3. Dispatch encouragement message to Student portal
       saveMessage({
         studentId: targetStudentId,
+        studentName: form.studentName,
         from: 'doctor',
         to: 'student',
         body: `🎉 مبروك يا بطل (${form.studentName})! لقد منحك د. إسماعيل عيسى شهادة تفوق وتميز (${form.certTitle}) في ${form.achievement}! 🏆`,
@@ -273,6 +307,10 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         saveStudentCertificateLog({
           studentId: r.studentId,
           studentName: r.studentName,
+          studentAccountId: r.studentAccountId,
+          parentAccountId: r.parentAccountId,
+          parentPhone: r.phone,
+          parentName: r.parentName,
           title: form.certTitle,
           subTitle: form.subTitle,
           programTitle: form.achievement,
@@ -288,10 +326,16 @@ export default function ExcellenceCertificateTab({ students }: Props) {
           note: form.note,
           certNumber: certNo,
           badge: 'gold',
+          dispatchedToParent: true,
+          dispatchedAt: new Date().toISOString(),
         });
 
         saveMessage({
           studentId: r.studentId,
+          studentName: r.studentName,
+          parentAccountId: r.parentAccountId,
+          parentPhone: r.phone,
+          parentName: r.parentName,
           from: 'doctor',
           to: 'parent',
           body: `🏆 تم منح ابنكم البطل (${r.studentName}) شهادة تفوق وتقدير رسمية من د. إسماعيل عيسى!\n\n🎖️ عنوان التكريم: ${form.certTitle}\n🎯 مجال التميز: ${form.achievement}\n⭐ التقدير: ${form.ratingText} (%${form.score})\n✍️ الرقم التسلسلي: ${certNo}\n\nيمكنكم استعراض الشهادة في صفحة "إنجازات البطل" في بوابتكم 🌟`,
@@ -300,6 +344,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 
         saveMessage({
           studentId: r.studentId,
+          studentName: r.studentName,
           from: 'doctor',
           to: 'student',
           body: `🎉 مبروك يا بطل (${r.studentName})! لقد منحك د. إسماعيل عيسى شهادة تفوق وتميز (${form.certTitle})! 🏆`,

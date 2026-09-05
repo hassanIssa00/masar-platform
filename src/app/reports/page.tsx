@@ -3,13 +3,14 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowRight, FilePlus2, Headphones, Printer, Trash2 } from 'lucide-react';
+import { ArrowRight, FilePlus2, Headphones, Printer, Trash2, Send, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import PrintableReportModal from '@/components/PrintableReportModal';
 import ReportPrintDocument from '@/components/ReportPrintDocument';
 import { getDecisionFromScore } from '@/data/assessmentModel';
-import { deleteReport, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord } from '@/lib/cloudStore';
+import { deleteReport, dispatchReportToParent, getReports, getSession, getStudents, hydrateSessionFromServer, ReportRecord, StudentRecord, saveMessage } from '@/lib/cloudStore';
+import { createNotification } from '@/lib/notifications';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
@@ -194,7 +195,66 @@ function ReportsContent() {
     return '#b91c1c';
   };
 
+  const [dispatchStatusMsg, setDispatchStatusMsg] = useState<string | null>(null);
+
+  const handleDispatchReport = async (repId: string) => {
+    const rep = reports.find((r) => r.id === repId);
+    if (!rep) return;
+    const updated = dispatchReportToParent(repId);
+    if (updated) {
+      setReports(getReports());
+      void createNotification({
+        type: 'report',
+        title: `📋 تقرير رسمي معتمد جديد للطالب: ${rep.studentName}`,
+        body: `أرسل د. إسماعيل عيسى تقريراً معتمداً لحسابك (${rep.program || 'التقرير الأكاديمي'}). تفقده الآن.`,
+        link: `/reports?report=${rep.id}&mode=parent`,
+        targetRole: 'parent',
+        studentId: rep.studentId,
+        studentName: rep.studentName,
+      });
+
+      saveMessage({
+        studentId: rep.studentId,
+        studentName: rep.studentName,
+        parentAccountId: rep.parentAccountId,
+        parentPhone: rep.parentPhone,
+        parentName: rep.parentName,
+        from: 'doctor',
+        to: 'parent',
+        body: `📋 أهلاً بكم. تم اعتماد وإرسال تقرير رسمي للطالب البطل (${rep.studentName}) من قِبل د. إسماعيل عيسى.\n\n📌 عنوان التقرير: ${rep.program}\n⭐ النتيجة: %${rep.score}\n\nيمكنكم استعراض التقرير المعتمد وطباعته مباشرة عبر الرابط:\n${typeof window !== 'undefined' ? window.location.origin : ''}/reports?report=${rep.id}&mode=parent`,
+        read: false,
+      });
+
+      setDispatchStatusMsg(`✅ تم إرسال التقرير بنجاح إلى منصة وحساب ولي أمر الطالب (${rep.studentName})!`);
+      setTimeout(() => setDispatchStatusMsg(null), 5000);
+    }
+  };
+
   if (selected) {
+    if (parentMode && !selected.dispatchedToParent) {
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-950 p-6 flex items-center justify-center" dir="rtl">
+          <div className="max-w-md w-full bg-white border border-amber-200 rounded-3xl p-8 text-center shadow-lg space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-800 flex items-center justify-center text-3xl mx-auto shadow-inner">
+              ⏳
+            </div>
+            <h2 className="text-lg font-black text-slate-900">التقرير قيد المراجعة والإعداد</h2>
+            <p className="text-xs font-bold text-slate-600 leading-relaxed">
+              هذا التقرير الخاص بالطالب ({selected.studentName}) قيد المراجعة والاعتماد النهائي من قِبل د. إسماعيل عيسى، وسيتم إتاحته في حسابكم فور اعتماده وإرساله من الدكتور.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push(selectedStudent?.schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent')}
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white px-6 py-3 text-xs font-black transition shadow-md cursor-pointer"
+            >
+              <ArrowRight size={16} />
+              <span>العودة إلى بوابة ولي الأمر</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const removeSelectedReport = () => {
       deleteReport(selected.id);
       setReports(getReports());
@@ -208,6 +268,13 @@ function ReportsContent() {
         <div className="flex">
           {!parentMode && <div className="no-print"><Sidebar desktopOnly /></div>}
           <main className={`min-w-0 flex-1 px-4 py-6 print:p-0 lg:px-8 ${parentMode ? 'mx-auto max-w-5xl' : ''}`}>
+            {dispatchStatusMsg && (
+              <div className="no-print mb-4 p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-400 text-emerald-950 font-black text-sm flex items-center gap-2 shadow-md animate-fade-in">
+                <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                <span>{dispatchStatusMsg}</span>
+              </div>
+            )}
+
             {/* Top Action Toolbar (Above Report Frame) */}
             <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-4">
               {parentMode ? (
@@ -231,6 +298,21 @@ function ReportsContent() {
               )}
 
               <div className="flex items-center gap-3 mr-auto flex-wrap">
+                {!parentMode && (
+                  <button
+                    type="button"
+                    onClick={() => handleDispatchReport(selected.id)}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-black transition-all shadow-md cursor-pointer ${
+                      selected.dispatchedToParent
+                        ? 'bg-emerald-50 border-2 border-emerald-500 text-emerald-800 hover:bg-emerald-100'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'
+                    }`}
+                  >
+                    {selected.dispatchedToParent ? <CheckCircle2 size={18} className="text-emerald-700" /> : <Send size={18} />}
+                    <span>{selected.dispatchedToParent ? '✅ مُرسل لولي الأمر (إعادة إرسال)' : '🚀 إرسال التقرير لولي الأمر الآن'}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => window.print()}
@@ -479,6 +561,16 @@ function ReportsContent() {
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
                               {decision.label}
                             </span>
+                            {report.dispatchedToParent ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-black">
+                                <CheckCircle2 size={12} />
+                                <span>مُرسل لولي الأمر</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 text-xs font-black">
+                                <span>⏳ مسودة</span>
+                              </span>
+                            )}
                           </div>
 
                           <p className="mt-3 line-clamp-2 text-sm font-bold leading-6 text-slate-600">
@@ -486,6 +578,21 @@ function ReportsContent() {
                           </p>
 
                           <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                            {!parentMode && (
+                              <button
+                                type="button"
+                                onClick={() => handleDispatchReport(report.id)}
+                                className={`rounded-lg px-3 py-2 text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                                  report.dispatchedToParent
+                                    ? 'border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                                }`}
+                                title={report.dispatchedToParent ? 'إعادة إرسال التقرير لولي الأمر' : 'إرسال التقرير لولي الأمر'}
+                              >
+                                <Send size={13} />
+                                <span>{report.dispatchedToParent ? 'مُرسل ✓' : 'إرسال 🚀'}</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 forcePageTopScroll();

@@ -70,16 +70,25 @@ export default function StudentAchievementsTab({
     });
     return new Set<string>([
       ...(studentId ? [studentId] : []),
-      ...studentMatches.map(c => c.id),
+      ...studentMatches.flatMap(c => [
+        c.id,
+        (c as any).studentAccountId,
+        (c as any).linkedStudentId,
+        (c as any).classStudentId,
+      ].filter(Boolean)),
       'all',
     ]);
   };
 
-  const isStudentMatch = (targetId?: string, targetName?: string) => {
+  const isStudentMatch = (targetId?: string, targetName?: string, record?: any) => {
     const validIds = buildValidStudentIds();
     if (targetId && validIds.has(targetId)) return true;
     if (targetId === 'all') return true;
+    if (record?.studentAccountId && validIds.has(record.studentAccountId)) return true;
     if (targetName && studentName && isStudentNameMatch(studentName, targetName)) return true;
+    const sNorm = studentName ? normalizeArabicText(studentName) : '';
+    const tNorm = targetName ? normalizeArabicText(targetName) : '';
+    if (sNorm && tNorm && (sNorm === tNorm || sNorm.includes(tNorm) || tNorm.includes(sNorm))) return true;
     return false;
   };
 
@@ -89,7 +98,7 @@ export default function StudentAchievementsTab({
 
     // 2. Read directly from cloud cache key with resilient normalized Arabic matching
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
-    const matched = allCerts.filter(c => isStudentMatch(c.studentId, c.studentName));
+    const matched = allCerts.filter(c => isStudentMatch(c.studentId, c.studentName, c));
 
     const merged = [...fromDb];
     matched.forEach((c) => {
@@ -104,7 +113,7 @@ export default function StudentAchievementsTab({
   const loadBadges = () => {
     const fromDb = getStudentBadges(studentId, studentName);
     const allBadges = readCloudCache<StudentBadgeRecord>('masar_student_badges_v1');
-    const matched = allBadges.filter(b => isStudentMatch(b.studentId, b.studentName));
+    const matched = allBadges.filter(b => isStudentMatch(b.studentId, b.studentName, b));
 
     const merged = [...fromDb];
     matched.forEach((b) => {

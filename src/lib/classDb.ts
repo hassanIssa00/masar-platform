@@ -70,6 +70,10 @@ export type StudentCertificateLog = {
   id: string;
   studentId: string;
   studentName?: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  parentPhone?: string;
+  parentName?: string;
   title: string;
   subTitle?: string;
   programTitle: string;
@@ -85,6 +89,8 @@ export type StudentCertificateLog = {
   note?: string;
   certNumber?: string;
   badge?: string;
+  dispatchedToParent?: boolean;
+  dispatchedAt?: string;
   createdAt: string;
 };
 
@@ -145,17 +151,67 @@ export function deleteStudentHomeworkLog(id: string) {
 
 // ── Student Certificate Logs ──────────────────────────────────────────────
 export function getStudentCertificateLogs(studentId: string, studentName?: string): StudentCertificateLog[] {
+  const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => {
-    if (studentId && (c.studentId === studentId || c.studentId === 'all')) return true;
+    if (studentId && (c.studentId === studentId || c.studentId === 'all' || c.studentAccountId === studentId)) return true;
     if (studentName && c.studentName && isStudentNameMatch(studentName, c.studentName)) return true;
+    if (normSearchName && c.studentName && normalizeArabicText(c.studentName) === normSearchName) return true;
     return false;
   });
 }
-export function saveStudentCertificateLog(log: Omit<StudentCertificateLog, 'id' | 'createdAt'>): StudentCertificateLog {
+
+export function saveStudentCertificateLog(log: Omit<StudentCertificateLog, 'id' | 'createdAt'> & { id?: string }): StudentCertificateLog {
   const all = readList<StudentCertificateLog>(CERT_LOG_KEY);
-  const newLog: StudentCertificateLog = { ...log, id: `cert-log-${Date.now()}`, createdAt: new Date().toISOString() };
-  writeList(CERT_LOG_KEY, [newLog, ...all]);
+  
+  let parentPhone = log.parentPhone;
+  let parentName = log.parentName;
+  let parentAccountId = log.parentAccountId;
+  let studentAccountId = log.studentAccountId;
+  
+  if (!parentPhone || !parentAccountId || !studentAccountId || !parentName) {
+    try {
+      const allClass = readList<any>(CLASS_STUDENTS_KEY);
+      const allMasar = readList<any>('masar.students.v1');
+      const allPool = [...allClass, ...allMasar];
+      const match = allPool.find(s => 
+        (s.id && s.id === log.studentId) || 
+        (log.studentName && s.fullName && isStudentNameMatch(s.fullName, log.studentName))
+      );
+      if (match) {
+        parentPhone = parentPhone || match.parentPhone;
+        parentName = parentName || match.parentName;
+        parentAccountId = parentAccountId || match.parentAccountId || match.linkedParentId;
+        studentAccountId = studentAccountId || match.studentAccountId || match.linkedStudentId;
+      }
+    } catch {}
+  }
+
+  const certNumber = log.certNumber || `MASAR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+  const newLog: StudentCertificateLog = {
+    ...log,
+    id: log.id || `cert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    certNumber,
+    parentPhone,
+    parentName,
+    parentAccountId,
+    studentAccountId,
+    dispatchedToParent: log.dispatchedToParent ?? true,
+    dispatchedAt: log.dispatchedAt || new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  const existingIndex = all.findIndex(c => c.id === newLog.id || (newLog.certNumber && c.certNumber === newLog.certNumber));
+  if (existingIndex >= 0) {
+    all[existingIndex] = newLog;
+    writeList(CERT_LOG_KEY, all);
+  } else {
+    writeList(CERT_LOG_KEY, [newLog, ...all]);
+  }
+
   syncDocToCloud(CLOUD_CERT_LOGS, newLog.id, newLog);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collection: CLOUD_CERT_LOGS, id: newLog.id } }));
+  }
   return newLog;
 }
 export function deleteStudentCertificateLog(id: string) {
@@ -318,6 +374,10 @@ export type StudentBadgeRecord = {
   id: string;
   studentId: string;
   studentName: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  parentPhone?: string;
+  parentName?: string;
   badgeId: string;
   title: string;
   description: string;
@@ -328,6 +388,8 @@ export type StudentBadgeRecord = {
   note?: string;
   awardedBy: string;
   awardedAt: string;
+  dispatchedToParent?: boolean;
+  dispatchedAt?: string;
   createdAt: string;
 };
 
@@ -389,24 +451,67 @@ export const BADGE_TEMPLATES = [
   },
 ];
 
-export function saveBadge(data: Omit<StudentBadgeRecord, 'id' | 'createdAt'>): StudentBadgeRecord {
+export function saveBadge(data: Omit<StudentBadgeRecord, 'id' | 'createdAt'> & { id?: string }): StudentBadgeRecord {
   const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+  
+  let parentPhone = data.parentPhone;
+  let parentName = data.parentName;
+  let parentAccountId = data.parentAccountId;
+  let studentAccountId = data.studentAccountId;
+
+  if (!parentPhone || !parentAccountId || !studentAccountId || !parentName) {
+    try {
+      const allClass = readList<any>(CLASS_STUDENTS_KEY);
+      const allMasar = readList<any>('masar.students.v1');
+      const allPool = [...allClass, ...allMasar];
+      const match = allPool.find(s => 
+        (s.id && s.id === data.studentId) || 
+        (data.studentName && s.fullName && isStudentNameMatch(s.fullName, data.studentName))
+      );
+      if (match) {
+        parentPhone = parentPhone || match.parentPhone;
+        parentName = parentName || match.parentName;
+        parentAccountId = parentAccountId || match.parentAccountId || match.linkedParentId;
+        studentAccountId = studentAccountId || match.studentAccountId || match.linkedStudentId;
+      }
+    } catch {}
+  }
+
   const record: StudentBadgeRecord = {
     ...data,
-    id: `badge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: data.id || `badge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    parentPhone,
+    parentName,
+    parentAccountId,
+    studentAccountId,
+    dispatchedToParent: data.dispatchedToParent ?? true,
+    dispatchedAt: data.dispatchedAt || new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };
-  all.push(record);
-  writeCloudCache(BADGES_KEY, all);
+
+  const existingIndex = all.findIndex(b => b.id === record.id);
+  if (existingIndex >= 0) {
+    all[existingIndex] = record;
+    writeCloudCache(BADGES_KEY, all);
+  } else {
+    all.push(record);
+    writeCloudCache(BADGES_KEY, all);
+  }
+
   syncDocToCloud(BADGES_CLOUD, record.id, record);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collection: BADGES_CLOUD, id: record.id } }));
+  }
   return record;
 }
 
 export function getStudentBadges(studentId: string, studentName?: string): StudentBadgeRecord[] {
   const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+  const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return all.filter((b) => {
-    if (studentId && (b.studentId === studentId || b.studentId === 'all')) return true;
+    if (studentId && (b.studentId === studentId || b.studentId === 'all' || b.studentAccountId === studentId)) return true;
     if (studentName && b.studentName && isStudentNameMatch(studentName, b.studentName)) return true;
+    if (normSearchName && b.studentName && normalizeArabicText(b.studentName) === normSearchName) return true;
     return false;
   });
 }
