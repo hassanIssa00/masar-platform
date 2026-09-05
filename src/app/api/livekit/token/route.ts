@@ -6,7 +6,34 @@ import { checkRateLimit, getClientIdentifier, getIpIdentifier } from '@/lib/rate
 
 export async function GET(req: NextRequest) {
   // ── 1. Server-side Authentication ────────────────────────────────────────
-  const user = await requireAuth(req);
+  let user = await requireAuth(req);
+  let isGuest = false;
+  if (!user) {
+    const rawRoom = req.nextUrl.searchParams.get('room') || '';
+    const normRoom = rawRoom.toLowerCase().trim();
+    if (
+      normRoom === 'ikhlas-jeddah' ||
+      normRoom === 'ikhlas_jeddah' ||
+      normRoom.startsWith('live-') ||
+      normRoom.startsWith('ikhlas-')
+    ) {
+      const guestName = req.nextUrl.searchParams.get('name')?.trim() || 'ولي أمر (مشاهد)';
+      user = {
+        id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: guestName.slice(0, 50),
+        role: 'parent' as any,
+        email: '',
+        schoolBranch: 'IKHLAS_JEDDAH',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        v: 1,
+      };
+      isGuest = true;
+    } else {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+  }
+
   if (!user) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }

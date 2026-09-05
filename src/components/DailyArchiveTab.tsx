@@ -465,11 +465,19 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
      OFFICIAL PRINTING FUNCTIONS (A4 CERTIFIED REPORTS)
   ═══════════════════════════════════════════════════════ */
 
-  const printStudentAttendanceReport = () => {
+  const printStudentAttendanceReport = (forceAll: boolean = false) => {
     if (!selectedStudent) return;
-    const rows = activeStudentAttendance.length === 0
-      ? '<tr><td colspan="8" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات حضور خلال الفترة المحددة (' + currentDurationLabel + ')</td></tr>'
-      : activeStudentAttendance.map((r, i) => `
+    const targetList = forceAll ? getAttendanceForStudent(selectedStudent) : activeStudentAttendance;
+    const durationLabel = forceAll ? 'كامل السجل الدراسي للطالب (جميع الأيام والشهور)' : currentDurationLabel;
+    const total = targetList.length;
+    const present = targetList.filter(r => r.status === 'present').length;
+    const absent = targetList.filter(r => r.status === 'absent').length;
+    const late = targetList.filter(r => r.status === 'late').length;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 100;
+
+    const rows = targetList.length === 0
+      ? '<tr><td colspan="8" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات حضور خلال الفترة المحددة (' + durationLabel + ')</td></tr>'
+      : targetList.map((r, i) => `
         <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
           <td style="padding:8px 12px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
           <td style="padding:8px 12px;font-weight:bold;color:#1e293b;">${formatArabicDate(r.date)}</td>
@@ -531,7 +539,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
           </div>
         </div>
         <div class="header-meta">
-          <div>الفترة المحددة: ${currentDurationLabel}</div>
+          <div>الفترة المحددة: ${durationLabel}</div>
           <div>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</div>
         </div>
       </div>
@@ -541,11 +549,11 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
           <p>${selectedStudent.grade} ${selectedStudent.parentPhone ? '· ولي الأمر: ' + selectedStudent.parentPhone : ''}</p>
         </div>
         <div class="stats-pills">
-          <span class="pill pill-blue">إجمالي الأيام: ${attendanceStats.total}</span>
-          <span class="pill pill-green">حاضر: ${attendanceStats.present}</span>
-          <span class="pill pill-red">غائب: ${attendanceStats.absent}</span>
-          <span class="pill pill-amber">متأخر: ${attendanceStats.late}</span>
-          <span class="pill pill-green">نسبة الالتزام: ${attendanceStats.rate}%</span>
+          <span class="pill pill-blue">إجمالي الأيام: ${total}</span>
+          <span class="pill pill-green">حاضر: ${present}</span>
+          <span class="pill pill-red">غائب: ${absent}</span>
+          <span class="pill pill-amber">متأخر: ${late}</span>
+          <span class="pill pill-green">نسبة الالتزام: ${rate}%</span>
         </div>
       </div>
       <table>
@@ -582,11 +590,18 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     win.document.close();
   };
 
-  const printStudentHomeworkReport = () => {
+  const printStudentHomeworkReport = (forceAll: boolean = false) => {
     if (!selectedStudent) return;
-    const rows = activeStudentHomework.length === 0
-      ? '<tr><td colspan="8" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات واجبات خلال الفترة المحددة (' + currentDurationLabel + ')</td></tr>'
-      : activeStudentHomework.map((h, i) => `
+    const targetList = forceAll ? getHomeworkForStudent(selectedStudent) : activeStudentHomework;
+    const durationLabel = forceAll ? 'كامل السجل الدراسي للطالب (جميع الواجبات والتكاليف)' : currentDurationLabel;
+    const total = targetList.length;
+    const submitted = targetList.filter(r => r.status === 'submitted' || r.status === 'reviewed').length;
+    const missing = targetList.filter(r => r.status === 'missing' || r.status === 'assigned').length;
+    const late = targetList.filter(r => r.status === 'late').length;
+
+    const rows = targetList.length === 0
+      ? '<tr><td colspan="8" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات واجبات خلال الفترة المحددة (' + durationLabel + ')</td></tr>'
+      : targetList.map((h, i) => `
         <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
           <td style="padding:8px 12px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
           <td style="padding:8px 12px;font-weight:bold;color:#1e293b;">${h.title}</td>
@@ -638,7 +653,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div class="logo-area"><div class="logo-circle">📚</div>
           <div class="platform-name"><h1>منصة مَسَار للتأهيل والتعليم الذكي</h1><p>فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div></div>
-        <div class="header-meta"><div>الفترة المحددة: ${currentDurationLabel}</div><div>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</div></div>
+        <div class="header-meta"><div>الفترة المحددة: ${durationLabel}</div><div>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</div></div>
       </div>
       <div class="student-banner">
         <div class="student-title">
@@ -646,8 +661,8 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
           <p>${selectedStudent.grade}</p>
         </div>
         <div class="stats-pills">
-          <span class="pill" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;">إجمالي الواجبات: ${homeworkStats.total}</span>
-          <span class="pill" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">سُلِّم: ${homeworkStats.submitted}</span>
+          <span class="pill" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;">إجمالي الواجبات: ${total}</span>
+          <span class="pill" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">سُلِّم: ${submitted}</span>
           <span class="pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">متبقي: ${homeworkStats.missing}</span>
           <span class="pill" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">متوسط التقييم: ${homeworkStats.avgGrade}/10</span>
         </div>
@@ -678,11 +693,18 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     win.document.close();
   };
 
-  const printStudentQuizReport = () => {
+  const printStudentQuizReport = (forceAll: boolean = false) => {
     if (!selectedStudent) return;
-    const rows = activeStudentQuizzes.length === 0
-      ? '<tr><td colspan="7" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات كويزات خلال الفترة المحددة (' + currentDurationLabel + ')</td></tr>'
-      : activeStudentQuizzes.map((q, i) => `
+    const targetList = forceAll ? getQuizzesForStudent(selectedStudent) : activeStudentQuizzes;
+    const durationLabel = forceAll ? 'كامل السجل الدراسي للطالب (جميع الكويزات والاختبارات)' : currentDurationLabel;
+    const total = targetList.length;
+    const avgScore = total > 0 ? Math.round(targetList.reduce((sum, q) => sum + q.score, 0) / total) : 0;
+    const highScore = total > 0 ? Math.max(...targetList.map(q => q.score)) : 0;
+    const rating = avgScore >= 90 ? 'ممتاز 🌟' : avgScore >= 80 ? 'جيد جداً ✅' : avgScore >= 65 ? 'جيد 👍' : 'يحتاج متابعة ⚠️';
+
+    const rows = targetList.length === 0
+      ? '<tr><td colspan="7" style="padding:24px;text-align:center;color:#64748b;font-weight:bold;">لا توجد سجلات كويزات خلال الفترة المحددة (' + durationLabel + ')</td></tr>'
+      : targetList.map((q, i) => `
         <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
           <td style="padding:8px 12px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
           <td style="padding:8px 12px;font-weight:bold;color:#1e293b;">${q.quizTitle}</td>
@@ -740,10 +762,10 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
           <p>${selectedStudent.grade}</p>
         </div>
         <div class="stats-pills">
-          <span class="pill" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;">إجمالي الكويزات: ${quizStats.total}</span>
-          <span class="pill" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">متوسط الدرجات: ${quizStats.avgScore}%</span>
-          <span class="pill" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">أعلى درجة: ${quizStats.highScore}%</span>
-          <span class="pill" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;">التقدير: ${quizStats.rating}</span>
+          <span class="pill" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;">إجمالي الكويزات: ${total}</span>
+          <span class="pill" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">متوسط الدرجات: ${avgScore}%</span>
+          <span class="pill" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">أعلى درجة: ${highScore}%</span>
+          <span class="pill" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;">التقدير: ${rating}</span>
         </div>
       </div>
       <table>
@@ -770,38 +792,55 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     win.document.close();
   };
 
-  const printStudentComprehensiveReport = () => {
+  const printStudentComprehensiveReport = (forceAll: boolean = false) => {
     if (!selectedStudent) return;
 
-    // Attendance rows
-    const attRows = activeStudentAttendance.slice(0, 15).map((r, i) => `
-      <tr style="border-bottom:1px solid #e2e8f0;">
-        <td style="padding:6px 8px;text-align:center;">${i + 1}</td>
+    const attList = forceAll ? getAttendanceForStudent(selectedStudent) : activeStudentAttendance;
+    const hwList = forceAll ? getHomeworkForStudent(selectedStudent) : activeStudentHomework;
+    const quizList = forceAll ? getQuizzesForStudent(selectedStudent) : activeStudentQuizzes;
+    const durationLabel = forceAll ? 'كامل السجل الأكاديمي الشامل (جميع الأيام والشهور بلا استثناء)' : currentDurationLabel;
+
+    // Recalculate stats for printed dataset
+    const attTotal = attList.length;
+    const attPresent = attList.filter(r => r.status === 'present').length;
+    const attRate = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 100;
+
+    const hwTotal = hwList.length;
+    const hwSubmitted = hwList.filter(r => r.status === 'submitted' || r.status === 'reviewed').length;
+
+    const quizTotal = quizList.length;
+    const quizAvgScore = quizTotal > 0 ? Math.round(quizList.reduce((sum, q) => sum + q.score, 0) / quizTotal) : 0;
+    const quizRating = quizAvgScore >= 90 ? 'ممتاز 🌟' : quizAvgScore >= 80 ? 'جيد جداً ✅' : quizAvgScore >= 65 ? 'جيد 👍' : 'يحتاج متابعة ⚠️';
+
+    // Attendance rows: ALL rows without artificial slice
+    const attRows = attList.map((r, i) => `
+      <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
+        <td style="padding:6px 8px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
         <td style="padding:6px 8px;font-weight:bold;">${formatArabicDate(r.date)}</td>
         <td style="padding:6px 8px;text-align:center;"><span style="color:${getStatusColor(r.status)};font-weight:bold;">${getStatusLabel(r.status)}</span></td>
-        <td style="padding:6px 8px;text-align:center;">${r.score !== undefined ? r.score + '%' : '—'}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:bold;color:#06392c;">${r.score !== undefined ? r.score + '%' : '—'}</td>
         <td style="padding:6px 8px;font-size:11px;color:#64748b;">${r.note || '—'}</td>
       </tr>
     `).join('');
 
-    // Homework rows
-    const hwRows = activeStudentHomework.slice(0, 15).map((h, i) => `
-      <tr style="border-bottom:1px solid #e2e8f0;">
-        <td style="padding:6px 8px;text-align:center;">${i + 1}</td>
+    // Homework rows: ALL rows without artificial slice
+    const hwRows = hwList.map((h, i) => `
+      <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
+        <td style="padding:6px 8px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
         <td style="padding:6px 8px;font-weight:bold;">${h.title}</td>
-        <td style="padding:6px 8px;">${h.subject}</td>
-        <td style="padding:6px 8px;text-align:center;">${h.status === 'submitted' || h.status === 'reviewed' ? 'سُلِّم ✓' : 'متبقي'}</td>
-        <td style="padding:6px 8px;text-align:center;font-weight:bold;">${h.grade !== undefined ? h.grade + '/10' : '—'}</td>
+        <td style="padding:6px 8px;color:#475569;">${h.subject}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:bold;">${h.status === 'submitted' || h.status === 'reviewed' ? 'سُلِّم ✓' : 'متبقي'}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:bold;color:#0b4d3c;">${h.grade !== undefined ? h.grade + '/10' : '—'}</td>
         <td style="padding:6px 8px;font-size:11px;color:#64748b;">${h.feedback || '—'}</td>
       </tr>
     `).join('');
 
-    // Quiz rows
-    const quizRows = activeStudentQuizzes.slice(0, 10).map((q, i) => `
-      <tr style="border-bottom:1px solid #e2e8f0;">
-        <td style="padding:6px 8px;text-align:center;">${i + 1}</td>
+    // Quiz rows: ALL rows without artificial slice
+    const quizRows = quizList.map((q, i) => `
+      <tr style="border-bottom:1px solid #e2e8f0; ${i % 2 === 1 ? 'background:#f8fafc;' : ''}">
+        <td style="padding:6px 8px;text-align:center;font-weight:900;color:#475569;">${i + 1}</td>
         <td style="padding:6px 8px;font-weight:bold;">${q.quizTitle}</td>
-        <td style="padding:6px 8px;">${q.subject}</td>
+        <td style="padding:6px 8px;color:#475569;">${q.subject}</td>
         <td style="padding:6px 8px;text-align:center;font-weight:bold;color:#0b4d3c;">${q.score}%</td>
         <td style="padding:6px 8px;font-size:11px;color:#64748b;">${q.note || '—'}</td>
       </tr>
@@ -832,22 +871,22 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="doc-title">
         <div><h2 style="margin:0;font-size:16px;color:#06392c;">📄 الملف والسجل الأكاديمي الشامل للطالب</h2><p style="margin:3px 0 0;font-weight:bold;color:#64748b;">اسم الطالب: <strong>${selectedStudent.fullName}</strong> — ${selectedStudent.grade}</p></div>
         <div style="display:flex;gap:6px;">
-          <span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:999px;font-weight:900;">حضور: ${attendanceStats.rate}%</span>
-          <span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:999px;font-weight:900;">واجبات: ${homeworkStats.submitted}/${homeworkStats.total}</span>
-          <span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:999px;font-weight:900;">كويزات: ${quizStats.avgScore}%</span>
+          <span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:999px;font-weight:900;">حضور: ${attRate}%</span>
+          <span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:999px;font-weight:900;">واجبات: ${hwSubmitted}/${hwTotal}</span>
+          <span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:999px;font-weight:900;">كويزات: ${quizAvgScore}%</span>
         </div>
       </div>
 
       <!-- 1. Attendance -->
-      <div class="section-header"><span>1. سجل الحضور والغياب والانضباط</span><span>نسبة الحضور: ${attendanceStats.rate}% (حاضر ${attendanceStats.present} من ${attendanceStats.total})</span></div>
+      <div class="section-header"><span>1. سجل الحضور والغياب والانضباط</span><span>نسبة الحضور: ${attRate}% (حاضر ${attPresent} من ${attTotal})</span></div>
       <table><thead><tr><th style="width:30px">#</th><th>التاريخ</th><th style="width:90px;text-align:center;">الحالة</th><th style="width:70px;text-align:center;">الدرجة</th><th>الملاحظة</th></tr></thead><tbody>${attRows || '<tr><td colspan="5" style="text-align:center;padding:10px;">لا توجد سجلات</td></tr>'}</tbody></table>
 
       <!-- 2. Homework -->
-      <div class="section-header"><span>2. سجل الواجبات والتكاليف الدراسية</span><span>إنجاز الواجبات: ${homeworkStats.submitted} من ${homeworkStats.total} (متوسط ${homeworkStats.avgGrade}/10)</span></div>
+      <div class="section-header"><span>2. سجل الواجبات والتكاليف الدراسية</span><span>إنجاز الواجبات: ${hwSubmitted} من ${hwTotal}</span></div>
       <table><thead><tr><th style="width:30px">#</th><th>عنوان الواجب</th><th style="width:100px">المادة</th><th style="width:80px;text-align:center;">الحالة</th><th style="width:70px;text-align:center;">الدرجة</th><th>ملاحظة المعلم</th></tr></thead><tbody>${hwRows || '<tr><td colspan="5" style="text-align:center;padding:10px;">لا توجد سجلات</td></tr>'}</tbody></table>
 
       <!-- 3. Quizzes -->
-      <div class="section-header"><span>3. سجل الكويزات والاختبارات التفاعلية</span><span>متوسط الدرجات: ${quizStats.avgScore}% — ${quizStats.rating}</span></div>
+      <div class="section-header"><span>3. سجل الكويزات والاختبارات التفاعلية</span><span>متوسط الدرجات: ${quizAvgScore}% — ${quizRating}</span></div>
       <table><thead><tr><th style="width:30px">#</th><th>اسم الكويز</th><th style="width:100px">المادة</th><th style="width:80px;text-align:center;">الدرجة</th><th>ملاحظات الأداء</th></tr></thead><tbody>${quizRows || '<tr><td colspan="4" style="text-align:center;padding:10px;">لا توجد سجلات</td></tr>'}</tbody></table>
 
       <div class="footer">
@@ -1275,16 +1314,30 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
                     </div>
                   </div>
 
-                  {/* Print Whole Dossier Button */}
+                  {/* Print Buttons: All Records OR Filtered Period */}
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Option 1: Print FULL file without date filtering */}
                     <button
                       type="button"
-                      onClick={printStudentComprehensiveReport}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-black shadow-md transition cursor-pointer"
+                      onClick={() => printStudentComprehensiveReport(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-black shadow-md transition cursor-pointer border border-amber-400/20"
+                      title="طباعة جميع سجلات الطالب من بداية العام وحتى اليوم دون أي اقتطاع"
                     >
-                      <FileText size={15} />
-                      طباعة السجل الأكاديمي الشامل (الملف الكامل معتمد)
+                      <FileText size={15} className="text-amber-400" />
+                      طباعة كامل السجل (بدون تحديد تاريخ) 🖨️
                     </button>
+
+                    {/* Option 2: Print filtered period */}
+                    <button
+                      type="button"
+                      onClick={() => printStudentComprehensiveReport(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black shadow-md transition cursor-pointer"
+                      title="طباعة السجل للفترة المحددة بالأسفل"
+                    >
+                      <Printer size={15} />
+                      طباعة تقرير الفترة المحددة ({durationPreset === 'all' ? 'كامل السجل' : durationPreset === 'custom' ? 'فترة مخصصة' : currentDurationLabel})
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setSelectedStudent(null)}
@@ -1299,57 +1352,116 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
                 {/* ── Duration / Period Filter Bar ── */}
                 <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-700">
+                    <div className="flex items-center gap-2 text-xs font-black text-slate-800">
                       <Filter size={15} className="text-amber-500" />
-                      تحديد مدة وفترة التقارير:
+                      <span>تحديد مدة وفترة التقارير والطباعة:</span>
+                      <span className="text-[11px] font-bold text-slate-500">(اختر كامل السجل أو حدد تاريخ من كذا لكذا)</span>
                     </div>
                     <div className="text-xs font-bold text-slate-500">
-                      الفترة الحالية: <span className="font-black text-slate-900 font-mono bg-slate-100 px-2 py-0.5 rounded-md">{currentDurationLabel}</span>
+                      الفترة الحالية: <span className="font-black text-emerald-800 font-mono bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">{currentDurationLabel}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Primary Button: All Records */}
+                    <button
+                      type="button"
+                      onClick={() => setDurationPreset('all')}
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                        durationPreset === 'all'
+                          ? 'bg-slate-900 text-amber-300 shadow-sm border border-slate-800'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>📁</span>
+                      <span>كامل السجل (بدون تحديد تاريخ)</span>
+                    </button>
+
+                    {/* Custom Date Range Selector Button */}
+                    <button
+                      type="button"
+                      onClick={() => setDurationPreset('custom')}
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                        durationPreset === 'custom'
+                          ? 'bg-emerald-700 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>📅</span>
+                      <span>تحديد تاريخ مخصص (من كذا لكذا)</span>
+                    </button>
+
+                    {/* Quick presets */}
                     {[
-                      { key: 'all' as DurationPreset, label: 'كامل السجل' },
                       { key: 'today' as DurationPreset, label: 'اليوم' },
                       { key: 'week' as DurationPreset, label: 'هذا الأسبوع (7 أيام)' },
                       { key: 'month' as DurationPreset, label: 'هذا الشهر (30 يوماً)' },
-                      { key: 'custom' as DurationPreset, label: 'تاريخ مخصص 📅' },
                     ].map(p => (
                       <button
                         key={p.key}
                         type="button"
                         onClick={() => setDurationPreset(p.key)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                           durationPreset === p.key
                             ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
                         {p.label}
                       </button>
                     ))}
-
-                    {/* Custom Date Pickers */}
-                    {durationPreset === 'custom' && (
-                      <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 animate-fade-in">
-                        <span className="text-[11px] font-bold text-slate-500 mr-1">من:</span>
-                        <input
-                          type="date"
-                          value={customStartDate}
-                          onChange={e => setCustomStartDate(e.target.value)}
-                          className="text-xs font-black text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none"
-                        />
-                        <span className="text-[11px] font-bold text-slate-500">إلى:</span>
-                        <input
-                          type="date"
-                          value={customEndDate}
-                          onChange={e => setCustomEndDate(e.target.value)}
-                          className="text-xs font-black text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none"
-                        />
-                      </div>
-                    )}
                   </div>
+
+                  {/* Prominent Custom Date Range Box */}
+                  {durationPreset === 'custom' && (
+                    <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in mt-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                          <Calendar size={15} className="text-emerald-700" />
+                          حدد تاريخ بداية ونهاية التقرير:
+                        </span>
+
+                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-emerald-300 shadow-2xs">
+                          <span className="text-xs font-black text-slate-600">من تاريخ:</span>
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={e => setCustomStartDate(e.target.value)}
+                            className="text-xs font-black text-slate-900 bg-transparent outline-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-emerald-300 shadow-2xs">
+                          <span className="text-xs font-black text-slate-600">إلى تاريخ:</span>
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={e => setCustomEndDate(e.target.value)}
+                            className="text-xs font-black text-slate-900 bg-transparent outline-none cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {(customStartDate || customEndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
+                            className="text-xs font-black text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-200 transition cursor-pointer"
+                          >
+                            مسح التاريخ
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDurationPreset('all')}
+                          className="text-xs font-black text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300 transition cursor-pointer"
+                        >
+                          إلغاء التحديد وعرض كامل السجل
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── 3 Tabs Inside Student Dossier ── */}
@@ -1414,14 +1526,25 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
                         <Users size={16} className="text-emerald-600" />
                         سجل الحضور والغياب والانضباط اليومي للطالب ({currentDurationLabel})
                       </div>
-                      <button
-                        type="button"
-                        onClick={printStudentAttendanceReport}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
-                      >
-                        <Printer size={14} />
-                        طباعة تقرير الحضور والغياب للفترة المحددة
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => printStudentAttendanceReport(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-black shadow-xs transition cursor-pointer border border-amber-400/20"
+                          title="طباعة كامل سجل الحضور لجميع الأيام بلا استثناء"
+                        >
+                          <Printer size={14} className="text-amber-400" />
+                          طباعة كامل الحضور (كل الأيام)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printStudentAttendanceReport(false)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
+                        >
+                          <Printer size={14} />
+                          طباعة تقرير الحضور للفترة المحددة
+                        </button>
+                      </div>
                     </div>
 
                     {activeStudentAttendance.length === 0 ? (
@@ -1515,14 +1638,25 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
                         <BookOpen size={16} className="text-amber-600" />
                         سجل الواجبات والتكاليف الدراسية المعتمدة ({currentDurationLabel})
                       </div>
-                      <button
-                        type="button"
-                        onClick={printStudentHomeworkReport}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
-                      >
-                        <Printer size={14} />
-                        طباعة تقرير الواجبات للفترة المحددة
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => printStudentHomeworkReport(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-black shadow-xs transition cursor-pointer border border-amber-400/20"
+                          title="طباعة كامل سجل الواجبات والتكاليف"
+                        >
+                          <Printer size={14} className="text-amber-400" />
+                          طباعة كل الواجبات (كامل السجل)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printStudentHomeworkReport(false)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
+                        >
+                          <Printer size={14} />
+                          طباعة تقرير الواجبات للفترة المحددة
+                        </button>
+                      </div>
                     </div>
 
                     {activeStudentHomework.length === 0 ? (
@@ -1619,14 +1753,25 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
                         <Brain size={16} className="text-blue-600" />
                         سجل نتائج الكويزات والاختبارات التفاعلية ({currentDurationLabel})
                       </div>
-                      <button
-                        type="button"
-                        onClick={printStudentQuizReport}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
-                      >
-                        <Printer size={14} />
-                        طباعة تقرير الكويزات للفترة المحددة
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => printStudentQuizReport(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-black shadow-xs transition cursor-pointer border border-amber-400/20"
+                          title="طباعة كامل نتائج الكويزات والاختبارات"
+                        >
+                          <Printer size={14} className="text-amber-400" />
+                          طباعة كل الكويزات (كامل السجل)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printStudentQuizReport(false)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer"
+                        >
+                          <Printer size={14} />
+                          طباعة تقرير الكويزات للفترة المحددة
+                        </button>
+                      </div>
                     </div>
 
                     {activeStudentQuizzes.length === 0 ? (

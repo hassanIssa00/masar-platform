@@ -22,19 +22,30 @@ function LiveViewer() {
     if (!roomId) { setError('رابط البث غير صحيح.'); setLoading(false); return; }
     (async () => {
       try {
+        let viewerName = params.get('name') || '';
+        if (!viewerName && typeof window !== 'undefined') {
+          try {
+            const auth = localStorage.getItem('masar_auth_user');
+            if (auth) {
+              const parsed = JSON.parse(auth);
+              viewerName = parsed.name || parsed.fullName || '';
+            }
+          } catch {}
+        }
+        const nameParam = viewerName ? `&name=${encodeURIComponent(viewerName)}` : '';
         const res = await fetch(
-          `/api/livekit/token?room=${encodeURIComponent(roomId)}`
+          `/api/livekit/token?room=${encodeURIComponent(roomId)}${nameParam}`
         );
         const data = await res.json();
         if (data.token) { setToken(data.token); setWsUrl(data.wsUrl); }
-        else setError('لم نتمكن من الاتصال بالبث. ربما انتهى البث أو الرابط منتهي الصلاحية.');
+        else setError(data.error || 'لم نتمكن من الاتصال بالبث. ربما انتهى البث أو الرابط منتهي الصلاحية.');
       } catch {
         setError('خطأ في الاتصال. تحقق من اتصالك بالإنترنت وحاول مجدداً.');
       } finally {
         setLoading(false);
       }
     })();
-  }, [roomId]);
+  }, [roomId, params]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col" dir="rtl">

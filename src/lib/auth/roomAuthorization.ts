@@ -62,8 +62,15 @@ export async function authorizeRoomAccess(
     };
   }
 
-  // ── 2. School Branch Main Room (Ikhlas Jeddah) ─────────────────────────────
-  if (cleanRoom === 'ikhlas-jeddah') {
+  // ── 2. School Branch Main Room (Ikhlas Jeddah) & Dynamic Live Rooms ───────
+  const normRoom = cleanRoom.toLowerCase();
+  if (
+    normRoom === 'ikhlas-jeddah' ||
+    normRoom === 'ikhlas_jeddah' ||
+    normRoom.startsWith('live-') ||
+    normRoom.startsWith('ikhlas-') ||
+    normRoom.startsWith('masar-')
+  ) {
     const isStaff = user.role === 'doctor' || user.role === 'teacher' || user.role === 'specialist';
     return {
       authorized: true,
