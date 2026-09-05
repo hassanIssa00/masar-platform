@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { invalidateSnapshotCache } from '@/app/api/data/snapshot/route';
 
+import { requireRole } from '@/lib/auth/authorization';
+
 async function handlePurgeInvalidBadges(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get('secret') || req.headers.get('x-cleanup-secret') || '';
   const validSecret = process.env.CLEANUP_SECRET || 'masar-cleanup-2026-ikhlas';
 
-  if (secret !== validSecret) {
+  const auth = await requireRole(req, ['doctor', 'specialist', 'teacher']);
+  const isAuthorized = auth.authorized || (secret && secret === validSecret);
+
+  if (!isAuthorized) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
