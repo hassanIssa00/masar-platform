@@ -8,10 +8,11 @@ import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
 import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
-import { extractFatherNameFromStudent, findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
+import { extractFatherNameFromStudent, findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
+import { getClassStudents } from '@/lib/classDb';
 
 const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
-const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
+const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys', 'classStudents'] as const;
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
 const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
 const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFullYear() - 3 - index));
@@ -90,66 +91,81 @@ export default function NewStudentPage() {
       setNextFlow(isStudent ? 'student-test' : 'parent-survey');
 
       const requestedStudentId = params.get('student');
-      const allStudents = getStudents();
-      const found =
-        allStudents.find((s) => s.id === requestedStudentId) ??
+      const classStudents = getClassStudents();
+      const rawStudents = getStudents();
+      const allAccounts = getAccounts();
+      const allStudents: any[] = [...rawStudents, ...classStudents];
+
+      let found =
+        (requestedStudentId ? allStudents.find((s) => s.id === requestedStudentId || s.studentAccountId === requestedStudentId || (s as any).accountId === requestedStudentId) : undefined) ??
         (session?.role === 'student'
           ? allStudents.find((s) =>
               s.id === session.id ||
-              s.fullName === session.name ||
-              s.email === session.email ||
-              s.parentPhone === session.phone,
+              s.studentAccountId === session.id ||
+              (session.name && isStudentNameMatch(s.fullName, session.name)) ||
+              (session.email && (s.email === session.email || s.linkedStudentEmail === session.email)) ||
+              (session.phone && s.parentPhone === session.phone),
             )
           : undefined) ??
         (session?.role === 'parent'
-          ? (((session as any)?.linkedStudentId ? allStudents.find((s) => s.id === (session as any).linkedStudentId) : undefined) ||
-            findMatchingStudentForParent(session, allStudents) ||
-            allStudents.find((s) => (session.phone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(session.phone.replace(/\D/g, '').slice(-8)))))
+          ? (((session as any)?.linkedStudentId ? allStudents.find((s) => s.id === (session as any).linkedStudentId || (s as any).studentAccountId === (session as any).linkedStudentId) : undefined) ||
+            ((session as any)?.linkedStudentName ? allStudents.find((s) => isStudentNameMatch(s.fullName, (session as any).linkedStudentName)) : undefined) ||
+            ((session as any)?.childName ? allStudents.find((s) => isStudentNameMatch(s.fullName, (session as any).childName)) : undefined) ||
+            findMatchingStudentForParent(session, allStudents as any) ||
+            allStudents.find((s) => session.phone && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(session.phone.replace(/\D/g, '').slice(-8))))
           : undefined);
 
-      if (session?.role === 'parent' || flow === 'parent') {
-        if (found) {
-          setResolvedStudent(found);
-          setStudentResolved(true);
-          setExistingStudentId(found.id);
-
-
-          // Always show the parent data form — never auto-skip it.
-          // Smart redirect to survey or dashboard only happens after the parent submits the form.
-
-          // Parent still needs to fill their own profile
-          const cleanParentName = deriveParentName(found.fullName, found.parentName, session?.name);
-          setParentAge(String((session as any)?.parentAge || (found as any)?.parentAge || ''));
-          setChildrenCount(String((session as any)?.childrenCount || (found as any)?.childrenCount || ''));
-          setParentNationalId(String((session as any)?.parentNationalId || (found as any)?.parentNationalId || ''));
-          setStudent((prev) => ({
-            ...prev,
-            fullName: found.fullName || '',
-            parentName: cleanParentName,
-            grade: found.grade || prev.grade,
-            recoveryEmail: (!isGeneratedAlias(session?.email) ? session?.email : '') || prev.recoveryEmail,
-            parentPhone: session?.phone || found.parentPhone || prev.parentPhone,
-            photoUrl: found.photoUrl || prev.photoUrl,
-            notes: (found as any)?.notes || (session as any)?.notes || prev.notes,
-            nationalId: found.nationalId || prev.nationalId,
-          }));
-          return;
+      if (!found && session?.id) {
+        const acc = allAccounts.find(a => a.id === session.id || (session.email && a.email === session.email));
+        if (acc) {
+          const lId = acc.linkedStudentId;
+          const lName = acc.linkedStudentName || (acc as any).childName;
+          if (lId) found = allStudents.find(s => s.id === lId || s.studentAccountId === lId);
+          if (!found && lName) found = allStudents.find(s => isStudentNameMatch(s.fullName, lName));
         }
+      }
 
-        // Parent without resolved student yet
-        setStudentResolved(false);
-        const cleanParentName = (session?.name && !session.name.includes('جديد') && session.name !== 'ولي الأمر' && session.name !== 'ولي أمر')
-          ? session.name
-          : '';
-        setParentAge(String((session as any)?.parentAge || ''));
-        setChildrenCount(String((session as any)?.childrenCount || ''));
-        setParentNationalId(String((session as any)?.parentNationalId || ''));
+      if (!found && requestedStudentId) {
+        const acc = allAccounts.find(a => a.id === requestedStudentId);
+        if (acc) {
+          if (acc.linkedStudentId) found = allStudents.find(s => s.id === acc.linkedStudentId);
+          if (!found && acc.name) found = allStudents.find(s => isStudentNameMatch(s.fullName, acc.name));
+        }
+      }
+
+      if (!found && (session?.role === 'parent' || flow === 'parent') && session?.name) {
+        found = allStudents.find(s => isParentChildNameMatch(s.fullName, session.name));
+      }
+
+      if (!found && (session?.role === 'parent' || flow === 'parent') && classStudents.length === 1) {
+        found = classStudents[0];
+      }
+
+      if (session?.role === 'parent' || flow === 'parent') {
+        const effectiveStudent = found || (allStudents.length > 0 ? allStudents[0] : null);
+        const resolvedChildName = effectiveStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || '';
+        const resolvedGrade = effectiveStudent?.grade || (session as any)?.grade || 'الصف الأول الابتدائي';
+
+        if (effectiveStudent) {
+          setResolvedStudent(effectiveStudent);
+          setExistingStudentId(effectiveStudent.id);
+        }
+        setStudentResolved(true);
+
+        const cleanParentName = (effectiveStudent ? deriveParentName(effectiveStudent.fullName, effectiveStudent.parentName, session?.name) : '') || session?.name || '';
+        setParentAge(String((session as any)?.parentAge || (effectiveStudent as any)?.parentAge || ''));
+        setChildrenCount(String((session as any)?.childrenCount || (effectiveStudent as any)?.childrenCount || ''));
+        setParentNationalId(String((session as any)?.parentNationalId || (effectiveStudent as any)?.parentNationalId || ''));
         setStudent((prev) => ({
           ...prev,
-          fullName: '',
-          parentName: cleanParentName,
+          fullName: resolvedChildName || prev.fullName,
+          parentName: cleanParentName || prev.parentName,
+          grade: resolvedGrade,
           recoveryEmail: (!isGeneratedAlias(session?.email) ? session?.email : '') || prev.recoveryEmail,
-          parentPhone: session?.phone || prev.parentPhone,
+          parentPhone: session?.phone || (effectiveStudent as any)?.parentPhone || prev.parentPhone,
+          photoUrl: (effectiveStudent as any)?.photoUrl || prev.photoUrl,
+          notes: (effectiveStudent as any)?.notes || (session as any)?.notes || prev.notes,
+          nationalId: (effectiveStudent as any)?.nationalId || prev.nationalId,
         }));
         return;
       }
@@ -238,7 +254,7 @@ export default function NewStudentPage() {
     const session = getSession();
     const params = new URLSearchParams(window.location.search);
     const requestedStudentId = params.get('student');
-    const allStudents = getStudents();
+    const allStudents: any[] = [...getStudents(), ...getClassStudents()];
     const matchedExisting = existingStudentId ? allStudents.find((s) => s.id === existingStudentId) : null;
     const targetId = existingStudentId || requestedStudentId || (session?.role === 'student' ? session.id : undefined);
     const recoveryEmail = student.recoveryEmail.trim();
@@ -250,7 +266,7 @@ export default function NewStudentPage() {
     if (nextFlow === 'parent-survey') {
       const parentNameClean = student.parentName.trim();
       const parentPhoneClean = student.parentPhone.trim();
-      const childNameClean = student.fullName.trim() || 'طالب جديد';
+      const childNameClean = student.fullName.trim() || resolvedStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || 'طالب جديد';
       const cleanDigits = (p?: string) => (p || '').replace(/\D/g, '');
       const pSuffix = cleanDigits(parentPhoneClean).slice(-8);
 
@@ -258,9 +274,10 @@ export default function NewStudentPage() {
       let matchedChildren = allStudents.filter((s) => {
         if (existingStudentId && s.id === existingStudentId) return true;
         if (requestedStudentId && s.id === requestedStudentId) return true;
+        if (resolvedStudent?.id && s.id === resolvedStudent.id) return true;
         const sNorm = normalizeArabicText(s.fullName);
         const cNorm = normalizeArabicText(childNameClean);
-        if (cNorm && cNorm.length > 2 && cNorm !== 'طالب جديد' && sNorm === cNorm) return true;
+        if (cNorm && cNorm.length > 2 && cNorm !== 'طالب جديد' && (sNorm === cNorm || isStudentNameMatch(s.fullName, childNameClean))) return true;
         return false;
       });
 
@@ -476,47 +493,25 @@ export default function NewStudentPage() {
 
             {nextFlow === 'parent-survey' ? (
               <div className="space-y-6">
-                {/* Linked Student Notification Card */}
-                {studentResolved ? (
-                  <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/80 p-4 shadow-2xs">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-xs shrink-0">
-                        🎓
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-black text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                          تم التعرف على ملف الابن بنجاح ✓
-                        </span>
-                        <h3 className="text-base font-black text-slate-900 mt-1 truncate">
-                          {student.fullName || resolvedStudent?.fullName || 'ملف الطالب المرتبط'}
-                        </h3>
-                        <p className="text-xs font-bold text-slate-600">
-                          {student.grade || resolvedStudent?.grade || 'الصف الأول الابتدائي'} • {(session as any)?.schoolBranch === 'IKHLAS_JEDDAH' ? 'فصل د. إسماعيل عيسى' : 'منصة مَسَار التعليمية'}
-                        </p>
-                      </div>
+                {/* Confirmed Linked Student Card */}
+                <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/80 p-4 shadow-2xs">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-xs shrink-0">
+                      🎓
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[11px] font-black text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        تم التعرف على ملف الابن بنجاح ✓
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 mt-1 truncate">
+                        {student.fullName || resolvedStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || 'ملف الطالب المرتبط'}
+                      </h3>
+                      <p className="text-xs font-bold text-slate-600">
+                        {student.grade || resolvedStudent?.grade || 'الصف الأول الابتدائي'} • {(session as any)?.schoolBranch === 'IKHLAS_JEDDAH' ? 'فصل د. إسماعيل عيسى' : 'منصة مَسَار التعليمية'}
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  <div className="grid gap-5 md:grid-cols-2 pb-4 border-b border-slate-100">
-                    <Field
-                      label="اسم الطالب (الابن / الابنة)"
-                      placeholder="الاسم الثلاثي أو الرباعي للطفل"
-                      value={student.fullName}
-                      onChange={(value) => handleFieldChange('fullName', value)}
-                      required
-                    />
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-black text-slate-700">الصف الدراسي للابن</span>
-                      <select
-                        value={student.grade}
-                        onChange={(event) => handleFieldChange('grade', event.target.value)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-teal-700"
-                      >
-                        {gradeOptions.map((g) => <option key={g}>{g}</option>)}
-                      </select>
-                    </label>
-                  </div>
-                )}
+                </div>
 
                 {/* Parent's Own Data Fields */}
                 <div className="grid gap-5 md:grid-cols-2">
@@ -671,11 +666,7 @@ export default function NewStudentPage() {
                 <p className="text-xs font-black text-teal-800">بيانات ولي الأمر</p>
                 <p className="mt-1 text-sm font-black text-slate-900">{student.parentName || (session as any)?.name || 'ولي الأمر'}</p>
                 <p className="mt-2 text-xs font-bold leading-6 text-slate-600">
-                  {studentResolved ? (
-                    <>الابن المرتبط: <span className="text-slate-900 font-black">{student.fullName || resolvedStudent?.fullName}</span></>
-                  ) : (
-                    'سيتم حفظ بيانات الأب وربطها بحساب الطالب تلقائياً.'
-                  )}
+                  الابن المرتبط: <span className="text-slate-900 font-black">{student.fullName || resolvedStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || 'ملف الطالب المسجل'}</span>
                 </p>
               </div>
             ) : (
