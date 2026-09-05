@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { getStudentCertificateLogs, getStudentBadges, getClassStudents, type StudentCertificateLog, type StudentBadgeRecord } from '@/lib/classDb';
 import { getStudents } from '@/lib/cloudStore';
-import { readCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { readCloudCache, writeCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import BrandMark from './BrandMark';
 import { OfficialMasarCertificateDesign, type CertData } from './ExcellenceCertificateTab';
@@ -125,6 +125,20 @@ export default function StudentAchievementsTab({
     // Sanitize any invalid/broadcast certificates
     const cleaned = merged.filter(c => c && c.studentId !== 'all' && c.studentName !== 'جميع طلاب الفصل');
     setCertificates(cleaned);
+
+    // Self-healing: if localStorage contains invalid broadcast certs, purge them from cache
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('masar_student_cert_logs_v1');
+        if (raw && (raw.includes('"studentId":"all"') || raw.includes('جميع طلاب الفصل'))) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const filtered = parsed.filter((c: any) => c && c.studentId !== 'all' && c.studentName !== 'جميع طلاب الفصل');
+            writeCloudCache('masar_student_cert_logs_v1', filtered);
+          }
+        }
+      } catch {}
+    }
   };
 
   const loadBadges = () => {
@@ -142,6 +156,20 @@ export default function StudentAchievementsTab({
     // Sanitize any invalid/broadcast badges
     const cleaned = merged.filter(b => b && b.studentId !== 'all' && b.studentName !== 'جميع طلاب الفصل');
     setBadges(cleaned);
+
+    // Self-healing: if localStorage contains invalid broadcast badges, purge them from cache
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('masar_student_badges_v1');
+        if (raw && (raw.includes('"studentId":"all"') || raw.includes('جميع طلاب الفصل'))) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const filtered = parsed.filter((b: any) => b && b.studentId !== 'all' && b.studentName !== 'جميع طلاب الفصل');
+            writeCloudCache('masar_student_badges_v1', filtered);
+          }
+        }
+      } catch {}
+    }
   };
 
   useEffect(() => {
