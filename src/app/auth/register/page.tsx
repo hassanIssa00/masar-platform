@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
-import { getAccounts, getSession, getStudents, getSurveys, saveAccount, saveStudent, setSession, clearSession, updateStudent } from '@/lib/cloudStore';
+import { getAccounts, getSession, getStudents, getSurveys, saveAccount, saveStudent, setSession, clearSession, updateStudent, type StudentRecord } from '@/lib/cloudStore';
+import { getClassStudents } from '@/lib/classDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { trackEvent } from '@/lib/analyticsTracker';
 import { normalizeArabicText, findMatchingStudentForParent } from '@/lib/nameMatching';
@@ -90,7 +91,7 @@ const ALL_COUNTRIES: Country[] = [
 ];
 
 const DEFAULT_COUNTRY = ALL_COUNTRIES.find((country) => country.code === '+966') ?? ALL_COUNTRIES[0];
-const REGISTER_SYNC_KEYS = ['accounts', 'students'] as const;
+const REGISTER_SYNC_KEYS = ['accounts', 'students', 'classStudents'] as const;
 
 const grades = [
   'الصف الأول الابتدائي',
@@ -156,9 +157,9 @@ export default function RegisterPage() {
 
   const routeRegisteredAccount = (type: typeof accountType, branch: typeof schoolBranch) => {
     if (type === 'parent') {
-      const allStudents = getStudents();
+      const allStudents = [...getStudents(), ...getClassStudents()] as unknown as StudentRecord[];
       const session = getSession();
-      const matched = findMatchingStudentForParent(session || { name: parentName, phone, email }, allStudents);
+      const matched = detectedStudent || findMatchingStudentForParent(session || { name: parentName, phone, email }, allStudents);
       const studentParam = matched?.id || (session as any)?.linkedStudentId || '';
       // Always direct parent to complete parent profile (name, age, children count, national ID, phone) first
       router.push(`/student/new?flow=parent${studentParam ? `&student=${encodeURIComponent(studentParam)}` : ''}`);
@@ -245,9 +246,9 @@ export default function RegisterPage() {
   // Live Evaluated Errors
   const detectedStudent = useMemo(() => {
     if (accountType !== 'parent' || !parentName.trim()) return null;
-    const allStudents = getStudents();
-    return findMatchingStudentForParent({ name: parentName, phone, email }, allStudents);
-  }, [accountType, parentName, phone, email]);
+    const allStudents = [...getStudents(), ...getClassStudents()] as unknown as StudentRecord[];
+    return findMatchingStudentForParent({ name: parentName, phone, email, schoolBranch }, allStudents);
+  }, [accountType, parentName, phone, email, schoolBranch]);
 
   const getParentNameError = (): string => {
     if (accountType !== 'parent') return '';
@@ -352,6 +353,9 @@ export default function RegisterPage() {
     // so that the new parent/student account starts fresh
     clearSession();
 
+    const effectiveChildName = childName.trim() || detectedStudent?.fullName || '';
+    const effectiveStudentId = detectedStudent?.id || '';
+
     const role = accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student';
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -364,7 +368,8 @@ export default function RegisterPage() {
         password,
         role,
         schoolBranch,
-        childName: childName.trim(),
+        childName: effectiveChildName,
+        detectedStudentId: effectiveStudentId,
         grade: schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : grade,
       }),
     });
@@ -379,7 +384,7 @@ export default function RegisterPage() {
     setSession(account, false, false);
 
     await pullCloudDataToLocal([...REGISTER_SYNC_KEYS]).catch(() => {});
-    const allStudents = getStudents();
+    const allStudents = [...getStudents(), ...getClassStudents()] as unknown as StudentRecord[];
     const cleanEmail = email.trim().toLowerCase();
     const accountProfile = {
       ...payload.account,
@@ -389,7 +394,7 @@ export default function RegisterPage() {
       schoolBranch,
     };
 
-    let matchingStudent = role === 'parent'
+    let matchingStudent = detectedStudent || (role === 'parent'
       ? findMatchingStudentForParent(accountProfile, allStudents)
       : allStudents.find((s) =>
         s.id === account.id ||
@@ -397,10 +402,10 @@ export default function RegisterPage() {
         s.linkedStudentId === account.id ||
         s.email?.toLowerCase() === cleanEmail ||
         s.linkedStudentEmail?.toLowerCase() === cleanEmail
-      );
+      ));
 
-    if (!matchingStudent && childName.trim()) {
-      const normChild = normalizeArabicText(childName);
+    if (!matchingStudent && effectiveChildName) {
+      const normChild = normalizeArabicText(effectiveChildName);
       matchingStudent = allStudents.find((s) =>
         (s.schoolBranch || schoolBranch) === schoolBranch &&
         normalizeArabicText(s.fullName) === normChild
@@ -502,11 +507,13 @@ export default function RegisterPage() {
 
     trackEvent('register', { userId: account.id, userName: account.name, userRole: account.role });
 
+    const targetStudentId = matchingStudent?.id || detectedStudent?.id || payload?.account?.linkedStudentId || '';
+
     setTimeout(() => {
       if (accountType === 'parent') {
-        router.push(matchingStudent ? `/student/new?flow=parent&student=${matchingStudent.id}` : '/student/new?flow=parent');
+        router.push(targetStudentId ? `/student/new?flow=parent&student=${encodeURIComponent(targetStudentId)}` : '/student/new?flow=parent');
       } else if (accountType === 'student') {
-        router.push(matchingStudent ? `/student/new?flow=student&student=${matchingStudent.id}` : '/student/new?flow=student');
+        router.push(targetStudentId ? `/student/new?flow=student&student=${encodeURIComponent(targetStudentId)}` : '/student/new?flow=student');
       } else if (schoolBranch === 'IKHLAS_JEDDAH') {
         router.push('/branches/ikhlas-jeddah');
       } else {

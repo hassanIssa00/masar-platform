@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, ClipboardList, Save, UserRound } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import SyncStatus from '@/components/SyncStatus';
-import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent } from '@/lib/cloudStore';
+import { getAccounts, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, saveAccount, saveStudent, setSession, updateStudent, deleteStudent } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { extractFatherNameFromStudent, findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { getClassStudents } from '@/lib/classDb';
@@ -95,6 +95,9 @@ export default function NewStudentPage() {
       const rawStudents = getStudents();
       const allAccounts = getAccounts();
       const allStudents: any[] = [...rawStudents, ...classStudents];
+      const realStudents = allStudents.filter(
+        (s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان') && s.fullName !== 'طالب'
+      );
 
       let found =
         (requestedStudentId ? allStudents.find((s) => s.id === requestedStudentId || s.studentAccountId === requestedStudentId || (s as any).accountId === requestedStudentId) : undefined) ??
@@ -137,12 +140,19 @@ export default function NewStudentPage() {
         found = allStudents.find(s => isParentChildNameMatch(s.fullName, session.name));
       }
 
-      if (!found && (session?.role === 'parent' || flow === 'parent') && classStudents.length === 1) {
-        found = classStudents[0];
+      // If still not found in parent flow, connect to the primary real student
+      if (!found && (session?.role === 'parent' || flow === 'parent')) {
+        if (realStudents.length === 1) {
+          found = realStudents[0];
+        } else if (classStudents.length === 1 && classStudents[0].fullName && !classStudents[0].fullName.includes('جديد')) {
+          found = classStudents[0];
+        } else if (realStudents.length > 0) {
+          found = realStudents[0];
+        }
       }
 
       if (session?.role === 'parent' || flow === 'parent') {
-        const effectiveStudent = found || (allStudents.length > 0 ? allStudents[0] : null);
+        const effectiveStudent = (found && !found.fullName?.includes('جديد')) ? found : (realStudents.length > 0 ? realStudents[0] : null);
         const resolvedChildName = effectiveStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || '';
         const resolvedGrade = effectiveStudent?.grade || (session as any)?.grade || 'الصف الأول الابتدائي';
 
@@ -156,11 +166,21 @@ export default function NewStudentPage() {
         setParentAge(String((session as any)?.parentAge || (effectiveStudent as any)?.parentAge || ''));
         setChildrenCount(String((session as any)?.childrenCount || (effectiveStudent as any)?.childrenCount || ''));
         setParentNationalId(String((session as any)?.parentNationalId || (effectiveStudent as any)?.parentNationalId || ''));
+
+        if (effectiveStudent?.dateOfBirth) {
+          const parts = effectiveStudent.dateOfBirth.split('-');
+          if (parts.length === 3) {
+            setBirthYear(parts[0]);
+            setBirthMonth(parts[1]);
+            setBirthDay(parts[2]);
+          }
+        }
+
         setStudent((prev) => ({
           ...prev,
-          fullName: resolvedChildName || prev.fullName,
+          fullName: effectiveStudent?.fullName || resolvedChildName || prev.fullName,
           parentName: cleanParentName || prev.parentName,
-          grade: resolvedGrade,
+          grade: effectiveStudent?.grade || resolvedGrade,
           recoveryEmail: (!isGeneratedAlias(session?.email) ? session?.email : '') || prev.recoveryEmail,
           parentPhone: session?.phone || (effectiveStudent as any)?.parentPhone || prev.parentPhone,
           photoUrl: (effectiveStudent as any)?.photoUrl || prev.photoUrl,
@@ -264,75 +284,79 @@ export default function NewStudentPage() {
     let savedStudent: any = null;
 
     if (nextFlow === 'parent-survey') {
-      const parentNameClean = student.parentName.trim();
-      const parentPhoneClean = student.parentPhone.trim();
-      const childNameClean = student.fullName.trim() || resolvedStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || 'طالب جديد';
-      const cleanDigits = (p?: string) => (p || '').replace(/\D/g, '');
-      const pSuffix = cleanDigits(parentPhoneClean).slice(-8);
+      const parentNameClean = student.parentName.trim() || session?.name || '';
+      const parentPhoneClean = student.parentPhone.trim() || session?.phone || '';
 
-      // Look up any child already registered with exact matching ID or exact full name only
-      let matchedChildren = allStudents.filter((s) => {
-        if (existingStudentId && s.id === existingStudentId) return true;
-        if (requestedStudentId && s.id === requestedStudentId) return true;
-        if (resolvedStudent?.id && s.id === resolvedStudent.id) return true;
-        const sNorm = normalizeArabicText(s.fullName);
-        const cNorm = normalizeArabicText(childNameClean);
-        if (cNorm && cNorm.length > 2 && cNorm !== 'طالب جديد' && (sNorm === cNorm || isStudentNameMatch(s.fullName, childNameClean))) return true;
-        return false;
-      });
+      const realStudents = allStudents.filter(
+        (s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان') && s.fullName !== 'طالب'
+      );
 
-      const realChildren = matchedChildren.filter((s) => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان'));
-      if (realChildren.length > 0) {
-        matchedChildren = realChildren;
+      const targetStudent =
+        (resolvedStudent && !resolvedStudent.fullName?.includes('جديد') ? resolvedStudent : null) ||
+        (matchedExisting && !matchedExisting.fullName?.includes('جديد') ? matchedExisting : null) ||
+        (existingStudentId ? allStudents.find((s) => s.id === existingStudentId && !s.fullName?.includes('جديد')) : null) ||
+        (requestedStudentId ? allStudents.find((s) => s.id === requestedStudentId && !s.fullName?.includes('جديد')) : null) ||
+        ((session as any)?.linkedStudentId ? allStudents.find((s) => s.id === (session as any).linkedStudentId && !s.fullName?.includes('جديد')) : null) ||
+        findMatchingStudentForParent(session, realStudents as any) ||
+        (realStudents.length > 0 ? realStudents[0] : null);
+
+      if (targetStudent) {
+        savedStudent = updateStudent(targetStudent.id, {
+          fullName: targetStudent.fullName,
+          parentName: parentNameClean || targetStudent.parentName,
+          parentPhone: parentPhoneClean || targetStudent.parentPhone,
+          parentAge: parentAge.trim() || (targetStudent as any).parentAge,
+          childrenCount: childrenCount.trim() || (targetStudent as any).childrenCount,
+          parentNationalId: parentNationalId.trim() || (targetStudent as any).parentNationalId,
+          notes: student.notes.trim() || targetStudent.notes,
+          parentEmail: recoveryEmail || targetStudent.parentEmail,
+          parentAccountId: session?.role === 'parent' ? session.id : targetStudent.parentAccountId,
+          linkedParentId: session?.role === 'parent' ? session.id : targetStudent.linkedParentId,
+          linkedParentEmail: session?.role === 'parent' ? session.email : targetStudent.linkedParentEmail || recoveryEmail,
+          linkedStudentId: targetStudent.id,
+          linkedStudentEmail: targetStudent.linkedStudentEmail || targetStudent.email,
+          linkedStudentName: targetStudent.fullName,
+          nationalId: targetStudent.nationalId || student.nationalId,
+          recoveryEmail: recoveryEmail || targetStudent.recoveryEmail,
+          photoUrl: targetStudent.photoUrl || photoToSave,
+          dateOfBirth: targetStudent.dateOfBirth || dateOfBirth,
+          grade: targetStudent.grade || student.grade || 'الصف الأول',
+          schoolBranch: branch,
+          reviewStatus: 'awaiting-survey',
+        }) ?? targetStudent;
+      } else {
+        const childNameClean = student.fullName.trim() || (session as any)?.linkedStudentName || (session as any)?.childName || '';
+        if (childNameClean && !childNameClean.includes('جديد')) {
+          savedStudent = saveStudent({
+            id: existingStudentId || requestedStudentId || undefined,
+            fullName: childNameClean,
+            grade: student.grade || 'الصف الأول',
+            nationalId: student.nationalId,
+            parentName: parentNameClean,
+            parentPhone: parentPhoneClean,
+            parentAge: parentAge.trim() || undefined,
+            childrenCount: childrenCount.trim() || undefined,
+            parentNationalId: parentNationalId.trim() || undefined,
+            notes: student.notes.trim() || undefined,
+            parentEmail: recoveryEmail || undefined,
+            parentAccountId: session?.role === 'parent' ? session.id : undefined,
+            linkedParentId: session?.role === 'parent' ? session.id : undefined,
+            linkedParentEmail: session?.role === 'parent' ? session.email : recoveryEmail || undefined,
+            recoveryEmail: recoveryEmail || undefined,
+            photoUrl: photoToSave,
+            dateOfBirth,
+            schoolBranch: branch,
+            reviewStatus: 'awaiting-survey',
+            source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
+          });
+        }
       }
 
-      const primaryChild = matchedChildren[0];
-      if (primaryChild) {
-        savedStudent = updateStudent(primaryChild.id, {
-          fullName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
-          parentName: parentNameClean || primaryChild.parentName,
-          parentPhone: parentPhoneClean || primaryChild.parentPhone,
-          parentAge: parentAge.trim() || (primaryChild as any).parentAge,
-          childrenCount: childrenCount.trim() || (primaryChild as any).childrenCount,
-          parentNationalId: parentNationalId.trim() || (primaryChild as any).parentNationalId,
-          notes: student.notes.trim() || primaryChild.notes,
-          parentEmail: recoveryEmail || primaryChild.parentEmail,
-          parentAccountId: session?.role === 'parent' ? session.id : primaryChild.parentAccountId,
-          linkedParentId: session?.role === 'parent' ? session.id : primaryChild.linkedParentId,
-          linkedParentEmail: session?.role === 'parent' ? session.email : primaryChild.linkedParentEmail || primaryChild.parentEmail,
-          linkedStudentId: primaryChild.id,
-          linkedStudentEmail: primaryChild.linkedStudentEmail || primaryChild.email,
-          linkedStudentName: childNameClean !== 'طالب جديد' ? childNameClean : primaryChild.fullName,
-          nationalId: primaryChild.nationalId || student.nationalId,
-          recoveryEmail: recoveryEmail || primaryChild.recoveryEmail,
-          photoUrl: photoToSave || primaryChild.photoUrl,
-          dateOfBirth: dateOfBirth || primaryChild.dateOfBirth,
-          grade: student.grade || primaryChild.grade,
-          schoolBranch: branch,
-          reviewStatus: 'awaiting-survey',
-        }) ?? primaryChild;
-      } else {
-        savedStudent = saveStudent({
-          id: existingStudentId || requestedStudentId || undefined,
-          fullName: childNameClean,
-          grade: student.grade || 'الصف الأول',
-          nationalId: student.nationalId,
-          parentName: parentNameClean,
-          parentPhone: parentPhoneClean,
-          parentAge: parentAge.trim() || undefined,
-          childrenCount: childrenCount.trim() || undefined,
-          parentNationalId: parentNationalId.trim() || undefined,
-          notes: student.notes.trim() || undefined,
-          parentEmail: recoveryEmail || undefined,
-          parentAccountId: session?.role === 'parent' ? session.id : undefined,
-          linkedParentId: session?.role === 'parent' ? session.id : undefined,
-          linkedParentEmail: session?.role === 'parent' ? session.email : recoveryEmail || undefined,
-          recoveryEmail: recoveryEmail || undefined,
-          photoUrl: photoToSave,
-          dateOfBirth,
-          schoolBranch: branch,
-          reviewStatus: 'awaiting-survey',
-          source: branch === 'IKHLAS_JEDDAH' ? 'ikhlas-jeddah' : 'student-wizard',
+      // Purge any accidental dummy "طالب جديد" records
+      if (savedStudent) {
+        const dummyJunk = allStudents.filter(s => s.id !== savedStudent.id && s.fullName && s.fullName.includes('طالب جديد'));
+        dummyJunk.forEach(d => {
+          deleteStudent(d.id).catch(() => {});
         });
       }
     } else {

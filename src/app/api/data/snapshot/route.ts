@@ -210,21 +210,7 @@ function isLinkedToUser(
   ].filter(Boolean).map(cleanEmail);
   if (linkedParentEmail && explicitParentEmails.some((e) => e === linkedParentEmail)) return true;
 
-  if (!sameBranch) return false;
-
-  // ── TIER 3: Email match (skip generated/alias emails unless explicitly linked above) ──
-  if (userEmail && !isGeneratedEmail(userEmail)) {
-    const emailFields = [
-      item?.email,
-      item?.parentEmail,
-      item?.recoveryEmail,
-      item?.linkedStudentEmail,
-      item?.linkedParentEmail,
-    ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
-    if (emailFields.some((e) => e === userEmail)) return true;
-  }
-
-  // ── TIER 4: Phone match (last 8 digits) ──
+  // ── TIER 3: Phone match (last 8 digits) — uniquely identifies parent/family ──
   if (userPhoneSuffix) {
     const phoneFields = [
       item?.phone,
@@ -241,6 +227,20 @@ function isLinkedToUser(
       }
     }
   }
+
+  // ── TIER 4: Email match (skip generated/alias emails unless explicitly linked above) ──
+  if (userEmail && !isGeneratedEmail(userEmail)) {
+    const emailFields = [
+      item?.email,
+      item?.parentEmail,
+      item?.recoveryEmail,
+      item?.linkedStudentEmail,
+      item?.linkedParentEmail,
+    ].filter(Boolean).map((e) => String(e).trim().toLowerCase());
+    if (emailFields.some((e) => e === userEmail)) return true;
+  }
+
+  if (!sameBranch) return false;
 
   // ── TIER 5: Arabic name & patronymic match (only if name is real, not placeholder) ──
   const isPlaceholderName = !userName ||
@@ -311,7 +311,8 @@ export async function GET(req: NextRequest) {
     .map(([payloadKey]) => payloadKey)
     .join(',')}`;
   const now = Date.now();
-  const cached = snapshotCache.get(cacheKey);
+  const force = req.nextUrl.searchParams.get('force') === 'true';
+  const cached = force ? null : snapshotCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     return NextResponse.json({
       ok: true,
@@ -326,6 +327,7 @@ export async function GET(req: NextRequest) {
 
   const SHARED_COLLECTIONS = new Set([
     // ── Content shared with ALL authenticated roles (student, parent, teacher, doctor) ──
+    'students',              // all authenticated users can discover enrolled student profiles
     'curriculumFiles',
     'curriculumQuizzes',
     'classroomQuizzes',

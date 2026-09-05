@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BrandMark from '@/components/BrandMark';
 import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, saveSurvey, setSession, updateStudent, StudentRecord } from '@/lib/cloudStore';
+import { getClassStudents } from '@/lib/classDb';
 import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { findMatchingStudentForParent } from '@/lib/nameMatching';
 
@@ -277,7 +278,8 @@ function SurveyContent() {
       if (cancelled) return;
 
       const requested = searchParams.get('student');
-      const allStudents = getStudents();
+      const allStudents = [...getStudents(), ...getClassStudents()] as unknown as StudentRecord[];
+      const realStudents = allStudents.filter(s => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان') && s.fullName !== 'طالب');
       const linkedStudentId = (session as any)?.linkedStudentId;
       let found = requested ? allStudents.find((s) => s.id === requested) : null;
       if (!found && linkedStudentId) {
@@ -290,6 +292,9 @@ function SurveyContent() {
             (session.id && (s.id === session.id || s.studentAccountId === session.id || s.linkedStudentId === session.id)) ||
             (session.email && [s.email, s.recoveryEmail, s.linkedStudentEmail].some((mail) => mail?.trim().toLowerCase() === session.email.trim().toLowerCase()))
           ) ?? null;
+      }
+      if (!found && realStudents.length > 0) {
+        found = realStudents[0];
       }
 
       if (found) {
@@ -326,8 +331,9 @@ function SurveyContent() {
     
     const requestedId = searchParams.get('student');
     const targetId = student?.id || requestedId || undefined;
-    const all = getStudents();
-    const existing = targetId ? all.find((s) => s.id === targetId) : student;
+    const all = [...getStudents(), ...getClassStudents()] as unknown as StudentRecord[];
+    const realStudents = all.filter(s => s.fullName && !s.fullName.includes('جديد') && !s.fullName.includes('الاستبيان') && s.fullName !== 'طالب');
+    const existing = (targetId ? all.find((s) => s.id === targetId) : student) || (realStudents.length > 0 ? realStudents[0] : null);
     const session = getSession();
     const branch = (session as any)?.schoolBranch || existing?.schoolBranch || 'MASAR';
 
@@ -354,9 +360,10 @@ function SurveyContent() {
         reviewStatus: 'awaiting-doctor-review',
       }) ?? existing;
     } else {
+      const fallbackName = realStudents[0]?.fullName || studentName.trim() || 'طالب';
       savedStudent = saveStudent({
         id: targetId,
-        fullName: studentName.trim() || 'طالب جديد',
+        fullName: fallbackName,
         grade,
         parentPhone,
         parentEmail: session?.email,
@@ -373,6 +380,9 @@ function SurveyContent() {
     }
 
     await syncDocToCloud('students', savedStudent.id, savedStudent).catch(() => {});
+    if (branch === 'IKHLAS_JEDDAH') {
+      await syncDocToCloud('class_students', savedStudent.id, savedStudent).catch(() => {});
+    }
 
 
     const savedSurvey = saveSurvey({

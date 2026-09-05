@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
   const name = String(body.name || '').trim() || (role === 'parent' ? 'ولي أمر جديد' : 'طالب جديد');
   const phone = String(body.phone || '').trim();
   const childName = String(body.childName || '').trim();
+  const detectedStudentId = String(body.detectedStudentId || '').trim();
   const grade = String(body.grade || '').trim();
 
   if (!email || !email.includes('@') || password.trim().length < 6) {
@@ -128,11 +129,9 @@ export async function POST(req: NextRequest) {
     try {
       const existing = await adminDb.collection('accounts').where('email', '==', email).limit(1).get();
       if (!existing.empty) {
-        return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول أو استعادة كلمة المرور.' }, { status: 409 });
+        return NextResponse.json({ ok: false, error: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول بدلاً من ذلك.' }, { status: 409 });
       }
-    } catch (error) {
-      console.error('[AuthRegister] Firestore duplicate check skipped:', error);
-    }
+    } catch {}
   }
 
   const now = new Date().toISOString();
@@ -152,12 +151,22 @@ export async function POST(req: NextRequest) {
       const normParentName = normalizeArabic(name);
       const normChildName = normalizeArabic(childName);
 
-      const studentsSnap = await adminDb.collection('students').limit(200).get();
-      const allExistingStudents = studentsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const [studentsSnap, classStudentsSnap] = await Promise.all([
+        adminDb.collection('students').limit(300).get().catch(() => ({ docs: [] })),
+        adminDb.collection('class_students').limit(300).get().catch(() => ({ docs: [] })),
+      ]);
+      const allExistingStudents: any[] = [
+        ...studentsSnap.docs.map((d: any) => ({ id: d.id, ...d.data(), _col: 'students' })),
+        ...classStudentsSnap.docs.map((d: any) => ({ id: d.id, ...d.data(), _col: 'class_students' })),
+      ];
       const sameBranch = (st: any) => !st.schoolBranch || !schoolBranch || st.schoolBranch === schoolBranch || st.branch === schoolBranch;
 
       if (role === 'parent') {
         let matchedStudent = allExistingStudents.find((st) => {
+          // 0. Explicit detectedStudentId from client matching
+          if (detectedStudentId && (st.id === detectedStudentId || st.studentAccountId === detectedStudentId || st.accountId === detectedStudentId)) {
+            return true;
+          }
           if (!sameBranch(st)) return false;
           const sPhone = cleanDigits(st.parentPhone || st.phone);
           const sPhoneSuffix = sPhone.length >= 8 ? sPhone.slice(-8) : '';
@@ -178,7 +187,7 @@ export async function POST(req: NextRequest) {
             return true;
           }
           // 3. Child name match
-          if (normChildName && normChildName.length > 2 && !normChildName.includes('جديد') && sFullNameNorm === normChildName) {
+          if (normChildName && normChildName.length > 2 && !normChildName.includes('جديد') && (sFullNameNorm === normChildName || sFullNameNorm.includes(normChildName) || normChildName.includes(sFullNameNorm))) {
             return true;
           }
           // 4. Patronymic match (child full name contains parent name or father part matches)
@@ -188,6 +197,14 @@ export async function POST(req: NextRequest) {
           }
           return false;
         });
+
+        // 5. Fallback: If only 1 real student in branch or class roster, link to that student automatically
+        if (!matchedStudent) {
+          const realBranchStudents = allExistingStudents.filter((st) => sameBranch(st) && st.fullName && !st.fullName.includes('جديد') && !st.fullName.includes('الاستبيان'));
+          if (realBranchStudents.length === 1) {
+            matchedStudent = realBranchStudents[0];
+          }
+        }
 
         if (matchedStudent) {
           linkedStudentId = matchedStudent.id;
@@ -210,8 +227,8 @@ export async function POST(req: NextRequest) {
               updatedAt: now,
             },
           };
-        } else if (childName && !childName.includes('جديد')) {
-          // Create new student record for the parent's child
+        } else if (childName && !childName.includes('جديد') && childName.length > 2) {
+          // Create new student record for the parent's child only if real child name was entered
           const newStudentId = `student_${crypto.randomUUID()}`;
           const newStudentRecord = {
             id: newStudentId,
@@ -380,7 +397,10 @@ export async function POST(req: NextRequest) {
     await Promise.all([
       adminDb.collection('accounts').doc(accountId).set(account, { merge: true }),
       ...(pendingStudentWrite
-        ? [adminDb.collection('students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true })]
+        ? [
+            adminDb.collection('students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true }),
+            adminDb.collection('class_students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true }),
+          ]
         : []),
       adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),
       adminDb.collection('auth_credentials').doc(credentialLookupId(email)).set(credential, { merge: true }),

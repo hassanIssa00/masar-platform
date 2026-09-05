@@ -263,10 +263,16 @@ export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typ
 
   const fetchPromise = (async () => {
     try {
-      const params = collectionKeys?.length
-        ? `?collections=${encodeURIComponent(collectionKeys.join(','))}`
-        : '';
-      const res = await fetch(`/api/data/snapshot${params}`, {
+      const searchParams = new URLSearchParams();
+      if (collectionKeys?.length) {
+        searchParams.set('collections', collectionKeys.join(','));
+      }
+      if (force) {
+        searchParams.set('force', 'true');
+        searchParams.set('_t', String(Date.now()));
+      }
+      const qs = searchParams.toString();
+      const res = await fetch(`/api/data/snapshot${qs ? `?${qs}` : ''}`, {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',

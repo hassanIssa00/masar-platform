@@ -43,6 +43,7 @@ export default function SchoolParentPage() {
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [sessionEmail, setSessionEmail] = useState('');
+  const [sessionPhone, setSessionPhone] = useState('');
   const [reactionSent, setReactionSent] = useState<Record<string, boolean>>({});
   const [branch, setBranch] = useState<string>('MASAR');
 
@@ -83,6 +84,7 @@ export default function SchoolParentPage() {
       // Set parent name from session directly
       setParentName(session.name || 'ولي الأمر');
       if (session.email) setSessionEmail(session.email);
+      if (session.phone) setSessionPhone(session.phone);
 
       // Pull latest data from cloud before searching
       await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges', 'reports', 'messages', 'studentHomeworkLogs', 'curriculumAssignments'], true).catch(() => {});
@@ -105,14 +107,20 @@ export default function SchoolParentPage() {
       };
       const linkedStudentId = (session as any)?.linkedStudentId || parentAcc?.linkedStudentId;
 
+      const isPlaceholder = (n?: string | null) =>
+        !n || n.includes('جديد') || n.includes('الاستبيان') || n === 'طالب' || n === 'الطالب';
+
+      const realStudents = combinedStudents.filter((s) => !isPlaceholder(s.fullName));
+      const pool = realStudents.length > 0 ? realStudents : combinedStudents;
+
       // 1. By linkedStudentId from account
       let linked: any = null;
       if (linkedStudentId) {
-        linked = combinedStudents.find((s) => s.id === linkedStudentId || (s as any).studentAccountId === linkedStudentId) || null;
+        linked = pool.find((s) => s.id === linkedStudentId || (s as any).studentAccountId === linkedStudentId) || null;
       }
       // 2. By parentAccountId or linkedParentId
       if (!linked && session.id) {
-        linked = combinedStudents.find((s: any) =>
+        linked = pool.find((s: any) =>
           s.parentAccountId === session.id ||
           s.linkedParentId === session.id
         ) || null;
@@ -122,7 +130,7 @@ export default function SchoolParentPage() {
         const cleanP = parentProfile.phone.replace(/\D/g, '');
         if (cleanP.length >= 7) {
           const suffix = cleanP.slice(-8);
-          linked = combinedStudents.find((s: any) => {
+          linked = pool.find((s: any) => {
             const sPhone = (s.parentPhone || s.phone || '').replace(/\D/g, '');
             return sPhone && sPhone.includes(suffix);
           }) || null;
@@ -131,33 +139,33 @@ export default function SchoolParentPage() {
       // 4. By parent email match
       if (!linked && parentProfile.email) {
         const cleanE = parentProfile.email.trim().toLowerCase();
-        linked = combinedStudents.find((s: any) => {
+        linked = pool.find((s: any) => {
           const sEmails = [s.parentEmail, s.linkedParentEmail, s.email, s.recoveryEmail].map(e => (e || '').trim().toLowerCase());
           return sEmails.includes(cleanE);
         }) || null;
       }
       // 5. By patronymic and name matching
       if (!linked) {
-        linked = findMatchingStudentForParent(parentProfile, combinedStudents as any) || null;
+        linked = findMatchingStudentForParent(parentProfile, pool as any) || null;
       }
       // 6. By childName or linkedStudentName in parent profile
       if (!linked) {
         const targetChildName = (session as any)?.childName || parentAcc?.childName || (session as any)?.linkedStudentName || parentAcc?.linkedStudentName;
-        if (targetChildName && !targetChildName.includes('جديد')) {
-          linked = combinedStudents.find((s: any) =>
+        if (targetChildName && !isPlaceholder(targetChildName)) {
+          linked = pool.find((s: any) =>
             s.fullName && isStudentNameMatch(s.fullName, targetChildName)
           ) || null;
         }
       }
       // 7. By parent's name in student full name (e.g. child has father's name)
-      if (!linked && session.name) {
-        linked = combinedStudents.find((s: any) =>
+      if (!linked && session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر') {
+        linked = pool.find((s: any) =>
           s.fullName && isParentChildNameMatch(s.fullName, session.name)
         ) || null;
       }
       // 8. By activeId from URL query param
       if (activeId) {
-        const byUrl = combinedStudents.find((s: any) => s.id === activeId || s.studentAccountId === activeId || s.accountId === activeId) || null;
+        const byUrl = pool.find((s: any) => s.id === activeId || s.studentAccountId === activeId || s.accountId === activeId) || null;
         if (byUrl) linked = byUrl;
       }
       // 9. From reports or messages linked to this parent
@@ -169,7 +177,7 @@ export default function SchoolParentPage() {
           (parentProfile.email && r.parentEmail && r.parentEmail.toLowerCase() === parentProfile.email.toLowerCase())
         );
         if (rep) {
-          linked = combinedStudents.find(s => s.id === rep.studentId || (s.fullName && rep.studentName && normalizeArabicText(s.fullName) === normalizeArabicText(rep.studentName))) || {
+          linked = pool.find(s => s.id === rep.studentId || (s.fullName && rep.studentName && normalizeArabicText(s.fullName) === normalizeArabicText(rep.studentName))) || {
             id: rep.studentId,
             fullName: rep.studentName,
             grade: rep.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
@@ -179,37 +187,73 @@ export default function SchoolParentPage() {
         }
       }
 
-      // 10. Fallback: If class students exist, select the primary student, or synthesize
+      // 10. Fallback: If class students exist, select the primary real student
+      if (!linked && pool.length > 0) {
+        linked = pool[0];
+      }
+
+      // 11. Cross-reference twin records & accounts for comprehensive data enrichment
+      const normName = linked ? normalizeArabicText(linked.fullName || '') : '';
+      const twins = linked ? combinedStudents.filter(s => s.id !== linked.id && normalizeArabicText(s.fullName || '') === normName) : [];
+      const studentAcc = allAccounts.find(a =>
+        a.role === 'student' &&
+        ((linked && (a.id === linked.studentAccountId || a.linkedStudentId === linked.id || (a.email && a.email === linked.linkedStudentEmail))) ||
+         (normName && a.name && normalizeArabicText(a.name) === normName))
+      );
+
+      const resolvedPhoto =
+        linked?.photoUrl ||
+        twins.find(t => t.photoUrl)?.photoUrl ||
+        studentAcc?.photoUrl ||
+        (session as any)?.childPhoto ||
+        parentAcc?.childPhoto ||
+        '';
+
+      const resolvedDob =
+        linked?.dateOfBirth ||
+        twins.find(t => t.dateOfBirth)?.dateOfBirth ||
+        (studentAcc as any)?.dateOfBirth ||
+        '';
+
+      const resolvedNationalId =
+        linked?.nationalId ||
+        twins.find(t => t.nationalId)?.nationalId ||
+        (studentAcc as any)?.nationalId ||
+        '';
+
+      const resolvedGrade =
+        linked?.grade ||
+        twins.find(t => t.grade)?.grade ||
+        'الصف الأول الابتدائي — فصل د. إسماعيل عيسى';
+
+      const resolvedParentName =
+        (linked?.parentName && !isPlaceholder(linked.parentName) ? linked.parentName : '') ||
+        twins.find(t => t.parentName && !isPlaceholder(t.parentName))?.parentName ||
+        (session.name && !isPlaceholder(session.name) ? session.name : '') ||
+        'ولي الأمر';
+
+      const resolvedParentPhone =
+        linked?.parentPhone ||
+        twins.find(t => t.parentPhone)?.parentPhone ||
+        session.phone ||
+        parentAcc?.phone ||
+        '';
+
       const resolvedStudent: StudentRecord = linked ? {
         id: linked.id,
         fullName: linked.fullName,
-        grade: linked.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        photoUrl: linked.photoUrl || (session as any)?.childPhoto || parentAcc?.childPhoto || '',
-        parentName: linked.parentName || session.name || 'ولي الأمر',
-        parentPhone: linked.parentPhone || session.phone || parentAcc?.phone || '',
-        nationalId: linked.nationalId || '',
-        dateOfBirth: linked.dateOfBirth || '',
-        notes: linked.notes || '',
+        grade: resolvedGrade,
+        photoUrl: resolvedPhoto,
+        parentName: resolvedParentName,
+        parentPhone: resolvedParentPhone,
+        nationalId: resolvedNationalId,
+        dateOfBirth: resolvedDob,
+        notes: linked.notes || twins.find(t => t.notes)?.notes || '',
         schoolBranch: linked.schoolBranch || sessionBranch,
         reviewStatus: (linked.reviewStatus as any) || 'program-assigned',
         source: (linked.source as any) || 'ikhlas-jeddah',
         createdAt: linked.createdAt || new Date().toISOString(),
         updatedAt: linked.updatedAt || new Date().toISOString(),
-      } : (combinedStudents.length > 0 ? {
-        id: combinedStudents[0].id,
-        fullName: combinedStudents[0].fullName,
-        grade: combinedStudents[0].grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        photoUrl: combinedStudents[0].photoUrl || '',
-        parentName: combinedStudents[0].parentName || session.name || 'ولي الأمر',
-        parentPhone: combinedStudents[0].parentPhone || session.phone || '',
-        nationalId: combinedStudents[0].nationalId || '',
-        dateOfBirth: combinedStudents[0].dateOfBirth || '',
-        notes: combinedStudents[0].notes || '',
-        schoolBranch: (combinedStudents[0] as any).schoolBranch || sessionBranch,
-        reviewStatus: 'program-assigned',
-        source: ((combinedStudents[0] as any).source as any) || 'ikhlas-jeddah',
-        createdAt: (combinedStudents[0] as any).createdAt || new Date().toISOString(),
-        updatedAt: (combinedStudents[0] as any).updatedAt || new Date().toISOString(),
       } : {
         id: linkedStudentId || `std_${session.id || 'ikhlas'}`,
         fullName: (session as any)?.childName || parentAcc?.childName || (session.name ? `ابن أ. ${session.name.replace(/^(أ\.|أستاذ|الدكتور|د\.)\s*/, '')}` : 'الطالب البطل'),
@@ -217,18 +261,20 @@ export default function SchoolParentPage() {
         photoUrl: (session as any)?.childPhoto || parentAcc?.childPhoto || '',
         parentName: session.name || 'ولي الأمر',
         parentPhone: session.phone || parentAcc?.phone || '',
+        nationalId: '',
+        dateOfBirth: '',
         schoolBranch: sessionBranch,
         source: 'ikhlas-jeddah',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         reviewStatus: 'program-assigned',
-      });
+      };
 
       setStudentRecord(resolvedStudent);
       setHasSurvey(true);
 
       // Load cloud reports and messages for this student
-      const normName = (resolvedStudent.fullName || '').trim().replace(/\s+/g, ' ');
+      const resolvedNormName = (resolvedStudent.fullName || '').trim().replace(/\s+/g, ' ');
       const parentPhone = resolvedStudent.parentPhone || session.phone || parentAcc?.phone || '';
       const parentPhoneSuffix = parentPhone.slice(-9);
       const allReports = getReports();
@@ -237,7 +283,7 @@ export default function SchoolParentPage() {
         r.studentId === resolvedStudent.id ||
         r.studentId === linkedStudentId ||
         r.parentAccountId === session.id ||
-        (r.studentName && normName && (r.studentName.includes(normName.split(' ')[0]) || normName.includes((r.studentName || '').split(' ')[0]))) ||
+        (r.studentName && resolvedNormName && (r.studentName.includes(resolvedNormName.split(' ')[0]) || resolvedNormName.includes((r.studentName || '').split(' ')[0]))) ||
         (parentPhoneSuffix && r.parentPhone && r.parentPhone.endsWith(parentPhoneSuffix));
       setStudentReports(
         allReports.filter(matchesStudent).sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1))
@@ -572,13 +618,14 @@ export default function SchoolParentPage() {
                 grade: studentRecord?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
                 photoUrl: studentRecord?.photoUrl,
                 parentName: studentRecord?.parentName || parentName,
-                parentPhone: studentRecord?.parentPhone || sessionEmail,
+                parentPhone: studentRecord?.parentPhone || sessionPhone || '',
                 nationalId: studentRecord?.nationalId,
                 dateOfBirth: studentRecord?.dateOfBirth,
                 notes: studentRecord?.notes,
               }}
               variant="parent"
-              showParent={false}
+              showParent={true}
+              greeting="بيانات طفلي المسجل في فصل د. إسماعيل عيسى 🌟"
             />
 
             {/* Achievements Banner Link */}

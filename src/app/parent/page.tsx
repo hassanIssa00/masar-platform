@@ -24,7 +24,7 @@ import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
-import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
+import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 
 function isGeneratedAlias(email?: string | null) {
   if (!email) return true;
@@ -164,7 +164,31 @@ export default function ParentDashboard() {
 
       // Remove any remaining placeholders if we have real students
       const realStudents = myStudents.filter((s) => !isPlaceholder(s.fullName));
-      if (realStudents.length > 0) myStudents = realStudents;
+      if (realStudents.length > 0) {
+        myStudents = realStudents;
+      } else {
+        // If all in myStudents were placeholders, attempt to recover real student from allKnown
+        const realCandidates = allKnown.filter((s) => !isPlaceholder(s.fullName));
+        const byPhone = parentPhoneSuffix
+          ? realCandidates.find((s) => {
+              const sp = (s.parentPhone || '').replace(/\D/g, '');
+              return sp.length >= 8 && sp.slice(-8) === parentPhoneSuffix;
+            })
+          : null;
+        const byEmail = parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org')
+          ? realCandidates.find((s) => {
+              const ems = [(s as any).parentEmail, (s as any).email].map((e) => (e || '').trim().toLowerCase());
+              return ems.includes(parentEmail);
+            })
+          : null;
+        const byParentName = session.name && !isPlaceholder(session.name) && session.name !== 'ولي الأمر'
+          ? realCandidates.find((s) => s.parentName && isStudentNameMatch(s.parentName, session.name))
+          : null;
+        const recovered = byPhone || byEmail || byParentName || (realCandidates.length === 1 ? realCandidates[0] : null);
+        if (recovered) {
+          myStudents = [recovered];
+        }
+      }
 
       // Deduplicate by ID
       const seen = new Set<string>();
@@ -188,8 +212,8 @@ export default function ParentDashboard() {
             a.photoUrl &&
             (a.id === st.studentAccountId || a.linkedStudentId === st.id || a.email === st.linkedStudentEmail)
           )?.photoUrl || '',
-          dateOfBirth: st.dateOfBirth || twins.find((t: any) => t.dateOfBirth)?.dateOfBirth || '',
-          nationalId: st.nationalId || '',
+          dateOfBirth: st.dateOfBirth || twins.find((t: any) => t.dateOfBirth)?.dateOfBirth || (allAccounts.find((a: any) => (a.id === st.studentAccountId || a.linkedStudentId === st.id) && (a as any).dateOfBirth) as any)?.dateOfBirth || '',
+          nationalId: st.nationalId || twins.find((t: any) => t.nationalId)?.nationalId || (allAccounts.find((a: any) => (a.id === st.studentAccountId || a.linkedStudentId === st.id) && (a as any).nationalId) as any)?.nationalId || '',
           grade: st.grade || twins.find((t: any) => t.grade)?.grade || 'الصف الأول',
           parentName: (st.parentName && !isPlaceholder(st.parentName) ? st.parentName : '') || twins.find((t: any) => t.parentName && !isPlaceholder(t.parentName))?.parentName || (session.name && !isPlaceholder(session.name) ? session.name : '') || 'ولي الأمر',
           parentPhone: st.parentPhone || twins.find((t: any) => t.parentPhone)?.parentPhone || session.phone || '',
@@ -337,10 +361,13 @@ export default function ParentDashboard() {
     const bestDob =
       rawSelectedStudent.dateOfBirth ||
       twins.find((t: any) => t.dateOfBirth)?.dateOfBirth ||
+      (allAcc.find((a: any) => (a.id === rawSelectedStudent.studentAccountId || a.linkedStudentId === rawSelectedStudent.id) && (a as any).dateOfBirth) as any)?.dateOfBirth ||
       '';
 
     const bestNationalId =
       rawSelectedStudent.nationalId ||
+      twins.find((t: any) => t.nationalId)?.nationalId ||
+      (allAcc.find((a: any) => (a.id === rawSelectedStudent.studentAccountId || a.linkedStudentId === rawSelectedStudent.id) && (a as any).nationalId) as any)?.nationalId ||
       '';
 
     const bestGrade =

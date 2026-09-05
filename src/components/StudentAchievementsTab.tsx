@@ -22,6 +22,7 @@ import {
   BookmarkCheck,
 } from 'lucide-react';
 import { getStudentCertificateLogs, getStudentBadges, getClassStudents, type StudentCertificateLog, type StudentBadgeRecord } from '@/lib/classDb';
+import { getStudents } from '@/lib/cloudStore';
 import { readCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import BrandMark from './BrandMark';
@@ -58,17 +59,18 @@ export default function StudentAchievementsTab({
   const [selectedCert, setSelectedCert] = useState<StudentCertificateLog | null>(null);
   const printFrameRef = useRef<HTMLDivElement>(null);
 
-  // Build a comprehensive set of valid student IDs by cross-referencing classStudents
+  // Build a comprehensive set of valid student IDs by cross-referencing classStudents and students
   const buildValidStudentIds = () => {
     const sName = studentName ? normalizeArabicText(studentName) : '';
-    const classStudentMatches = getClassStudents().filter(cs => {
+    const allKnown = [...getClassStudents(), ...getStudents()];
+    const studentMatches = allKnown.filter(cs => {
       if (studentId && cs.id === studentId) return true;
       if (sName && cs.fullName && isStudentNameMatch(sName, cs.fullName)) return true;
       return false;
     });
     return new Set<string>([
       ...(studentId ? [studentId] : []),
-      ...classStudentMatches.map(c => c.id),
+      ...studentMatches.map(c => c.id),
       'all',
     ]);
   };
