@@ -865,52 +865,6 @@ export default function ParentDashboard() {
                   );
                 })}
               </div>
-
-              {/* All Issued Reports List */}
-              <div className="pt-6 border-t border-slate-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <FileText size={18} className="text-teal-700" />
-                    كافة التقارير والسجلات الصادرة من د. إسماعيل ({studentReports.length})
-                  </h3>
-                </div>
-
-                {studentReports.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {studentReports.map((rep) => (
-                      <div key={rep.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-teal-300 transition">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-black bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full inline-block">
-                              {rep.date || 'تقرير معتمد'}
-                            </span>
-                            <h4 className="font-black text-slate-900 text-sm">{rep.program || 'تقرير أكاديمي'}</h4>
-                            <p className="text-[11px] text-slate-500 font-bold line-clamp-2 leading-relaxed">
-                              {rep.summary || 'تم اعتماد التقرير من قبل د. إسماعيل عيسى'}
-                            </p>
-                          </div>
-                          <span className="grid place-items-center h-10 w-10 rounded-xl bg-teal-700 text-white font-black text-xs shrink-0 shadow-xs">
-                            {rep.score}%
-                          </span>
-                        </div>
-
-                        <Link
-                          href={`/reports?report=${rep.id}&mode=parent`}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 text-xs font-black transition shadow-xs"
-                        >
-                          فتح التقرير الموثق 📄
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-400">
-                    <FileText size={28} className="mx-auto mb-2 text-slate-300" />
-                    <p className="text-xs font-bold text-slate-500">لا توجد تقارير إضافية مصدرة حالياً</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">ستظهر هنا أي تقارير جديدة فور اعتمادها وإرسالها من د. إسماعيل عيسى.</p>
-                  </div>
-                )}
-              </div>
             </section>
           </div>
         )}
