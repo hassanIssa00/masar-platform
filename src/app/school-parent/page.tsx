@@ -8,7 +8,7 @@ import {
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
-  Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send, Radio
+  Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
@@ -1015,34 +1015,6 @@ export default function SchoolParentPage() {
         {/* ══════════════ الاجتماعات والبث المباشر ══════════════ */}
         {!loading && tab === 'meetings' && (
           <div className="space-y-5">
-            {/* Live Stream Room Card */}
-            <div className="bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 rounded-3xl p-5 text-white shadow-lg border border-rose-500/40 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-inner text-2xl">
-                  📡
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm text-white">البث المباشر لفصل د. إسماعيل عيسى</h3>
-                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md border border-white/20 animate-pulse flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                      مباشر
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-rose-100 opacity-90 mt-0.5">
-                    غرفة البث الصوتي والمرئي التفاعلي المباشر مع الدكتور والطلاب في الفصل
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/live?room=IKHLAS_JEDDAH"
-                className="shrink-0 bg-white text-rose-700 hover:bg-rose-50 font-black text-xs px-5 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-              >
-                <Radio className="w-4 h-4 text-rose-600" />
-                <span>دخول البث المباشر</span>
-              </Link>
-            </div>
-
             <div className="space-y-3">
               <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Video className="w-4 h-4 text-emerald-600" /> اجتماعات الفيديو المجدولة
