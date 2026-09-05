@@ -225,19 +225,18 @@ export default function StudentDashboard() {
       ...classStudentMatches.map(c => c.id),
       ...matchingAccounts.map(a => a.id),
       ...matchingAccounts.map(a => a.linkedStudentId || '').filter(Boolean),
-      'all',
     ]);
 
     const isMatch = (targetId?: string, targetName?: string, studentAccId?: string) => {
       if (!targetId && !targetName && !studentAccId) return false;
-      if (targetId === 'all') return true;
-      if (targetId && validStudentIds.has(targetId)) return true;
-      if (studentAccId && validStudentIds.has(studentAccId)) return true;
-      if (sName && targetName && isStudentNameMatch(sName, targetName)) return true;
+      // Do NOT allow targetId === 'all' so new students don't inherit old homework!
+      if (targetId && targetId !== 'all' && validStudentIds.has(targetId)) return true;
+      if (studentAccId && studentAccId !== 'all' && validStudentIds.has(studentAccId)) return true;
+      if (sName && targetName && targetName !== 'جميع طلاب الفصل' && isStudentNameMatch(sName, targetName)) return true;
       return false;
     };
 
-    // Strategy 1: ONLY homework assigned explicitly to this student OR to 'all'
+    // Strategy 1: ONLY homework assigned explicitly to this student
     let merged = allHw.filter(hw => isMatch(hw.studentId, hw.studentName, (hw as any).studentAccountId));
 
     // Strategy 2: Homework logs from Doctor assignments specifically for this student
@@ -264,27 +263,36 @@ export default function StudentDashboard() {
       }
     });
 
-    // Strategy 3: ONLY curriculum assignments explicitly assigned to THIS student
-    const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
-    const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName, a.studentAccountId));
-    const currAsHomework: any[] = studentCurrAssignments.map((a: any) => {
-      const matchLog = logs.find(l => l.studentId === a.studentId && l.subject === a.subjectTitle);
-      const isSubmitted = matchLog?.status === 'submitted';
-      return {
-        id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
-        studentId: a.studentId || id,
-        studentName: a.studentName || name,
-        title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
-        description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
-        dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-        status: isSubmitted ? ('submitted' as const) : ('assigned' as const),
-        createdAt: a.assignedAt || new Date().toISOString(),
-        subjectSlug: a.subjectSlug,
-        subjectTitle: a.subjectTitle,
-        fromPage: a.fromPage,
-        toPage: a.toPage,
-      };
-    });
+    // Strategy 3: ONLY curriculum workbook assignments for students of Dr. Ismail's class
+    const isIkhlasStudent = Boolean(
+      (session as any)?.schoolBranch === 'IKHLAS_JEDDAH' ||
+      classStudentMatches.length > 0 ||
+      (studentRecord && (studentRecord.schoolBranch === 'IKHLAS_JEDDAH' || studentRecord.source === 'ikhlas-jeddah'))
+    );
+
+    let currAsHomework: any[] = [];
+    if (isIkhlasStudent) {
+      const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
+      const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName, a.studentAccountId));
+      currAsHomework = studentCurrAssignments.map((a: any) => {
+        const matchLog = logs.find(l => (l.studentId === a.studentId || (l as any).studentAccountId === a.studentAccountId) && (l.subject === a.subjectTitle || (l as any).subjectSlug === a.subjectSlug));
+        const isSubmitted = matchLog?.status === 'submitted' || matchLog?.grade !== undefined;
+        return {
+          id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
+          studentId: a.studentId || id,
+          studentName: a.studentName || name,
+          title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
+          description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
+          dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+          status: isSubmitted ? ('submitted' as const) : ('assigned' as const),
+          createdAt: a.assignedAt || new Date().toISOString(),
+          subjectSlug: a.subjectSlug,
+          subjectTitle: a.subjectTitle,
+          fromPage: a.fromPage,
+          toPage: a.toPage,
+        };
+      });
+    }
 
     for (const ca of currAsHomework) {
       const existing = merged.find(h => h.id === ca.id || h.title === ca.title);
@@ -809,57 +817,72 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-900" dir="rtl">
-      {/* Navbar */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs px-4 py-3 mb-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="shrink-0 transition-transform active:scale-95" title="منصة مسار">
-              <span className="relative inline-block w-11 h-11 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm">
+      {/* Executive Modern Navbar */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs px-3 sm:px-4 py-2.5 mb-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          {/* Brand Identity & Portal Tag */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link href="/" className="shrink-0 transition-transform active:scale-95 group" title="منصة مسار">
+              <span className="relative inline-flex w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-200/70 ring-2 ring-emerald-500/15 shadow-sm items-center justify-center">
                 <Image
                   src="/brand/masar-logo.webp"
                   alt="شعار منصة مسار"
                   fill
-                  className="object-contain p-1"
+                  className="object-contain p-1 group-hover:scale-105 transition-transform"
                   priority
                 />
               </span>
             </Link>
-            <div>
-              <h1 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
-                <span>منصة مَسَار الذكية</span>
-                {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? (
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight whitespace-nowrap">
+                  منصة مَسَار
+                </span>
+                {isIkhlas ? (
+                  <span className="text-[10px] sm:text-xs bg-emerald-600 text-white font-black px-2 sm:px-2.5 py-0.5 rounded-full shadow-2xs whitespace-nowrap">
                     فصل د. إسماعيل
                   </span>
                 ) : (
-                  <span className="text-xs bg-teal-100 text-teal-800 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
+                  <span className="text-[10px] sm:text-xs bg-teal-50 text-teal-800 border border-teal-200/80 font-black px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap">
                     بوابة الطالب
                   </span>
                 )}
-              </h1>
-              <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH'
-                  ? 'بوابة الطالب — فصل د. إسماعيل عيسى'
-                  : 'بوابة الطالب التفاعلية — منصة مسار'}
-                {' '}• {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-emerald-700 font-extrabold">{isIkhlas ? 'التعليم الفردي المتخصص' : 'المنصة الذكية'}</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-slate-400">
+                  {new Date().toLocaleDateString('ar-SA', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Quick Actions (Mobile Optimized) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <NotificationBell role="student" studentId={studentId || studentRecord?.id} studentName={studentName || studentRecord?.fullName} />
-            <Link href="/face-enroll"
-              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95">
-              <ScanFace size={16} className="text-emerald-700" />
-              <span className="hidden sm:inline">تسجيل الوجه</span>
+
+            <Link
+              href="/face-enroll"
+              title="تسجيل بصمة الوجه الذكية"
+              className="h-9 px-2 sm:px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-2xs active:scale-95"
+            >
+              <ScanFace size={16} className="text-emerald-700 shrink-0" />
+              <span className="hidden md:inline">بصمة الوجه</span>
             </Link>
-            <button onClick={handleLogout}
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer">
-              <LogOut size={16} /> <span>خروج</span>
+
+            <button
+              onClick={handleLogout}
+              title="تسجيل الخروج"
+              className="h-9 px-2.5 sm:px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <LogOut size={15} className="shrink-0" />
+              <span className="text-[11px] sm:text-xs">خروج</span>
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-2xl mx-auto px-4">
         {loading ? (

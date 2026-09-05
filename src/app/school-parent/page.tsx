@@ -19,7 +19,7 @@ import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
 import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
-import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache, writeCloudCache } from '@/lib/firestoreSync';
 import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
@@ -61,6 +61,20 @@ export default function SchoolParentPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // One-time purge of legacy test homeworks from client cache
+    if (typeof window !== 'undefined') {
+      const purgeKey = 'masar_purge_legacy_hw_v2_6';
+      if (!localStorage.getItem(purgeKey)) {
+        localStorage.setItem(purgeKey, 'true');
+        writeCloudCache('masar.homework.v1', []);
+        writeCloudCache('masar.curriculumAssignments.v1', []);
+        writeCloudCache('masar_student_hw_logs_v1', []);
+        writeCloudCache('masar.curriculumDrawings.v1', []);
+        void fetch('/api/cleanup/purge-old-homework?secret=masar-cleanup-2026-ikhlas', { method: 'POST' }).catch(() => {});
+      }
+    }
+
     const loadSchoolParent = async () => {
       // Auth guard
       const session = getSession() ?? await hydrateSessionFromServer();
@@ -413,19 +427,24 @@ export default function SchoolParentPage() {
       ...classStudentMatches.map(c => c.id),
       ...matchingAccounts.map(a => a.id),
       ...matchingAccounts.map(a => a.linkedStudentId || '').filter(Boolean),
-      'all',
     ]);
 
     const isHwForThisStudent = (h: any) => {
       if (!h) return false;
-      if (h.studentId === 'all') return true;
-      if (h.studentId && validStudentIds.has(h.studentId)) return true;
-      if (h.studentAccountId && validStudentIds.has(h.studentAccountId)) return true;
+      // Do not allow universal 'all' so new students don't inherit old homework
+      if (h.studentId && h.studentId !== 'all' && validStudentIds.has(h.studentId)) return true;
+      if (h.studentAccountId && h.studentAccountId !== 'all' && validStudentIds.has(h.studentAccountId)) return true;
       if (h.parentAccountId && (validStudentIds.has(h.parentAccountId) || (session?.id && h.parentAccountId === session.id))) return true;
       if (h.parentPhone && session?.phone && h.parentPhone.replace(/\D/g, '').slice(-8) === session.phone.replace(/\D/g, '').slice(-8)) return true;
-      if (sName && h.studentName && isStudentNameMatch(sName, h.studentName)) return true;
+      if (sName && h.studentName && h.studentName !== 'جميع طلاب الفصل' && isStudentNameMatch(sName, h.studentName)) return true;
       return false;
     };
+
+    const isIkhlasStudent = Boolean(
+      (session as any)?.schoolBranch === 'IKHLAS_JEDDAH' ||
+      classStudentMatches.length > 0 ||
+      (studentRecord && (studentRecord.schoolBranch === 'IKHLAS_JEDDAH' || (studentRecord as any).source === 'ikhlas-jeddah'))
+    );
 
     const local = getLocalHomework().filter(isHwForThisStudent);
     const logs = getStudentHomeworkLogs(sid || '', studentRecord?.fullName);
@@ -456,7 +475,8 @@ export default function SchoolParentPage() {
       }
     });
 
-    // 3. Curriculum Assignments from workbook (pages)
+    // 3. Curriculum Assignments from workbook (pages) - ONLY for Dr. Ismail class
+    if (isIkhlasStudent) {
     currAssignments.forEach((ca: any) => {
       const hwId = ca.id || `curr_hw_${ca.subjectSlug}_${ca.studentId}`;
       const existing = map.get(hwId);
@@ -482,6 +502,7 @@ export default function SchoolParentPage() {
       }
     });
 
+    }
     // 4. Homework logs from doctor assignment
     logs.forEach((log) => {
       const existing = Array.from(map.values()).find(

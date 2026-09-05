@@ -363,31 +363,13 @@ export async function broadcastHomeworkToParents(hwData: {
     sentCount++;
   }
 
-  // Also create a broadcast entry for 'all'
-  const broadcastAllEntry: HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string } = {
-    id: `hw_${hwData.subjectSlug || 'curriculum'}_all_p${hwData.fromPage || 1}_${hwData.toPage || 1}`,
-    studentId: 'all',
-    studentName: 'جميع طلاب الفصل',
-    title: hwData.title,
-    description: hwData.description,
-    dueDate: hwData.dueDate,
-    status: 'assigned',
-    type: 'CURRICULUM',
-    fromPage: hwData.fromPage,
-    toPage: hwData.toPage,
-    subjectSlug: hwData.subjectSlug,
-    subjectTitle: hwData.subject,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Save and sync all homework entries
+  // Save and sync all homework entries for specific class students only
   const existingIds = new Set(newHomeworkEntries.map((e) => e.id));
-  existingIds.add(broadcastAllEntry.id);
   const filteredLocal = localItems.filter((item) => !existingIds.has(item.id));
-  const mergedAll = [broadcastAllEntry, ...newHomeworkEntries, ...filteredLocal];
+  const mergedAll = [...newHomeworkEntries, ...filteredLocal];
 
   saveLocalHomework(mergedAll);
-  for (const entry of [broadcastAllEntry, ...newHomeworkEntries]) {
+  for (const entry of newHomeworkEntries) {
     void syncDocToCloud('homework', entry.id, entry);
   }
 
