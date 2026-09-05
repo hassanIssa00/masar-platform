@@ -531,8 +531,13 @@ export default function SchoolParentPage() {
     if (isIkhlasStudent) {
     currAssignments.forEach((ca: any) => {
       const hwId = ca.id || `curr_hw_${ca.subjectSlug}_${ca.studentId}`;
-      const existing = map.get(hwId);
-      if (!existing) {
+      // Check by id AND by title AND by subjectSlug+fromPage+toPage to avoid duplicates
+      const existingEntry = map.get(hwId) || Array.from(map.values()).find(
+        (x) => x.title === `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})` ||
+          (ca.subjectSlug && x.subjectSlug === ca.subjectSlug &&
+            Number(x.fromPage) === Number(ca.fromPage) && Number(x.toPage) === Number(ca.toPage))
+      );
+      if (!existingEntry) {
         map.set(hwId, {
           id: hwId,
           title: `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`,
@@ -548,17 +553,20 @@ export default function SchoolParentPage() {
           teacherFeedback: ca.teacherFeedback,
         });
       } else {
-        if (ca.status) existing.status = ca.status;
-        if (ca.grade !== undefined) existing.grade = ca.grade;
-        if (ca.teacherFeedback) existing.teacherFeedback = ca.teacherFeedback;
+        if (ca.status) existingEntry.status = ca.status;
+        if (ca.grade !== undefined) existingEntry.grade = ca.grade;
+        if (ca.teacherFeedback) existingEntry.teacherFeedback = ca.teacherFeedback;
       }
     });
 
     }
     // 4. Homework logs from doctor assignment
     logs.forEach((log) => {
+      // Deduplicate by id, title, OR (subjectSlug + fromPage + toPage)
       const existing = Array.from(map.values()).find(
-        (x) => x.title === log.title || x.id === log.id
+        (x) => x.title === log.title || x.id === log.id ||
+          (log.subjectSlug && x.subjectSlug === log.subjectSlug &&
+            Number(x.fromPage) === Number(log.fromPage) && Number(x.toPage) === Number(log.toPage))
       );
       if (!existing) {
         map.set(log.id, {

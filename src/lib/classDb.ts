@@ -307,6 +307,7 @@ export function getClassStudents(): ClassStudentRecord[] {
     const existingNames = new Set(list.map((s) => s.fullName.trim().toLowerCase()));
 
     let hasNew = false;
+    let hasUpdated = false;
     mainStudents.forEach((ms: any) => {
       // ONLY add if explicitly marked as this class branch — never use name heuristics
       const isClassStudent =
@@ -335,10 +336,18 @@ export function getClassStudents(): ClassStudentRecord[] {
         existingNames.add(normName);
         hasNew = true;
         void syncDocToCloud(CLOUD_COLLECTION, clsRecord.id, clsRecord);
+      } else if (isClassStudent && normName && ms.photoUrl) {
+        // Also update photoUrl on EXISTING class students if the main store has a photo they're missing
+        const existingIdx = list.findIndex((s) => s.fullName.trim().toLowerCase() === normName || s.id === ms.id);
+        if (existingIdx >= 0 && !list[existingIdx].photoUrl) {
+          list[existingIdx] = { ...list[existingIdx], photoUrl: ms.photoUrl, updatedAt: new Date().toISOString() };
+          hasUpdated = true;
+          void syncDocToCloud(CLOUD_COLLECTION, list[existingIdx].id, list[existingIdx]);
+        }
       }
     });
 
-    if (hasNew) {
+    if (hasNew || hasUpdated) {
       writeCloudCache(CLASS_STUDENTS_KEY, list);
     }
   } catch (err) {

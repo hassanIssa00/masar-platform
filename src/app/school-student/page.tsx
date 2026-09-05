@@ -244,8 +244,12 @@ export default function StudentDashboard() {
 
     // Strategy 2: Homework logs from Doctor assignments specifically for this student
     logs.forEach((log) => {
-      const existing = merged.find(
-        (x) => x.title === log.title || x.id === log.id
+      // Deduplicate by id, title, OR (subjectSlug + fromPage + toPage)
+      const existing = merged.find((x) =>
+        x.title === log.title ||
+        x.id === log.id ||
+        ((log as any).subjectSlug && (x as any).subjectSlug === (log as any).subjectSlug &&
+          Number((x as any).fromPage) === Number((log as any).fromPage) && Number((x as any).toPage) === Number((log as any).toPage))
       );
       if (!existing) {
         merged = [
@@ -257,12 +261,18 @@ export default function StudentDashboard() {
             title: log.title,
             description: log.teacherFeedback || `واجب مكلف من د. إسماعيل عيسى (${log.subject || 'المنهج'})`,
             dueDate: log.dueDate || new Date().toISOString().slice(0, 10),
-            status: (log.status === 'submitted' ? 'submitted' : 'assigned') as any,
+            status: (log.status === 'reviewed' ? 'reviewed' : log.status === 'submitted' ? 'submitted' : 'assigned') as any,
+            grade: log.grade,
+            doctorFeedback: log.teacherFeedback,
             createdAt: log.createdAt || new Date().toISOString(),
           } as HomeworkRecord,
         ];
-      } else if (log.status === 'submitted') {
-        existing.status = 'submitted';
+      } else {
+        // Propagate status/grade updates from log to existing record
+        if (log.status === 'reviewed') { existing.status = 'reviewed'; }
+        else if (log.status === 'submitted' && existing.status === 'assigned') { existing.status = 'submitted'; }
+        if (log.grade !== undefined) (existing as any).grade = log.grade;
+        if (log.teacherFeedback) (existing as any).doctorFeedback = log.teacherFeedback;
       }
     });
 
@@ -279,7 +289,8 @@ export default function StudentDashboard() {
       const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName, a.studentAccountId));
       currAsHomework = studentCurrAssignments.map((a: any) => {
         const matchLog = logs.find(l => (l.studentId === a.studentId || (l as any).studentAccountId === a.studentAccountId) && (l.subject === a.subjectTitle || (l as any).subjectSlug === a.subjectSlug));
-        const isSubmitted = matchLog?.status === 'submitted' || matchLog?.grade !== undefined;
+        const isReviewed = matchLog?.status === 'reviewed' || (matchLog?.grade !== undefined);
+        const isSubmitted = matchLog?.status === 'submitted';
         return {
           id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
           studentId: a.studentId || id,
@@ -287,24 +298,37 @@ export default function StudentDashboard() {
           title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
           description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
           dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-          status: isSubmitted ? ('submitted' as const) : ('assigned' as const),
+          status: (isReviewed ? 'reviewed' : isSubmitted ? 'submitted' : (a.status === 'submitted' ? 'submitted' : 'assigned')) as 'assigned' | 'submitted' | 'reviewed',
           createdAt: a.assignedAt || new Date().toISOString(),
           subjectSlug: a.subjectSlug,
           subjectTitle: a.subjectTitle,
           fromPage: a.fromPage,
           toPage: a.toPage,
+          grade: matchLog?.grade ?? a.grade,
+          doctorFeedback: matchLog?.teacherFeedback ?? a.teacherFeedback,
         };
       });
     }
 
     for (const ca of currAsHomework) {
-      const existing = merged.find(h => h.id === ca.id || h.title === ca.title);
+      // Deduplicate by id OR title OR (subjectSlug + fromPage + toPage)
+      const existing = merged.find(h =>
+        h.id === ca.id ||
+        h.title === ca.title ||
+        (ca.subjectSlug && (h as any).subjectSlug === ca.subjectSlug &&
+          Number((h as any).fromPage) === Number(ca.fromPage) && Number((h as any).toPage) === Number(ca.toPage))
+      );
       if (!existing) {
         merged = [...merged, ca];
       } else {
         (existing as any).subjectSlug = (existing as any).subjectSlug || ca.subjectSlug;
         (existing as any).fromPage = (existing as any).fromPage || ca.fromPage;
         (existing as any).toPage = (existing as any).toPage || ca.toPage;
+        // Propagate grade and reviewed status from curriculum assignment
+        if (ca.grade !== undefined) (existing as any).grade = ca.grade;
+        if (ca.doctorFeedback) (existing as any).doctorFeedback = ca.doctorFeedback;
+        if (ca.status === 'reviewed') existing.status = 'reviewed';
+        else if (ca.status === 'submitted' && existing.status === 'assigned') existing.status = 'submitted';
       }
     }
 
@@ -603,9 +627,23 @@ export default function StudentDashboard() {
                 hw.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
                 'bg-emerald-100 text-emerald-700'
               }`}>
-                {hw.status === 'assigned' ? '📝 مطلوب' : hw.status === 'submitted' ? '⏳ قيد المراجعة' : '✅ تم'}
+                {hw.status === 'assigned' ? '📝 مطلوب' :
+                 hw.status === 'submitted' ? '⏳ قيد المراجعة' :
+                 (hw as any).grade !== undefined ? `⭐ ${(hw as any).grade}/10` : '✅ تم التصحيح'}
               </span>
             </div>
+            {/* Grade & Feedback display when reviewed */}
+            {hw.status === 'reviewed' && (hw as any).grade !== undefined && (
+              <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <span className="text-xl">🏆</span>
+                <div>
+                  <p className="text-xs font-black text-emerald-800">درجتك: {(hw as any).grade}/10</p>
+                  {(hw as any).doctorFeedback && (
+                    <p className="text-[11px] font-bold text-slate-600 mt-0.5">💬 د. إسماعيل: {(hw as any).doctorFeedback}</p>
+                  )}
+                </div>
+              </div>
+            )}
             {hw.status === 'assigned' ? (
               <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
                 className="mt-2 w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
