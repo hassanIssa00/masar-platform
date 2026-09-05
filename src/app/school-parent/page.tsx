@@ -88,7 +88,13 @@ export default function SchoolParentPage() {
         return;
       }
       if (session.role === 'student') {
+        // branch-aware student portal handles both IKHLAS and MASAR
         router.replace('/school-student');
+        return;
+      }
+      // If a Masar parent accidentally lands here, send them to the correct portal
+      if (session.role === 'parent' && (session as any).schoolBranch && (session as any).schoolBranch !== 'IKHLAS_JEDDAH') {
+        router.replace('/parent');
         return;
       }
 

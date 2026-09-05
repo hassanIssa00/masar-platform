@@ -68,7 +68,8 @@ export default function StudentDashboard() {
       if (cancelled) return;
       if (!session) { router.replace('/login'); return; }
       if (session.role === 'doctor' || session.role === 'specialist') { router.replace('/dashboard'); return; }
-      if (session.role === 'parent') { router.replace('/school-parent'); return; }
+      // Route parent by school branch: IKHLAS_JEDDAH → school-parent, MASAR → parent
+      if (session.role === 'parent') { router.replace((session as any).schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent'); return; }
 
       const classStudents = getClassStudents();
       const allStudents = getStudents();

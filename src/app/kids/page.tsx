@@ -82,7 +82,7 @@ function KidsDashboardContent() {
         return;
       }
 
-      // All students use the interactive student dashboard
+      // All students use the branch-aware student portal
       if (currentSession.role === 'student') {
         router.replace('/school-student');
         return;

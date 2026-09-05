@@ -31,10 +31,12 @@ export default function Dashboard() {
         return;
       }
       if (session.role === 'parent') {
-        router.replace('/parent');
+        // Route by school branch: IKHLAS_JEDDAH → school-parent, others → parent
+        router.replace((session as any).schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
         return;
       }
       if (session.role === 'student') {
+        // school-student page is branch-aware and handles both IKHLAS and MASAR students
         router.replace('/school-student');
         return;
       }
