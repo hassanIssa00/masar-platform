@@ -221,6 +221,7 @@ export default function StudentInteractiveHomeworkModal({
     const record = {
       id: key,
       studentId,
+      studentName,
       subjectSlug: parsed.subjectSlug,
       page: currentPage,
       dataUrl,
@@ -256,20 +257,55 @@ export default function StudentInteractiveHomeworkModal({
       if (isCurriculumHw && parsed) {
         saveCurrentPageDrawing();
 
-        // 1. Mark status as submitted
+        const submittedAt = new Date().toISOString();
+
+        // 1. Mark status as submitted with Universal ID
         updateHomeworkStatus(hw.id, 'submitted', 'تم الحل بالقلم التفاعلي على صفحات الكتاب');
 
-        // 2. Save to homework log
+        // 2. Save to homework log with Universal ID and full curriculum metadata
         saveStudentHomeworkLog({
+          id: hw.id,
           studentId,
+          studentName,
           title: hw.title,
           subject: parsed.subjectTitle,
+          subjectSlug: parsed.subjectSlug,
+          fromPage: parsed.fromPage,
+          toPage: parsed.toPage,
           dueDate: hw.dueDate,
           status: 'submitted',
+          submittedAt,
           teacherFeedback: 'تم التسليم من الطالب وجاري مراجعة الحل.',
         });
 
-        // 3. Notify Doctor
+        // 3. Update curriculum assignments cache and cloud sync
+        try {
+          const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
+          const updatedCurr = currAssignments.map((a: any) => {
+            if (a.id === hw.id || (a.studentId === studentId && a.subjectSlug === parsed.subjectSlug && Number(a.fromPage) === Number(parsed.fromPage))) {
+              return { ...a, status: 'submitted', submittedAt };
+            }
+            return a;
+          });
+          writeCloudCache('masar.curriculumAssignments.v1', updatedCurr);
+          void syncDocToCloud('curriculum_assignments', hw.id, {
+            id: hw.id,
+            studentId,
+            studentName,
+            subjectSlug: parsed.subjectSlug,
+            fromPage: parsed.fromPage,
+            toPage: parsed.toPage,
+            status: 'submitted',
+            submittedAt,
+          });
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: 'masar.curriculumAssignments.v1', id: hw.id } }));
+          }
+        } catch (e) {
+          console.error('Error syncing curriculum assignment status:', e);
+        }
+
+        // 4. Notify Doctor
         void createNotification({
           type: 'homework',
           title: `📬 تسليم واجب جديد: ${studentName}`,
@@ -280,7 +316,7 @@ export default function StudentInteractiveHomeworkModal({
           studentName,
         });
 
-        // 4. Confirmation Notification to Parent
+        // 5. Confirmation Notification to Parent
         void createNotification({
           type: 'homework',
           title: `✅ تم تسليم واجب: ${parsed.subjectTitle}`,
@@ -291,7 +327,7 @@ export default function StudentInteractiveHomeworkModal({
           studentName,
         });
 
-        // 5. Send Message to Doctor
+        // 6. Send Message to Doctor
         saveMessage({
           studentId,
           from: 'student',
@@ -301,15 +337,20 @@ export default function StudentInteractiveHomeworkModal({
         });
       } else {
         // Classic submission
+        const submittedAt = new Date().toISOString();
         const answerPayload = textAnswer || imagePreview || audioURL || 'تم التسليم';
         updateHomeworkStatus(hw.id, 'submitted', answerPayload);
 
         saveStudentHomeworkLog({
+          id: hw.id,
           studentId,
+          studentName,
           title: hw.title,
           subject: 'الواجب المنزلي',
           dueDate: hw.dueDate,
           status: 'submitted',
+          submittedAt,
+          submissionAnswers: { text: textAnswer, image: imagePreview, audio: audioURL },
         });
 
         // Notify Doctor

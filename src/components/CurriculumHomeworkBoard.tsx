@@ -15,12 +15,14 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import { readCloudCache } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import {
   getStudentHomeworkLogs,
   saveStudentHomeworkLog,
   type StudentHomeworkLog,
 } from '@/lib/classDb';
+import { updateHomeworkStatus } from '@/lib/homework';
+import { isStudentNameMatch } from '@/lib/nameMatching';
 import { saveMessage } from '@/lib/cloudStore';
 import { saveHomeworkSnapshot } from '@/lib/dailyArchive';
 import { createNotification } from '@/lib/notifications';
@@ -62,8 +64,14 @@ function getHwLog(
   all: StudentHomeworkLog[],
   studentId: string,
   subjectTitle: string,
+  assignmentId?: string,
 ): StudentHomeworkLog | undefined {
-  return all.find((h) => h.studentId === studentId && h.subject === subjectTitle);
+  return all.find((h) => {
+    if (assignmentId && h.id === assignmentId) return true;
+    const matchStudent = h.studentId === studentId || (h as any).studentAccountId === studentId;
+    const matchSubject = h.subject === subjectTitle || (h as any).subjectSlug === subjectTitle || (h as any).subjectTitle === subjectTitle;
+    return matchStudent && matchSubject;
+  });
 }
 
 export default function CurriculumHomeworkBoard({ students = [] }: Props) {
@@ -87,7 +95,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
     setAssignments(raw);
     const allLogs: StudentHomeworkLog[] = [];
     students.forEach((s) => {
-      getStudentHomeworkLogs(s.id).forEach((l) => {
+      getStudentHomeworkLogs(s.id, s.fullName || s.name).forEach((l) => {
         if (!allLogs.find((x) => x.id === l.id)) allLogs.push(l);
       });
     });
@@ -96,15 +104,22 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
     setHwLogs(allLogs);
   }
 
-  useEffect(() => { refresh(); }, [students.length]);
+  useEffect(() => {
+    refresh();
+    const handleUpdate = () => refresh();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('masar:cloud-cache-update', handleUpdate);
+      return () => window.removeEventListener('masar:cloud-cache-update', handleUpdate);
+    }
+  }, [students.length]);
 
   const subjectTitles = Array.from(new Set(assignments.map((a) => a.subjectTitle)));
   const filtered = filterSubject === 'all' ? assignments : assignments.filter((a) => a.subjectTitle === filterSubject);
 
   const studentGroups = new Map<string, { student: Student; assignments: CurriculumAssignment[] }>();
   filtered.forEach((a) => {
-    const student = students.find((s) => s.id === a.studentId);
-    if (!student) return;
+    const student = students.find((s) => s.id === a.studentId || (s.fullName && isStudentNameMatch(s.fullName, a.studentName)))
+      || { id: a.studentId, fullName: a.studentName, name: a.studentName };
     if (!studentGroups.has(student.id)) studentGroups.set(student.id, { student, assignments: [] });
     const grp = studentGroups.get(student.id)!;
     const idx = grp.assignments.findIndex((x) => x.subjectTitle === a.subjectTitle);
@@ -120,7 +135,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
   const totalGraded = hwLogs.filter((h) => h.grade !== undefined && filtered.some((a) => a.studentId === h.studentId && a.subjectTitle === h.subject)).length;
 
   function handleMarkSubmitted(a: CurriculumAssignment) {
-    const log = getHwLog(hwLogs, a.studentId, a.subjectTitle);
+    const log = getHwLog(hwLogs, a.studentId, a.subjectTitle, a.id);
     saveStudentHomeworkLog({
       id: log?.id,
       studentId: a.studentId,
@@ -154,17 +169,53 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
       return;
     }
     setIsSaving(true);
+    const hwId = log?.id || assignment.id || `hw_${assignment.subjectSlug}_${assignment.studentId}_p${assignment.fromPage}_${assignment.toPage}`;
+    const reviewedAt = new Date().toISOString();
+
     saveStudentHomeworkLog({
-      id: log?.id,
+      id: hwId,
       studentId: assignment.studentId,
       studentName: assignment.studentName,
       title: log?.title || `واجب ${assignment.subjectTitle} (ص ${assignment.fromPage}-${assignment.toPage})`,
       subject: assignment.subjectTitle,
+      subjectSlug: assignment.subjectSlug,
+      fromPage: assignment.fromPage,
+      toPage: assignment.toPage,
       dueDate: log?.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-      status: 'submitted',
+      status: 'reviewed',
       grade,
       teacherFeedback: feedbackInput,
+      reviewedAt,
     });
+
+    // Update Homework Record status
+    updateHomeworkStatus(hwId, 'reviewed', feedbackInput, grade);
+
+    // Update Curriculum Assignments
+    try {
+      const currentAssignments = readAssignments();
+      const updatedAssignments = currentAssignments.map(a => {
+        if (a.id === hwId || a.id === assignment.id || (a.studentId === assignment.studentId && a.subjectTitle === assignment.subjectTitle)) {
+          return { ...a, status: 'reviewed', grade, teacherFeedback: feedbackInput, reviewedAt };
+        }
+        return a;
+      });
+      writeCloudCache(ASSIGNMENTS_KEY, updatedAssignments);
+      void syncDocToCloud('curriculum_assignments', hwId, {
+        id: hwId,
+        studentId: assignment.studentId,
+        studentName: assignment.studentName,
+        subjectSlug: assignment.subjectSlug,
+        fromPage: assignment.fromPage,
+        toPage: assignment.toPage,
+        status: 'reviewed',
+        grade,
+        teacherFeedback: feedbackInput,
+        reviewedAt,
+      });
+    } catch (e) {
+      console.error('Error updating assignment status:', e);
+    }
     const feedbackNote = feedbackInput ? `\n💬 ملاحظة الدكتور: ${feedbackInput}` : '';
     saveMessage({
       studentId: assignment.studentId,

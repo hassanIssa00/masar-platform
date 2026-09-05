@@ -392,6 +392,7 @@ export default function SchoolParentPage() {
   const todayName = jsDay >= 0 && jsDay <= 4 ? DAY_NAMES[jsDay] : 'إجازة';
 
   const allCombinedHomework = useMemo(() => {
+    const session = typeof window !== 'undefined' ? getSession() : null;
     const sid = studentRecord?.id;
     const sName = studentRecord?.fullName ? normalizeArabicText(studentRecord.fullName) : '';
     const classStudentMatches = getClassStudents().filter(cs => {
@@ -399,9 +400,19 @@ export default function SchoolParentPage() {
       if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
       return false;
     });
+    const allAccounts = getAccounts();
+    const matchingAccounts = allAccounts.filter(a =>
+      a.id === sid || a.linkedStudentId === sid || (sName && a.name && isStudentNameMatch(a.name, sName)) || (session?.id && a.id === session.id)
+    );
     const validStudentIds = new Set<string>([
       ...(sid ? [sid] : []),
+      ...(session?.id ? [session.id] : []),
+      ...(session?.linkedStudentId ? [session.linkedStudentId] : []),
+      ...(studentRecord?.studentAccountId ? [studentRecord.studentAccountId] : []),
+      ...(studentRecord?.parentAccountId ? [studentRecord.parentAccountId] : []),
       ...classStudentMatches.map(c => c.id),
+      ...matchingAccounts.map(a => a.id),
+      ...matchingAccounts.map(a => a.linkedStudentId || '').filter(Boolean),
       'all',
     ]);
 
@@ -409,6 +420,9 @@ export default function SchoolParentPage() {
       if (!h) return false;
       if (h.studentId === 'all') return true;
       if (h.studentId && validStudentIds.has(h.studentId)) return true;
+      if (h.studentAccountId && validStudentIds.has(h.studentAccountId)) return true;
+      if (h.parentAccountId && (validStudentIds.has(h.parentAccountId) || (session?.id && h.parentAccountId === session.id))) return true;
+      if (h.parentPhone && session?.phone && h.parentPhone.replace(/\D/g, '').slice(-8) === session.phone.replace(/\D/g, '').slice(-8)) return true;
       if (sName && h.studentName && isStudentNameMatch(sName, h.studentName)) return true;
       return false;
     };
@@ -430,10 +444,14 @@ export default function SchoolParentPage() {
           title: h.title,
           description: h.description,
           dueDate: h.dueDate,
-          type: 'TEXT',
+          type: h.type || 'TEXT',
           fromPage: h.fromPage,
           toPage: h.toPage,
           subjectSlug: h.subjectSlug,
+          subjectTitle: h.subjectTitle,
+          status: h.status,
+          grade: h.grade,
+          doctorFeedback: h.doctorFeedback,
         });
       }
     });
@@ -441,7 +459,8 @@ export default function SchoolParentPage() {
     // 3. Curriculum Assignments from workbook (pages)
     currAssignments.forEach((ca: any) => {
       const hwId = ca.id || `curr_hw_${ca.subjectSlug}_${ca.studentId}`;
-      if (!map.has(hwId)) {
+      const existing = map.get(hwId);
+      if (!existing) {
         map.set(hwId, {
           id: hwId,
           title: `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`,
@@ -452,7 +471,14 @@ export default function SchoolParentPage() {
           toPage: ca.toPage,
           subjectSlug: ca.subjectSlug,
           subjectTitle: ca.subjectTitle,
+          status: ca.status || 'assigned',
+          grade: ca.grade,
+          teacherFeedback: ca.teacherFeedback,
         });
+      } else {
+        if (ca.status) existing.status = ca.status;
+        if (ca.grade !== undefined) existing.grade = ca.grade;
+        if (ca.teacherFeedback) existing.teacherFeedback = ca.teacherFeedback;
       }
     });
 
@@ -468,7 +494,17 @@ export default function SchoolParentPage() {
           description: log.teacherFeedback || `واجب مدرسي مكلف من قبل د. إسماعيل عيسى (${log.subject || 'المادة'})`,
           dueDate: log.dueDate || new Date().toISOString().slice(0, 10),
           type: 'TEXT',
+          fromPage: log.fromPage,
+          toPage: log.toPage,
+          subjectSlug: log.subjectSlug,
+          status: log.status,
+          grade: log.grade,
+          teacherFeedback: log.teacherFeedback,
         });
+      } else {
+        if (log.status) existing.status = log.status;
+        if (log.grade !== undefined) existing.grade = log.grade;
+        if (log.teacherFeedback) existing.teacherFeedback = log.teacherFeedback;
       }
     });
 
@@ -850,15 +886,28 @@ export default function SchoolParentPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-black text-sm text-slate-900">{hw.title}</p>
-                          {done && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                              مسلّم
+                          {hw.grade !== undefined ? (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
+                              ⭐ تم التصحيح ({hw.grade}/10)
+                            </span>
+                          ) : (hw.status === 'submitted' || done) ? (
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-2.5 py-0.5 rounded-full border border-blue-300">
+                              ⏳ مسلّم (بانتظار المراجعة)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                              📝 مطلوب حله
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-slate-600 mt-0.5">{hw.description}</p>
+                        {hw.teacherFeedback && (
+                          <div className="mt-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900">
+                            💬 ملاحظة المعلم: {hw.teacherFeedback}
+                          </div>
+                        )}
                         <p className="text-[10px] text-amber-700 font-bold mt-1.5">
                           ⏰ التسليم: {new Date(hw.dueDate).toLocaleDateString('ar-SA')}
                         </p>

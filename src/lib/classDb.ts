@@ -57,13 +57,26 @@ export type StudentHomeworkLog = {
   id: string;
   studentId: string;
   studentName?: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  parentPhone?: string;
+  parentName?: string;
   title: string;
   subject: string;
+  subjectSlug?: string;
+  fromPage?: number;
+  toPage?: number;
   dueDate: string;
   grade?: number; // out of 10
-  status: 'assigned' | 'submitted' | 'late' | 'missing';
+  status: 'assigned' | 'submitted' | 'late' | 'missing' | 'reviewed';
   teacherFeedback?: string;
+  submissionAnswers?: Record<string, any>;
+  submittedAt?: string;
+  reviewedAt?: string;
+  dispatchedToParent?: boolean;
+  dispatchedAt?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type StudentCertificateLog = {
@@ -129,19 +142,71 @@ export function deleteStudentNote(noteId: string) {
 
 // ── Student Homework Logs ─────────────────────────────────────────────────
 export function getStudentHomeworkLogs(studentId: string, studentName?: string): StudentHomeworkLog[] {
+  const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => {
-    if (studentId && (h.studentId === studentId || h.studentId === 'all')) return true;
-    if (studentName && (h as any).studentName && isStudentNameMatch(studentName, (h as any).studentName)) return true;
+    if (studentId && (h.studentId === studentId || h.studentId === 'all' || h.studentAccountId === studentId || h.parentAccountId === studentId)) return true;
+    if (studentName && h.studentName && isStudentNameMatch(studentName, h.studentName)) return true;
+    if (normSearchName && h.studentName && normalizeArabicText(h.studentName) === normSearchName) return true;
     return false;
   });
 }
-export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'> & { id?: string }): StudentHomeworkLog {
+export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'> & { id?: string; createdAt?: string }): StudentHomeworkLog {
   const all = readList<StudentHomeworkLog>(HW_LOG_KEY);
   const existing = log.id ? all.findIndex(h => h.id === log.id) : -1;
-  const newLog: StudentHomeworkLog = { ...log, id: log.id || `hw-log-${Date.now()}`, createdAt: new Date().toISOString() };
-  if (existing >= 0) { all[existing] = newLog; writeList(HW_LOG_KEY, all); }
-  else { writeList(HW_LOG_KEY, [newLog, ...all]); }
+
+  let resolvedStudentAccountId = log.studentAccountId;
+  let resolvedParentAccountId = log.parentAccountId;
+  let resolvedParentPhone = log.parentPhone;
+  let resolvedParentName = log.parentName;
+
+  if ((!resolvedStudentAccountId || !resolvedParentAccountId || !resolvedParentPhone) && typeof window !== 'undefined') {
+    try {
+      const allAccounts = readList<any>('masar.accounts.v1');
+      const allStudents = readList<any>('masar.students.v1');
+      const classStudents = readList<any>(CLASS_STUDENTS_KEY);
+      const pool = [...allStudents, ...classStudents];
+      const targetStudent = pool.find((s: any) => s.id === log.studentId || (log.studentName && isStudentNameMatch(s.fullName, log.studentName)));
+      if (targetStudent) {
+        if (!resolvedParentPhone) resolvedParentPhone = targetStudent.parentPhone;
+        if (!resolvedParentName) resolvedParentName = targetStudent.parentName;
+        if (!resolvedStudentAccountId) resolvedStudentAccountId = (targetStudent as any).studentAccountId;
+        if (!resolvedParentAccountId) resolvedParentAccountId = (targetStudent as any).parentAccountId;
+      }
+      if (!resolvedStudentAccountId && targetStudent) {
+        const sAcc = allAccounts.find((a: any) => a.role === 'student' && (a.id === targetStudent.id || a.linkedStudentId === targetStudent.id || (targetStudent.fullName && a.name && isStudentNameMatch(a.name, targetStudent.fullName))));
+        if (sAcc) resolvedStudentAccountId = sAcc.id;
+      }
+      if (!resolvedParentAccountId && targetStudent) {
+        const pAcc = allAccounts.find((a: any) => a.role === 'parent' && ((a.phone && targetStudent.parentPhone && a.phone.slice(-8) === targetStudent.parentPhone.slice(-8)) || (targetStudent.parentName && a.name && isStudentNameMatch(a.name, targetStudent.parentName))));
+        if (pAcc) resolvedParentAccountId = pAcc.id;
+      }
+    } catch {}
+  }
+
+  const newLog: StudentHomeworkLog = {
+    ...log,
+    id: log.id || `hw-log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    studentAccountId: resolvedStudentAccountId,
+    parentAccountId: resolvedParentAccountId,
+    parentPhone: resolvedParentPhone,
+    parentName: resolvedParentName,
+    createdAt: log.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existing >= 0) {
+    all[existing] = newLog;
+    writeList(HW_LOG_KEY, all);
+  } else {
+    writeList(HW_LOG_KEY, [newLog, ...all]);
+  }
+
   syncDocToCloud(CLOUD_HW_LOGS, newLog.id, newLog);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: HW_LOG_KEY, id: newLog.id } }));
+  }
+
   return newLog;
 }
 export function deleteStudentHomeworkLog(id: string) {

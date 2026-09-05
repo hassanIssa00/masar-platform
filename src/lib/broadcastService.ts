@@ -1,7 +1,7 @@
 'use client';
 
-import { getStudents, saveMessage, saveActivity, StudentRecord } from './cloudStore';
-import { getClassStudents } from './classDb';
+import { getStudents, getAccounts, saveMessage, saveActivity, StudentRecord } from './cloudStore';
+import { getClassStudents, saveStudentHomeworkLog } from './classDb';
 import { createHomework, HomeworkRecord, saveLocalHomework, getLocalHomework } from './homework';
 import { Period, DAY_NAMES } from '@/data/ikhlasSchedule';
 import { syncDocToCloud } from './firestoreSync';
@@ -255,29 +255,64 @@ export async function broadcastHomeworkToParents(hwData: {
     return { success: false, count: 0, message: 'لا يوجد طلاب مسجلين لإرسال الواجب إليهم.' };
   }
 
-  const baseHomeworkId = `hw_${Date.now()}`;
+  const allAccounts = typeof window !== 'undefined' ? getAccounts() : [];
   const localItems = getLocalHomework();
   const newHomeworkEntries: (HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string })[] = [];
 
   let sentCount = 0;
 
   for (const t of targets) {
+    // Resolve Student & Parent Accounts
+    const sAcc = allAccounts.find((a) => a.role === 'student' && (a.id === t.id || a.linkedStudentId === t.id || (t.name && a.name && a.name.trim() === t.name.trim())));
+    const pAcc = allAccounts.find((a) => a.role === 'parent' && ((t.phone && a.phone && a.phone.slice(-8) === t.phone.slice(-8)) || (t.parentName && a.name && a.name.trim() === t.parentName.trim())));
+
+    const studentAccountId = sAcc?.id;
+    const parentAccountId = pAcc?.id;
+    const parentPhone = t.phone || pAcc?.phone || '';
+    const parentName = t.parentName || pAcc?.name || 'ولي الأمر';
+
+    const universalHwId = `hw_${hwData.subjectSlug || 'curriculum'}_${t.id}_p${hwData.fromPage || 1}_${hwData.toPage || 1}`;
+
     const hwItem: HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string } = {
-      id: `${baseHomeworkId}_${t.id}`,
+      id: universalHwId,
       studentId: t.id,
       studentName: t.name,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
       title: hwData.title,
       description: hwData.description,
       dueDate: hwData.dueDate,
       status: 'assigned',
-      createdAt: new Date().toISOString(),
+      type: 'CURRICULUM',
       fromPage: hwData.fromPage,
       toPage: hwData.toPage,
       subjectSlug: hwData.subjectSlug,
       subjectTitle: hwData.subject,
+      createdAt: new Date().toISOString(),
     };
 
     newHomeworkEntries.push(hwItem);
+
+    // Save to student homework log
+    saveStudentHomeworkLog({
+      id: universalHwId,
+      studentId: t.id,
+      studentName: t.name,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
+      title: hwData.title,
+      subject: hwData.subject || 'المنهج المدرسي',
+      subjectSlug: hwData.subjectSlug,
+      fromPage: hwData.fromPage,
+      toPage: hwData.toPage,
+      dueDate: hwData.dueDate,
+      status: 'assigned',
+      teacherFeedback: 'واجب مكلف من د. إسماعيل عيسى - حل التدريبات بالكتاب التفاعلي',
+    });
 
     // Format chat message
     let msgBody = `📝 *واجب منزلي جديد — مادة ${hwData.subject || 'المادة'}*\n`;
@@ -292,11 +327,16 @@ export async function broadcastHomeworkToParents(hwData: {
 
     saveMessage({
       studentId: t.id,
+      studentName: t.name,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
       from: 'doctor',
       to: 'parent',
       body: msgBody,
       read: false,
-    });
+    } as any);
 
     // In-app notification for Parent
     void createNotification({
@@ -312,8 +352,8 @@ export async function broadcastHomeworkToParents(hwData: {
     // In-app notification for Student
     void createNotification({
       type: 'homework',
-      title: `📝 واجب منزلي جديد: ${hwData.title}`,
-      body: `كلفك د. إسماعيل عيسى بواجب جديد (${hwData.title}). موعد التسليم: ${hwData.dueDate}.`,
+      title: `📝 واجب تفاعلي جديد: ${hwData.title}`,
+      body: `كلفك د. إسماعيل عيسى بحل التدريبات من ص (${hwData.fromPage || 1}) إلى ص (${hwData.toPage || 1}) بالكتاب التفاعلي.`,
       link: `/school-student?tab=homework`,
       targetRole: 'student',
       studentId: t.id,
@@ -323,9 +363,31 @@ export async function broadcastHomeworkToParents(hwData: {
     sentCount++;
   }
 
+  // Also create a broadcast entry for 'all'
+  const broadcastAllEntry: HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string } = {
+    id: `hw_${hwData.subjectSlug || 'curriculum'}_all_p${hwData.fromPage || 1}_${hwData.toPage || 1}`,
+    studentId: 'all',
+    studentName: 'جميع طلاب الفصل',
+    title: hwData.title,
+    description: hwData.description,
+    dueDate: hwData.dueDate,
+    status: 'assigned',
+    type: 'CURRICULUM',
+    fromPage: hwData.fromPage,
+    toPage: hwData.toPage,
+    subjectSlug: hwData.subjectSlug,
+    subjectTitle: hwData.subject,
+    createdAt: new Date().toISOString(),
+  };
+
   // Save and sync all homework entries
-  saveLocalHomework([...newHomeworkEntries, ...localItems]);
-  for (const entry of newHomeworkEntries) {
+  const existingIds = new Set(newHomeworkEntries.map((e) => e.id));
+  existingIds.add(broadcastAllEntry.id);
+  const filteredLocal = localItems.filter((item) => !existingIds.has(item.id));
+  const mergedAll = [broadcastAllEntry, ...newHomeworkEntries, ...filteredLocal];
+
+  saveLocalHomework(mergedAll);
+  for (const entry of [broadcastAllEntry, ...newHomeworkEntries]) {
     void syncDocToCloud('homework', entry.id, entry);
   }
 

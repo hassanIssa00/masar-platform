@@ -6,13 +6,24 @@ export interface HomeworkRecord {
   id: string;
   studentId: string;
   studentName: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
+  parentPhone?: string;
+  parentName?: string;
   title: string;
   description: string;
   dueDate: string;
   status: 'assigned' | 'submitted' | 'reviewed';
+  type?: 'TEXT' | 'CURRICULUM' | 'MULTIPLE_CHOICE';
+  subjectSlug?: string;
+  subjectTitle?: string;
+  fromPage?: number;
+  toPage?: number;
+  grade?: number; // score out of 10 or 100
   parentNotes?: string;
   doctorFeedback?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 const LOCAL_KEY = 'masar.homework.v1';
@@ -27,26 +38,69 @@ export function saveLocalHomework(items: HomeworkRecord[]) {
   writeCloudCache(LOCAL_KEY, items);
 }
 
-export async function createHomework(hw: Omit<HomeworkRecord, 'id' | 'createdAt' | 'status'>) {
+export async function createHomework(
+  hw: Omit<HomeworkRecord, 'id' | 'createdAt' | 'status'> & { id?: string; status?: HomeworkRecord['status']; createdAt?: string }
+): Promise<HomeworkRecord> {
+  const current = getLocalHomework();
+  const id = hw.id || `hw_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const status = hw.status || 'assigned';
+  const createdAt = hw.createdAt || new Date().toISOString();
+
   const item: HomeworkRecord = {
-    id: `hw_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     ...hw,
-    status: 'assigned',
-    createdAt: new Date().toISOString(),
+    id,
+    status,
+    createdAt,
+    updatedAt: new Date().toISOString(),
   };
 
-  const current = getLocalHomework();
-  const updated = [item, ...current];
-  saveLocalHomework(updated);
+  const existingIdx = current.findIndex((h) => h.id === id);
+  let updated: HomeworkRecord[];
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = item;
+  } else {
+    updated = [item, ...current];
+  }
 
+  saveLocalHomework(updated);
   await syncDocToCloud('homework', item.id, item);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: LOCAL_KEY } }));
+  }
+
   return item;
 }
 
-export function updateHomeworkStatus(id: string, status: HomeworkRecord['status'], parentNotes?: string) {
+export function updateHomeworkStatus(
+  id: string,
+  status: HomeworkRecord['status'],
+  parentNotes?: string,
+  optionsOrGrade?: { grade?: number; doctorFeedback?: string } | number
+) {
+  const resolvedGrade = typeof optionsOrGrade === 'number' ? optionsOrGrade : optionsOrGrade?.grade;
+  const resolvedDoctorFeedback = typeof optionsOrGrade === 'object' && optionsOrGrade !== null ? optionsOrGrade.doctorFeedback : (status === 'reviewed' ? parentNotes : undefined);
+
   const current = getLocalHomework();
-  const updated = current.map((h) => (h.id === id ? { ...h, status, parentNotes: parentNotes ?? h.parentNotes } : h));
+  const updated = current.map((h) =>
+    h.id === id
+      ? {
+          ...h,
+          status,
+          parentNotes: parentNotes !== undefined ? parentNotes : h.parentNotes,
+          grade: resolvedGrade !== undefined ? resolvedGrade : h.grade,
+          doctorFeedback: resolvedDoctorFeedback !== undefined ? resolvedDoctorFeedback : h.doctorFeedback,
+          updatedAt: new Date().toISOString(),
+        }
+      : h
+  );
   saveLocalHomework(updated);
   const item = updated.find((h) => h.id === id);
-  if (item) syncDocToCloud('homework', id, item);
+  if (item) {
+    void syncDocToCloud('homework', id, item);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: LOCAL_KEY } }));
+  }
 }

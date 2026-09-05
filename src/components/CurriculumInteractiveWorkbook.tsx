@@ -24,8 +24,9 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { CurriculumSubject } from '@/data/curriculaData';
-import { getSession, getStudents, saveMessage, saveReport, type StudentRecord } from '@/lib/cloudStore';
+import { getAccounts, getSession, getStudents, saveMessage, saveReport, type StudentRecord } from '@/lib/cloudStore';
 import { getClassStudents, saveStudentHomeworkLog } from '@/lib/classDb';
+import { createHomework } from '@/lib/homework';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { recordStudentLearningActivity } from '@/lib/learningProgress';
 import { broadcastHomeworkToParents } from '@/lib/broadcastService';
@@ -254,26 +255,51 @@ export default function CurriculumInteractiveWorkbook({
     }
 
     const classStudents = getClassStudents();
-    const classIds = new Set(classStudents.map((c) => c.id));
     const allStudents = getStudents();
+    const allAccounts = getAccounts();
 
-    let filtered = allStudents.filter(
-      (s) => s.schoolBranch === 'IKHLAS_JEDDAH' || s.source === 'ikhlas-jeddah' || classIds.has(s.id),
-    );
+    // Unified student pool combining classStudents and allStudents without duplicates
+    const studentMap = new Map<string, StudentRecord>();
 
-    if (filtered.length === 0 && classStudents.length > 0) {
-      filtered = classStudents.map((cs) => ({
+    classStudents.forEach((cs) => {
+      const sAcc = allAccounts.find((a: any) => a.role === 'student' && (a.id === cs.id || a.linkedStudentId === cs.id || (cs.fullName && a.name && a.name.trim() === cs.fullName.trim())));
+      const pAcc = allAccounts.find((a: any) => a.role === 'parent' && ((cs.parentPhone && a.phone && a.phone.slice(-8) === cs.parentPhone.slice(-8)) || (cs.parentName && a.name && a.name.trim() === cs.parentName.trim())));
+      studentMap.set(cs.id, {
         id: cs.id,
         fullName: cs.fullName,
-        grade: cs.grade || 'الصف الأول الابتدائي',
-        parentPhone: cs.parentPhone,
+        grade: cs.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        parentPhone: cs.parentPhone || pAcc?.phone || '',
+        parentName: cs.parentName || pAcc?.name || 'ولي الأمر',
+        photoUrl: cs.photoUrl || sAcc?.photoUrl || '',
+        studentAccountId: sAcc?.id,
+        parentAccountId: pAcc?.id,
         source: 'ikhlas-jeddah' as const,
         schoolBranch: 'IKHLAS_JEDDAH',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-    }
+        createdAt: cs.createdAt || new Date().toISOString(),
+        updatedAt: cs.updatedAt || new Date().toISOString(),
+      });
+    });
 
+    allStudents.forEach((s) => {
+      const isIkhlas = s.schoolBranch === 'IKHLAS_JEDDAH' || s.source === 'ikhlas-jeddah';
+      if (!isIkhlas) return;
+      const existing = Array.from(studentMap.values()).find(
+        (x) => x.id === s.id || (x.fullName && s.fullName && x.fullName.trim() === s.fullName.trim())
+      );
+      if (!existing) {
+        const sAcc = allAccounts.find((a: any) => a.role === 'student' && (a.id === s.id || a.linkedStudentId === s.id || (s.fullName && a.name && a.name.trim() === s.fullName.trim())));
+        const pAcc = allAccounts.find((a: any) => a.role === 'parent' && ((s.parentPhone && a.phone && a.phone.slice(-8) === s.parentPhone.slice(-8)) || (s.parentName && a.name && a.name.trim() === s.parentName.trim())));
+        studentMap.set(s.id, {
+          ...s,
+          studentAccountId: (s as any).studentAccountId || sAcc?.id,
+          parentAccountId: (s as any).parentAccountId || pAcc?.id,
+          parentPhone: s.parentPhone || pAcc?.phone || '',
+          parentName: s.parentName || pAcc?.name || 'ولي الأمر',
+        });
+      }
+    });
+
+    const filtered = Array.from(studentMap.values());
     setStudents(filtered);
     if (filtered.length > 0) {
       setSelectedStudentId((prev) => (filtered.some((m) => m.id === prev) ? prev : filtered[0]?.id || ''));
@@ -452,9 +478,16 @@ export default function CurriculumInteractiveWorkbook({
 
     const cleanFrom = Math.max(1, Math.min(fromPage, curriculum.pageCount));
     const cleanTo = Math.max(cleanFrom, Math.min(toPage, curriculum.pageCount));
+    const universalHwId = `hw_${curriculum.slug}_${student.id}_p${cleanFrom}_${cleanTo}`;
+    const dueDateStr = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10);
+
+    const studentAccountId = (student as any).studentAccountId;
+    const parentAccountId = (student as any).parentAccountId;
+    const parentPhone = student.parentPhone || '';
+    const parentName = student.parentName || 'ولي الأمر';
 
     const newAssignment: CurriculumAssignment = {
-      id: `assign_${student.id}_${curriculum.slug}`,
+      id: universalHwId,
       studentId: student.id,
       studentName: student.fullName,
       subjectSlug: curriculum.slug,
@@ -470,36 +503,60 @@ export default function CurriculumInteractiveWorkbook({
     writeAssignments([newAssignment, ...currentAssignments]);
     setAssignment(newAssignment);
 
-    // Send direct notification to parent
-    saveMessage({
-      studentId: student.id,
-      from: 'doctor',
-      to: 'parent',
-      body: `📚 واجب منزلي جديد لمادة (${curriculum.title}):\nيرجى حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي.\nرابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
-      read: false,
-    });
-
-    // Save to homework log
+    // 1. Save to Student Homework Log with Universal ID
     saveStudentHomeworkLog({
+      id: universalHwId,
       studentId: student.id,
       studentName: student.fullName,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
       title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
       subject: curriculum.title,
-      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+      subjectSlug: curriculum.slug,
+      fromPage: cleanFrom,
+      toPage: cleanTo,
+      dueDate: dueDateStr,
+      status: 'assigned',
+      teacherFeedback: `واجب تفاعلي مكلف من د. إسماعيل عيسى - حل الصفحات (${cleanFrom} إلى ${cleanTo}) بالكتاب المدرسي`,
+    });
+
+    // 2. Save to General Homework Collection with Universal ID
+    void createHomework({
+      id: universalHwId,
+      studentId: student.id,
+      studentName: student.fullName,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
+      title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
+      description: `حل التدريبات والأنشطة التفاعلية من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
+      dueDate: dueDateStr,
+      type: 'CURRICULUM',
+      subjectSlug: curriculum.slug,
+      subjectTitle: curriculum.title,
+      fromPage: cleanFrom,
+      toPage: cleanTo,
       status: 'assigned',
     });
 
-    void import('@/lib/homework').then(({ createHomework }) =>
-      createHomework({
-        studentId: student.id,
-        studentName: student.fullName,
-        title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
-        description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-      })
-    );
+    // 3. Send Direct Chat Message to Parent
+    saveMessage({
+      studentId: student.id,
+      studentName: student.fullName,
+      studentAccountId,
+      parentAccountId,
+      parentPhone,
+      parentName,
+      from: 'doctor',
+      to: 'parent',
+      body: `📚 *واجب منزلي تفاعلي جديد — مادة (${curriculum.title})*\n\nعزيزي ولي أمر البطل: *${student.fullName}* 👋\nكلف د. إسماعيل عيسى طفلك بحل التدريبات التفاعلية من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب المدرسي.\n\n📖 رابط فتح المنهج التفاعلي: https://masarplatform.org/school-student?tab=homework`,
+      read: false,
+    } as any);
 
-    // In-app notification for Parent
+    // 4. In-app notification for Parent
     void createNotification({
       type: 'homework',
       title: `📝 واجب جديد للبطل ${student.fullName}: ${curriculum.title}`,
@@ -510,7 +567,7 @@ export default function CurriculumInteractiveWorkbook({
       studentName: student.fullName,
     });
 
-    // In-app notification for Student
+    // 5. In-app notification for Student
     void createNotification({
       type: 'homework',
       title: `📝 واجب تفاعلي جديد: ${curriculum.title} (ص ${cleanFrom}–${cleanTo})`,
@@ -521,7 +578,7 @@ export default function CurriculumInteractiveWorkbook({
       studentName: student.fullName,
     });
 
-    setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) وإشعار ولي أمره بنجاح!`);
+    setNotice(`✅ تم إسناد صفحات ${cleanFrom} إلى ${cleanTo} في ${curriculum.title} للطالب (${student.fullName}) بنجاح وإشعار ولي أمره عبر الشات والتنبيهات!`);
     setTimeout(() => setNotice(''), 6000);
   }
 

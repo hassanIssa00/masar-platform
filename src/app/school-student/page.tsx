@@ -213,22 +213,32 @@ export default function StudentDashboard() {
       if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
       return false;
     });
+    const session = getSession();
+    const allAccounts = getAccounts();
+    const matchingAccounts = allAccounts.filter(a =>
+      a.id === id || a.linkedStudentId === id || (sName && a.name && isStudentNameMatch(a.name, sName))
+    );
     const validStudentIds = new Set<string>([
       ...(id ? [id] : []),
+      ...(session?.id ? [session.id] : []),
+      ...(session?.linkedStudentId ? [session.linkedStudentId] : []),
       ...classStudentMatches.map(c => c.id),
+      ...matchingAccounts.map(a => a.id),
+      ...matchingAccounts.map(a => a.linkedStudentId || '').filter(Boolean),
       'all',
     ]);
 
-    const isMatch = (targetId?: string, targetName?: string) => {
-      if (!targetId && !targetName) return false;
+    const isMatch = (targetId?: string, targetName?: string, studentAccId?: string) => {
+      if (!targetId && !targetName && !studentAccId) return false;
       if (targetId === 'all') return true;
       if (targetId && validStudentIds.has(targetId)) return true;
+      if (studentAccId && validStudentIds.has(studentAccId)) return true;
       if (sName && targetName && isStudentNameMatch(sName, targetName)) return true;
       return false;
     };
 
     // Strategy 1: ONLY homework assigned explicitly to this student OR to 'all'
-    let merged = allHw.filter(hw => isMatch(hw.studentId, hw.studentName));
+    let merged = allHw.filter(hw => isMatch(hw.studentId, hw.studentName, (hw as any).studentAccountId));
 
     // Strategy 2: Homework logs from Doctor assignments specifically for this student
     logs.forEach((log) => {
@@ -256,7 +266,7 @@ export default function StudentDashboard() {
 
     // Strategy 3: ONLY curriculum assignments explicitly assigned to THIS student
     const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
-    const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName));
+    const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName, a.studentAccountId));
     const currAsHomework: any[] = studentCurrAssignments.map((a: any) => {
       const matchLog = logs.find(l => l.studentId === a.studentId && l.subject === a.subjectTitle);
       const isSubmitted = matchLog?.status === 'submitted';
@@ -302,14 +312,24 @@ export default function StudentDashboard() {
       if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
       return false;
     });
+    const session = getSession();
+    const allAccounts = getAccounts();
+    const matchingAccounts = allAccounts.filter(a =>
+      a.id === id || a.linkedStudentId === id || (sName && a.name && isStudentNameMatch(a.name, sName))
+    );
     const validStudentIds = new Set<string>([
       ...(id ? [id] : []),
+      ...(session?.id ? [session.id] : []),
+      ...(session?.linkedStudentId ? [session.linkedStudentId] : []),
       ...classStudentMatches.map(c => c.id),
+      ...matchingAccounts.map(a => a.id),
+      ...matchingAccounts.map(a => a.linkedStudentId || '').filter(Boolean),
       'all',
     ]);
 
     const mine = allCerts.filter(c => {
       if (c.studentId && validStudentIds.has(c.studentId)) return true;
+      if (c.studentAccountId && validStudentIds.has(c.studentAccountId)) return true;
       if (sName && c.studentName && isStudentNameMatch(sName, c.studentName)) return true;
       return false;
     });
