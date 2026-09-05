@@ -94,6 +94,8 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
         saveMessage({
           studentId: s.id,
+          studentName: s.name,
+          parentPhone: s.phone,
           from: 'doctor',
           to: 'parent',
           body: reportBody,
@@ -103,6 +105,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         saveReport({
           studentId: s.id,
           studentName: s.name,
+          parentPhone: s.phone,
           grade: s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
           program: 'التقرير الأكاديمي الشامل',
           programColor: 'bg-emerald-600',
@@ -165,6 +168,8 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
 
     saveMessage({
       studentId: s.id,
+      studentName: s.name,
+      parentPhone: s.phone,
       from: 'doctor',
       to: 'parent',
       body: reportBody,
@@ -174,6 +179,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     saveReport({
       studentId: s.id,
       studentName: s.name,
+      parentPhone: s.phone,
       grade: s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
       program: 'التقرير الأكاديمي الشامل',
       programColor: 'bg-emerald-600',

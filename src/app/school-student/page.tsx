@@ -26,8 +26,8 @@ import {
   getStudentHomeworkLogs,
 } from '@/lib/classDb';
 import { getLocalHomework, HomeworkRecord } from '@/lib/homework';
-import { pullCloudDataToLocal, syncDocToCloud, readCloudCache } from '@/lib/firestoreSync';
-import { normalizeArabicText } from '@/lib/nameMatching';
+import { pullCloudDataToLocal, syncDocToCloud, readCloudCache, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHomeworkModal';
@@ -57,8 +57,10 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    let currentFinalName = '';
+    let currentResolvedId = '';
     const loadStudentPortal = async () => {
-      await pullCloudDataToLocal(['students', 'accounts', 'homework', 'curriculumAssignments', 'classStudents', 'studentCertLogs', 'studentHomeworkLogs', 'ikhlasPosts']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'homework', 'curriculumAssignments', 'classStudents', 'studentCertLogs', 'studentHomeworkLogs', 'studentBadges', 'notifications', 'messages', 'ikhlasPosts'], true).catch(() => {});
       if (cancelled) return;
 
       const session = getSession() ?? await hydrateSessionFromServer();
@@ -71,6 +73,13 @@ export default function StudentDashboard() {
       const allStudents = getStudents();
       const allAccounts = getAccounts();
       const combined = [...classStudents, ...allStudents];
+
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const paramStudentId = urlParams?.get('student')?.trim() || '';
+      const tabParam = urlParams?.get('tab') as Tab | null;
+      if (tabParam && ['home', 'homework', 'schedule', 'curriculum', 'certificates'].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
 
       const email = session.email?.trim().toLowerCase() ?? '';
       const phone = (session.phone || '').replace(/\D/g, '');
@@ -85,15 +94,26 @@ export default function StudentDashboard() {
       }
 
       let linked = combined.find((s: any) => {
+        if (paramStudentId && (s.id === paramStudentId || s.studentAccountId === paramStudentId || (s as any).accountId === paramStudentId)) return true;
         if (linkedStudentId && s.id === linkedStudentId) return true;
         if (session.id && s.id === session.id) return true;
         if (session.id && s.studentAccountId === session.id) return true;
         if (email && s.linkedStudentEmail?.trim().toLowerCase() === email) return true;
-        if (sName && !isSyntheticOrGeneric(sName) && normalizeArabicText(s.fullName) === sName) return true;
+        if (sName && !isSyntheticOrGeneric(sName) && isStudentNameMatch(s.fullName, sName)) return true;
         if (phone && phone.length >= 8 && s.parentPhone && s.parentPhone.replace(/\D/g, '').includes(phone.slice(-8))) return true;
         if (email && ((s.email || '').trim().toLowerCase() === email || (s.recoveryEmail || '').trim().toLowerCase() === email)) return true;
         return false;
       }) || null;
+
+      if (!linked && (paramStudentId || session.id)) {
+        const acc = allAccounts.find(a => (paramStudentId && a.id === paramStudentId) || (session.id && a.id === session.id));
+        if (acc) {
+          linked = combined.find((s: any) =>
+            (acc.linkedStudentId && s.id === acc.linkedStudentId) ||
+            (acc.name && !isSyntheticOrGeneric(acc.name) && isStudentNameMatch(s.fullName, acc.name))
+          ) || null;
+        }
+      }
 
       if (!linked || isSyntheticOrGeneric(linked?.fullName)) {
         const byLinked = linkedStudentId ? allStudents.find((s) => s.id === linkedStudentId) : null;
@@ -129,6 +149,8 @@ export default function StudentDashboard() {
       }
 
       const resolvedId = linked?.id || linkedStudentId || session.id || '';
+      currentFinalName = finalName;
+      currentResolvedId = resolvedId;
       setStudentName(finalName);
       setStudentPhoto(photoUrl);
       setStudentId(resolvedId);
@@ -153,22 +175,49 @@ export default function StudentDashboard() {
     };
 
     void loadStudentPortal();
-    return () => { cancelled = true; };
+    const unsubscribe = subscribeToCloudUpdates(() => {
+      if (!cancelled && currentResolvedId) {
+        void pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs', 'studentCertLogs', 'studentBadges', 'notifications'], true).then(() => {
+          loadHomework(currentFinalName, currentResolvedId);
+          loadCertificates(currentResolvedId, currentFinalName);
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [router]);
 
   const loadHomework = useCallback(async (name: string, id: string, forcePull = false) => {
     if (forcePull) {
-      await pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs']).catch(() => {});
+      await pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs', 'studentBadges'], true).catch(() => {});
     }
     const allHw = getLocalHomework();
-    const logs = id ? getStudentHomeworkLogs(id) : [];
+    const logs = getStudentHomeworkLogs(id, name);
 
-    // Strategy 1: ONLY homework assigned explicitly to this student
-    let merged = allHw.filter(hw => {
-      if (id && hw.studentId === id) return true;
-      if (name && hw.studentName && normalizeArabicText(hw.studentName) === normalizeArabicText(name)) return true;
+    const sName = name ? normalizeArabicText(name) : '';
+    const classStudentMatches = getClassStudents().filter(cs => {
+      if (id && cs.id === id) return true;
+      if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
       return false;
     });
+    const validStudentIds = new Set<string>([
+      ...(id ? [id] : []),
+      ...classStudentMatches.map(c => c.id),
+      'all',
+    ]);
+
+    const isMatch = (targetId?: string, targetName?: string) => {
+      if (!targetId && !targetName) return false;
+      if (targetId === 'all') return true;
+      if (targetId && validStudentIds.has(targetId)) return true;
+      if (sName && targetName && isStudentNameMatch(sName, targetName)) return true;
+      return false;
+    };
+
+    // Strategy 1: ONLY homework assigned explicitly to this student OR to 'all'
+    let merged = allHw.filter(hw => isMatch(hw.studentId, hw.studentName));
 
     // Strategy 2: Homework logs from Doctor assignments specifically for this student
     logs.forEach((log) => {
@@ -196,10 +245,7 @@ export default function StudentDashboard() {
 
     // Strategy 3: ONLY curriculum assignments explicitly assigned to THIS student
     const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
-    const studentCurrAssignments = currAssignments.filter((a: any) =>
-      (id && a.studentId === id) ||
-      (name && a.studentName && normalizeArabicText(a.studentName) === normalizeArabicText(name))
-    );
+    const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName));
     const currAsHomework: any[] = studentCurrAssignments.map((a: any) => {
       const matchLog = logs.find(l => l.studentId === a.studentId && l.subject === a.subjectTitle);
       const isSubmitted = matchLog?.status === 'submitted';
@@ -235,16 +281,27 @@ export default function StudentDashboard() {
 
   const loadCertificates = useCallback(async (id: string, name: string, forcePull = false) => {
     if (forcePull) {
-      await pullCloudDataToLocal(['studentCertLogs']).catch(() => {});
+      await pullCloudDataToLocal(['studentCertLogs', 'studentBadges']).catch(() => {});
     }
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
 
-    // Match strictly by studentId OR by student name only
-    const mine = allCerts.filter(c =>
-      (id && c.studentId === id) ||
-      (name && c.studentName && normalizeArabicText(c.studentName) === normalizeArabicText(name))
-    );
+    const sName = name ? normalizeArabicText(name) : '';
+    const classStudentMatches = getClassStudents().filter(cs => {
+      if (id && cs.id === id) return true;
+      if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
+      return false;
+    });
+    const validStudentIds = new Set<string>([
+      ...(id ? [id] : []),
+      ...classStudentMatches.map(c => c.id),
+      'all',
+    ]);
 
+    const mine = allCerts.filter(c => {
+      if (c.studentId && validStudentIds.has(c.studentId)) return true;
+      if (sName && c.studentName && isStudentNameMatch(sName, c.studentName)) return true;
+      return false;
+    });
     setCertificates(mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   }, []);
 
@@ -753,7 +810,7 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell role="student" studentId={studentId || studentRecord?.id} />
+            <NotificationBell role="student" studentId={studentId || studentRecord?.id} studentName={studentName || studentRecord?.fullName} />
             <Link href="/face-enroll"
               className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95">
               <ScanFace size={16} className="text-emerald-700" />

@@ -21,8 +21,9 @@ import {
   Share2,
   BookmarkCheck,
 } from 'lucide-react';
-import { getStudentCertificateLogs, getStudentBadges, type StudentCertificateLog, type StudentBadgeRecord } from '@/lib/classDb';
-import { readCloudCache } from '@/lib/firestoreSync';
+import { getStudentCertificateLogs, getStudentBadges, getClassStudents, type StudentCertificateLog, type StudentBadgeRecord } from '@/lib/classDb';
+import { readCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import BrandMark from './BrandMark';
 import { OfficialMasarCertificateDesign, type CertData } from './ExcellenceCertificateTab';
 
@@ -53,20 +54,40 @@ export default function StudentAchievementsTab({
 }: Props) {
   const [activeSection, setActiveSection] = useState<'certificates' | 'badges' | 'awards'>('certificates');
   const [certificates, setCertificates] = useState<StudentCertificateLog[]>([]);
+  const [badges, setBadges] = useState<StudentBadgeRecord[]>([]);
   const [selectedCert, setSelectedCert] = useState<StudentCertificateLog | null>(null);
   const printFrameRef = useRef<HTMLDivElement>(null);
 
-  const loadCertificates = () => {
-    // 1. Read from classDb
-    const fromDb = getStudentCertificateLogs(studentId);
+  // Build a comprehensive set of valid student IDs by cross-referencing classStudents
+  const buildValidStudentIds = () => {
+    const sName = studentName ? normalizeArabicText(studentName) : '';
+    const classStudentMatches = getClassStudents().filter(cs => {
+      if (studentId && cs.id === studentId) return true;
+      if (sName && cs.fullName && isStudentNameMatch(sName, cs.fullName)) return true;
+      return false;
+    });
+    return new Set<string>([
+      ...(studentId ? [studentId] : []),
+      ...classStudentMatches.map(c => c.id),
+      'all',
+    ]);
+  };
 
-    // 2. Read directly from cloud cache key in case studentId was matched by name or broad search
+  const isStudentMatch = (targetId?: string, targetName?: string) => {
+    const validIds = buildValidStudentIds();
+    if (targetId && validIds.has(targetId)) return true;
+    if (targetId === 'all') return true;
+    if (targetName && studentName && isStudentNameMatch(studentName, targetName)) return true;
+    return false;
+  };
+
+  const loadCertificates = () => {
+    // 1. Read from classDb helper (which now supports name matching too)
+    const fromDb = getStudentCertificateLogs(studentId, studentName);
+
+    // 2. Read directly from cloud cache key with resilient normalized Arabic matching
     const allCerts = readCloudCache<StudentCertificateLog>('masar_student_cert_logs_v1');
-    const matched = allCerts.filter(
-      (c) =>
-        c.studentId === studentId ||
-        (c.studentName && studentName && c.studentName.trim().toLowerCase() === studentName.trim().toLowerCase()),
-    );
+    const matched = allCerts.filter(c => isStudentMatch(c.studentId, c.studentName));
 
     const merged = [...fromDb];
     matched.forEach((c) => {
@@ -78,22 +99,11 @@ export default function StudentAchievementsTab({
     setCertificates(merged);
   };
 
-  useEffect(() => {
-    loadCertificates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId, studentName]);
-
-  // Real Medals & Badges — only show badges actually awarded by Dr. Ismail
-  const [badges, setBadges] = useState<StudentBadgeRecord[]>([]);
-
-  useEffect(() => {
-    const fromDb = getStudentBadges(studentId);
-    // Also check cloud cache
+  const loadBadges = () => {
+    const fromDb = getStudentBadges(studentId, studentName);
     const allBadges = readCloudCache<StudentBadgeRecord>('masar_student_badges_v1');
-    const matched = allBadges.filter(
-      (b) => b.studentId === studentId ||
-      (b.studentName && studentName && b.studentName.trim().toLowerCase() === studentName.trim().toLowerCase()),
-    );
+    const matched = allBadges.filter(b => isStudentMatch(b.studentId, b.studentName));
+
     const merged = [...fromDb];
     matched.forEach((b) => {
       if (!merged.find((x) => x.id === b.id)) {
@@ -101,6 +111,29 @@ export default function StudentAchievementsTab({
       }
     });
     setBadges(merged);
+  };
+
+  useEffect(() => {
+    loadCertificates();
+    loadBadges();
+
+    // Pull fresh cloud data immediately
+    void pullCloudDataToLocal(['studentBadges', 'studentCertLogs'], true).then(() => {
+      loadCertificates();
+      loadBadges();
+    });
+
+    const handleUpdate = () => {
+      loadCertificates();
+      loadBadges();
+    };
+
+    window.addEventListener('masar:cloud-cache-update', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('masar:cloud-cache-update', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, [studentId, studentName]);
 
   const totalPoints = badges.reduce((sum, b) => sum + b.points, 0);

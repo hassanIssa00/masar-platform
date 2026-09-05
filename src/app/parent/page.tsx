@@ -19,7 +19,7 @@ import {
   MessageRecord, ReportRecord, saveMessage, StudentRecord, updateStudent, clearSession
 } from '@/lib/cloudStore';
 import { getLocalHomework, updateHomeworkStatus, HomeworkRecord } from '@/lib/homework';
-import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal, syncDocToCloud, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
@@ -55,8 +55,11 @@ export default function ParentDashboard() {
   useEffect(() => {
     let cancelled = false;
     const loadParentPortal = async () => {
-      // Pull cloud data first
-      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents', 'messages', 'surveys']).catch(() => {});
+      // Pull all relevant cloud data with force=true on mount to guarantee fresh reports and messages
+      await pullCloudDataToLocal([
+        'students', 'accounts', 'reports', 'classStudents',
+        'messages', 'surveys', 'homework', 'studentHomeworkLogs', 'notifications'
+      ], true).catch(() => {});
       if (cancelled) return;
 
       // Get session (local cache first, server fallback)
@@ -250,7 +253,13 @@ export default function ParentDashboard() {
       setHomeworkList([...allClassHw, ...localHw]);
     };
     void loadParentPortal();
-    return () => { cancelled = true; };
+    const unsubscribe = subscribeToCloudUpdates(() => {
+      if (!cancelled) void loadParentPortal();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [router, selectedStudentId]);
 
   const rawSelectedStudent =
@@ -364,31 +373,64 @@ export default function ParentDashboard() {
 
   const resolvedChildPhoto = selectedStudent?.photoUrl || '';
   
-  const studentReports = useMemo(
-    () => reports.filter((report) => !selectedStudent || report.studentId === selectedStudent.id || report.studentName === selectedStudent.fullName),
-    [reports, selectedStudent],
-  );
+  const selectedStudentIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!selectedStudent) return ids;
+    if (selectedStudent.id) ids.add(selectedStudent.id);
+    if (selectedStudent.studentAccountId) ids.add(selectedStudent.studentAccountId);
+    if ((selectedStudent as any).classStudentId) ids.add((selectedStudent as any).classStudentId);
+    if (selectedStudent.linkedStudentId) ids.add(selectedStudent.linkedStudentId);
+    try {
+      const classSt = getClassStudents();
+      const match = classSt.find((cs) => cs.fullName === selectedStudent.fullName || (selectedStudent.parentPhone && cs.parentPhone === selectedStudent.parentPhone));
+      if (match?.id) ids.add(match.id);
+    } catch {}
+    return ids;
+  }, [selectedStudent]);
 
-  const studentMessages = useMemo(
-    () => messages
+  const selectedStudentNormName = useMemo(() => {
+    return normalizeArabicText(selectedStudent?.fullName || '');
+  }, [selectedStudent?.fullName]);
+
+  const studentReports = useMemo(() => {
+    if (!selectedStudent) return reports;
+    return reports.filter((report) => {
+      if (report.studentId && selectedStudentIds.has(report.studentId)) return true;
+      const rName = normalizeArabicText(report.studentName || '');
+      if (rName && selectedStudentNormName && (rName === selectedStudentNormName || rName.includes(selectedStudentNormName) || selectedStudentNormName.includes(rName))) return true;
+      if (report.parentAccountId && report.parentAccountId === (selectedStudent as any).parentAccountId) return true;
+      if (report.parentPhone && selectedStudent.parentPhone && report.parentPhone.replace(/\D/g, '').slice(-8) === selectedStudent.parentPhone.replace(/\D/g, '').slice(-8)) return true;
+      return false;
+    });
+  }, [reports, selectedStudent, selectedStudentIds, selectedStudentNormName]);
+
+  const studentMessages = useMemo(() => {
+    return messages
       .filter((message) => {
         if (!selectedStudent) return true;
-        return (
-          message.studentId === selectedStudent.id ||
-          message.studentId === 'student_assessment' ||
-          message.studentId === 'all'
-        );
+        if (message.studentId === 'student_assessment' || message.studentId === 'all') return true;
+        if (message.studentId && selectedStudentIds.has(message.studentId)) return true;
+        if (message.studentName) {
+          const mName = normalizeArabicText(message.studentName);
+          if (mName && selectedStudentNormName && (mName === selectedStudentNormName || mName.includes(selectedStudentNormName) || selectedStudentNormName.includes(mName))) return true;
+        }
+        if (message.parentAccountId && message.parentAccountId === (selectedStudent as any).parentAccountId) return true;
+        if (message.parentPhone && selectedStudent.parentPhone && message.parentPhone.replace(/\D/g, '').slice(-8) === selectedStudent.parentPhone.replace(/\D/g, '').slice(-8)) return true;
+        return false;
       })
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [messages, selectedStudent]
-  );
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [messages, selectedStudent, selectedStudentIds, selectedStudentNormName]);
 
-  const studentHomework = useMemo(
-    () => homeworkList.filter(
-      (hw) => !selectedStudent || !hw.studentId || hw.studentId === selectedStudent.id || hw.studentId === 'all' || hw.studentName === selectedStudent.fullName
-    ),
-    [homeworkList, selectedStudent]
-  );
+  const studentHomework = useMemo(() => {
+    return homeworkList.filter((hw) => {
+      if (!selectedStudent) return true;
+      if (!hw.studentId || hw.studentId === 'all') return true;
+      if (selectedStudentIds.has(hw.studentId)) return true;
+      const hwName = normalizeArabicText(hw.studentName || '');
+      if (hwName && selectedStudentNormName && (hwName === selectedStudentNormName || hwName.includes(selectedStudentNormName) || selectedStudentNormName.includes(hwName))) return true;
+      return false;
+    });
+  }, [homeworkList, selectedStudent, selectedStudentIds, selectedStudentNormName]);
 
   const assignedSlugs = useMemo(() => {
     if (!selectedStudent) return [];
@@ -403,22 +445,17 @@ export default function ParentDashboard() {
 
   const isReportDispatchedByDoctor = (report?: ReportRecord | string | null) => {
     if (!report) return false;
-    if (typeof report === 'object') {
-      if (report.dispatchedToParent === true || report.status === 'completed') return true;
-    }
-    const reportType = typeof report === 'string' ? report : (report.type || report.program || '');
-    return studentMessages.some((m) => m.from === 'doctor' && (
-      m.body.includes('تم إرسال وتحديد التقرير') ||
-      m.body.includes('التقرير الرقمي') ||
-      m.body.includes('تم اعتماد وإرسال التقرير') ||
-      (reportType && m.body.includes(reportType))
-    ));
+    // Any completed or existing report belonging to this student is ready for parent viewing
+    return true;
   };
 
   const handleSendReply = () => {
     if (!replyText.trim() || !selectedStudent) return;
     saveMessage({
       studentId: selectedStudent.id,
+      studentName: selectedStudent.fullName,
+      parentAccountId: (selectedStudent as any).parentAccountId || (selectedStudent as any).linkedParentId,
+      parentPhone: selectedStudent.parentPhone,
       from: 'parent',
       to: 'doctor',
       body: replyText.trim(),
@@ -432,6 +469,9 @@ export default function ParentDashboard() {
     if (!selectedStudent) return;
     saveMessage({
       studentId: selectedStudent.id,
+      studentName: selectedStudent.fullName,
+      parentAccountId: (selectedStudent as any).parentAccountId || (selectedStudent as any).linkedParentId,
+      parentPhone: selectedStudent.parentPhone,
       from: 'parent',
       to: 'doctor',
       body: 'رسالة صوتية من ولي الأمر',
@@ -752,7 +792,7 @@ export default function ParentDashboard() {
                   {
                     title: 'التقرير التحليلي الشامل',
                     description: 'التقرير الإكلينيكي الشامل وتوصيات د. إسماعيل عيسى.',
-                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل'),
+                    report: studentReports.find((r) => r.type === 'clinical-analysis' || r.program === 'التقرير التحليلي الشامل' || r.program?.includes('شامل') || r.program?.includes('أكاديمي')),
                   },
                   {
                     title: 'إجابات اختبار الطالب التفصيلية',
@@ -765,16 +805,16 @@ export default function ParentDashboard() {
                     report: studentReports.find((r) => r.type === 'student-assessment-analysis' || r.type === 'placement' || r.program === 'تحليل اختبار الطالب المباشر' || r.program === 'اختبار قبول وتحديد مستوى'),
                   },
                 ].map((slot) => {
-                  const isDispatched = Boolean(slot.report && isReportDispatchedByDoctor(slot.report));
+                  const hasReport = Boolean(slot.report);
                   return (
                     <article key={slot.title} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                       <div className="space-y-2">
-                        <FileText className={isDispatched ? 'text-teal-700' : 'text-slate-400'} size={24} />
+                        <FileText className={hasReport ? 'text-teal-700' : 'text-slate-400'} size={24} />
                         <h3 className="font-black text-slate-950 text-xs sm:text-sm leading-snug">{slot.title}</h3>
                         <p className="text-[11px] font-bold text-slate-500 leading-relaxed min-h-[34px]">{slot.description}</p>
                       </div>
 
-                      {isDispatched ? (
+                      {hasReport ? (
                         <Link
                           href={`/reports?report=${slot.report!.id}&mode=parent`}
                           className="inline-flex w-full justify-center rounded-xl bg-teal-700 py-2.5 text-xs font-black text-white hover:bg-teal-800 transition shadow-xs"
@@ -783,12 +823,58 @@ export default function ParentDashboard() {
                         </Link>
                       ) : (
                         <div className="rounded-xl bg-white border border-slate-200 py-2.5 px-2 text-center text-[11px] font-black text-slate-400">
-                          قيد الاعتماد من الدكتور
+                          قيد الإعداد من الدكتور
                         </div>
                       )}
                     </article>
                   );
                 })}
+              </div>
+
+              {/* All Issued Reports List */}
+              <div className="pt-6 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <FileText size={18} className="text-teal-700" />
+                    كافة التقارير والسجلات الصادرة من د. إسماعيل ({studentReports.length})
+                  </h3>
+                </div>
+
+                {studentReports.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {studentReports.map((rep) => (
+                      <div key={rep.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-teal-300 transition">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full inline-block">
+                              {rep.date || 'تقرير معتمد'}
+                            </span>
+                            <h4 className="font-black text-slate-900 text-sm">{rep.program || 'تقرير أكاديمي'}</h4>
+                            <p className="text-[11px] text-slate-500 font-bold line-clamp-2 leading-relaxed">
+                              {rep.summary || 'تم اعتماد التقرير من قبل د. إسماعيل عيسى'}
+                            </p>
+                          </div>
+                          <span className="grid place-items-center h-10 w-10 rounded-xl bg-teal-700 text-white font-black text-xs shrink-0 shadow-xs">
+                            {rep.score}%
+                          </span>
+                        </div>
+
+                        <Link
+                          href={`/reports?report=${rep.id}&mode=parent`}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 text-xs font-black transition shadow-xs"
+                        >
+                          فتح التقرير الموثق 📄
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-400">
+                    <FileText size={28} className="mx-auto mb-2 text-slate-300" />
+                    <p className="text-xs font-bold text-slate-500">لا توجد تقارير إضافية مصدرة حالياً</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">ستظهر هنا أي تقارير جديدة فور اعتمادها وإرسالها من د. إسماعيل عيسى.</p>
+                  </div>
+                )}
               </div>
             </section>
           </div>

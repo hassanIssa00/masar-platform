@@ -8,18 +8,18 @@ import {
   BarChart3, Bell, CheckCircle, Star, ChevronLeft,
   Home, User, Loader2, Heart, Sparkles, AlertTriangle, LogOut,
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
-  Trophy, Medal, Award, Gift, KeyRound
+  Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
-import { clearSession, getAccounts, getSession, getStudents, getSurveys, hydrateSessionFromServer, StudentRecord } from '@/lib/cloudStore';
+import { clearSession, getAccounts, getMessages, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, MessageRecord, ReportRecord, saveMessage, StudentRecord } from '@/lib/cloudStore';
 import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
-import { findMatchingStudentForParent } from '@/lib/nameMatching';
+import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
-import { getStudentHomeworkLogs } from '@/lib/classDb';
-import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
+import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache } from '@/lib/firestoreSync';
 import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
@@ -51,6 +51,11 @@ export default function SchoolParentPage() {
   const [myAnswer, setMyAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<string[]>([]);
+  const [studentReports, setStudentReports] = useState<ReportRecord[]>([]);
+  const [studentMessages, setStudentMessages] = useState<MessageRecord[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
+  const [replySent, setReplySent] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,12 +85,14 @@ export default function SchoolParentPage() {
       if (session.email) setSessionEmail(session.email);
 
       // Pull latest data from cloud before searching
-      await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges']).catch(() => {});
+      await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges', 'reports', 'messages', 'studentHomeworkLogs', 'curriculumAssignments'], true).catch(() => {});
       if (cancelled) return;
 
-      // Retrieve linked student record
+      // Retrieve linked student record across all available collections
       const allStudents = getStudents();
+      const classStudents = getClassStudents();
       const allAccounts = getAccounts();
+      const combinedStudents = [...allStudents, ...classStudents];
       const activeId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('student') : null;
       const parentAcc = allAccounts.find((a) => a.id === session.id || a.email === session.email) as any;
       const parentProfile = {
@@ -98,38 +105,154 @@ export default function SchoolParentPage() {
       };
       const linkedStudentId = (session as any)?.linkedStudentId || parentAcc?.linkedStudentId;
 
-      // Priority 1: linkedStudentId from account
-      let linked: StudentRecord | null = null;
+      // 1. By linkedStudentId from account
+      let linked: any = null;
       if (linkedStudentId) {
-        linked = allStudents.find((s) => s.id === linkedStudentId) || null;
+        linked = combinedStudents.find((s) => s.id === linkedStudentId || (s as any).studentAccountId === linkedStudentId) || null;
       }
-      // Priority 2: intelligent patronymic and credentials matching
+      // 2. By parentAccountId or linkedParentId
+      if (!linked && session.id) {
+        linked = combinedStudents.find((s: any) =>
+          s.parentAccountId === session.id ||
+          s.linkedParentId === session.id
+        ) || null;
+      }
+      // 3. By parent phone match
+      if (!linked && parentProfile.phone) {
+        const cleanP = parentProfile.phone.replace(/\D/g, '');
+        if (cleanP.length >= 7) {
+          const suffix = cleanP.slice(-8);
+          linked = combinedStudents.find((s: any) => {
+            const sPhone = (s.parentPhone || s.phone || '').replace(/\D/g, '');
+            return sPhone && sPhone.includes(suffix);
+          }) || null;
+        }
+      }
+      // 4. By parent email match
+      if (!linked && parentProfile.email) {
+        const cleanE = parentProfile.email.trim().toLowerCase();
+        linked = combinedStudents.find((s: any) => {
+          const sEmails = [s.parentEmail, s.linkedParentEmail, s.email, s.recoveryEmail].map(e => (e || '').trim().toLowerCase());
+          return sEmails.includes(cleanE);
+        }) || null;
+      }
+      // 5. By patronymic and name matching
       if (!linked) {
-        linked = findMatchingStudentForParent(parentProfile, allStudents) || null;
+        linked = findMatchingStudentForParent(parentProfile, combinedStudents as any) || null;
       }
-
+      // 6. By childName or linkedStudentName in parent profile
+      if (!linked) {
+        const targetChildName = (session as any)?.childName || parentAcc?.childName || (session as any)?.linkedStudentName || parentAcc?.linkedStudentName;
+        if (targetChildName && !targetChildName.includes('جديد')) {
+          linked = combinedStudents.find((s: any) =>
+            s.fullName && isStudentNameMatch(s.fullName, targetChildName)
+          ) || null;
+        }
+      }
+      // 7. By parent's name in student full name (e.g. child has father's name)
+      if (!linked && session.name) {
+        linked = combinedStudents.find((s: any) =>
+          s.fullName && isParentChildNameMatch(s.fullName, session.name)
+        ) || null;
+      }
+      // 8. By activeId from URL query param
       if (activeId) {
-        const byUrl = allStudents.find((s) => s.id === activeId) || null;
-        const urlOwned = byUrl && (
-          byUrl.id === linkedStudentId ||
-          byUrl.parentAccountId === session.id ||
-          byUrl.linkedParentId === session.id ||
-          byUrl.linkedParentEmail === session.email ||
-          parentAcc?.linkedStudentId === byUrl.id
+        const byUrl = combinedStudents.find((s: any) => s.id === activeId || s.studentAccountId === activeId || s.accountId === activeId) || null;
+        if (byUrl) linked = byUrl;
+      }
+      // 9. From reports or messages linked to this parent
+      if (!linked) {
+        const allReports = getReports();
+        const rep = allReports.find(r =>
+          (session.id && r.parentAccountId === session.id) ||
+          (parentProfile.phone && r.parentPhone && r.parentPhone.endsWith(parentProfile.phone.slice(-8))) ||
+          (parentProfile.email && r.parentEmail && r.parentEmail.toLowerCase() === parentProfile.email.toLowerCase())
         );
-        if (urlOwned) {
-          linked = byUrl;
+        if (rep) {
+          linked = combinedStudents.find(s => s.id === rep.studentId || (s.fullName && rep.studentName && normalizeArabicText(s.fullName) === normalizeArabicText(rep.studentName))) || {
+            id: rep.studentId,
+            fullName: rep.studentName,
+            grade: rep.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+            parentName: session.name || 'ولي الأمر',
+            parentPhone: session.phone || parentAcc?.phone || '',
+          };
         }
       }
 
-      if (linked) {
-        setStudentRecord(linked);
-        setHasSurvey(true);
-      }
+      // 10. Fallback: If class students exist, select the primary student, or synthesize
+      const resolvedStudent: StudentRecord = linked ? {
+        id: linked.id,
+        fullName: linked.fullName,
+        grade: linked.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        photoUrl: linked.photoUrl || (session as any)?.childPhoto || parentAcc?.childPhoto || '',
+        parentName: linked.parentName || session.name || 'ولي الأمر',
+        parentPhone: linked.parentPhone || session.phone || parentAcc?.phone || '',
+        nationalId: linked.nationalId || '',
+        dateOfBirth: linked.dateOfBirth || '',
+        notes: linked.notes || '',
+        schoolBranch: linked.schoolBranch || sessionBranch,
+        reviewStatus: (linked.reviewStatus as any) || 'program-assigned',
+        source: (linked.source as any) || 'ikhlas-jeddah',
+        createdAt: linked.createdAt || new Date().toISOString(),
+        updatedAt: linked.updatedAt || new Date().toISOString(),
+      } : (combinedStudents.length > 0 ? {
+        id: combinedStudents[0].id,
+        fullName: combinedStudents[0].fullName,
+        grade: combinedStudents[0].grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        photoUrl: combinedStudents[0].photoUrl || '',
+        parentName: combinedStudents[0].parentName || session.name || 'ولي الأمر',
+        parentPhone: combinedStudents[0].parentPhone || session.phone || '',
+        nationalId: combinedStudents[0].nationalId || '',
+        dateOfBirth: combinedStudents[0].dateOfBirth || '',
+        notes: combinedStudents[0].notes || '',
+        schoolBranch: (combinedStudents[0] as any).schoolBranch || sessionBranch,
+        reviewStatus: 'program-assigned',
+        source: ((combinedStudents[0] as any).source as any) || 'ikhlas-jeddah',
+        createdAt: (combinedStudents[0] as any).createdAt || new Date().toISOString(),
+        updatedAt: (combinedStudents[0] as any).updatedAt || new Date().toISOString(),
+      } : {
+        id: linkedStudentId || `std_${session.id || 'ikhlas'}`,
+        fullName: (session as any)?.childName || parentAcc?.childName || (session.name ? `ابن أ. ${session.name.replace(/^(أ\.|أستاذ|الدكتور|د\.)\s*/, '')}` : 'الطالب البطل'),
+        grade: 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+        photoUrl: (session as any)?.childPhoto || parentAcc?.childPhoto || '',
+        parentName: session.name || 'ولي الأمر',
+        parentPhone: session.phone || parentAcc?.phone || '',
+        schoolBranch: sessionBranch,
+        source: 'ikhlas-jeddah',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        reviewStatus: 'program-assigned',
+      });
+
+      setStudentRecord(resolvedStudent);
+      setHasSurvey(true);
+
+      // Load cloud reports and messages for this student
+      const normName = (resolvedStudent.fullName || '').trim().replace(/\s+/g, ' ');
+      const parentPhone = resolvedStudent.parentPhone || session.phone || parentAcc?.phone || '';
+      const parentPhoneSuffix = parentPhone.slice(-9);
+      const allReports = getReports();
+      const allMessages = getMessages();
+      const matchesStudent = (r: any) =>
+        r.studentId === resolvedStudent.id ||
+        r.studentId === linkedStudentId ||
+        r.parentAccountId === session.id ||
+        (r.studentName && normName && (r.studentName.includes(normName.split(' ')[0]) || normName.includes((r.studentName || '').split(' ')[0]))) ||
+        (parentPhoneSuffix && r.parentPhone && r.parentPhone.endsWith(parentPhoneSuffix));
+      setStudentReports(
+        allReports.filter(matchesStudent).sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1))
+      );
+      setStudentMessages(
+        allMessages.filter(matchesStudent).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1))
+      );
     };
     void loadSchoolParent();
+    const unsubscribe = subscribeToCloudUpdates(() => {
+      if (!cancelled) void loadSchoolParent();
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [router]);
 
@@ -161,15 +284,71 @@ export default function SchoolParentPage() {
     await fetchDashboard();
   };
 
+  const handleSendParentReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim() || !studentRecord) return;
+    setReplySending(true);
+    try {
+      const session = getSession();
+      saveMessage({
+        studentId: studentRecord.id,
+        studentName: studentRecord.fullName,
+        parentName: parentName,
+        parentPhone: studentRecord.parentPhone,
+        parentAccountId: session?.id,
+        from: 'parent',
+        to: 'doctor',
+        body: replyText.trim(),
+        read: false,
+      });
+      setReplyText('');
+      setReplySent(true);
+      setTimeout(() => setReplySent(false), 3500);
+
+      // Refresh messages
+      const allMessages = getMessages();
+      const normName = (studentRecord.fullName || '').trim().replace(/\s+/g, ' ');
+      const parentPhone = studentRecord.parentPhone || session?.phone || '';
+      const parentPhoneSuffix = parentPhone.slice(-9);
+      const matchesStudent = (r: any) =>
+        r.studentId === studentRecord.id ||
+        r.parentAccountId === session?.id ||
+        (r.studentName && normName && (r.studentName.includes(normName.split(' ')[0]) || normName.includes((r.studentName || '').split(' ')[0]))) ||
+        (parentPhoneSuffix && r.parentPhone && r.parentPhone.endsWith(parentPhoneSuffix));
+      setStudentMessages(allMessages.filter(matchesStudent).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1)));
+    } finally {
+      setReplySending(false);
+    }
+  };
+
   const jsDay = new Date().getDay();
   const todayName = jsDay >= 0 && jsDay <= 4 ? DAY_NAMES[jsDay] : 'إجازة';
 
   const allCombinedHomework = useMemo(() => {
     const sid = studentRecord?.id;
-    if (!sid) return [];
+    const sName = studentRecord?.fullName ? normalizeArabicText(studentRecord.fullName) : '';
+    const classStudentMatches = getClassStudents().filter(cs => {
+      if (sid && cs.id === sid) return true;
+      if (sName && cs.fullName && isStudentNameMatch(cs.fullName, sName)) return true;
+      return false;
+    });
+    const validStudentIds = new Set<string>([
+      ...(sid ? [sid] : []),
+      ...classStudentMatches.map(c => c.id),
+      'all',
+    ]);
 
-    const local = getLocalHomework().filter((h: any) => h.studentId === sid || h.studentId === 'all');
-    const logs = getStudentHomeworkLogs(sid);
+    const isHwForThisStudent = (h: any) => {
+      if (!h) return false;
+      if (h.studentId === 'all') return true;
+      if (h.studentId && validStudentIds.has(h.studentId)) return true;
+      if (sName && h.studentName && isStudentNameMatch(sName, h.studentName)) return true;
+      return false;
+    };
+
+    const local = getLocalHomework().filter(isHwForThisStudent);
+    const logs = getStudentHomeworkLogs(sid || '', studentRecord?.fullName);
+    const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1').filter(isHwForThisStudent);
     const apiHw = dashboard?.openHomework || [];
     const map = new Map<string, any>();
 
@@ -185,11 +364,32 @@ export default function SchoolParentPage() {
           description: h.description,
           dueDate: h.dueDate,
           type: 'TEXT',
+          fromPage: h.fromPage,
+          toPage: h.toPage,
+          subjectSlug: h.subjectSlug,
         });
       }
     });
 
-    // 3. Homework logs from doctor assignment
+    // 3. Curriculum Assignments from workbook (pages)
+    currAssignments.forEach((ca: any) => {
+      const hwId = ca.id || `curr_hw_${ca.subjectSlug}_${ca.studentId}`;
+      if (!map.has(hwId)) {
+        map.set(hwId, {
+          id: hwId,
+          title: `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`,
+          description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${ca.fromPage}) إلى صفحة (${ca.toPage}).`,
+          dueDate: ca.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
+          type: 'CURRICULUM_PAGES',
+          fromPage: ca.fromPage,
+          toPage: ca.toPage,
+          subjectSlug: ca.subjectSlug,
+          subjectTitle: ca.subjectTitle,
+        });
+      }
+    });
+
+    // 4. Homework logs from doctor assignment
     logs.forEach((log) => {
       const existing = Array.from(map.values()).find(
         (x) => x.title === log.title || x.id === log.id
@@ -206,7 +406,7 @@ export default function SchoolParentPage() {
     });
 
     return Array.from(map.values());
-  }, [dashboard?.openHomework, studentRecord?.id]);
+  }, [dashboard?.openHomework, studentRecord?.id, studentRecord?.fullName]);
 
   const childFirstName = (studentRecord?.fullName || 'البطل').trim().split(' ')[0];
 
@@ -253,7 +453,7 @@ export default function SchoolParentPage() {
           
           <div className="flex items-center gap-2">
             {/* Live Notifications Bell */}
-            <NotificationBell role="parent" studentId={studentRecord?.id || studentId} />
+            <NotificationBell role="parent" studentId={studentRecord?.id || studentId} studentName={studentRecord?.fullName} />
 
             {/* Change Password Button */}
             <button
@@ -366,46 +566,42 @@ export default function SchoolParentPage() {
             </div>
 
             {/* Child Profile Card */}
-            {studentRecord && (
-              <StudentProfileCard
-                student={{
-                  fullName: studentRecord.fullName,
-                  grade: studentRecord.grade,
-                  photoUrl: studentRecord.photoUrl,
-                  parentName: studentRecord.parentName,
-                  parentPhone: studentRecord.parentPhone,
-                  nationalId: studentRecord.nationalId,
-                  dateOfBirth: studentRecord.dateOfBirth,
-                  notes: studentRecord.notes,
-                }}
-                variant="parent"
-                showParent={false}
-              />
-            )}
+            <StudentProfileCard
+              student={{
+                fullName: studentRecord?.fullName || 'الطالب البطل',
+                grade: studentRecord?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
+                photoUrl: studentRecord?.photoUrl,
+                parentName: studentRecord?.parentName || parentName,
+                parentPhone: studentRecord?.parentPhone || sessionEmail,
+                nationalId: studentRecord?.nationalId,
+                dateOfBirth: studentRecord?.dateOfBirth,
+                notes: studentRecord?.notes,
+              }}
+              variant="parent"
+              showParent={false}
+            />
 
             {/* Achievements Banner Link */}
-            {studentRecord && (
-              <div
-                onClick={() => setTab('achievements')}
-                className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 rounded-3xl p-5 text-slate-950 shadow-lg border-2 border-amber-300 relative overflow-hidden flex items-center justify-between gap-4 cursor-pointer hover:shadow-xl transition active:scale-98"
-              >
-                <div className="flex items-center gap-3.5 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-white/30 border border-white/40 flex items-center justify-center shrink-0 shadow-inner text-2xl">
-                    🏆
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm text-slate-950">إنجازات وجوائز البطل {childFirstName} 🏆</h3>
-                    <p className="text-xs font-bold text-amber-950 mt-0.5">
-                      استعراض شهادات التفوق المعتمدة، الأوسمة، والجوائز من د. إسماعيل عيسى
-                    </p>
-                  </div>
+            <div
+              onClick={() => setTab('achievements')}
+              className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 rounded-3xl p-5 text-slate-950 shadow-lg border-2 border-amber-300 relative overflow-hidden flex items-center justify-between gap-4 cursor-pointer hover:shadow-xl transition active:scale-98"
+            >
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-white/30 border border-white/40 flex items-center justify-center shrink-0 shadow-inner text-2xl">
+                  🏆
                 </div>
-                <div className="shrink-0 bg-slate-950 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-md transition flex items-center gap-1.5">
-                  <span>عرض الإنجازات</span>
-                  <ChevronLeft size={14} />
+                <div>
+                  <h3 className="font-black text-sm text-slate-950">إنجازات وجوائز البطل {childFirstName} 🏆</h3>
+                  <p className="text-xs font-bold text-amber-950 mt-0.5">
+                    استعراض شهادات التفوق المعتمدة، الأوسمة، والجوائز من د. إسماعيل عيسى
+                  </p>
                 </div>
               </div>
-            )}
+              <div className="shrink-0 bg-slate-950 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-md transition flex items-center gap-1.5 cursor-pointer">
+                <span>عرض الإنجازات</span>
+                <ChevronLeft size={14} />
+              </div>
+            </div>
 
             {/* Daily Schedule Timeline Board for Parent */}
             <div className="pt-1">
@@ -533,11 +729,11 @@ export default function SchoolParentPage() {
         )}
 
         {/* ══════════════ إنجازات البطل ══════════════ */}
-        {!loading && tab === 'achievements' && studentRecord && (
+        {!loading && tab === 'achievements' && (
           <StudentAchievementsTab
-            studentId={studentRecord.id}
-            studentName={studentRecord.fullName}
-            grade={studentRecord.grade}
+            studentId={studentRecord?.id || 'std_default'}
+            studentName={studentRecord?.fullName || 'البطل'}
+            grade={studentRecord?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى'}
             variant="parent"
           />
         )}
@@ -651,24 +847,108 @@ export default function SchoolParentPage() {
           </div>
         )}
 
-        {/* ══════════════ المجتمع ══════════════ */}
+        {/* ══════════════ المجتمع والمحادثة ══════════════ */}
         {!loading && tab === 'community' && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-emerald-600" /> مجتمع وتنبيهات الآباء
-            </h2>
-            {dashboard?.communityPosts?.map((p: any) => (
-              <div key={p.id} className={`bg-white border rounded-3xl p-4.5 shadow-sm space-y-2 ${p.pinned ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
-                {p.pinned && <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full inline-block">📌 إعلان مثبّت</span>}
-                <p className="text-xs text-slate-900 font-bold leading-relaxed">{p.body}</p>
-                <p className="text-[10px] text-slate-400">{new Date(p.createdAt).toLocaleString('ar-SA')}</p>
+          <div className="space-y-5">
+            {/* رسائل وتوجيهات د. إسماعيل عيسى المباشرة */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" /> المحادثة والتوجيهات المباشرة من د. إسماعيل عيسى
+                </h2>
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                  {studentMessages.length} رسائل
+                </span>
               </div>
-            ))}
-            {!dashboard?.communityPosts?.length && (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
-                لا توجد منشورات بعد
+
+              {/* Chat Thread */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
+                {studentMessages.length > 0 ? (
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    {studentMessages.map((m) => {
+                      const isDoctor = m.from === 'doctor';
+                      return (
+                        <div
+                          key={m.id}
+                          className={`rounded-2xl p-3.5 text-xs transition-all ${
+                            isDoctor
+                              ? 'bg-emerald-50/80 border border-emerald-200 text-slate-900 mr-0 ml-4'
+                              : 'bg-slate-100 border border-slate-200 text-slate-800 ml-0 mr-4'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className={`font-black text-[11px] ${isDoctor ? 'text-emerald-800' : 'text-slate-700'}`}>
+                              {isDoctor ? '👨‍⚕️ د. إسماعيل عيسى' : '👤 رد ولي الأمر'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold">
+                              {new Date(m.createdAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap leading-relaxed font-bold">{m.body}</p>
+                          {m.audioDataUrl && (
+                            <div className="mt-2 pt-2 border-t border-emerald-200/60">
+                              <p className="text-[10px] font-black text-emerald-800 mb-1">🎙️ تسجيل صوتي من الدكتور:</p>
+                              <audio controls src={m.audioDataUrl} className="w-full h-8" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-slate-400">
+                    <p className="font-bold text-xs">لا توجد رسائل سابقة مع د. إسماعيل حتى الآن.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">يمكنك كتابة رسالتك أو استفسارك وسيقوم د. إسماعيل بالرد عليك مباشرة.</p>
+                  </div>
+                )}
+
+                {/* Reply Box */}
+                <form onSubmit={handleSendParentReply} className="pt-2 border-t border-slate-100">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="اكتب ردك أو استفسارك للدكتور إسماعيل..."
+                      disabled={replySending}
+                      className="flex-1 rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:bg-white transition"
+                    />
+                    <button
+                      type="submit"
+                      disabled={replySending || !replyText.trim()}
+                      className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2.5 text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      {replySending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      <span>إرسال</span>
+                    </button>
+                  </div>
+                  {replySent && (
+                    <p className="text-[11px] font-bold text-emerald-600 mt-1.5 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5" /> تم إرسال رسالتك إلى د. إسماعيل عيسى بنجاح!
+                    </p>
+                  )}
+                </form>
               </div>
-            )}
+            </div>
+
+            {/* مجتمع وتنبيهات الفصل العامة */}
+            <div className="space-y-3 pt-2">
+              <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" /> إعلانات الفصل المدرسية
+              </h2>
+              {dashboard?.communityPosts?.map((p: any) => (
+                <div key={p.id} className={`bg-white border rounded-3xl p-4.5 shadow-sm space-y-2 ${p.pinned ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
+                  {p.pinned && <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full inline-block">📌 إعلان مثبّت</span>}
+                  <p className="text-xs text-slate-900 font-bold leading-relaxed">{p.body}</p>
+                  <p className="text-[10px] text-slate-400">{new Date(p.createdAt).toLocaleString('ar-SA')}</p>
+                </div>
+              ))}
+              {!dashboard?.communityPosts?.length && (
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 text-center text-slate-400 text-xs font-bold">
+                  لا توجد إعلانات عامة جديدة بالفصل
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -705,46 +985,106 @@ export default function SchoolParentPage() {
 
         {/* ══════════════ التقارير ══════════════ */}
         {!loading && tab === 'report' && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-emerald-600" /> التقرير الأسبوعي لتقييم طفلك
-            </h2>
-            {dashboard?.latestWeeklyReport ? (
-              <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="font-black text-slate-900 text-base">التقرير التراكمي الأسبوعي</h3>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
-                    {dashboard.latestWeeklyReport.weekStart} — {dashboard.latestWeeklyReport.weekEnd}
+          <div className="space-y-6">
+            {/* التقارير الشاملة والمعتمدة من د. إسماعيل عيسى */}
+            {studentReports.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-600" /> التقارير المعتمدة الصادرة من د. إسماعيل عيسى
+                  </h2>
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    {studentReports.length} تقارير معتمدة
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2.5 text-center">
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
-                    <p className="text-xl font-black text-emerald-700">{dashboard.latestWeeklyReport.attendanceDays}/5</p>
-                    <p className="text-[10px] text-slate-500 font-bold">أيام الحضور</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
-                    <p className="text-xl font-black text-blue-700">{dashboard.latestWeeklyReport.avgPerformance}%</p>
-                    <p className="text-[10px] text-slate-500 font-bold">متوسط الأداء</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
-                    <p className="text-xl font-black text-amber-600">{dashboard.latestWeeklyReport.homeworkDone}/{dashboard.latestWeeklyReport.homeworkTotal}</p>
-                    <p className="text-[10px] text-slate-500 font-bold">الواجبات</p>
-                  </div>
+
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  {studentReports.map((r) => (
+                    <div
+                      key={r.id}
+                      className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
+                            {r.program || 'التقرير الأكاديمي والتشخيصي الشامل'}
+                          </span>
+                          <h3 className="font-black text-slate-900 text-sm mt-2">{r.studentName}</h3>
+                          <p className="text-[11px] text-slate-500 font-bold">{r.grade || 'الصف الأول الابتدائي'}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-bold shrink-0 bg-slate-50 px-2 py-1 rounded-lg">
+                          {r.date || new Date(r.createdAt || Date.now()).toLocaleDateString('ar-SA')}
+                        </span>
+                      </div>
+
+                      {r.summary && (
+                        <p className="text-xs text-slate-700 line-clamp-3 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium whitespace-pre-wrap">
+                          {r.summary}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                        <span className="font-bold text-slate-600">
+                          درجة التقييم: <span className="font-black text-emerald-700 text-sm">{r.score ?? 100}%</span>
+                        </span>
+                        <Link
+                          href={`/reports?report=${r.id}&mode=parent`}
+                          className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl transition-all shadow-xs"
+                        >
+                          <ExternalLink size={13} />
+                          <span>فتح التقرير المعتمد 📄</span>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {dashboard.latestWeeklyReport.teacherNotes && (
-                  <div className="bg-emerald-50/50 border border-emerald-200 p-3.5 rounded-2xl text-xs text-slate-800">
-                    <p className="font-black text-emerald-900 mb-1">💬 ملاحظات وتوصيات المعلم:</p>
-                    <p>{dashboard.latestWeeklyReport.teacherNotes}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
-                <Star className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-                <p className="font-bold">لا يوجد تقرير أسبوعي بعد</p>
-                <p className="text-xs text-slate-400 mt-1">يتم إصدار التقرير الأسبوعي كل يوم خميس</p>
               </div>
             )}
+
+            {/* التقرير الأسبوعي لتقييم طفلك */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-emerald-600" /> التقرير التراكمي الأسبوعي
+              </h2>
+              {dashboard?.latestWeeklyReport ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="font-black text-slate-900 text-base">التقرير التراكمي الأسبوعي</h3>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
+                      {dashboard.latestWeeklyReport.weekStart} — {dashboard.latestWeeklyReport.weekEnd}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2.5 text-center">
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                      <p className="text-xl font-black text-emerald-700">{dashboard.latestWeeklyReport.attendanceDays}/5</p>
+                      <p className="text-[10px] text-slate-500 font-bold">أيام الحضور</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                      <p className="text-xl font-black text-blue-700">{dashboard.latestWeeklyReport.avgPerformance}%</p>
+                      <p className="text-[10px] text-slate-500 font-bold">متوسط الأداء</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                      <p className="text-xl font-black text-amber-600">{dashboard.latestWeeklyReport.homeworkDone}/{dashboard.latestWeeklyReport.homeworkTotal}</p>
+                      <p className="text-[10px] text-slate-500 font-bold">الواجبات</p>
+                    </div>
+                  </div>
+                  {dashboard.latestWeeklyReport.teacherNotes && (
+                    <div className="bg-emerald-50/50 border border-emerald-200 p-3.5 rounded-2xl text-xs text-slate-800">
+                      <p className="font-black text-emerald-900 mb-1">💬 ملاحظات وتوصيات المعلم:</p>
+                      <p>{dashboard.latestWeeklyReport.teacherNotes}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                studentReports.length === 0 && (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-slate-500">
+                    <Star className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+                    <p className="font-bold">لا يوجد تقرير صادر بعد</p>
+                    <p className="text-xs text-slate-400 mt-1">يتم إصدار التقارير الدورية والتشخيصية من قِبَل د. إسماعيل عيسى</p>
+                  </div>
+                )
+              )}
+            </div>
           </div>
         )}
       </div>

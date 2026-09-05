@@ -195,7 +195,12 @@ async function writeDocThroughServer(collectionName: string, docId: string, data
       credentials: 'include',
       body: JSON.stringify({ collectionName, docId, data }),
     });
-    return res.ok;
+    if (res.ok) {
+      invalidateClientSnapshotCache();
+      window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collectionName, docId, action: 'write' } }));
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error(`Server write failed for ${collectionName}:`, error);
     return false;
@@ -211,7 +216,12 @@ async function deleteDocThroughServer(collectionName: string, docId: string) {
       credentials: 'include',
       body: JSON.stringify({ collectionName, docId }),
     });
-    return res.ok;
+    if (res.ok) {
+      invalidateClientSnapshotCache();
+      window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collectionName, docId, action: 'delete' } }));
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error(`Server delete failed for ${collectionName}:`, error);
     return false;
@@ -222,9 +232,14 @@ export function clearSnapshotBackoff() {
   serverSnapshotBackoffUntil = 0;
 }
 
+export function invalidateClientSnapshotCache() {
+  lastSnapshotTimes.clear();
+  serverSnapshotBackoffUntil = 0;
+}
+
 const inFlightSnapshots = new Map<string, Promise<boolean>>();
 const lastSnapshotTimes = new Map<string, number>();
-const SNAPSHOT_CLIENT_THROTTLE_MS = 3 * 60 * 1000; // 3 minutes throttle per key combination
+const SNAPSHOT_CLIENT_THROTTLE_MS = 10 * 1000; // 10 seconds throttle per key combination (instant freshness)
 
 export async function pullServerSnapshotToLocal(collectionKeys?: Array<keyof typeof KEYS>, force = false) {
   if (typeof window === 'undefined') return false;
@@ -320,9 +335,9 @@ export async function deleteDocFromCloud(collectionName: string, docId: string) 
 }
 
 // Initial full sync from Firestore Cloud to the in-memory browser cache.
-export async function pullCloudDataToLocal(collectionKeys?: Array<keyof typeof KEYS>) {
+export async function pullCloudDataToLocal(collectionKeys?: Array<keyof typeof KEYS>, force = false) {
   if (typeof window === 'undefined') return;
-  const serverSynced = await pullServerSnapshotToLocal(collectionKeys);
+  const serverSynced = await pullServerSnapshotToLocal(collectionKeys, force);
   if (serverSynced) return;
   if (!hasCloudAuthSession()) return;
 

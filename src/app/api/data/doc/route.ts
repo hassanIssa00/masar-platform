@@ -57,7 +57,49 @@ const ALLOWED_COLLECTIONS = new Set([
   'daily_homework_archive',
   'daily_quiz_archive',
   'meeting_chats',
+  'studentBadges',
+  'student_badges',
 ]);
+
+const COLLECTION_ALIASES: Record<string, string> = {
+  calendarSessions: 'calendar_sessions',
+  assessmentTemplates: 'assessment_templates',
+  assessmentResults: 'assessment_results',
+  iepRecords: 'iep_records',
+  sessionRecords: 'session_records',
+  classStudents: 'class_students',
+  studentNotes: 'student_notes',
+  studentHomeworkLogs: 'student_homework_logs',
+  studentCertLogs: 'student_cert_logs',
+  studentBadges: 'studentBadges',
+  student_badges: 'studentBadges',
+  curriculumFiles: 'curriculum_files',
+  curriculumAssignments: 'curriculum_assignments',
+  curriculumDrawings: 'curriculum_drawings',
+  curriculumQuizzes: 'curriculum_quizzes',
+  quizSubmissions: 'quiz_submissions',
+  classroomQuizzes: 'classroom_quizzes',
+  smartSchedules: 'smart_schedules',
+  scheduleParseLogs: 'schedule_parse_logs',
+  parentsCommunityChat: 'parents_community_chat',
+  parentsChatSettings: 'parents_chat_settings',
+  teacherAiThreads: 'teacher_ai_chats',
+  aiThreads: 'ai_threads',
+  points: 'student_points',
+  pointTransactions: 'point_transactions',
+  scheduleNotificationLogs: 'schedule_notification_logs',
+  liveSessions: 'live_sessions',
+  periodAttendance: 'period_attendance',
+  platformAnalytics: 'platform_analytics',
+  studentLearningActivity: 'student_learning_activity',
+  simpleSpellingAssignments: 'simple_spelling_assignments',
+  simpleSpellingDrawings: 'simple_spelling_drawings',
+  dailyAttendanceArchive: 'daily_attendance_archive',
+  dailyHomeworkArchive: 'daily_homework_archive',
+  dailyQuizArchive: 'daily_quiz_archive',
+  meetingChats: 'meeting_chats',
+  activity: 'activities',
+};
 
 function cleanDocId(value: unknown) {
   const id = typeof value === 'string' ? value.trim() : '';
@@ -94,7 +136,8 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const collectionName = typeof body.collectionName === 'string' ? body.collectionName.trim() : '';
+  const rawCollection = typeof body.collectionName === 'string' ? body.collectionName.trim() : '';
+  const collectionName = COLLECTION_ALIASES[rawCollection] || rawCollection;
   const docId = cleanDocId(body.docId);
   const data = body.data && typeof body.data === 'object' ? body.data : null;
 
@@ -188,7 +231,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const collectionName = typeof body.collectionName === 'string' ? body.collectionName.trim() : '';
+  const rawCollection = typeof body.collectionName === 'string' ? body.collectionName.trim() : '';
+  const collectionName = COLLECTION_ALIASES[rawCollection] || rawCollection;
   const docId = cleanDocId(body.docId);
 
   if (!ALLOWED_COLLECTIONS.has(collectionName) || !docId) {

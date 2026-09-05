@@ -56,9 +56,14 @@ export default function ClassroomParentsTab() {
     const students = getClassStudents();
     const linkedStudent = students.find(s => s.fullName === selectedParent.studentName);
     const sid = linkedStudent?.id || selectedParent.id;
+    const parentAccId = (linkedStudent as any)?.parentAccountId || (linkedStudent as any)?.linkedParentId || (selectedParent as any).accountId;
 
     saveMessage({
       studentId: sid,
+      studentName: selectedParent.studentName,
+      parentName: selectedParent.name,
+      parentPhone: selectedParent.phone,
+      parentAccountId: parentAccId,
       from: 'doctor',
       to: 'parent',
       body: messageBody.trim(),
@@ -87,11 +92,16 @@ export default function ClassroomParentsTab() {
     const students = getClassStudents();
     const linkedStudent = students.find(s => s.fullName === selectedParent.studentName);
     const sid = linkedStudent?.id || selectedParent.id;
+    const parentAccId = (linkedStudent as any)?.parentAccountId || (linkedStudent as any)?.linkedParentId || (selectedParent as any).accountId;
 
     const zoomMsg = `📹 *رابط الجلسة المباشرة / Zoom*\nعزيزي ولي أمر الطالب *${selectedParent.studentName}* 👋\nيسر د. إسماعيل عيسى دعوتكم لحضور الجلسة التفاعلية المباشرة عبر الرابط التالي:\n🔗 ${zoomUrlInput.trim()}`;
 
     saveMessage({
       studentId: sid,
+      studentName: selectedParent.studentName,
+      parentName: selectedParent.name,
+      parentPhone: selectedParent.phone,
+      parentAccountId: parentAccId,
       from: 'doctor',
       to: 'parent',
       body: zoomMsg,
@@ -158,8 +168,14 @@ export default function ClassroomParentsTab() {
 
     // 1. Send to Platform (In-app chat + notification + official report record)
     if (channel === 'platform' || channel === 'both') {
+      const parentAccId = (linkedStudent as any)?.parentAccountId || (linkedStudent as any)?.linkedParentId || (selectedParent as any).accountId;
+
       saveMessage({
         studentId: sid,
+        studentName: selectedParent.studentName,
+        parentName: selectedParent.name,
+        parentPhone: selectedParent.phone,
+        parentAccountId: parentAccId,
         from: 'doctor',
         to: 'parent',
         body: m,
@@ -169,6 +185,9 @@ export default function ClassroomParentsTab() {
       saveReport({
         studentId: sid,
         studentName: selectedParent.studentName,
+        parentName: selectedParent.name,
+        parentPhone: selectedParent.phone,
+        parentAccountId: parentAccId,
         grade: linkedStudent?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
         program: 'التقرير الشامل لفصل د. إسماعيل عيسى',
         programColor: 'bg-emerald-600',

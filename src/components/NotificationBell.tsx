@@ -28,10 +28,11 @@ const NOTIF_ICONS: Record<string, React.ElementType> = {
 interface NotificationBellProps {
   role?: 'doctor' | 'parent' | 'student';
   studentId?: string;
+  studentName?: string;
   className?: string;
 }
 
-export default function NotificationBell({ role, studentId, className = '' }: NotificationBellProps) {
+export default function NotificationBell({ role, studentId, studentName, className = '' }: NotificationBellProps) {
   const [allNotifications, setAllNotifications] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,15 @@ export default function NotificationBell({ role, studentId, className = '' }: No
     return undefined;
   }, [studentId, resolvedRole]);
 
+  // 2b. Resolve studentName (prefer prop, then session fallback)
+  const resolvedStudentName = useMemo(() => {
+    if (studentName) return studentName;
+    const session = getSession();
+    if (resolvedRole === 'student') return session?.name;
+    if (resolvedRole === 'parent') return (session as any)?.childName || (session as any)?.linkedStudentName;
+    return undefined;
+  }, [resolvedRole, studentName]);
+
   useEffect(() => {
     const unsub = subscribeToNotifications(setAllNotifications);
     return () => unsub();
@@ -96,8 +106,8 @@ export default function NotificationBell({ role, studentId, className = '' }: No
 
   // 3. Filter notifications strictly by resolved role & student
   const notifications = useMemo(() => {
-    return allNotifications.filter((n) => matchesNotificationRole(n, resolvedRole, resolvedStudentId));
-  }, [allNotifications, resolvedRole, resolvedStudentId]);
+    return allNotifications.filter((n) => matchesNotificationRole(n, resolvedRole, resolvedStudentId, resolvedStudentName));
+  }, [allNotifications, resolvedRole, resolvedStudentId, resolvedStudentName]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

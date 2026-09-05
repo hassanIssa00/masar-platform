@@ -3,6 +3,7 @@
 import { syncDocToCloud, deleteDocFromCloud, readCloudCache, writeCloudCache } from './firestoreSync';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
+import { normalizeArabicText, isStudentNameMatch } from './nameMatching';
 
 export type ClassStudentRecord = {
   id: string;
@@ -45,6 +46,7 @@ export type StudentNote = {
 export type StudentHomeworkLog = {
   id: string;
   studentId: string;
+  studentName?: string;
   title: string;
   subject: string;
   dueDate: string;
@@ -110,8 +112,12 @@ export function deleteStudentNote(noteId: string) {
 }
 
 // ── Student Homework Logs ─────────────────────────────────────────────────
-export function getStudentHomeworkLogs(studentId: string): StudentHomeworkLog[] {
-  return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => h.studentId === studentId);
+export function getStudentHomeworkLogs(studentId: string, studentName?: string): StudentHomeworkLog[] {
+  return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => {
+    if (studentId && (h.studentId === studentId || h.studentId === 'all')) return true;
+    if (studentName && (h as any).studentName && isStudentNameMatch(studentName, (h as any).studentName)) return true;
+    return false;
+  });
 }
 export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'createdAt'> & { id?: string }): StudentHomeworkLog {
   const all = readList<StudentHomeworkLog>(HW_LOG_KEY);
@@ -128,8 +134,12 @@ export function deleteStudentHomeworkLog(id: string) {
 }
 
 // ── Student Certificate Logs ──────────────────────────────────────────────
-export function getStudentCertificateLogs(studentId: string): StudentCertificateLog[] {
-  return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => c.studentId === studentId);
+export function getStudentCertificateLogs(studentId: string, studentName?: string): StudentCertificateLog[] {
+  return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => {
+    if (studentId && (c.studentId === studentId || c.studentId === 'all')) return true;
+    if (studentName && c.studentName && isStudentNameMatch(studentName, c.studentName)) return true;
+    return false;
+  });
 }
 export function saveStudentCertificateLog(log: Omit<StudentCertificateLog, 'id' | 'createdAt'>): StudentCertificateLog {
   const all = readList<StudentCertificateLog>(CERT_LOG_KEY);
@@ -378,9 +388,13 @@ export function saveBadge(data: Omit<StudentBadgeRecord, 'id' | 'createdAt'>): S
   return record;
 }
 
-export function getStudentBadges(studentId: string): StudentBadgeRecord[] {
+export function getStudentBadges(studentId: string, studentName?: string): StudentBadgeRecord[] {
   const all = readCloudCache<StudentBadgeRecord>(BADGES_KEY);
-  return all.filter((b) => b.studentId === studentId);
+  return all.filter((b) => {
+    if (studentId && (b.studentId === studentId || b.studentId === 'all')) return true;
+    if (studentName && b.studentName && isStudentNameMatch(studentName, b.studentName)) return true;
+    return false;
+  });
 }
 
 export function getAllBadges(): StudentBadgeRecord[] {

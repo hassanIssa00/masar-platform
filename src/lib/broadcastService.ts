@@ -231,6 +231,9 @@ export async function broadcastHomeworkToParents(hwData: {
   dueDate: string;
   notes?: string;
   images?: string[];
+  fromPage?: number;
+  toPage?: number;
+  subjectSlug?: string;
 }): Promise<BroadcastResult> {
   const allMainStudents = getStudents();
   const classStudents = getClassStudents();
@@ -254,12 +257,12 @@ export async function broadcastHomeworkToParents(hwData: {
 
   const baseHomeworkId = `hw_${Date.now()}`;
   const localItems = getLocalHomework();
-  const newHomeworkEntries: HomeworkRecord[] = [];
+  const newHomeworkEntries: (HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string })[] = [];
 
   let sentCount = 0;
 
   for (const t of targets) {
-    const hwItem: HomeworkRecord = {
+    const hwItem: HomeworkRecord & { fromPage?: number; toPage?: number; subjectSlug?: string; subjectTitle?: string } = {
       id: `${baseHomeworkId}_${t.id}`,
       studentId: t.id,
       studentName: t.name,
@@ -268,6 +271,10 @@ export async function broadcastHomeworkToParents(hwData: {
       dueDate: hwData.dueDate,
       status: 'assigned',
       createdAt: new Date().toISOString(),
+      fromPage: hwData.fromPage,
+      toPage: hwData.toPage,
+      subjectSlug: hwData.subjectSlug,
+      subjectTitle: hwData.subject,
     };
 
     newHomeworkEntries.push(hwItem);

@@ -30,6 +30,48 @@ export function normalizeArabicText(text?: string | null): string {
 }
 
 /**
+ * Robust student name matching that handles Arabic name variations:
+ * - Exact match after normalization
+ * - Substring containment (either direction)
+ * - First two words match (father's name)
+ * - Word overlap >= 2 words (handles partial name registration)
+ */
+export function isStudentNameMatch(name1?: string | null, name2?: string | null): boolean {
+  const n1 = normalizeArabicText(name1);
+  const n2 = normalizeArabicText(name2);
+  if (!n1 || !n2 || n1.length < 2 || n2.length < 2) return false;
+
+  // Exact match
+  if (n1 === n2) return true;
+
+  // Substring containment
+  if (n1.includes(n2) || n2.includes(n1)) return true;
+
+  const words1 = n1.split(' ').filter(Boolean);
+  const words2 = n2.split(' ').filter(Boolean);
+
+  // First two words match (student first name + father name)
+  if (words1.length >= 2 && words2.length >= 2 && words1[0] === words2[0] && words1[1] === words2[1]) {
+    return true;
+  }
+
+  // Word overlap: if 2+ words match between the two names, consider them the same person
+  const set1 = new Set(words1);
+  let overlapCount = 0;
+  for (const w of words2) {
+    if (set1.has(w)) overlapCount++;
+  }
+  if (overlapCount >= 2) return true;
+
+  // First name match + any other word overlap
+  if (words1.length >= 1 && words2.length >= 1 && words1[0] === words2[0] && overlapCount >= 1) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Splits a full name into distinct words after normalization.
  */
 export function getNormalizedWords(text?: string | null): string[] {

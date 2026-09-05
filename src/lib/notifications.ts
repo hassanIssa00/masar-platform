@@ -1,6 +1,7 @@
 'use client';
 
 import { readCloudCache, syncDocToCloud, subscribeToCloudCollection, writeCloudCache, deleteDocFromCloud } from './firestoreSync';
+import { normalizeArabicText, isStudentNameMatch } from './nameMatching';
 
 export type NotificationType =
   | 'survey'
@@ -96,7 +97,8 @@ export async function clearNotificationsForRole(role: 'doctor' | 'parent' | 'stu
 export function matchesNotificationRole(
   n: AppNotification,
   role: 'doctor' | 'parent' | 'student',
-  studentId?: string
+  studentId?: string,
+  studentName?: string
 ): boolean {
   // 1. Explicit targetRole check
   if (n.targetRole) {
@@ -105,7 +107,25 @@ export function matchesNotificationRole(
     }
     // If student/parent notification is bound to a specific student, ensure match
     if ((role === 'parent' || role === 'student') && n.studentId && n.studentId !== 'all') {
-      if (studentId && n.studentId !== studentId) {
+      const idMatches = studentId && (n.studentId === studentId || n.studentId.includes(studentId) || studentId.includes(n.studentId));
+      const nameMatches = studentName && n.studentName && isStudentNameMatch(studentName, n.studentName);
+      // Also check if notification's studentId matches any class student linked to this student
+      let classIdMatches = false;
+      if (studentId || studentName) {
+        try {
+          const { getClassStudents } = require('@/lib/classDb');
+          const classStudents = getClassStudents();
+          const myClassIds = classStudents
+            .filter((cs: any) => {
+              if (studentId && cs.id === studentId) return true;
+              if (studentName && cs.fullName && isStudentNameMatch(studentName, cs.fullName)) return true;
+              return false;
+            })
+            .map((cs: any) => cs.id);
+          classIdMatches = myClassIds.includes(n.studentId);
+        } catch { /* classDb not available */ }
+      }
+      if (!idMatches && !nameMatches && !classIdMatches && (studentId || studentName)) {
         return false;
       }
     }
@@ -129,7 +149,13 @@ export function matchesNotificationRole(
     // Parent shouldn't see doctor-only submissions
     if (isDoctorSpecific && !isParentSpecific) return false;
     if (n.studentId && studentId && n.studentId !== 'all' && n.studentId !== studentId) {
-      return false;
+      if (studentName && n.studentName) {
+        const norm1 = normalizeArabicText(studentName);
+        const norm2 = normalizeArabicText(n.studentName);
+        if (!norm1.includes(norm2) && !norm2.includes(norm1)) return false;
+      } else {
+        return false;
+      }
     }
     return isParentSpecific || !isStudentSpecific;
   }
@@ -137,7 +163,13 @@ export function matchesNotificationRole(
   if (role === 'student') {
     if (isParentSpecific || (isDoctorSpecific && !isStudentSpecific)) return false;
     if (n.studentId && studentId && n.studentId !== 'all' && n.studentId !== studentId) {
-      return false;
+      if (studentName && n.studentName) {
+        const norm1 = normalizeArabicText(studentName);
+        const norm2 = normalizeArabicText(n.studentName);
+        if (!norm1.includes(norm2) && !norm2.includes(norm1)) return false;
+      } else {
+        return false;
+      }
     }
     return isStudentSpecific;
   }

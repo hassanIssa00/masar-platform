@@ -54,6 +54,7 @@ const COLLECTIONS = [
   ['dailyHomeworkArchive', 'daily_homework_archive'],
   ['dailyQuizArchive', 'daily_quiz_archive'],
   ['meetingChats', 'meeting_chats'],
+  ['studentBadges', 'studentBadges'],
 ] as const;
 
 const MAX_DOCS_PER_COLLECTION = 150; // Lean queries to preserve quota
@@ -132,7 +133,33 @@ function isLinkedToUser(
     linkedParentId?: string;
     linkedParentEmail?: string;
   },
+  linkedStudentIds?: Set<string>,
+  linkedStudentNames?: Set<string>,
 ) {
+  // ── PRE-TIER: Explicitly resolved linked student IDs and names ──
+  if (linkedStudentIds && linkedStudentIds.size > 0) {
+    if (item?.id && linkedStudentIds.has(String(item.id))) return true;
+    if (item?.studentId && linkedStudentIds.has(String(item.studentId))) return true;
+    if (item?.accountId && linkedStudentIds.has(String(item.accountId))) return true;
+    if (item?.studentAccountId && linkedStudentIds.has(String(item.studentAccountId))) return true;
+    if (item?.linkedStudentId && linkedStudentIds.has(String(item.linkedStudentId))) return true;
+    if (item?.parentAccountId && linkedStudentIds.has(String(item.parentAccountId))) return true;
+    if (item?.linkedParentId && linkedStudentIds.has(String(item.linkedParentId))) return true;
+  }
+
+  if (linkedStudentNames && linkedStudentNames.size > 0) {
+    const itemNorm = normalizeArabic(String(item?.fullName || item?.studentName || item?.name || ''));
+    if (itemNorm && itemNorm.length >= 3) {
+      if (linkedStudentNames.has(itemNorm)) return true;
+      for (const knownName of linkedStudentNames) {
+        if (itemNorm.includes(knownName) || knownName.includes(itemNorm)) return true;
+      }
+    }
+  }
+
+  // Universal broadcasts
+  if (item?.studentId === 'all' || item?.studentId === 'student_assessment') return true;
+
   const userEmail = (user.email || '').trim().toLowerCase();
   const linkedStudentEmail = cleanEmail(user.linkedStudentEmail);
   const linkedParentEmail = cleanEmail(user.linkedParentEmail);
@@ -161,6 +188,7 @@ function isLinkedToUser(
   if (sameText(item?.parentAccountId, user.id)) return true;
   if (sameText(item?.linkedParentId, user.id)) return true;
   if (sameText(item?.createdBy, user.id)) return true;
+  if (sameText(item?.senderId, user.id)) return true;
   if (sameText(item?.firebaseUid, user.id)) return true;
 
   if (linkedParentId) {
@@ -312,6 +340,7 @@ export async function GET(req: NextRequest) {
     // ── Class data that students & parents MUST receive ──
     'homework',              // homework assigned by teacher → students must see it
     'studentCertLogs',       // certificates granted by doctor → students must see them
+    'studentBadges',         // badges & medals granted by doctor → students & parents must see them
     'studentHomeworkLogs',   // homework submissions → doctor & parent must see them
     'classStudents',         // class roster → needed to resolve student identity
     'curriculumAssignments', // curriculum tasks shared with students
@@ -319,6 +348,8 @@ export async function GET(req: NextRequest) {
     'notifications',         // notifications sent to parents/students
     'activity',              // class activity log
   ]);
+
+  const rawCollectionItems = new Map<string, SnapshotItem[]>();
 
   await Promise.all(
     collections.map(async ([payloadKey, collectionName]) => {
@@ -328,9 +359,7 @@ export async function GET(req: NextRequest) {
           const data = doc.data();
           return { ...data, id: data.id || data.accountId || doc.id } as SnapshotItem;
         });
-
-        const isShared = SHARED_COLLECTIONS.has(payloadKey);
-        result[payloadKey] = canReadAll || isShared ? items : items.filter((item) => isLinkedToUser(item, auth.user!));
+        rawCollectionItems.set(payloadKey, items);
       } catch (error) {
         console.error(`[snapshot] Failed reading ${collectionName}:`, error);
         failedCollections.push({
@@ -340,6 +369,69 @@ export async function GET(req: NextRequest) {
       }
     }),
   );
+
+  // If user is a parent or student, discover all linked student IDs & names across rosters
+  let linkedStudentIds: Set<string> | undefined;
+  let linkedStudentNames: Set<string> | undefined;
+
+  if (!canReadAll && auth.user) {
+    linkedStudentIds = new Set<string>();
+    linkedStudentNames = new Set<string>();
+
+    if (auth.user.id) linkedStudentIds.add(auth.user.id);
+    if (auth.user.linkedStudentId) linkedStudentIds.add(auth.user.linkedStudentId);
+    if (auth.user.linkedParentId) linkedStudentIds.add(auth.user.linkedParentId);
+    if (auth.user.role === 'student' && auth.user.name) {
+      const norm = normalizeArabic(auth.user.name);
+      if (norm.length >= 3) linkedStudentNames.add(norm);
+    }
+
+    // Inspect loaded student and class roster records, or fetch if not in current request
+    let rosterItems: SnapshotItem[] = [
+      ...(rawCollectionItems.get('students') || []),
+      ...(rawCollectionItems.get('classStudents') || []),
+      ...(rawCollectionItems.get('accounts') || []),
+    ];
+
+    if (!rawCollectionItems.has('classStudents') || !rawCollectionItems.has('students')) {
+      try {
+        const [clsSnap, stdSnap] = await Promise.all([
+          adminDb.collection('class_students').limit(100).get().catch(() => null),
+          adminDb.collection('students').limit(100).get().catch(() => null),
+        ]);
+        if (clsSnap) {
+          clsSnap.docs.forEach((d) => rosterItems.push({ ...d.data(), id: d.id }));
+        }
+        if (stdSnap) {
+          stdSnap.docs.forEach((d) => rosterItems.push({ ...d.data(), id: d.id }));
+        }
+      } catch {}
+    }
+
+    for (const item of rosterItems) {
+      if (isLinkedToUser(item, auth.user)) {
+        if (item.id) linkedStudentIds.add(String(item.id));
+        if (item.studentId) linkedStudentIds.add(String(item.studentId));
+        if (item.accountId) linkedStudentIds.add(String(item.accountId));
+        if (item.studentAccountId) linkedStudentIds.add(String(item.studentAccountId));
+        if (item.linkedStudentId) linkedStudentIds.add(String(item.linkedStudentId));
+        if (item.parentAccountId) linkedStudentIds.add(String(item.parentAccountId));
+        if (item.linkedParentId) linkedStudentIds.add(String(item.linkedParentId));
+        const sName = normalizeArabic(String(item.fullName || item.studentName || (item.role === 'student' ? item.name : '')));
+        if (sName && sName.length >= 3 && !sName.includes('جديد') && !sName.includes('الاستبيان')) {
+          linkedStudentNames.add(sName);
+        }
+      }
+    }
+  }
+
+  collections.forEach(([payloadKey]) => {
+    const items = rawCollectionItems.get(payloadKey) || [];
+    const isShared = SHARED_COLLECTIONS.has(payloadKey);
+    result[payloadKey] = canReadAll || isShared
+      ? items
+      : items.filter((item) => isLinkedToUser(item, auth.user!, linkedStudentIds, linkedStudentNames));
+  });
 
 
   const succeededCollections = Object.keys(result).length;

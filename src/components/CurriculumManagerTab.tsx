@@ -155,6 +155,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
     // 2. Save homework log
     saveStudentHomeworkLog({
       studentId: targetStudent.id,
+      studentName: targetStudent.name,
       title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
       subject: curriculum.title,
       dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
@@ -236,6 +237,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
       // 2. Save homework log
       saveStudentHomeworkLog({
         studentId: s.id,
+        studentName: s.name,
         title: `واجب ${curriculum.title} (ص ${cleanFrom}-${cleanTo})`,
         subject: curriculum.title,
         dueDate: dueDateStr,

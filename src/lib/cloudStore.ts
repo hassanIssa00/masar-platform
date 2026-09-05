@@ -94,6 +94,11 @@ export type ReportRecord = {
   media?: Record<string, { type: 'audio' | 'image'; dataUrl: string; label: string; questionId?: string; categoryLabel?: string; createdAt?: string }>;
   dispatchedToParent?: boolean;
   dispatchedAt?: string;
+  createdAt?: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  parentAccountId?: string;
 };
 
 export type SurveySubmission = {
@@ -120,6 +125,11 @@ export type ActivityRecord = {
 export type MessageRecord = {
   id: string;
   studentId?: string;
+  studentName?: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  parentAccountId?: string;
   from: 'doctor' | 'parent' | 'student';
   to: 'doctor' | 'parent' | 'student';
   body: string;
@@ -702,10 +712,34 @@ export function saveReport(report: Omit<ReportRecord, 'id' | 'date'> & { id?: st
   });
 
   const nextId = report.id ?? existing?.id ?? createId('report');
+
+  let parentPhone = report.parentPhone || existing?.parentPhone;
+  let parentName = report.parentName || existing?.parentName;
+  let parentAccountId = report.parentAccountId || existing?.parentAccountId;
+  let parentEmail = report.parentEmail || existing?.parentEmail;
+
+  if (!parentPhone || !parentName || !parentAccountId) {
+    try {
+      const allSt = [...readList<any>(KEYS.students), ...readList<any>('masar_class_students_v1')];
+      const found = allSt.find((s) => s.id === report.studentId || (report.studentName && normalize(s.fullName) === normalize(report.studentName)));
+      if (found) {
+        parentPhone = parentPhone || found.parentPhone;
+        parentName = parentName || found.parentName;
+        parentAccountId = parentAccountId || found.parentAccountId || found.linkedParentId;
+        parentEmail = parentEmail || found.parentEmail || found.email;
+      }
+    } catch {}
+  }
+
   const next: ReportRecord = {
     ...existing,
     ...report,
     id: nextId,
+    parentPhone,
+    parentName,
+    parentAccountId,
+    parentEmail,
+    dispatchedToParent: report.dispatchedToParent ?? (report.status === 'completed' ? true : existing?.dispatchedToParent),
     date: report.date ?? existing?.date ?? new Date().toISOString().slice(0, 10),
   };
 
@@ -784,8 +818,40 @@ export function getMessages() {
 
 export function saveMessage(message: Omit<MessageRecord, 'id' | 'createdAt'>) {
   const messages = getMessages();
+
+  let studentName = message.studentName;
+  let parentPhone = message.parentPhone;
+  let parentName = message.parentName;
+  let parentAccountId = message.parentAccountId;
+
+  if (!studentName || !parentPhone || !parentName || !parentAccountId) {
+    try {
+      const normalize = (s?: string | null) => (s || '').trim().toLowerCase()
+        .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+        .replace(/\s+/g, ' ').trim();
+      const allSt = [...readList<any>(KEYS.students), ...readList<any>('masar_class_students_v1')];
+      const sNorm = normalize(studentName || message.studentName);
+      const found = allSt.find((s) =>
+        (message.studentId && (s.id === message.studentId || s.studentAccountId === message.studentId)) ||
+        (sNorm && normalize(s.fullName) === sNorm) ||
+        (sNorm && normalize(s.fullName).includes(sNorm.split(' ')[0]))
+      );
+      if (found) {
+        studentName = studentName || found.fullName;
+        parentPhone = parentPhone || found.parentPhone;
+        parentName = parentName || found.parentName;
+        parentAccountId = parentAccountId || found.parentAccountId || found.linkedParentId;
+      }
+    } catch {}
+  }
+
   const next: MessageRecord = {
     ...message,
+    studentName,
+    parentPhone,
+    parentName,
+    parentAccountId,
     id: createId('message'),
     createdAt: new Date().toISOString(),
   };

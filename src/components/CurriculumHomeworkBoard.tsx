@@ -124,6 +124,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
     saveStudentHomeworkLog({
       id: log?.id,
       studentId: a.studentId,
+      studentName: a.studentName,
       title: log?.title || `واجب ${a.subjectTitle} (ص ${a.fromPage}-${a.toPage})`,
       subject: a.subjectTitle,
       dueDate: log?.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
@@ -156,6 +157,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
     saveStudentHomeworkLog({
       id: log?.id,
       studentId: assignment.studentId,
+      studentName: assignment.studentName,
       title: log?.title || `واجب ${assignment.subjectTitle} (ص ${assignment.fromPage}-${assignment.toPage})`,
       subject: assignment.subjectTitle,
       dueDate: log?.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
