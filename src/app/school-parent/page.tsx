@@ -23,6 +23,7 @@ import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache } from '@
 import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import { recordUserPresence } from '@/lib/presence';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -252,6 +253,12 @@ export default function SchoolParentPage() {
         schoolBranch: linked.schoolBranch || sessionBranch,
         reviewStatus: (linked.reviewStatus as any) || 'program-assigned',
         source: (linked.source as any) || 'ikhlas-jeddah',
+        studentLastActiveAt: linked.studentLastActiveAt || twins.find(t => t.studentLastActiveAt)?.studentLastActiveAt,
+        studentLastLoginAt: linked.studentLastLoginAt || twins.find(t => t.studentLastLoginAt)?.studentLastLoginAt,
+        parentLastActiveAt: linked.parentLastActiveAt || twins.find(t => t.parentLastActiveAt)?.parentLastActiveAt,
+        parentLastLoginAt: linked.parentLastLoginAt || twins.find(t => t.parentLastLoginAt)?.parentLastLoginAt,
+        lastActiveAt: linked.lastActiveAt || twins.find(t => t.lastActiveAt)?.lastActiveAt,
+        lastLoginAt: linked.lastLoginAt || twins.find(t => t.lastLoginAt)?.lastLoginAt,
         createdAt: linked.createdAt || new Date().toISOString(),
         updatedAt: linked.updatedAt || new Date().toISOString(),
       } : {
@@ -273,6 +280,9 @@ export default function SchoolParentPage() {
       setStudentRecord(resolvedStudent);
       setHasSurvey(true);
 
+      // Record parent presence on load
+      void recordUserPresence({ role: 'parent', studentId: resolvedStudent.id });
+
       // Load cloud reports and messages for this student
       const resolvedNormName = (resolvedStudent.fullName || '').trim().replace(/\s+/g, ' ');
       const parentPhone = resolvedStudent.parentPhone || session.phone || parentAcc?.phone || '';
@@ -293,11 +303,19 @@ export default function SchoolParentPage() {
       );
     };
     void loadSchoolParent();
+    const presenceInterval = setInterval(() => {
+      if (!cancelled) {
+        const currentSid = getSession()?.linkedStudentId;
+        void recordUserPresence({ role: 'parent', studentId: currentSid });
+      }
+    }, 4 * 60 * 1000);
+
     const unsubscribe = subscribeToCloudUpdates(() => {
       if (!cancelled) void loadSchoolParent();
     });
     return () => {
       cancelled = true;
+      clearInterval(presenceInterval);
       unsubscribe();
     };
   }, [router]);
@@ -622,6 +640,12 @@ export default function SchoolParentPage() {
                 nationalId: studentRecord?.nationalId,
                 dateOfBirth: studentRecord?.dateOfBirth,
                 notes: studentRecord?.notes,
+                studentLastActiveAt: (studentRecord as any)?.studentLastActiveAt,
+                studentLastLoginAt: (studentRecord as any)?.studentLastLoginAt,
+                parentLastActiveAt: (studentRecord as any)?.parentLastActiveAt,
+                parentLastLoginAt: (studentRecord as any)?.parentLastLoginAt,
+                lastActiveAt: (studentRecord as any)?.lastActiveAt,
+                lastLoginAt: (studentRecord as any)?.lastLoginAt,
               }}
               variant="parent"
               showParent={true}

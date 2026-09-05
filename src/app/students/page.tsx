@@ -19,6 +19,7 @@ import { Award, Mic, Send, X, Target } from 'lucide-react';
 import { broadcastAssessmentToStudentsAndParents } from '@/lib/broadcastService';
 import { getLocalHomework, type HomeworkRecord } from '@/lib/homework';
 import { getCurriculumAssignments, getCurriculumDrawings, getStudentLearningActivities, type CurriculumAssignmentRecord, type CurriculumDrawingRecord, type StudentLearningActivity } from '@/lib/learningProgress';
+import { formatLastSeen } from '@/lib/presence';
 
 const STUDENTS_SYNC_KEYS = ['accounts', 'students', 'reports', 'studentNotes', 'messages', 'homework', 'curriculumAssignments', 'curriculumDrawings', 'studentLearningActivity'] as const;
 
@@ -648,6 +649,15 @@ export default function StudentsControlPage() {
                             <span className="mt-0.5 block w-full truncate text-xs font-bold text-slate-500 leading-snug">
                               {student.grade} {count > 0 ? `· (${count} مسار)` : ''}
                             </span>
+                            {(() => {
+                              const presence = formatLastSeen(student.studentLastActiveAt || student.studentLastLoginAt || student.lastActiveAt || student.lastLoginAt);
+                              return (
+                                <div className="flex items-center gap-1.5 mt-1" title={presence.title}>
+                                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${presence.dotClass}`} />
+                                  <span className="text-[10px] font-bold text-slate-500 truncate">{presence.text}</span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </button>
 
@@ -1540,28 +1550,48 @@ function AccountCredentialsBox({ student }: { student: StudentRecord }) {
           <p className="text-xs font-bold text-slate-500">الحساب المرتبط بملف هذا الطالب</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">اسم ولي الأمر</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{linkedAccount.name}</p>
-        </div>
-        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">البريد الإلكتروني</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.email}</p>
-        </div>
-        <div className="rounded-xl bg-white border border-teal-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
-          <p className="mt-0.5 text-xs font-black text-teal-800">محفوظة بشكل مشفر على السيرفر</p>
-        </div>
-        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">رقم الهاتف</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.phone || student.parentPhone || 'غير مسجل'}</p>
-        </div>
-        <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
-          <p className="text-[10px] font-black text-slate-400">طريقة التسجيل</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900">{providerLabel}</p>
-        </div>
-      </div>
+      {(() => {
+        const prPresence = formatLastSeen(linkedAccount.lastActiveAt || linkedAccount.lastLoginAt || student.parentLastActiveAt || student.parentLastLoginAt);
+        const stPresence = formatLastSeen(student.studentLastActiveAt || student.studentLastLoginAt || student.lastActiveAt || student.lastLoginAt);
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
+            <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+              <p className="text-[10px] font-black text-slate-400">اسم ولي الأمر</p>
+              <p className="mt-0.5 text-xs font-black text-slate-900 break-words">{linkedAccount.name}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+              <p className="text-[10px] font-black text-slate-400">البريد الإلكتروني</p>
+              <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.email}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-teal-200 p-3 shadow-2xs">
+              <p className="text-[10px] font-black text-slate-400">كلمة المرور</p>
+              <p className="mt-0.5 text-xs font-black text-teal-800">مشفرة على السيرفر</p>
+            </div>
+            <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+              <p className="text-[10px] font-black text-slate-400">رقم الهاتف</p>
+              <p className="mt-0.5 text-xs font-black text-slate-900 break-all">{linkedAccount.phone || student.parentPhone || 'غير مسجل'}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+              <p className="text-[10px] font-black text-slate-400">طريقة التسجيل</p>
+              <p className="mt-0.5 text-xs font-black text-slate-900">{providerLabel}</p>
+            </div>
+            <div className="rounded-xl bg-teal-50/80 border border-teal-200 p-3 shadow-2xs" title={prPresence.title}>
+              <p className="text-[10px] font-black text-teal-700">آخر ظهور لولي الأمر</p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${prPresence.dotClass}`} />
+                <span className="text-xs font-black text-teal-950 truncate">{prPresence.text}</span>
+              </div>
+            </div>
+            <div className="rounded-xl bg-emerald-50/80 border border-emerald-200 p-3 shadow-2xs" title={stPresence.title}>
+              <p className="text-[10px] font-black text-emerald-700">آخر ظهور للطالب</p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${stPresence.dotClass}`} />
+                <span className="text-xs font-black text-emerald-950 truncate">{stPresence.text}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

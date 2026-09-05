@@ -100,13 +100,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'تعذر إنشاء جلسة آمنة.' }, { status: 500 });
   }
 
+  const now = new Date().toISOString();
   await accountDoc.ref.set(
     {
-      lastLoginAt: new Date().toISOString(),
+      lastLoginAt: now,
+      lastActiveAt: now,
       lastLoginProvider: 'face',
     },
     { merge: true },
   );
+
+  const linkedStudentId = (data as any).linkedStudentId;
+  if (linkedStudentId) {
+    const studentUpdate =
+      role === 'student'
+        ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now }
+        : role === 'parent'
+        ? { parentLastLoginAt: now, parentLastActiveAt: now }
+        : { lastLoginAt: now, lastActiveAt: now };
+
+    await Promise.all([
+      adminDb.collection('students').doc(linkedStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
+      adminDb.collection('class_students').doc(linkedStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
+    ]);
+  }
 
   const response = NextResponse.json({ ok: true, account, distance: best.distance });
   response.cookies.set(SESSION_COOKIE_NAME, token, {

@@ -33,6 +33,7 @@ import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHomeworkModal';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import NotificationBell from '@/components/NotificationBell';
+import { recordUserPresence } from '@/lib/presence';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -167,6 +168,9 @@ export default function StudentDashboard() {
         notes: linked?.notes || '',
       });
 
+      // Record student presence
+      void recordUserPresence({ role: 'student', studentId: resolvedId });
+
       // Load homework from Firestore (via local cache pulled above)
       loadHomework(finalName, resolvedId);
       // Load certificates
@@ -175,6 +179,12 @@ export default function StudentDashboard() {
     };
 
     void loadStudentPortal();
+    const presenceInterval = setInterval(() => {
+      if (!cancelled && currentResolvedId) {
+        void recordUserPresence({ role: 'student', studentId: currentResolvedId });
+      }
+    }, 4 * 60 * 1000);
+
     const unsubscribe = subscribeToCloudUpdates(() => {
       if (!cancelled && currentResolvedId) {
         void pullCloudDataToLocal(['homework', 'curriculumAssignments', 'ikhlasPosts', 'studentHomeworkLogs', 'studentCertLogs', 'studentBadges', 'notifications'], true).then(() => {
@@ -185,6 +195,7 @@ export default function StudentDashboard() {
     });
     return () => {
       cancelled = true;
+      clearInterval(presenceInterval);
       unsubscribe();
     };
   }, [router]);
@@ -341,6 +352,12 @@ export default function StudentDashboard() {
             nationalId: studentRecord.nationalId,
             dateOfBirth: studentRecord.dateOfBirth,
             notes: studentRecord.notes,
+            studentLastActiveAt: studentRecord.studentLastActiveAt,
+            studentLastLoginAt: studentRecord.studentLastLoginAt,
+            parentLastActiveAt: studentRecord.parentLastActiveAt,
+            parentLastLoginAt: studentRecord.parentLastLoginAt,
+            lastActiveAt: studentRecord.lastActiveAt,
+            lastLoginAt: studentRecord.lastLoginAt,
           }}
           greeting="مرحباً بك يا بطل 👋"
           variant="student"

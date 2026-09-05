@@ -50,18 +50,34 @@ export async function POST(req: NextRequest) {
     try {
       const adminDb = getAdminDb();
       if (adminDb && account.id && !account.id.startsWith('generated_')) {
+        const now = new Date().toISOString();
         await adminDb.collection('accounts').doc(account.id).set(
           {
             id: account.id,
-            name: account.name || 'د. إسماعيل عيسى',
-            email: account.email || 'dr.ismail@masar.com',
+            name: account.name || 'مستخدم مسار',
+            email: account.email || '',
             role: account.role || 'doctor',
-            lastLoginAt: new Date().toISOString(),
+            lastLoginAt: now,
+            lastActiveAt: now,
             lastLoginProvider: 'password',
-            createdAt: new Date().toISOString(),
           },
           { merge: true },
         );
+
+        const targetStudentId = (account as any).linkedStudentId;
+        if (targetStudentId) {
+          const studentUpdate =
+            account.role === 'student'
+              ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now }
+              : account.role === 'parent'
+              ? { parentLastLoginAt: now, parentLastActiveAt: now }
+              : { lastLoginAt: now, lastActiveAt: now };
+
+          await Promise.all([
+            adminDb.collection('students').doc(targetStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
+            adminDb.collection('class_students').doc(targetStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
+          ]);
+        }
       }
     } catch {}
 

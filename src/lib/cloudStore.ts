@@ -29,6 +29,7 @@ export type AccountRecord = {
   linkedParentId?: string;
   linkedParentEmail?: string;
   grade?: string;
+  lastActiveAt?: string;
   createdAt: string;
 };
 
@@ -65,6 +66,12 @@ export type StudentRecord = {
   linkedStudentName?: string;
   linkedParentId?: string;
   linkedParentEmail?: string;
+  studentLastLoginAt?: string;
+  parentLastLoginAt?: string;
+  studentLastActiveAt?: string;
+  parentLastActiveAt?: string;
+  lastLoginAt?: string;
+  lastActiveAt?: string;
   createdAt: string;
   updatedAt: string;
 };

@@ -20,6 +20,12 @@ export type ClassStudentRecord = {
   assignedPrograms?: string[];
   assignedBy?: string;
   assignedAt?: string;
+  studentLastLoginAt?: string;
+  parentLastLoginAt?: string;
+  studentLastActiveAt?: string;
+  parentLastActiveAt?: string;
+  lastLoginAt?: string;
+  lastActiveAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,6 +37,10 @@ export type ClassParentRecord = {
   email: string;
   studentId: string;
   studentName: string;
+  parentLastLoginAt?: string;
+  parentLastActiveAt?: string;
+  studentLastLoginAt?: string;
+  studentLastActiveAt?: string;
   createdAt: string;
 };
 
@@ -289,6 +299,10 @@ export function getClassParents(): ClassParentRecord[] {
     email: '',
     studentId: s.id,
     studentName: s.fullName,
+    parentLastLoginAt: s.parentLastLoginAt,
+    parentLastActiveAt: s.parentLastActiveAt,
+    studentLastLoginAt: s.studentLastLoginAt || s.lastLoginAt,
+    studentLastActiveAt: s.studentLastActiveAt || s.lastActiveAt,
     createdAt: s.createdAt,
   }));
 }

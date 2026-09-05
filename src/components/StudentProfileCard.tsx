@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { Phone, GraduationCap, User, Calendar, IdCard } from 'lucide-react';
+import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck } from 'lucide-react';
+import { formatLastSeen } from '@/lib/presence';
 
 export interface StudentProfileData {
   fullName: string;
@@ -12,6 +13,12 @@ export interface StudentProfileData {
   nationalId?: string;
   dateOfBirth?: string;
   notes?: string;
+  studentLastLoginAt?: string;
+  parentLastLoginAt?: string;
+  studentLastActiveAt?: string;
+  parentLastActiveAt?: string;
+  lastLoginAt?: string;
+  lastActiveAt?: string;
 }
 
 interface StudentProfileCardProps {
@@ -39,6 +46,11 @@ export default function StudentProfileCard({
     .slice(0, 2)
     .map((w) => w[0])
     .join('') || 'ط';
+
+  const studentPresence = formatLastSeen(
+    student.studentLastActiveAt || student.studentLastLoginAt || student.lastActiveAt || student.lastLoginAt,
+  );
+  const parentPresence = formatLastSeen(student.parentLastActiveAt || student.parentLastLoginAt);
 
   const bgClass =
     variant === 'student'
@@ -72,8 +84,17 @@ export default function StudentProfileCard({
               {initials}
             </div>
           )}
-          {/* Online dot */}
-          <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-white shadow" />
+          {/* Dynamic Online/Offline dot */}
+          <span
+            className={`absolute bottom-1 right-1 h-4 w-4 rounded-full ring-2 ring-white shadow transition-all ${
+              studentPresence.isOnline
+                ? 'bg-emerald-500 ring-emerald-300 animate-pulse'
+                : studentPresence.rawDate
+                ? 'bg-slate-400'
+                : 'bg-slate-300'
+            }`}
+            title={studentPresence.title}
+          />
         </div>
 
         {/* Name & Grade */}
@@ -85,19 +106,56 @@ export default function StudentProfileCard({
           )}
           <h2 className="text-xl font-black text-white leading-tight">{student.fullName}</h2>
           
-          {student.grade && (
-            <div className="mt-2">
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {student.grade && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-[11px] font-black text-white">
                 <GraduationCap size={13} />
                 {student.grade}
               </span>
-            </div>
-          )}
+            )}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black backdrop-blur-xs ${
+                studentPresence.isOnline
+                  ? 'bg-emerald-500/30 text-white border border-emerald-300/40 shadow-xs'
+                  : 'bg-black/20 text-white/80'
+              }`}
+              title={studentPresence.title}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${studentPresence.dotClass}`} />
+              {studentPresence.text}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Info Grid */}
       <div className="divide-y divide-slate-100">
+        {/* Student Presence Activity */}
+        <InfoRow
+          icon={<Activity size={15} className="text-emerald-600" />}
+          label="آخر ظهور / نشاط للطالب"
+          value={
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-black ${studentPresence.badgeClass}`} title={studentPresence.title}>
+              <span className={`h-1.5 w-1.5 rounded-full ${studentPresence.dotClass}`} />
+              {studentPresence.text}
+            </span>
+          }
+        />
+
+        {/* Parent Presence Activity (if parent info is shown) */}
+        {showParent && (student.parentLastActiveAt || student.parentLastLoginAt || student.parentName) && (
+          <InfoRow
+            icon={<UserCheck size={15} className="text-teal-600" />}
+            label="آخر ظهور / نشاط لولي الأمر"
+            value={
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-black ${parentPresence.badgeClass}`} title={parentPresence.title}>
+                <span className={`h-1.5 w-1.5 rounded-full ${parentPresence.dotClass}`} />
+                {parentPresence.text}
+              </span>
+            }
+          />
+        )}
+
         {showParent && student.parentName && (
           <InfoRow icon={<User size={15} className="text-teal-600" />} label="ولي الأمر" value={student.parentName} />
         )}
@@ -121,13 +179,17 @@ export default function StudentProfileCard({
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5">
       <span className="shrink-0">{icon}</span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-[10px] font-black text-slate-400 leading-none">{label}</p>
-        <p className="mt-0.5 text-xs font-bold text-slate-800 truncate">{value}</p>
+        {typeof value === 'string' ? (
+          <p className="mt-0.5 text-xs font-bold text-slate-800 truncate">{value}</p>
+        ) : (
+          <div className="mt-0.5">{value}</div>
+        )}
       </div>
     </div>
   );

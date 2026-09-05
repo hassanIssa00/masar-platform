@@ -10,6 +10,7 @@ import { getClassParents, getClassStudents, ClassParentRecord,
   getStudentHomeworkLogs, getStudentNotes, getStudentCertificateLogs } from '@/lib/classDb';
 import { saveMessage, saveReport, saveActivity } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
+import { formatLastSeen } from '@/lib/presence';
 
 export default function ClassroomParentsTab() {
   const [parents, setParents] = useState<ClassParentRecord[]>([]);
@@ -311,6 +312,15 @@ export default function ClassroomParentsTab() {
                         <div>
                           <h3 className="text-sm font-black text-slate-900">{p.name}</h3>
                           <p className="text-[11px] font-bold text-slate-500">طالب الفصل: {p.studentName}</p>
+                          {(() => {
+                            const presence = formatLastSeen(p.parentLastActiveAt || p.parentLastLoginAt);
+                            return (
+                              <div className="flex items-center gap-1.5 mt-1" title={presence.title}>
+                                <span className={`inline-block h-1.5 w-1.5 rounded-full ${presence.dotClass}`} />
+                                <span className="text-[10px] font-bold text-slate-500 truncate">آخر ظهور: {presence.text}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-slate-400">
@@ -350,6 +360,26 @@ export default function ClassroomParentsTab() {
                     <p className="text-xs font-bold text-slate-500 mt-0.5">
                       مرتبط بالطفل: <span className="text-indigo-950 font-black">{selectedParent.studentName}</span>
                     </p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      {(() => {
+                        const prPresence = formatLastSeen(selectedParent.parentLastActiveAt || selectedParent.parentLastLoginAt);
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${prPresence.badgeClass}`} title={prPresence.title}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${prPresence.dotClass}`} />
+                            👤 نشاط ولي الأمر: {prPresence.text}
+                          </span>
+                        );
+                      })()}
+                      {(() => {
+                        const stPresence = formatLastSeen(selectedParent.studentLastActiveAt || selectedParent.studentLastLoginAt);
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${stPresence.badgeClass}`} title={stPresence.title}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${stPresence.dotClass}`} />
+                            🎒 نشاط الطالب: {stPresence.text}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
 
@@ -365,35 +395,65 @@ export default function ClassroomParentsTab() {
                 </a>
               </div>
 
-              {/* Account Credentials Summary Grid */}
-              <div className="grid gap-4 sm:grid-cols-2 text-xs">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-                  <span className="text-slate-400 font-bold block">رقم الجوال المسجل:</span>
-                  <div className="flex items-center justify-between font-mono font-black text-slate-900 text-sm">
+              {/* Account Credentials & Activity Summary Grid */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+                  <span className="text-slate-400 font-bold block text-[11px]">رقم الجوال:</span>
+                  <div className="flex items-center justify-between font-mono font-black text-slate-900 text-xs">
                     <span>{selectedParent.phone}</span>
                     <button
                       onClick={() => copyToClipboard(selectedParent.phone, 'phone')}
-                      className="text-indigo-600 text-xs font-sans hover:underline flex items-center gap-1"
+                      className="text-indigo-600 text-[11px] font-sans hover:underline flex items-center gap-0.5"
                     >
-                      <Copy size={13} />
-                      {copiedKey === 'phone' ? 'تم النسخ' : 'نسخ'}
+                      <Copy size={12} />
+                      {copiedKey === 'phone' ? 'تم' : 'نسخ'}
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-                  <span className="text-slate-400 font-bold block">البريد الإلكتروني للرمز:</span>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+                  <span className="text-slate-400 font-bold block text-[11px]">البريد الإلكتروني:</span>
                   <div className="flex items-center justify-between font-mono font-black text-slate-900 text-xs">
-                    <span className="truncate max-w-[180px]">{selectedParent.email}</span>
-                    <button
-                      onClick={() => copyToClipboard(selectedParent.email, 'email')}
-                      className="text-indigo-600 text-xs font-sans hover:underline flex items-center gap-1"
-                    >
-                      <Copy size={13} />
-                      {copiedKey === 'email' ? 'تم النسخ' : 'نسخ'}
-                    </button>
+                    <span className="truncate max-w-[130px]">{selectedParent.email || '—'}</span>
+                    {selectedParent.email && (
+                      <button
+                        onClick={() => copyToClipboard(selectedParent.email, 'email')}
+                        className="text-indigo-600 text-[11px] font-sans hover:underline flex items-center gap-0.5"
+                      >
+                        <Copy size={12} />
+                        {copiedKey === 'email' ? 'تم' : 'نسخ'}
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Parent Last Seen Card */}
+                {(() => {
+                  const prPresence = formatLastSeen(selectedParent.parentLastActiveAt || selectedParent.parentLastLoginAt);
+                  return (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+                      <span className="text-slate-400 font-bold block text-[11px]">آخر نشاط لولي الأمر:</span>
+                      <div className="flex items-center gap-1.5" title={prPresence.title}>
+                        <span className={`h-2 w-2 rounded-full ${prPresence.dotClass}`} />
+                        <span className="font-black text-slate-900 text-xs truncate">{prPresence.text}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Student Last Seen Card */}
+                {(() => {
+                  const stPresence = formatLastSeen(selectedParent.studentLastActiveAt || selectedParent.studentLastLoginAt);
+                  return (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+                      <span className="text-slate-400 font-bold block text-[11px]">آخر نشاط للطالب:</span>
+                      <div className="flex items-center gap-1.5" title={stPresence.title}>
+                        <span className={`h-2 w-2 rounded-full ${stPresence.dotClass}`} />
+                        <span className="font-black text-slate-900 text-xs truncate">{stPresence.text}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Direct Communication Panel */}

@@ -16,6 +16,7 @@ import {
 import CertificateModal from './CertificateModal';
 import StudentProfileCard from './StudentProfileCard';
 import StudentProfileModal from './StudentProfileModal';
+import { formatLastSeen } from '@/lib/presence';
 
 export default function ClassroomStudentsTab() {
   const [students, setStudents] = useState<ClassStudentRecord[]>([]);
@@ -208,6 +209,15 @@ export default function ClassroomStudentsTab() {
                         <div>
                           <h3 className="text-sm font-black text-slate-900">{s.fullName}</h3>
                           <p className="text-[11px] font-bold text-slate-500">{s.grade}</p>
+                          {(() => {
+                            const presence = formatLastSeen(s.studentLastActiveAt || s.studentLastLoginAt || s.lastActiveAt || s.lastLoginAt);
+                            return (
+                              <div className="flex items-center gap-1.5 mt-1" title={presence.title}>
+                                <span className={`inline-block h-1.5 w-1.5 rounded-full ${presence.dotClass}`} />
+                                <span className="text-[10px] font-bold text-slate-500 truncate">{presence.text}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-slate-400">
@@ -242,18 +252,41 @@ export default function ClassroomStudentsTab() {
                   nationalId: selectedStudent.nationalId,
                   dateOfBirth: selectedStudent.dateOfBirth,
                   notes: selectedStudent.notes,
+                  studentLastActiveAt: selectedStudent.studentLastActiveAt,
+                  studentLastLoginAt: selectedStudent.studentLastLoginAt,
+                  parentLastActiveAt: selectedStudent.parentLastActiveAt,
+                  parentLastLoginAt: selectedStudent.parentLastLoginAt,
+                  lastActiveAt: selectedStudent.lastActiveAt,
+                  lastLoginAt: selectedStudent.lastLoginAt,
                 }}
                 variant="classroom"
               />
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-              {/* Selected Student Identity Bar — action buttons only */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
+              {/* Selected Student Identity Bar — action buttons & presence */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
                     <CheckCircle2 size={12} /> حساب نشط بالفصل
                   </span>
-                </div>
+                  {(() => {
+                    const stPresence = formatLastSeen(selectedStudent.studentLastActiveAt || selectedStudent.studentLastLoginAt || selectedStudent.lastActiveAt || selectedStudent.lastLoginAt);
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${stPresence.badgeClass}`} title={stPresence.title}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${stPresence.dotClass}`} />
+                        🎒 نشاط الطالب: {stPresence.text}
+                      </span>
+                    );
+                  })()}
+                  {selectedStudent.parentName && (() => {
+                    const prPresence = formatLastSeen(selectedStudent.parentLastActiveAt || selectedStudent.parentLastLoginAt);
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${prPresence.badgeClass}`} title={prPresence.title}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${prPresence.dotClass}`} />
+                        👤 نشاط ولي الأمر: {prPresence.text}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -267,7 +300,7 @@ export default function ClassroomStudentsTab() {
                         score: 92,
                       })
                     }
-                    className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-black text-amber-900 hover:bg-amber-100 transition"
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-black text-amber-900 hover:bg-amber-100 transition cursor-pointer"
                   >
                     <Award size={16} className="text-amber-600" />
                     إصدار شهادة تميز
@@ -275,7 +308,7 @@ export default function ClassroomStudentsTab() {
 
                   <button
                     onClick={() => setProfileStudent(selectedStudent)}
-                    className="flex items-center gap-1.5 rounded-xl border border-teal-300 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-900 hover:bg-teal-100 transition"
+                    className="flex items-center gap-1.5 rounded-xl border border-teal-300 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-900 hover:bg-teal-100 transition cursor-pointer"
                   >
                     <FileText size={16} className="text-teal-600" />
                     ملف الطالب
@@ -283,7 +316,7 @@ export default function ClassroomStudentsTab() {
 
                   <button
                     onClick={() => setConfirmDeleteId(selectedStudent.id)}
-                    className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-rose-700 hover:bg-rose-100 transition"
+                    className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-rose-700 hover:bg-rose-100 transition cursor-pointer"
                     title="حذف الطالب من الفصل"
                   >
                     <Trash2 size={16} />
@@ -369,7 +402,8 @@ export default function ClassroomStudentsTab() {
                 </div>
               </div>
             </div>
-          ) : (
+          </div>
+        ) : (
             <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-slate-400 font-bold">
               اختر طالباً من القائمة لعرض وتخصيص مساراته التعليمية
             </div>

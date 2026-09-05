@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { X, BookOpen, MessageSquare, Award, Plus, Trash2, Star, CheckCircle2, AlertCircle, Clock, Send, Printer } from 'lucide-react';
@@ -8,6 +8,7 @@ import {
   getStudentHomeworkLogs, saveStudentHomeworkLog, deleteStudentHomeworkLog,
   getStudentCertificateLogs, saveStudentCertificateLog, deleteStudentCertificateLog,
 } from '@/lib/classDb';
+import { formatLastSeen } from '@/lib/presence';
 
 type Tab = 'info' | 'homework' | 'notes' | 'certificates' | 'report';
 interface Props { student: ClassStudentRecord; onClose: () => void; }
@@ -139,33 +140,62 @@ export default function StudentProfileModal({ student, onClose }: Props) {
         <div className="p-6 max-h-[65vh] overflow-y-auto space-y-4">
 
           {/* ── INFO ── */}
-          {tab === 'info' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {([
-                ['الاسم الكامل',      student.fullName],
-                ['الاسم بالإنجليزية', student.fullNameEn || '—'],
-                ['الصف / الفصل',      student.grade],
-                ['رقم الهوية',        student.nationalId || '—'],
-                ['تاريخ الميلاد',     student.dateOfBirth || '—'],
-                ['اسم ولي الأمر',     student.parentName  || '—'],
-                ['هاتف ولي الأمر',    student.parentPhone  || '—'],
-                ['تاريخ التسجيل',     new Date(student.createdAt).toLocaleDateString('ar-SA')],
-              ] as [string,string][]).map(([lbl, val]) => (
-                <div key={lbl} className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">{lbl}</p>
-                  <p className="text-sm font-black text-slate-900">{val}</p>
+          {tab === 'info' && (() => {
+            const stPresence = formatLastSeen(student.studentLastActiveAt || student.studentLastLoginAt || student.lastActiveAt || student.lastLoginAt);
+            const prPresence = formatLastSeen(student.parentLastActiveAt || student.parentLastLoginAt);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {([
+                  ['الاسم الكامل',      student.fullName],
+                  ['الاسم بالإنجليزية', student.fullNameEn || '—'],
+                  ['الصف / الفصل',      student.grade],
+                  ['رقم الهوية',        student.nationalId || '—'],
+                  ['تاريخ الميلاد',     student.dateOfBirth || '—'],
+                  ['اسم ولي الأمر',     student.parentName  || '—'],
+                  ['هاتف ولي الأمر',    student.parentPhone  || '—'],
+                  ['تاريخ التسجيل',     new Date(student.createdAt).toLocaleDateString('ar-SA')],
+                ] as [string,string][]).map(([lbl, val]) => (
+                  <div key={lbl} className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">{lbl}</p>
+                    <p className="text-sm font-black text-slate-900">{val}</p>
+                  </div>
+                ))}
+
+                {/* Student Last Seen Card */}
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4">
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mb-1">🎒 آخر تسجيل دخول / ظهور للطالب</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-black ${stPresence.badgeClass}`} title={stPresence.title}>
+                      <span className={`h-2 w-2 rounded-full ${stPresence.dotClass}`} />
+                      {stPresence.text}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 mt-1.5">{stPresence.title}</p>
                 </div>
-              ))}
-              <div className="md:col-span-2 bg-teal-50 border border-teal-200 rounded-2xl p-4">
-                <p className="text-[10px] font-black text-teal-500 uppercase tracking-wider mb-2">المسارات المخصصة</p>
-                <div className="flex flex-wrap gap-2">
-                  {(student.assignedPrograms || [student.assignedProgram || 'reading']).map(p => (
-                    <span key={p} className="bg-teal-600 text-white text-xs font-black px-3 py-1 rounded-full">{p}</span>
-                  ))}
+
+                {/* Parent Last Seen Card */}
+                <div className="bg-teal-50/70 border border-teal-200 rounded-2xl p-4">
+                  <p className="text-[10px] font-black text-teal-700 uppercase tracking-wider mb-1">👤 آخر تسجيل دخول / ظهور لولي الأمر</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-black ${prPresence.badgeClass}`} title={prPresence.title}>
+                      <span className={`h-2 w-2 rounded-full ${prPresence.dotClass}`} />
+                      {prPresence.text}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 mt-1.5">{prPresence.title}</p>
+                </div>
+
+                <div className="md:col-span-2 bg-teal-50 border border-teal-200 rounded-2xl p-4">
+                  <p className="text-[10px] font-black text-teal-500 uppercase tracking-wider mb-2">المسارات المخصصة</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(student.assignedPrograms || [student.assignedProgram || 'reading']).map(p => (
+                      <span key={p} className="bg-teal-600 text-white text-xs font-black px-3 py-1 rounded-full">{p}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── HOMEWORK ── */}
           {tab === 'homework' && (

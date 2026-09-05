@@ -25,6 +25,7 @@ import StudentProfileCard from '@/components/StudentProfileCard';
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
+import { recordUserPresence } from '@/lib/presence';
 
 function isGeneratedAlias(email?: string | null) {
   if (!email) return true;
@@ -247,6 +248,7 @@ export default function ParentDashboard() {
       if (myStudents.length > 0) {
         const targetId = (activeId && myStudents.some((s) => s.id === activeId)) ? activeId : myStudents[0].id;
         setSelectedStudentId(targetId);
+        void recordUserPresence({ role: 'parent', studentId: targetId });
 
         const allSurveys = getSurveys();
         // surveyDone check: use survey records OR session.onboardingRequired===false as fallback.
@@ -651,6 +653,12 @@ export default function ParentDashboard() {
                     parentPhone: selectedStudent.parentPhone || undefined,
                     nationalId: selectedStudent.nationalId,
                     dateOfBirth: selectedStudent.dateOfBirth,
+                    studentLastActiveAt: selectedStudent.studentLastActiveAt,
+                    studentLastLoginAt: selectedStudent.studentLastLoginAt,
+                    parentLastActiveAt: selectedStudent.parentLastActiveAt,
+                    parentLastLoginAt: selectedStudent.parentLastLoginAt,
+                    lastActiveAt: selectedStudent.lastActiveAt,
+                    lastLoginAt: selectedStudent.lastLoginAt,
                   }}
                   greeting="بيانات طفلي المسجل في منصة مسار 🌟"
                   variant="parent"
