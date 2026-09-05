@@ -21,6 +21,7 @@ import {
 } from '@/data/ikhlasSchedule';
 import { clearSession } from '@/lib/cloudStore';
 import { getClassStudents } from '@/lib/classDb';
+import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
@@ -102,7 +103,26 @@ export default function IkhlasJeddahPage() {
       setClassStudents(getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone, photoUrl: s.photoUrl, grade: s.grade })));
     };
     window.addEventListener('storage', syncStudents);
-    return () => window.removeEventListener('storage', syncStudents);
+    const unsub = subscribeToCloudUpdates(() => {
+      syncStudents();
+    });
+    void pullCloudDataToLocal([
+      'classStudents',
+      'curriculumAssignments',
+      'studentHomeworkLogs',
+      'homework',
+      'curriculumDrawings',
+      'studentCertLogs',
+      'studentBadges',
+      'reports',
+      'messages',
+      'notifications'
+    ], true).then(() => syncStudents()).catch(() => {});
+
+    return () => {
+      window.removeEventListener('storage', syncStudents);
+      unsub();
+    };
   }, []);
 
   // ── Keep the official term schedule in sync with in-app refresh events ──

@@ -834,51 +834,37 @@ export default function StudentDashboard() {
               </span>
             </Link>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight whitespace-nowrap">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight shrink-0">
                   منصة مَسَار
                 </span>
                 {isIkhlas ? (
-                  <span className="text-[10px] sm:text-xs bg-emerald-600 text-white font-black px-2 sm:px-2.5 py-0.5 rounded-full shadow-2xs whitespace-nowrap">
+                  <span className="text-[10px] sm:text-xs bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs shrink-0">
                     فصل د. إسماعيل
                   </span>
                 ) : (
-                  <span className="text-[10px] sm:text-xs bg-teal-50 text-teal-800 border border-teal-200/80 font-black px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                  <span className="text-[10px] sm:text-xs bg-teal-50 text-teal-800 border border-teal-200/80 font-black px-2 py-0.5 rounded-full shrink-0">
                     بوابة الطالب
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-emerald-700 font-extrabold">{isIkhlas ? 'التعليم الفردي المتخصص' : 'المنصة الذكية'}</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-slate-400">
-                  {new Date().toLocaleDateString('ar-SA', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </span>
-              </div>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 truncate mt-0.5">
+                بوابة الطالب · {new Date().toLocaleDateString('ar-SA', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </p>
             </div>
           </div>
 
-          {/* Quick Actions (Mobile Optimized) */}
+          {/* Quick Actions (Streamlined Mobile Bar) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <NotificationBell role="student" studentId={studentId || studentRecord?.id} studentName={studentName || studentRecord?.fullName} />
-
-            <Link
-              href="/face-enroll"
-              title="تسجيل بصمة الوجه الذكية"
-              className="h-9 px-2 sm:px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-2xs active:scale-95"
-            >
-              <ScanFace size={16} className="text-emerald-700 shrink-0" />
-              <span className="hidden md:inline">بصمة الوجه</span>
-            </Link>
 
             <button
               onClick={handleLogout}
               title="تسجيل الخروج"
-              className="h-9 px-2.5 sm:px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer shrink-0"
+              className="w-9 h-9 sm:w-auto sm:px-3 sm:py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
             >
-              <LogOut size={15} className="shrink-0" />
-              <span className="text-[11px] sm:text-xs">خروج</span>
+              <LogOut size={15} />
+              <span className="hidden sm:inline">خروج</span>
             </button>
           </div>
         </div>

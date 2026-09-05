@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Award, BookOpen, CheckCircle, FileText, MessageSquare, Sparkles, User, Video } from 'lucide-react';
+import { Bell, Award, BookOpen, CheckCircle, FileText, MessageSquare, Sparkles, User, Video, X } from 'lucide-react';
 import {
   subscribeToNotifications,
   markNotificationAsRead,
@@ -145,28 +145,45 @@ export default function NotificationBell({ role, studentId, studentName, classNa
       </button>
 
       {open && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl z-50 text-right space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="font-black text-slate-900 text-sm">التنبيهات والإشعارات</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                {roleLabel}
-              </span>
-              {unreadCount > 0 && (
-                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-700">
-                  {unreadCount} جديد
+        <>
+          {/* Mobile Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-40 sm:hidden"
+            onClick={() => setOpen(false)}
+          />
+
+          {/* Notification Menu (Centered on Mobile, Anchored on Desktop) */}
+          <div className="fixed inset-x-3 top-16 max-w-sm sm:max-w-none mx-auto sm:mx-0 sm:absolute sm:inset-auto sm:left-0 sm:top-full sm:mt-2 w-auto sm:w-96 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl z-50 text-right space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-slate-900 text-sm">التنبيهات والإشعارات</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  {roleLabel}
                 </span>
-              )}
+                {unreadCount > 0 && (
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-700">
+                    {unreadCount} جديد
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={handleClear}
+                    className="text-[11px] font-black text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                  >
+                    مسح الكل
+                  </button>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 sm:hidden transition"
+                  title="إغلاق"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
-            {notifications.length > 0 && (
-              <button
-                onClick={handleClear}
-                className="text-[11px] font-black text-slate-400 hover:text-rose-600 transition cursor-pointer"
-              >
-                مسح الكل
-              </button>
-            )}
-          </div>
 
           {notifications.length === 0 ? (
             <div className="py-8 text-center text-slate-400 space-y-1">
@@ -223,6 +240,7 @@ export default function NotificationBell({ role, studentId, studentName, classNa
             </div>
           )}
         </div>
+      </>
       )}
     </div>
   );

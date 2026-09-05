@@ -389,98 +389,102 @@ export default function StudentInteractiveHomeworkModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-2 sm:p-4 overflow-y-auto" dir="rtl">
-      <div className="w-full max-w-4xl rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[95vh] overflow-hidden animate-scale-in">
+    <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-slate-950 sm:bg-slate-950/85 sm:backdrop-blur-md sm:p-4 overflow-hidden" dir="rtl">
+      <div className="w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-4xl bg-white sm:rounded-3xl shadow-2xl sm:border sm:border-slate-200 flex flex-col overflow-hidden animate-scale-in">
         
         {/* ── TOP HEADER ── */}
-        <div className="p-4 bg-gradient-to-l from-slate-900 via-teal-950 to-slate-900 text-white flex items-center justify-between gap-3 border-b border-teal-800/40">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-teal-600/30 border border-teal-400/40 flex items-center justify-center text-xl shrink-0">
+        <div className="px-4 py-3 bg-gradient-to-l from-slate-900 via-teal-950 to-slate-900 text-white flex items-center justify-between gap-3 border-b border-teal-800/40 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-teal-600/30 border border-teal-400/40 flex items-center justify-center text-lg shrink-0">
               ✏️
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-teal-500/20 text-teal-300 font-black px-2.5 py-0.5 rounded-lg border border-teal-400/30">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-xs bg-teal-500/20 text-teal-300 font-black px-2 py-0.5 rounded-md border border-teal-400/30 shrink-0">
                   {parsed?.subjectTitle || 'واجب مدرسي'}
                 </span>
                 {parsed && (
-                  <span className="text-xs text-amber-300 font-black">
+                  <span className="text-[10px] sm:text-xs text-amber-300 font-black truncate">
                     صفحات: {parsed.fromPage} – {parsed.toPage}
                   </span>
                 )}
               </div>
-              <h3 className="font-black text-sm text-white mt-0.5 truncate">{hw.title}</h3>
+              <h3 className="font-black text-xs sm:text-sm text-white mt-0.5 truncate">{hw.title}</h3>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+            title="إغلاق"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* ── SUCCESS BANNER ON SUBMIT ── */}
         {submittedSuccess ? (
-          <div className="p-12 text-center space-y-4 bg-emerald-50">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-emerald-50">
             <div className="w-20 h-20 rounded-full bg-emerald-100 border-2 border-emerald-300 text-emerald-600 flex items-center justify-center text-4xl mx-auto animate-bounce shadow-md">
               🎉
             </div>
             <h3 className="text-xl font-black text-emerald-950">
               أحسنت يا بطل! تم تسليم الواجب بنجاح! 🚀
             </h3>
-            <p className="text-xs font-bold text-emerald-800 max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm font-bold text-emerald-800 max-w-sm mx-auto leading-relaxed">
               وصل حلك وتعديلاتك على الكتاب إلى د. إسماعيل عيسى، وسيتم مراجعته ورصد درجتك قريباً بإذن الله!
             </p>
           </div>
         ) : isCurriculumHw && parsed ? (
           /* ── INTERACTIVE WORKBOOK SOLVER ── */
           <>
-            {/* Toolbar: Pen, Highlighter, Eraser, Colors */}
-            <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap text-xs">
-              {/* Tools */}
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200 shadow-xs">
+            {/* Toolbar: Tools, Colors, Clear, Zoom */}
+            <div className="px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 text-xs shrink-0 flex-wrap sm:flex-nowrap">
+              {/* Tools: Pen, Highlighter, Eraser */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0">
                 <button
                   type="button"
                   onClick={() => setTool('pen')}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-black transition cursor-pointer ${
-                    tool === 'pen' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
+                    tool === 'pen' ? 'bg-teal-700 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
                   }`}
+                  title="قلم الكتابة"
                 >
-                  <PenLine size={14} /> <span>قلم</span>
+                  <PenLine size={14} /> <span className="hidden xs:inline text-[11px]">قلم</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setTool('highlighter')}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-black transition cursor-pointer ${
-                    tool === 'highlighter' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
+                    tool === 'highlighter' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-slate-700 hover:bg-slate-100'
                   }`}
+                  title="قلم التحديد الأصفر"
                 >
-                  <Highlighter size={14} /> <span>تحديد</span>
+                  <Highlighter size={14} /> <span className="hidden xs:inline text-[11px]">تحديد</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setTool('eraser')}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-black transition cursor-pointer ${
-                    tool === 'eraser' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
+                    tool === 'eraser' ? 'bg-rose-500 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
                   }`}
+                  title="الممحاة"
                 >
-                  <Eraser size={14} /> <span>ممحاة</span>
+                  <Eraser size={14} /> <span className="hidden xs:inline text-[11px]">ممحاة</span>
                 </button>
               </div>
 
               {/* Color Palette */}
               {tool !== 'eraser' && (
-                <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0">
                   {COLOR_PALETTE.map((c) => (
                     <button
                       key={c.value}
                       type="button"
                       onClick={() => setColor(c.value)}
                       style={{ backgroundColor: c.value }}
-                      className={`w-6 h-6 rounded-full transition-all cursor-pointer ${
-                        color === c.value ? 'ring-2 ring-offset-2 ring-teal-600 scale-110 shadow-sm' : 'opacity-80 hover:opacity-100'
+                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all cursor-pointer ${
+                        color === c.value ? 'ring-2 ring-offset-2 ring-teal-600 scale-110 shadow-xs' : 'opacity-80 hover:opacity-100'
                       }`}
                       title={c.name}
                     />
@@ -488,40 +492,48 @@ export default function StudentInteractiveHomeworkModal({
                 </div>
               )}
 
-              {/* Clear Page & Zoom */}
-              <div className="flex items-center gap-2 mr-auto">
-                {savedNotice && (
-                  <span className="text-[11px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md animate-fade-in">
-                    {savedNotice}
-                  </span>
-                )}
-
+              {/* Clear Page & Zoom Controls */}
+              <div className="flex items-center gap-1.5 shrink-0 mr-auto">
                 <button
                   type="button"
                   onClick={handleClearPage}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-300 transition text-xs font-bold shadow-xs cursor-pointer"
-                  title="مسح كتابات هذه الصفحة"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-300 transition text-[11px] font-bold shadow-2xs cursor-pointer"
+                  title="مسح إجابات هذه الصفحة"
                 >
                   <RotateCcw size={13} />
-                  <span className="hidden sm:inline">مسح الصفحة</span>
+                  <span className="hidden md:inline">مسح</span>
                 </button>
 
-                <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-                  <button onClick={() => setZoom((z) => Math.min(180, z + 15))} className="p-1.5 hover:bg-slate-100 text-slate-700 transition">
-                    <ZoomIn size={14} />
+                <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <button onClick={() => setZoom((z) => Math.min(180, z + 15))} className="p-1.5 hover:bg-slate-100 text-slate-700 transition" title="تكبير">
+                    <ZoomIn size={13} />
                   </button>
-                  <span className="text-[11px] font-mono px-2 text-slate-600">{zoom}%</span>
-                  <button onClick={() => setZoom((z) => Math.max(70, z - 15))} className="p-1.5 hover:bg-slate-100 text-slate-700 transition">
-                    <ZoomOut size={14} />
+                  <span className="text-[10px] font-mono px-1.5 text-slate-600">{zoom}%</span>
+                  <button onClick={() => setZoom((z) => Math.max(70, z - 15))} className="p-1.5 hover:bg-slate-100 text-slate-700 transition" title="تصغير">
+                    <ZoomOut size={13} />
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Page Navigator (ONLY ASSIGNED PAGES) */}
-            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-auto">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-700 shrink-0 ml-1">اختر الصفحة للحل:</span>
+            {/* Page Navigator: Touch-friendly Previous / Next and Direct Jump Chips */}
+            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 select-none shrink-0">
+              {/* Previous Page Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const idx = parsed.pagesList.indexOf(currentPage);
+                  if (idx > 0) setCurrentPage(parsed.pagesList[idx - 1]);
+                }}
+                disabled={parsed.pagesList.indexOf(currentPage) === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-black hover:bg-teal-50 hover:border-teal-400 transition disabled:opacity-30 disabled:pointer-events-none shadow-2xs active:scale-95 cursor-pointer shrink-0"
+              >
+                <ChevronRight size={15} />
+                <span>السابق</span>
+              </button>
+
+              {/* Direct Jump Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto px-1 py-0.5 max-w-[180px] xs:max-w-xs sm:max-w-md justify-center">
                 {parsed.pagesList.map((pageNum) => {
                   const isSelected = pageNum === currentPage;
                   return (
@@ -529,10 +541,10 @@ export default function StudentInteractiveHomeworkModal({
                       key={pageNum}
                       type="button"
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer border ${
+                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 border ${
                         isSelected
-                          ? 'bg-teal-600 border-teal-700 text-white shadow-sm scale-105'
-                          : 'bg-white border-slate-300 text-slate-700 hover:bg-teal-50 hover:border-teal-300'
+                          ? 'bg-teal-700 border-teal-800 text-white shadow-xs scale-105'
+                          : 'bg-white border-slate-300 text-slate-700 hover:bg-teal-50'
                       }`}
                     >
                       ص {pageNum}
@@ -541,36 +553,31 @@ export default function StudentInteractiveHomeworkModal({
                 })}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const idx = parsed.pagesList.indexOf(currentPage);
-                    if (idx > 0) setCurrentPage(parsed.pagesList[idx - 1]);
-                  }}
-                  disabled={parsed.pagesList.indexOf(currentPage) === 0}
-                  className="px-3 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50 transition disabled:opacity-40 cursor-pointer"
-                >
-                  <ChevronRight size={14} className="inline ml-1" /> السابق
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const idx = parsed.pagesList.indexOf(currentPage);
-                    if (idx < parsed.pagesList.length - 1) setCurrentPage(parsed.pagesList[idx + 1]);
-                  }}
-                  disabled={parsed.pagesList.indexOf(currentPage) === parsed.pagesList.length - 1}
-                  className="px-3 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50 transition disabled:opacity-40 cursor-pointer"
-                >
-                  التالي <ChevronLeft size={14} className="inline mr-1" />
-                </button>
-              </div>
+              {/* Next Page Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const idx = parsed.pagesList.indexOf(currentPage);
+                  if (idx < parsed.pagesList.length - 1) setCurrentPage(parsed.pagesList[idx + 1]);
+                }}
+                disabled={parsed.pagesList.indexOf(currentPage) === parsed.pagesList.length - 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-black hover:bg-teal-50 hover:border-teal-400 transition disabled:opacity-30 disabled:pointer-events-none shadow-2xs active:scale-95 cursor-pointer shrink-0"
+              >
+                <span>التالي</span>
+                <ChevronLeft size={15} />
+              </button>
             </div>
 
             {/* Interactive Canvas Area */}
-            <div className="flex-1 overflow-auto bg-slate-900 p-4 sm:p-6 flex items-center justify-center min-h-[420px] select-none">
+            <div className="flex-1 overflow-auto bg-slate-900 p-2 sm:p-6 flex items-center justify-center select-none relative min-h-[350px]">
+              {savedNotice && (
+                <div className="absolute top-3 z-30 bg-emerald-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow-lg animate-fade-in border border-emerald-400">
+                  {savedNotice}
+                </div>
+              )}
+
               <div
-                className="relative rounded-2xl shadow-2xl overflow-hidden bg-white border-4 border-slate-700 touch-none"
+                className="relative rounded-2xl shadow-2xl overflow-hidden bg-white border-2 sm:border-4 border-slate-700 touch-none mx-auto"
                 style={{
                   width: `${Math.round(620 * (zoom / 100))}px`,
                   maxWidth: '100%',
@@ -594,23 +601,23 @@ export default function StudentInteractiveHomeworkModal({
                   className="absolute inset-0 w-full h-full cursor-crosshair z-10"
                 />
 
-                <div className="absolute top-3 left-3 z-20 bg-slate-950/80 backdrop-blur-md text-white px-3 py-1 rounded-xl text-[11px] font-black border border-white/20 shadow-md">
+                <div className="absolute top-2.5 left-2.5 z-20 bg-slate-950/85 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-black border border-white/20 shadow-md">
                   {parsed.subjectTitle} · ص {currentPage} (اكتب وحل بالقلم مباشرة)
                 </div>
               </div>
             </div>
 
-            {/* Submit Bar */}
-            <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
-              <span className="text-xs font-bold text-slate-600">
-                ✏️ يمكنك الحل في كل صفحة وسيتم حفظ وتجميع كافة إجاباتك وإرسالها لدكتور إسماعيل فوراً.
+            {/* Submit Bar (Clean Sticky Full-width on Mobile) */}
+            <div className="p-3 sm:p-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-600 text-center sm:text-right">
+                ✏️ يمكنك الحل في كل صفحة، وسيتم حفظ وتجميع كافة إجاباتك وإرسالها لدكتور إسماعيل فوراً.
               </span>
 
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleSubmitHomework}
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white px-7 py-3.5 text-xs sm:text-sm font-black transition shadow-lg active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white px-7 py-3 text-xs sm:text-sm font-black transition shadow-lg active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
               >
                 {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
                 <span>إرسال وتسليم الواجب لدكتور إسماعيل 🚀</span>

@@ -15,7 +15,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { readCloudCache, syncDocToCloud, writeCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
 import {
   getStudentHomeworkLogs,
   saveStudentHomeworkLog,
@@ -90,9 +90,14 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
   const [notice, setNotice] = useState('');
   const [viewingAssignment, setViewingAssignment] = useState<CurriculumAssignment | null>(null);
 
-  function refresh() {
+  async function refresh(forcePull = false) {
+    if (forcePull) {
+      await pullCloudDataToLocal(
+        ['curriculumAssignments', 'studentHomeworkLogs', 'homework', 'curriculumDrawings', 'classStudents'],
+        true
+      ).catch(() => {});
+    }
     const raw = readAssignments();
-    setAssignments(raw);
     const allLogs: StudentHomeworkLog[] = [];
     students.forEach((s) => {
       getStudentHomeworkLogs(s.id, s.fullName || s.name).forEach((l) => {
@@ -102,11 +107,37 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
     const cached = readCloudCache<StudentHomeworkLog>('masar_student_hw_logs_v1');
     cached.forEach((l) => { if (!allLogs.find((x) => x.id === l.id)) allLogs.push(l); });
     setHwLogs(allLogs);
+
+    // Merge & synthesize: If an assignment exists in homework logs (where student submissions write to)
+    // but not yet present in raw curriculum assignments, synthesize it so it shows on the correction board!
+    const combinedAssignments = [...raw];
+    allLogs.forEach((log) => {
+      const alreadyExists = combinedAssignments.some(
+        (a) =>
+          a.id === log.id ||
+          (a.studentId === log.studentId &&
+            (a.subjectTitle === log.subject || a.subjectSlug === (log as any).subjectSlug || (log.fromPage && a.fromPage === log.fromPage)))
+      );
+      if (!alreadyExists && (log.fromPage || (log as any).subjectSlug || log.subject || log.status === 'submitted')) {
+        combinedAssignments.push({
+          id: log.id,
+          studentId: log.studentId,
+          studentName: log.studentName || 'طالب',
+          subjectSlug: (log as any).subjectSlug || 'curriculum',
+          subjectTitle: log.subject || 'المنهج',
+          fromPage: log.fromPage || 1,
+          toPage: log.toPage || 1,
+          assignedAt: log.createdAt || log.submittedAt || new Date().toISOString(),
+        });
+      }
+    });
+
+    setAssignments(combinedAssignments);
   }
 
   useEffect(() => {
-    refresh();
-    const handleUpdate = () => refresh();
+    void refresh(true);
+    const handleUpdate = () => void refresh(false);
     if (typeof window !== 'undefined') {
       window.addEventListener('masar:cloud-cache-update', handleUpdate);
       return () => window.removeEventListener('masar:cloud-cache-update', handleUpdate);
@@ -300,7 +331,7 @@ export default function CurriculumHomeworkBoard({ students = [] }: Props) {
               سجل مفصّل لكل واجب مسند من المناهج لكل طالب — تسجيل التسليم، تقييم الدرجة، وإبلاغ الطالب وولي أمره بزرار واحد.
             </p>
           </div>
-          <button onClick={refresh} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer">
+          <button onClick={() => void refresh(true)} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer">
             <RefreshCw size={15} /> تحديث
           </button>
         </div>

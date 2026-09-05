@@ -21,7 +21,7 @@ import {
   getCurriculumPageImageUrl,
   type ParsedCurriculumHw,
 } from '@/lib/curriculumHomeworkHelper';
-import { readCloudCache } from '@/lib/firestoreSync';
+import { readCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
 
 interface Props {
   homework: any;
@@ -44,6 +44,10 @@ export default function ParentHomeworkPagesViewerModal({
   const [showStudentDrawings, setShowStudentDrawings] = useState<boolean>(true);
   const [drawingDataUrl, setDrawingDataUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState<boolean>(false);
+
+  useEffect(() => {
+    void pullCloudDataToLocal(['curriculumDrawings'], true).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (parsed) {

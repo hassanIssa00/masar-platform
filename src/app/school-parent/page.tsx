@@ -19,7 +19,7 @@ import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import { findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { getLocalHomework } from '@/lib/homework';
 import { getClassStudents, getStudentHomeworkLogs } from '@/lib/classDb';
-import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache, writeCloudCache } from '@/lib/firestoreSync';
+import { pullCloudDataToLocal, subscribeToCloudUpdates, readCloudCache, writeCloudCache, syncDocToCloud } from '@/lib/firestoreSync';
 import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
@@ -303,18 +303,64 @@ export default function SchoolParentPage() {
       const parentPhoneSuffix = parentPhone.slice(-9);
       const allReports = getReports();
       const allMessages = getMessages();
+
+      // Ensure any auto-generated assessment or survey report that was never dispatched by Dr. Ismail
+      // is strictly kept as dispatchedToParent: false so the parent sees the true "under review" status
+      let repsRepaired = false;
+      const cleanReps = allReports.map((r) => {
+        const isExamOrSurvey =
+          r.type === 'student-assessment-answers' ||
+          r.type === 'student-assessment-analysis' ||
+          r.type === 'survey-answers' ||
+          r.type === 'clinical-analysis' ||
+          r.type === 'placement' ||
+          r.program?.includes('اختبار') ||
+          r.program?.includes('استبيان') ||
+          r.program?.includes('التقرير التحليلي الشامل');
+
+        if (isExamOrSurvey && r.dispatchedToParent === true && !r.dispatchedByDoctor) {
+          const hasDoctorDispatchMsg = allMessages.some(
+            (m) =>
+              m.from === 'doctor' &&
+              (m.body.includes(r.id) ||
+                (r.program && m.body.includes(r.program)) ||
+                m.body.includes('التقرير الرسمي') ||
+                m.body.includes('تم اعتماد وإرسال تقرير رسمي'))
+          );
+          if (!hasDoctorDispatchMsg) {
+            repsRepaired = true;
+            return { ...r, dispatchedToParent: false, status: 'pending' as const };
+          }
+        }
+        return r;
+      });
+
+      if (repsRepaired) {
+        writeCloudCache('masar_reports_v1', cleanReps);
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('masar_reports_v1', JSON.stringify(cleanReps));
+          }
+        } catch {}
+        cleanReps.forEach((r) => {
+          if (r.dispatchedToParent === false) {
+            void syncDocToCloud('reports', r.id, r);
+          }
+        });
+      }
+
       const matchesStudent = (r: any) =>
         r.studentId === resolvedStudent.id ||
         r.studentId === linkedStudentId ||
         r.parentAccountId === session.id ||
         (r.studentName && resolvedNormName && (r.studentName.includes(resolvedNormName.split(' ')[0]) || resolvedNormName.includes((r.studentName || '').split(' ')[0]))) ||
         (parentPhoneSuffix && r.parentPhone && r.parentPhone.endsWith(parentPhoneSuffix));
-      setStudentReports(
-        allReports
-          .filter((r) => r.dispatchedToParent === true)
-          .filter(matchesStudent)
-          .sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1))
-      );
+
+      const myStudentReports = (repsRepaired ? cleanReps : allReports)
+        .filter(matchesStudent)
+        .sort((a, b) => ((b.date || b.createdAt || '') > (a.date || a.createdAt || '') ? 1 : -1));
+
+      setStudentReports(myStudentReports);
       setStudentMessages(
         allMessages.filter(matchesStudent).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1))
       );
@@ -549,12 +595,12 @@ export default function SchoolParentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" dir="rtl">
-      {/* Header - White Elegant Theme */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 py-3.5">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* Header - Executive Modern Single-Row Layout */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs px-3 sm:px-4 py-2.5">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link href="/" className="shrink-0 transition-transform active:scale-95" title="منصة مسار">
-              <span className="relative inline-block w-11 h-11 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm">
+              <span className="relative inline-flex w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-2xl bg-white border border-slate-200/80 ring-2 ring-emerald-500/10 shadow-sm items-center justify-center">
                 <Image
                   src="/brand/masar-logo.webp"
                   alt="شعار منصة مسار"
@@ -564,50 +610,42 @@ export default function SchoolParentPage() {
                 />
               </span>
             </Link>
-            <div>
-              <h1 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                {displayName}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                <span className="sm:hidden">{parentName ? `أهلاً أ. ${(parentName || '').trim().split(' ')[0]} 👋` : 'أهلاً بك يا ولي الأمر 👋'}</span>
+                <span className="hidden sm:inline">{displayName}</span>
               </h1>
-              <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                فصل د. إسماعيل عيسى — متابعة الطالب
+              <p className="text-[10px] sm:text-xs font-bold text-emerald-700 truncate mt-0.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span>فصل د. إسماعيل عيسى · متابعة الطالب</span>
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Live Notifications Bell */}
             <NotificationBell role="parent" studentId={studentRecord?.id || studentId} studentName={studentRecord?.fullName} />
-
-            {/* Change Password Button */}
-            <button
-              onClick={() => setShowChangePassword(true)}
-              title="تغيير كلمة المرور للحساب"
-              className="w-10 h-10 rounded-2xl bg-teal-50 hover:bg-teal-100 border-2 border-teal-400/60 flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-teal-500/20 text-teal-800"
-            >
-              <KeyRound className="w-5 h-5" />
-            </button>
 
             {/* Student Info Button (User Icon) */}
             <button
               onClick={() => setShowStudentModal(true)}
               title="عرض بطاقة بيانات ابنك الطالب"
-              className="w-10 h-10 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-400/60 flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-500/20"
+              className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
-              <User className="w-5 h-5 text-emerald-700" />
+              <User size={16} />
             </button>
             
             <button
               onClick={handleLogout}
               title="تسجيل الخروج"
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-2xl text-xs font-black transition-all shadow-sm active:scale-95 cursor-pointer"
+              className="w-9 h-9 sm:w-auto sm:px-3 sm:py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
-              <span>خروج</span>
+              <LogOut size={15} />
+              <span className="hidden sm:inline">خروج</span>
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Prominent Floating Bottom Navigation Bar */}
       <div className="fixed bottom-3 left-2 right-2 max-w-3xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
@@ -1165,52 +1203,69 @@ export default function SchoolParentPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-emerald-600" /> التقارير المعتمدة الصادرة من د. إسماعيل عيسى
+                    <FileText className="w-4 h-4 text-emerald-600" /> التقارير الصادرة والمراجعة من د. إسماعيل عيسى
                   </h2>
                   <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    {studentReports.length} تقارير معتمدة
+                    {studentReports.filter(r => r.dispatchedToParent === true).length} تقارير معتمدة
                   </span>
                 </div>
 
                 <div className="grid gap-3.5 sm:grid-cols-2">
-                  {studentReports.map((r) => (
-                    <div
-                      key={r.id}
-                      className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all space-y-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
-                            {r.program || 'التقرير الأكاديمي والتشخيصي الشامل'}
+                  {studentReports.map((r) => {
+                    const isDispatched = r.dispatchedToParent === true;
+                    return (
+                      <div
+                        key={r.id}
+                        className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
+                              {r.program || 'التقرير الأكاديمي والتشخيصي الشامل'}
+                            </span>
+                            <h3 className="font-black text-slate-900 text-sm mt-2">{r.studentName}</h3>
+                            <p className="text-[11px] text-slate-500 font-bold">{r.grade || 'الصف الأول الابتدائي'}</p>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-bold shrink-0 bg-slate-50 px-2 py-1 rounded-lg">
+                            {r.date || new Date(r.createdAt || Date.now()).toLocaleDateString('ar-SA')}
                           </span>
-                          <h3 className="font-black text-slate-900 text-sm mt-2">{r.studentName}</h3>
-                          <p className="text-[11px] text-slate-500 font-bold">{r.grade || 'الصف الأول الابتدائي'}</p>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-bold shrink-0 bg-slate-50 px-2 py-1 rounded-lg">
-                          {r.date || new Date(r.createdAt || Date.now()).toLocaleDateString('ar-SA')}
-                        </span>
-                      </div>
 
-                      {r.summary && (
-                        <p className="text-xs text-slate-700 line-clamp-3 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium whitespace-pre-wrap">
-                          {r.summary}
-                        </p>
-                      )}
+                        {r.summary && (
+                          <p className="text-xs text-slate-700 line-clamp-3 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium whitespace-pre-wrap">
+                            {r.summary}
+                          </p>
+                        )}
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                        <span className="font-bold text-slate-600">
-                          درجة التقييم: <span className="font-black text-emerald-700 text-sm">{r.score ?? 100}%</span>
-                        </span>
-                        <Link
-                          href={`/reports?report=${r.id}&mode=parent`}
-                          className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl transition-all shadow-xs"
-                        >
-                          <ExternalLink size={13} />
-                          <span>فتح التقرير المعتمد 📄</span>
-                        </Link>
+                        <div className="pt-2 border-t border-slate-100">
+                          {isDispatched ? (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-600">
+                                درجة التقييم: <span className="font-black text-emerald-700 text-sm">{r.score ?? 100}%</span>
+                              </span>
+                              <Link
+                                href={`/reports?report=${r.id}&mode=parent`}
+                                className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl transition-all shadow-xs"
+                              >
+                                <ExternalLink size={13} />
+                                <span>فتح التقرير المعتمد 📄</span>
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-amber-300 bg-amber-50/90 p-3 text-center space-y-0.5">
+                              <div className="flex items-center justify-center gap-1 text-xs font-black text-amber-900">
+                                <Clock size={14} className="text-amber-700 animate-pulse shrink-0" />
+                                <span>⏳ قيد التقييم والمراجعة من د. إسماعيل عيسى</span>
+                              </div>
+                              <p className="text-[10px] font-bold text-amber-700">
+                                سيتم إتاحة التقرير هنا فور اعتماده وإرساله من د. إسماعيل عيسى
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
