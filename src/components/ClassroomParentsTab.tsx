@@ -21,6 +21,14 @@ export default function ClassroomParentsTab() {
   const [actionSuccess, setActionSuccess] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
+  const [selectedReports, setSelectedReports] = useState<Record<string, boolean>>({
+    homework: true,
+    notes: true,
+    certs: true,
+    attendance: true,
+  });
+  const toggleReport = (key: string) =>
+    setSelectedReports(prev => ({ ...prev, [key]: !prev[key] }));
 
   const refresh = () => {
     const list = getClassParents();
@@ -126,6 +134,12 @@ export default function ClassroomParentsTab() {
 
   const handleSendFullReport = async (channel: 'platform' | 'whatsapp' | 'both' = 'platform') => {
     if (!selectedParent) return;
+    const anySelected = Object.values(selectedReports).some(Boolean);
+    if (!anySelected) {
+      setActionSuccess('⚠️ يرجى اختيار قسم واحد على الأقل لإرساله!');
+      setTimeout(() => setActionSuccess(''), 3000);
+      return;
+    }
     setReportLoading(true);
     // Find the linked student id from class students list
     const students = getClassStudents();
@@ -139,30 +153,60 @@ export default function ClassroomParentsTab() {
     const wap   = phone.startsWith('966') ? phone : '966' + phone.replace(/^0/, '');
     const day   = new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    // Build selected sections label
+    const sectionLabels: string[] = [];
+    if (selectedReports.homework) sectionLabels.push('الواجبات');
+    if (selectedReports.notes) sectionLabels.push('الملاحظات');
+    if (selectedReports.certs) sectionLabels.push('الشهادات');
+    if (selectedReports.attendance) sectionLabels.push('الحضور');
+
     let m = `*فصل د. إسماعيل عيسى — مسار التعليمي*\n`;
-    m += `📋 *تقرير شامل للطالب: ${selectedParent.studentName}*\n`;
+    m += `📋 *تقرير الطالب: ${selectedParent.studentName}*\n`;
+    m += `📌 *يتضمن:* ${sectionLabels.join(' · ')}\n`;
     m += `📅 *التاريخ:* ${day}\n`;
     m += `👨‍👩‍👦 *ولي الأمر:* ${selectedParent.name}\n\n`;
 
-    if (hwLogs.length) {
-      m += `📚 *الواجبات والمهام (${hwLogs.length}):*\n`;
-      hwLogs.slice(0, 6).forEach(h => {
-        const ic = h.status === 'submitted' ? '✅' : h.status === 'late' ? '⏰' : '❌';
-        m += `${ic} ${h.title} — ${h.subject}${h.grade !== undefined ? ` (${h.grade}/10)` : ''}\n`;
-      });
-      m += '\n';
-    } else { m += `📚 *الواجبات:* لا توجد سجلات واجبات متأخرة\n\n`; }
-
-    if (notes.length) {
-      m += `📝 *ملاحظات المعلم د. إسماعيل (${notes.length}):*\n`;
-      notes.slice(0, 3).forEach(n => { m += `• ${n.text}\n`; });
-      m += '\n';
+    // Section 1: Homework
+    if (selectedReports.homework) {
+      if (hwLogs.length) {
+        m += `📚 *الواجبات والمهام (${hwLogs.length}):*\n`;
+        hwLogs.slice(0, 6).forEach(h => {
+          const ic = h.status === 'submitted' || h.status === 'reviewed' ? '✅' : h.status === 'late' ? '⏰' : '❌';
+          m += `${ic} ${h.title} — ${h.subject}${h.grade !== undefined ? ` (${h.grade}/10)` : ''}\n`;
+        });
+        m += '\n';
+      } else {
+        m += `📚 *الواجبات:* لا توجد سجلات واجبات بعد.\n\n`;
+      }
     }
 
-    if (certs.length) {
-      m += `🏆 *الشهادات والإنجازات المعتمدة:*\n`;
-      certs.forEach(c => { m += `🎖️ ${c.title} — ${c.completionDate}\n`; });
-      m += '\n';
+    // Section 2: Teacher Notes
+    if (selectedReports.notes) {
+      if (notes.length) {
+        m += `📝 *ملاحظات المعلم د. إسماعيل (${notes.length}):*\n`;
+        notes.slice(0, 4).forEach(n => { m += `• ${n.text}\n`; });
+        m += '\n';
+      } else {
+        m += `📝 *ملاحظات المعلم:* لا توجد ملاحظات مسجلة بعد.\n\n`;
+      }
+    }
+
+    // Section 3: Certificates & Achievements
+    if (selectedReports.certs) {
+      if (certs.length) {
+        m += `🏆 *الشهادات والإنجازات المعتمدة (${certs.length}):*\n`;
+        certs.forEach(c => { m += `🎖️ ${c.title} — ${c.completionDate}\n`; });
+        m += '\n';
+      } else {
+        m += `🏆 *الشهادات:* لا توجد شهادات مسجلة بعد.\n\n`;
+      }
+    }
+
+    // Section 4: Attendance summary
+    if (selectedReports.attendance) {
+      m += `📅 *ملخص الحضور:*\n`;
+      m += `• الفصل: الصف الأول الابتدائي — فصل د. إسماعيل عيسى\n`;
+      m += `• يتم متابعة حضور الطالب يومياً وإشعار ولي الأمر عند الغياب.\n\n`;
     }
 
     m += `🌟 نسعد دائماً بمتابعتكم ودعمكم لأبطالنا الصغار!\n_منصة مسار للتعليم الذكي_`;
@@ -190,7 +234,7 @@ export default function ClassroomParentsTab() {
         parentPhone: selectedParent.phone,
         parentAccountId: parentAccId,
         grade: linkedStudent?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
-        program: 'التقرير الشامل لفصل د. إسماعيل عيسى',
+        program: `تقرير (${sectionLabels.join(' + ')}) — فصل د. إسماعيل عيسى`,
         programColor: 'bg-emerald-600',
         date: new Date().toISOString().slice(0, 10),
         score: 100,
@@ -200,16 +244,17 @@ export default function ClassroomParentsTab() {
         recommendations: notes.length ? notes.map(n => n.text) : ['الاستمرار في المتابعة وتشجيع الطالب.'],
         answers: [],
         domains: [
-          { name: 'الواجبات والمهام', score: hwLogs.length ? 95 : 100, note: `${hwLogs.length} واجبات مسجلة` },
-          { name: 'السلوك والمشاركة', score: 98, note: 'تفاعل إيجابي مستمر' },
-          { name: 'الشهادات والإنجازات', score: certs.length ? 100 : 90, note: `${certs.length} شهادات تميز` },
+          ...(selectedReports.homework ? [{ name: 'الواجبات والمهام', score: hwLogs.length ? 95 : 100, note: `${hwLogs.length} واجبات مسجلة` }] : []),
+          ...(selectedReports.notes ? [{ name: 'ملاحظات المعلم', score: 98, note: `${notes.length} ملاحظات` }] : []),
+          ...(selectedReports.certs ? [{ name: 'الشهادات والإنجازات', score: certs.length ? 100 : 90, note: `${certs.length} شهادات` }] : []),
+          ...(selectedReports.attendance ? [{ name: 'الحضور والانتظام', score: 96, note: 'متابعة يومية' }] : []),
         ],
       });
 
       await createNotification({
         type: 'report',
-        title: `📋 تقرير شامل جديد للطالب: ${selectedParent.studentName}`,
-        body: `تم إصدار التقرير الشامل من قِبَل د. إسماعيل عيسى، متاح الآن في حسابك.`,
+        title: `📋 تقرير جديد للطالب: ${selectedParent.studentName} (${sectionLabels.join(' + ')})`,
+        body: `تم إصدار التقرير من قِبَل د. إسماعيل عيسى، متاح الآن في حسابك.`,
         link: `/school-parent?tab=report`,
         targetRole: 'parent',
         studentId: sid,
@@ -218,8 +263,8 @@ export default function ClassroomParentsTab() {
 
       saveActivity({
         type: 'student',
-        title: `📋 إرسال تقرير شامل للطالب ${selectedParent.studentName}`,
-        detail: `تم إرسال التقرير الشامل مباشرة إلى منصة وحساب ولي الأمر.`,
+        title: `📋 إرسال تقرير للطالب ${selectedParent.studentName}`,
+        detail: `الأقسام المرسلة: ${sectionLabels.join('، ')} — مباشرة إلى منصة وحساب ولي الأمر.`,
       });
     }
 
@@ -231,15 +276,16 @@ export default function ClassroomParentsTab() {
     setReportLoading(false);
 
     if (channel === 'platform') {
-      setActionSuccess(`✅ تم إرسال التقرير الشامل بنجاح إلى منصة وحساب ولي الأمر (${selectedParent.name})! 📱`);
+      setActionSuccess(`✅ تم إرسال التقرير (${sectionLabels.join(' + ')}) بنجاح إلى منصة ولي الأمر (${selectedParent.name})! 📱`);
     } else if (channel === 'whatsapp') {
-      setActionSuccess(`✅ تم فتح واتساب لإرسال التقرير الشامل للطالب ${selectedParent.studentName} 💬`);
+      setActionSuccess(`✅ تم فتح واتساب لإرسال تقرير (${sectionLabels.join(' + ')}) للطالب ${selectedParent.studentName} 💬`);
     } else {
-      setActionSuccess(`✅ تم إرسال التقرير الشامل للمنصة وفُتح واتساب بنجاح! 🚀`);
+      setActionSuccess(`✅ تم إرسال التقرير للمنصة وفُتح واتساب بنجاح! 🚀`);
     }
 
     setTimeout(() => setActionSuccess(''), 5000);
   };
+
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -506,22 +552,46 @@ export default function ClassroomParentsTab() {
 
               {/* Full Student Report Sender */}
               <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <FileText size={18} className="text-emerald-600" />
-                    إرسال تقرير شامل للطالب
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
-                      واجبات + ملاحظات + شهادات
-                    </span>
-                  </h3>
-                </div>
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <FileText size={18} className="text-emerald-600" />
+                  إرسال تقرير للطالب
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
+                    اختر الأقسام التي تريد إرسالها
+                  </span>
+                </h3>
 
                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                  يتم توليد تقرير شامل ومتكامل للطالب <strong>{selectedParent.studentName}</strong> من سجلات الفصل وإرساله مباشرة إلى <strong>منصة وحساب ولي الأمر</strong> أو عبر <strong>الواتساب</strong>.
+                  اختر الأقسام التي تريد تضمينها في تقرير الطالب <strong>{selectedParent.studentName}</strong> ثم اضغط إرسال.
                 </p>
 
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {/* Send to Parent Platform */}
+                {/* Report Section Checkboxes */}
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { key: 'homework',   label: '📚 الواجبات والمهام',    active: 'border-emerald-500 bg-emerald-100 text-emerald-900', check: 'border-emerald-600 bg-emerald-600' },
+                    { key: 'notes',      label: '📝 ملاحظات المعلم',      active: 'border-blue-500 bg-blue-100 text-blue-900',         check: 'border-blue-600 bg-blue-600' },
+                    { key: 'certs',      label: '🏆 الشهادات والإنجازات', active: 'border-amber-500 bg-amber-100 text-amber-900',       check: 'border-amber-600 bg-amber-600' },
+                    { key: 'attendance', label: '📅 ملخص الحضور',         active: 'border-purple-500 bg-purple-100 text-purple-900',    check: 'border-purple-600 bg-purple-600' },
+                  ] as const).map(({ key, label, active, check }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleReport(key)}
+                      className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-all cursor-pointer ${
+                        selectedReports[key] ? active : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                        selectedReports[key] ? check : 'border-slate-300 bg-white'
+                      }`}>
+                        {selectedReports[key] && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+                      </span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Send Buttons */}
+                <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-emerald-200">
                   <button
                     onClick={() => handleSendFullReport('platform')}
                     disabled={reportLoading}
@@ -532,7 +602,6 @@ export default function ClassroomParentsTab() {
                     <span>إرسال لمنصة ولي الأمر 📱</span>
                   </button>
 
-                  {/* Send via WhatsApp */}
                   <button
                     onClick={() => handleSendFullReport('whatsapp')}
                     disabled={reportLoading}
@@ -543,7 +612,6 @@ export default function ClassroomParentsTab() {
                     <span>إرسال عبر واتساب 💬</span>
                   </button>
 
-                  {/* Send to Both */}
                   <button
                     onClick={() => handleSendFullReport('both')}
                     disabled={reportLoading}
@@ -555,6 +623,7 @@ export default function ClassroomParentsTab() {
                   </button>
                 </div>
               </div>
+
             </div>
           ) : (
             <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-slate-400 font-bold">
