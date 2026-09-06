@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Users, Send, FileText, Video, Phone, MessageSquare,
   CheckCircle2, Sparkles, User, Search, Copy, ShieldCheck,
-  Mail, ExternalLink, MessageCircle
+  Mail, ExternalLink, MessageCircle, Eye, EyeOff, ChevronDown, ChevronUp,
+  X, Award, BookOpen, Clock, AlertCircle, Printer, Star, Calendar
 } from 'lucide-react';
 import { getClassParents, getClassStudents, ClassParentRecord,
   getStudentHomeworkLogs, getStudentNotes, getStudentCertificateLogs } from '@/lib/classDb';
-import { saveMessage, saveReport, saveActivity } from '@/lib/cloudStore';
+import { saveMessage, saveReport, saveActivity, getReports, ReportRecord } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
 import { formatLastSeen } from '@/lib/presence';
+import PrintableReportModal from '@/components/PrintableReportModal';
 
 export default function ClassroomParentsTab() {
   const [parents, setParents] = useState<ClassParentRecord[]>([]);
@@ -29,6 +31,19 @@ export default function ClassroomParentsTab() {
   });
   const toggleReport = (key: string) =>
     setSelectedReports(prev => ({ ...prev, [key]: !prev[key] }));
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewSectionModal, setPreviewSectionModal] = useState<{
+    title: string;
+    type: 'homework' | 'notes' | 'certs' | 'attendance';
+  } | null>(null);
+  const [selectedDiagnosticReportIds, setSelectedDiagnosticReportIds] = useState<Set<string>>(new Set());
+  const toggleDiagnosticReportId = (id: string) =>
+    setSelectedDiagnosticReportIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const [previewingReport, setPreviewingReport] = useState<ReportRecord | null>(null);
 
   const refresh = () => {
     const list = getClassParents();
@@ -56,6 +71,124 @@ export default function ClassroomParentsTab() {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(''), 2000);
+  };
+
+  useEffect(() => {
+    setSelectedDiagnosticReportIds(new Set());
+    setPreviewSectionModal(null);
+    setShowPreview(false);
+  }, [selectedParentId]);
+
+  // Find all diagnostic student reports (matching Image 2)
+  const diagnosticStudentReports = useMemo(() => {
+    if (!selectedParent) return [];
+    const students = getClassStudents();
+    const linkedStudent = students.find((s) => s.fullName === selectedParent.studentName);
+    const sid = linkedStudent?.id ?? selectedParent.id;
+    const sName = selectedParent.studentName;
+
+    const allReports = getReports();
+    const matched = allReports.filter(
+      (r) =>
+        r.studentId === sid ||
+        r.studentName === sName ||
+        (linkedStudent?.fullName && r.studentName === linkedStudent.fullName) ||
+        (sName && r.studentName && (r.studentName.trim() === sName.trim() || r.studentName.includes(sName) || sName.includes(r.studentName)))
+    );
+
+    const findBest = (matcher: (r: ReportRecord) => boolean) => {
+      const list = matched.filter(matcher);
+      if (list.length === 0) return null;
+      list.sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime());
+      return list[0];
+    };
+
+    const slots = [
+      {
+        key: 'student-assessment-answers',
+        title: 'إجابات اختبار الطالب التفصيلية',
+        report: findBest((r) => r.type === 'student-assessment-answers' || r.program?.includes('إجابات اختبار الطالب')),
+      },
+      {
+        key: 'clinical-analysis',
+        title: 'التقرير التحليلي الشامل',
+        report: findBest((r) => r.type === 'clinical-analysis' || r.program?.includes('التقرير التحليلي الشامل') || r.program?.includes('تحليلي شامل') || r.program?.includes('أكاديمي')),
+      },
+      {
+        key: 'survey-answers',
+        title: 'إجابات الاستبيان التفصيلية',
+        report: findBest((r) => r.type === 'survey-answers' || r.program?.includes('إجابات الاستبيان')),
+      },
+      {
+        key: 'student-assessment-analysis',
+        title: 'تحليل اختبار الطالب المباشر',
+        report: findBest((r) => r.type === 'student-assessment-analysis' || r.type === 'placement' || r.program?.includes('تحليل اختبار الطالب المباشر') || r.program?.includes('تحديد مستوى')),
+      },
+    ];
+
+    const slotReports = slots.map((s) => s.report).filter(Boolean) as ReportRecord[];
+    const slotIds = new Set(slotReports.map((r) => r.id));
+    const otherReports = matched.filter((r) => !slotIds.has(r.id));
+
+    return [...slotReports, ...otherReports];
+  }, [selectedParent]);
+
+  const handleSendDiagnosticReports = async () => {
+    if (!selectedParent || selectedDiagnosticReportIds.size === 0) return;
+    setReportLoading(true);
+
+    const students = getClassStudents();
+    const linkedStudent = students.find((s) => s.fullName === selectedParent.studentName);
+    const sid = linkedStudent?.id ?? selectedParent.id;
+    const parentAccId = (linkedStudent as any)?.parentAccountId || (linkedStudent as any)?.linkedParentId || (selectedParent as any).accountId;
+
+    const chosenReports = diagnosticStudentReports.filter((r) => selectedDiagnosticReportIds.has(r.id));
+
+    for (const report of chosenReports) {
+      saveReport({
+        ...report,
+        status: 'completed',
+        dispatchedToParent: true,
+        dispatchedByDoctor: true,
+        dispatchedAt: new Date().toISOString(),
+      });
+
+      const reportTitle = report.program || 'التقرير التشخيصي';
+      const text = `📋 تم إرسال وتحديد التقرير الرسمي (${reportTitle}) للطالب (${selectedParent.studentName}). يمكنك الاستطلاع عليه وعلى التوصيات في بوابتك الآن.`;
+      saveMessage({
+        studentId: sid,
+        studentName: selectedParent.studentName,
+        parentName: selectedParent.name,
+        parentPhone: selectedParent.phone,
+        parentAccountId: parentAccId,
+        from: 'doctor',
+        to: 'parent',
+        body: text,
+        read: false,
+      });
+
+      await createNotification({
+        type: 'report',
+        title: `📋 تقرير رسمي معتمد: ${reportTitle}`,
+        body: `اعتمد د. إسماعيل عيسى تقرير (${reportTitle}) للبطل ${selectedParent.studentName}. متاح الآن في بوابتك.`,
+        link: `/school-parent?tab=report`,
+        targetRole: 'parent',
+        studentId: sid,
+        studentName: selectedParent.studentName,
+      });
+    }
+
+    saveActivity({
+      type: 'student',
+      title: `📤 إرسال تقارير رسمية للطالب ${selectedParent.studentName}`,
+      detail: `تم إرسال ${chosenReports.length} تقرير/تقارير رسمية إلى بوابة ولي الأمر.`,
+    });
+
+    const titles = chosenReports.map((r) => r.program).join('، ');
+    setActionSuccess(`✅ تم إرسال (${titles}) إلى بوابة ولي أمر ${selectedParent.studentName} بنجاح! 📄`);
+    setSelectedDiagnosticReportIds(new Set());
+    setReportLoading(false);
+    setTimeout(() => setActionSuccess(''), 5000);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -161,7 +294,7 @@ export default function ClassroomParentsTab() {
     if (selectedReports.attendance) sectionLabels.push('الحضور');
 
     let m = `*فصل د. إسماعيل عيسى — مسار التعليمي*\n`;
-    m += `📋 *تقرير الطالب: ${selectedParent.studentName}*\n`;
+    m += `📋 *تقرير متابعة الطالب: ${selectedParent.studentName}*\n`;
     m += `📌 *يتضمن:* ${sectionLabels.join(' · ')}\n`;
     m += `📅 *التاريخ:* ${day}\n`;
     m += `👨‍👩‍👦 *ولي الأمر:* ${selectedParent.name}\n\n`;
@@ -285,6 +418,8 @@ export default function ClassroomParentsTab() {
 
     setTimeout(() => setActionSuccess(''), 5000);
   };
+
+
 
 
   return (
@@ -550,53 +685,164 @@ export default function ClassroomParentsTab() {
                 </form>
               </div>
 
-              {/* Full Student Report Sender */}
+              {/* ════════════════════════════════════════════════════════════════════════════
+                  TOOL 1: CLASS COMPREHENSIVE REPORT SENDER (HOMEWORK, NOTES, CERTS, ATTENDANCE)
+              ════════════════════════════════════════════════════════════════════════════ */}
               <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <FileText size={18} className="text-emerald-600" />
-                  إرسال تقرير للطالب
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
-                    اختر الأقسام التي تريد إرسالها
-                  </span>
-                </h3>
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <FileText size={18} className="text-emerald-600" />
+                    <span>إرسال تقرير المتابعة الصفية للطالب</span>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
+                      اختر الأقسام المطلوب إرسالها
+                    </span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview((p) => !p)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-black transition cursor-pointer self-start sm:self-auto ${
+                      showPreview
+                        ? 'border-emerald-400 bg-emerald-100 text-emerald-900 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span>{showPreview ? 'إخفاء معاينة الرسالة' : 'معاينة نص الرسالة قبل الإرسال 👁️'}</span>
+                  </button>
+                </div>
 
                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                  اختر الأقسام التي تريد تضمينها في تقرير الطالب <strong>{selectedParent.studentName}</strong> ثم اضغط إرسال.
+                  حدد الأقسام التي تود تضمينها في رسالة تقرير الطالب <strong>{selectedParent.studentName}</strong>، ويمكنك الضغط على <strong>زر المعاينة 👁️</strong> بجانب كل قسم لفحص بياناته قبل الإرسال.
                 </p>
 
-                {/* Report Section Checkboxes */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* 4 Core Report Sections with Checkbox + Preview Button */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {([
-                    { key: 'homework',   label: '📚 الواجبات والمهام',    active: 'border-emerald-500 bg-emerald-100 text-emerald-900', check: 'border-emerald-600 bg-emerald-600' },
-                    { key: 'notes',      label: '📝 ملاحظات المعلم',      active: 'border-blue-500 bg-blue-100 text-blue-900',         check: 'border-blue-600 bg-blue-600' },
-                    { key: 'certs',      label: '🏆 الشهادات والإنجازات', active: 'border-amber-500 bg-amber-100 text-amber-900',       check: 'border-amber-600 bg-amber-600' },
-                    { key: 'attendance', label: '📅 ملخص الحضور',         active: 'border-purple-500 bg-purple-100 text-purple-900',    check: 'border-purple-600 bg-purple-600' },
-                  ] as const).map(({ key, label, active, check }) => (
-                    <button
+                    {
+                      key: 'homework',
+                      label: '📚 الواجبات والمهام',
+                      active: 'border-emerald-500 bg-emerald-100 text-emerald-950',
+                      check: 'border-emerald-600 bg-emerald-600',
+                      previewType: 'homework' as const,
+                      previewTitle: `معاينة سجل الواجبات والمهام — ${selectedParent.studentName}`,
+                    },
+                    {
+                      key: 'notes',
+                      label: '📝 ملاحظات المعلم',
+                      active: 'border-blue-500 bg-blue-100 text-blue-950',
+                      check: 'border-blue-600 bg-blue-600',
+                      previewType: 'notes' as const,
+                      previewTitle: `معاينة ملاحظات وتوجيهات المعلم — ${selectedParent.studentName}`,
+                    },
+                    {
+                      key: 'certs',
+                      label: '🏆 الشهادات والإنجازات',
+                      active: 'border-amber-500 bg-amber-100 text-amber-950',
+                      check: 'border-amber-600 bg-amber-600',
+                      previewType: 'certs' as const,
+                      previewTitle: `معاينة الشهادات والأوسمة — ${selectedParent.studentName}`,
+                    },
+                    {
+                      key: 'attendance',
+                      label: '📅 ملخص الحضور',
+                      active: 'border-purple-500 bg-purple-100 text-purple-950',
+                      check: 'border-purple-600 bg-purple-600',
+                      previewType: 'attendance' as const,
+                      previewTitle: `معاينة ملخص الحضور والانتظام — ${selectedParent.studentName}`,
+                    },
+                  ] as const).map(({ key, label, active, check, previewType, previewTitle }) => (
+                    <div
                       key={key}
-                      type="button"
-                      onClick={() => toggleReport(key)}
-                      className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-all cursor-pointer ${
-                        selectedReports[key] ? active : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                      className={`flex items-center justify-between rounded-xl border-2 p-2.5 transition-all ${
+                        selectedReports[key] ? active : 'border-slate-200 bg-white text-slate-500'
                       }`}
                     >
-                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
-                        selectedReports[key] ? check : 'border-slate-300 bg-white'
-                      }`}>
-                        {selectedReports[key] && <span className="text-white text-[10px] font-black leading-none">✓</span>}
-                      </span>
-                      {label}
-                    </button>
+                      {/* Checkbox selector */}
+                      <button
+                        type="button"
+                        onClick={() => toggleReport(key)}
+                        className="flex items-center gap-2 flex-1 text-right font-black text-xs cursor-pointer select-none"
+                      >
+                        <span
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                            selectedReports[key] ? check : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {selectedReports[key] && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+                        </span>
+                        <span>{label}</span>
+                      </button>
+
+                      {/* Preview Button for this specific section */}
+                      <button
+                        type="button"
+                        onClick={() => setPreviewSectionModal({ title: previewTitle, type: previewType })}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300/80 bg-white px-2 py-1 text-[11px] font-black text-slate-700 hover:bg-slate-100 hover:border-slate-400 transition cursor-pointer shrink-0 shadow-2xs"
+                        title="معاينة محتوى هذا القسم بالتفصيل"
+                      >
+                        <Eye size={12} className="text-slate-600" />
+                        <span>معاينة</span>
+                      </button>
+                    </div>
                   ))}
                 </div>
 
-                {/* Send Buttons */}
-                <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-emerald-200">
+                {/* Live Message Text Preview (Expandable) */}
+                {showPreview && (() => {
+                  const students = getClassStudents();
+                  const linked = students.find((s) => s.fullName === selectedParent.studentName);
+                  const sid = linked?.id ?? selectedParent.id;
+                  const hwLogs = sid ? getStudentHomeworkLogs(sid) : [];
+                  const notes = sid ? getStudentNotes(sid) : [];
+                  const certs = sid ? getStudentCertificateLogs(sid) : [];
+                  return (
+                    <div className="rounded-2xl border border-emerald-300 bg-white p-4 space-y-3 shadow-sm animate-fadeIn">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <p className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
+                          <Eye size={14} className="text-emerald-700" />
+                          <span>معاينة نص الرسالة التي ستصل لولي الأمر:</span>
+                        </p>
+                        <span className="text-[10px] font-bold text-slate-400">فصل د. إسماعيل عيسى</span>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 font-mono text-xs text-slate-800 leading-relaxed whitespace-pre-line max-h-60 overflow-y-auto">
+                        {`*فصل د. إسماعيل عيسى — مسار التعليمي*\n📋 *تقرير الطالب: ${selectedParent.studentName}*\n📅 *التاريخ:* ${new Date().toLocaleDateString('ar-SA')}\n👨‍👩‍👦 *ولي الأمر:* ${selectedParent.name}\n\n` +
+                          (selectedReports.homework
+                            ? `📚 *الواجبات والمهام (${hwLogs.length}):*\n` +
+                              (hwLogs.length
+                                ? hwLogs
+                                    .slice(0, 4)
+                                    .map(
+                                      (h) =>
+                                        `• ${h.title} — ${h.subject}${h.grade !== undefined ? ` (${h.grade}/10 ⭐)` : ''}`
+                                    )
+                                    .join('\n') + '\n\n'
+                                : 'لا توجد واجبات متأخرة\n\n')
+                            : '') +
+                          (selectedReports.notes
+                            ? `📝 *ملاحظات المعلم د. إسماعيل (${notes.length}):*\n` +
+                              (notes.length ? notes.slice(0, 3).map((n) => `• ${n.text}`).join('\n') + '\n\n' : 'لا توجد ملاحظات مسجلة\n\n')
+                            : '') +
+                          (selectedReports.certs
+                            ? `🏆 *الشهادات والإنجازات (${certs.length}):*\n` +
+                              (certs.length ? certs.slice(0, 2).map((c) => `🎖️ ${c.title} — ${c.completionDate}`).join('\n') + '\n\n' : 'لا توجد شهادات مسجلة\n\n')
+                            : '') +
+                          (selectedReports.attendance
+                            ? `📅 *ملخص الحضور:*\n• الصف الأول الابتدائي — متابعة يومية منتظمة\n\n`
+                            : '') +
+                          `🌟 نسعد دائماً بمتابعتكم ودعمكم لأبطالنا الصغار!\n_منصة مسار للتعليم الذكي_`}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Send Buttons for Class Report */}
+                <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-emerald-200">
                   <button
                     onClick={() => handleSendFullReport('platform')}
                     disabled={reportLoading}
                     className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-black text-white transition shadow-sm cursor-pointer disabled:opacity-60"
-                    title="إرسال التقرير إلى حساب وبوابة ولي الأمر في المنصة مباشرة"
                   >
                     <Send size={14} />
                     <span>إرسال لمنصة ولي الأمر 📱</span>
@@ -606,7 +852,6 @@ export default function ClassroomParentsTab() {
                     onClick={() => handleSendFullReport('whatsapp')}
                     disabled={reportLoading}
                     className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-black text-white transition shadow-sm cursor-pointer disabled:opacity-60"
-                    title="فتح وإرسال التقرير عبر الواتساب"
                   >
                     <MessageCircle size={15} />
                     <span>إرسال عبر واتساب 💬</span>
@@ -616,13 +861,124 @@ export default function ClassroomParentsTab() {
                     onClick={() => handleSendFullReport('both')}
                     disabled={reportLoading}
                     className="flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2.5 text-xs font-black text-white transition shadow-sm cursor-pointer disabled:opacity-60"
-                    title="إرسال التقرير للمنصة والواتساب معاً في نفس اللحظة"
                   >
                     <Sparkles size={14} className="text-amber-400" />
                     <span>إرسال للمنصة + واتساب معاً 🚀</span>
                   </button>
                 </div>
               </div>
+
+              {/* ════════════════════════════════════════════════════════════════════════════
+                  TOOL 2: OFFICIAL DIAGNOSTIC REPORTS DISPATCH (IMAGE 2 RECREATION)
+              ════════════════════════════════════════════════════════════════════════════ */}
+              <section className="rounded-2xl border border-teal-200 bg-white p-6 shadow-sm space-y-5">
+                <div className="border-b border-teal-100 pb-3">
+                  <h3 className="text-base font-black text-slate-950 flex items-center gap-2">
+                    <Sparkles size={20} className="text-teal-600" />
+                    <span>أدوات إرسال البيانات المباشرة لحساب ولي الأمر</span>
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 mt-1">
+                    أي بيان ترقيه هنا يرسل فوراً إلى حساب ولي الأمر ليظهر له عند تسجيل دخوله في بوابته (`/parent`).
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-teal-800">
+                      <FileText size={20} className="text-teal-600" />
+                      <h4 className="font-black text-sm">حدد التقرير المطلوب إرساله لولي الأمر</h4>
+                    </div>
+                    <span className="text-[11px] font-black text-teal-800 bg-teal-100 px-2.5 py-0.5 rounded-full">
+                      {diagnosticStudentReports.length} متاح
+                    </span>
+                  </div>
+
+                  {diagnosticStudentReports.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-black text-slate-500">
+                        اختر التقارير التي تريد إرسالها لولي الأمر ({diagnosticStudentReports.length} متاح):
+                      </p>
+
+                      <div className="grid gap-2.5">
+                        {diagnosticStudentReports.map((r) => {
+                          const checked = selectedDiagnosticReportIds.has(r.id);
+                          const isDispatched = r.dispatchedToParent === true;
+                          return (
+                            <div
+                              key={r.id}
+                              className={`flex items-center justify-between gap-3 rounded-xl border p-3.5 transition select-none ${
+                                checked
+                                  ? 'border-teal-500 bg-teal-50 shadow-xs'
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
+                              }`}
+                            >
+                              <label className="flex items-start gap-3 flex-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleDiagnosticReportId(r.id)}
+                                  className="mt-1 h-4 w-4 accent-teal-600 shrink-0 cursor-pointer"
+                                />
+                                <div className="min-w-0">
+                                  <p className={`text-xs font-black truncate ${checked ? 'text-teal-950' : 'text-slate-900'}`}>
+                                    📄 {r.program}
+                                  </p>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                                    {r.date} — نتيجة {r.score}%
+                                  </p>
+                                </div>
+                              </label>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isDispatched && (
+                                  <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-black">
+                                    مرسل سابقاً ✓
+                                  </span>
+                                )}
+                                {/* PREVIEW BUTTON */}
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewingReport(r)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-black text-teal-800 hover:bg-teal-100 transition cursor-pointer shadow-2xs"
+                                  title="معاينة التقرير الرسمي بالكامل"
+                                >
+                                  <Eye size={13} />
+                                  <span>معاينة التقرير</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {selectedDiagnosticReportIds.size > 0 && (
+                        <p className="text-xs font-black text-teal-800 bg-teal-50 rounded-xl border border-teal-200 p-2.5 text-center">
+                          ✅ سيتم إرسال {selectedDiagnosticReportIds.size} تقرير/تقارير معتمدة إلى بوابة ولي الأمر
+                        </p>
+                      )}
+
+                      <button
+                        onClick={handleSendDiagnosticReports}
+                        disabled={selectedDiagnosticReportIds.size === 0 || reportLoading}
+                        className="w-full rounded-xl bg-teal-600 hover:bg-teal-700 py-3 text-xs font-black text-white transition disabled:opacity-50 shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Send size={15} />
+                        <span>إرسال التقارير المحددة ({selectedDiagnosticReportIds.size}) إلى بوابة ولي الأمر 📤</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-white border border-slate-200 p-6 text-center space-y-2">
+                      <FileText size={32} className="mx-auto text-slate-300" />
+                      <p className="text-xs font-black text-slate-700">لا توجد تقارير تشخيصية منشأة لهذا الطالب بعد.</p>
+                      <p className="text-[11px] font-bold text-slate-400">
+                        عند إكمال اختبار الطالب أو الاستبيان، ستظهر التقارير الأربعة (إجابات الاختبار، التقرير التحليلي الشامل، إجابات الاستبيان، تحليل الاختبار) هنا تلقائياً للإرسال.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+
 
             </div>
           ) : (
@@ -632,6 +988,174 @@ export default function ClassroomParentsTab() {
           )}
         </div>
       </div>
+
+      {/* Section Detail Preview Modal (Homework, Notes, Certs, Attendance) */}
+      {previewSectionModal && selectedParent && (() => {
+        const students = getClassStudents();
+        const linked = students.find((s) => s.fullName === selectedParent.studentName);
+        const sid = linked?.id ?? selectedParent.id;
+        const hwLogs = sid ? getStudentHomeworkLogs(sid) : [];
+        const notes = sid ? getStudentNotes(sid) : [];
+        const certs = sid ? getStudentCertificateLogs(sid) : [];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fadeIn" dir="rtl">
+            <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Eye size={18} className="text-indigo-600" />
+                  <span>{previewSectionModal.title}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setPreviewSectionModal(null)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {previewSectionModal.type === 'homework' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span>قائمة الواجبات والمهام المسجلة:</span>
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 font-black text-[11px]">{hwLogs.length} واجب</span>
+                  </div>
+                  {hwLogs.length === 0 ? (
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs font-bold text-slate-400">
+                      لا توجد واجبات مسجلة لهذا الطالب حتى الآن.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                      {hwLogs.map((h, i) => (
+                        <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-900">{h.title}</span>
+                            <span className="rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-black px-2.5 py-0.5">{h.subject}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 flex-wrap">
+                            <span>موعد التسليم: {h.dueDate}</span>
+                            <span className={h.status === 'reviewed' ? 'text-emerald-700 font-black' : h.status === 'submitted' ? 'text-blue-700' : 'text-slate-600'}>
+                              الحالة: {h.status === 'reviewed' ? 'تم التصحيح ✅' : h.status === 'submitted' ? 'تم التسليم ⏳' : 'مكلف 📋'}
+                            </span>
+                            {h.grade !== undefined && (
+                              <span className="font-black text-amber-600 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200">
+                                الدرجة: {h.grade}/10 ⭐
+                              </span>
+                            )}
+                          </div>
+                          {h.teacherFeedback && (
+                            <p className="text-[11px] font-bold text-emerald-900 bg-emerald-50/90 rounded-xl p-2 border border-emerald-200">
+                              💬 ملاحظة الدكتور: {h.teacherFeedback}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {previewSectionModal.type === 'notes' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span>ملاحظات المعلم وتوجيهاته الدورية:</span>
+                    <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 font-black text-[11px]">{notes.length} ملاحظة</span>
+                  </div>
+                  {notes.length === 0 ? (
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs font-bold text-slate-400">
+                      لا توجد ملاحظات مسجلة لهذا الطالب حتى الآن.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                      {notes.map((n, i) => (
+                        <div key={i} className="rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 space-y-1">
+                          <p className="text-xs font-black text-blue-950 leading-relaxed">• {n.text}</p>
+                          <p className="text-[10px] font-bold text-blue-600">{n.createdAt ? new Date(n.createdAt).toLocaleDateString('ar-SA') : 'توجيه صفي'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {previewSectionModal.type === 'certs' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span>الشهادات والأوسمة التقديرية المعتمدة:</span>
+                    <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 font-black text-[11px]">{certs.length} شهادة</span>
+                  </div>
+                  {certs.length === 0 ? (
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center text-xs font-bold text-slate-400">
+                      لا توجد شهادات مسجلة لهذا الطالب حتى الآن.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                      {certs.map((c, i) => (
+                        <div key={i} className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                              <Award size={15} className="text-amber-600" />
+                              <span>{c.title}</span>
+                            </p>
+                            <p className="text-[10px] font-bold text-amber-700">تاريخ الإنجاز: {c.completionDate}</p>
+                          </div>
+                          <span className="rounded-full bg-amber-200 text-amber-900 px-2.5 py-0.5 text-[10px] font-black">
+                            معتمدة 🏆
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {previewSectionModal.type === 'attendance' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-slate-500">ملخص انتظام وحضور الطالب:</p>
+                  <div className="rounded-2xl border border-purple-200 bg-purple-50/70 p-4 space-y-2.5 text-xs font-bold text-purple-950">
+                    <p className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-purple-600 shrink-0" />
+                      <span>الفصل: الصف الأول الابتدائي — فصل د. إسماعيل عيسى</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
+                      <span>المتابعة اليومية: متابعة حضور وانتظام مستمرة مع كل حصة دراسية.</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-blue-600 shrink-0" />
+                      <span>التنبيهات: إشعار فوري لولي الأمر عبر المنصة والواتساب عند أي غياب أو ملاحظة سلوكية.</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPreviewSectionModal(null)}
+                  className="rounded-xl bg-slate-900 px-5 py-2 text-xs font-black text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  إغلاق المعاينة
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Official Diagnostic Report Preview Modal (PrintableReportModal) */}
+      {previewingReport && (() => {
+        const students = getClassStudents();
+        const linked = selectedParent ? students.find((s) => s.fullName === selectedParent.studentName) : null;
+        return (
+          <PrintableReportModal
+            report={previewingReport}
+            student={linked as any}
+            onClose={() => setPreviewingReport(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
