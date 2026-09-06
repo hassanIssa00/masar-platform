@@ -1,6 +1,7 @@
 'use client';
 
 import { clearCloudCache, clearSnapshotBackoff, deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
+import { transliterateArabicToEnglish, resolveStudentBirthDate } from './transliteration';
 
 export type UserRole = 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
 
@@ -330,7 +331,24 @@ export function clearSession() {
 }
 
 export function getStudents() {
-  return readList<StudentRecord>(KEYS.students);
+  const list = readList<StudentRecord>(KEYS.students);
+  let changed = false;
+  const enriched = list.map((s) => {
+    let item = s;
+    if (!item.fullNameEn && item.fullName) {
+      item = { ...item, fullNameEn: transliterateArabicToEnglish(item.fullName) };
+      changed = true;
+    }
+    if (!item.dateOfBirth) {
+      item = { ...item, dateOfBirth: resolveStudentBirthDate(item) };
+      changed = true;
+    }
+    return item;
+  });
+  if (changed && typeof window !== 'undefined') {
+    writeList(KEYS.students, enriched);
+  }
+  return enriched;
 }
 
 export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
@@ -403,8 +421,9 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     student.fullName || 'طالب جديد';
 
   const photoUrl = student.photoUrl || existing?.photoUrl || duplicate?.photoUrl || undefined;
-  const dateOfBirth = student.dateOfBirth || existing?.dateOfBirth || duplicate?.dateOfBirth || undefined;
+  const dateOfBirth = student.dateOfBirth || existing?.dateOfBirth || duplicate?.dateOfBirth || resolveStudentBirthDate({ grade: student.grade || existing?.grade, dateOfBirth: undefined });
   const nationalId = student.nationalId || existing?.nationalId || duplicate?.nationalId || undefined;
+  const fullNameEn = student.fullNameEn || existing?.fullNameEn || duplicate?.fullNameEn || transliterateArabicToEnglish(resolvedFullName);
   const parentName = (!isPlaceholder(student.parentName) && student.parentName) ||
     (!isPlaceholder(existing?.parentName) && existing?.parentName) ||
     (!isPlaceholder(duplicate?.parentName) && duplicate?.parentName) ||
@@ -422,6 +441,7 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
     ...(existing || {}),
     ...student,
     fullName: resolvedFullName,
+    fullNameEn,
     photoUrl,
     dateOfBirth,
     nationalId,
@@ -464,7 +484,7 @@ export function saveStudent(student: Omit<StudentRecord, 'id' | 'createdAt' | 'u
   saveActivity({
     type: 'student',
     refId: next.id,
-    title: 'تحديث ملف طالب',
+    title: 'تسجيل طالب جديد',
     detail: `${next.fullName} - ${next.grade}`,
   });
   return next;
@@ -485,9 +505,16 @@ export function updateStudent(studentId: string, updates: Partial<Omit<StudentRe
     cleanUpdates.fullName = existing.fullName;
   }
 
+  const resolvedFullName = cleanUpdates.fullName || existing.fullName;
+  const resolvedFullNameEn = cleanUpdates.fullNameEn || existing.fullNameEn || transliterateArabicToEnglish(resolvedFullName);
+  const resolvedDateOfBirth = cleanUpdates.dateOfBirth || existing.dateOfBirth || resolveStudentBirthDate({ grade: cleanUpdates.grade || existing.grade, dateOfBirth: undefined });
+
   const next: StudentRecord = {
     ...existing,
     ...cleanUpdates,
+    fullName: resolvedFullName,
+    fullNameEn: resolvedFullNameEn,
+    dateOfBirth: resolvedDateOfBirth,
     media: {
       ...(existing.media || {}),
       ...(cleanUpdates.media || {}),

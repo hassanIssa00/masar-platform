@@ -13,6 +13,7 @@ import {
   getClassStudents, saveClassStudent, deleteClassStudent,
   cleanClassStudentName, updateStudentPhotoAcrossStores, ClassStudentRecord
 } from '@/lib/classDb';
+import { transliterateArabicToEnglish, resolveStudentBirthDate } from '@/lib/transliteration';
 import CertificateModal from './CertificateModal';
 import StudentProfileCard from './StudentProfileCard';
 import StudentProfileModal from './StudentProfileModal';
@@ -36,10 +37,12 @@ export default function ClassroomStudentsTab() {
   // Edit Student Modal
   const [editingStudent, setEditingStudent] = useState<ClassStudentRecord | null>(null);
   const [editFullName, setEditFullName] = useState('');
+  const [editFullNameEn, setEditFullNameEn] = useState('');
   const [editGrade, setEditGrade] = useState('');
   const [editParentName, setEditParentName] = useState('');
   const [editParentPhone, setEditParentPhone] = useState('');
   const [editNationalId, setEditNationalId] = useState('');
+  const [editDateOfBirth, setEditDateOfBirth] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editPhotoUrl, setEditPhotoUrl] = useState('');
 
@@ -170,10 +173,12 @@ export default function ClassroomStudentsTab() {
   const openEditModal = (s: ClassStudentRecord) => {
     setEditingStudent(s);
     setEditFullName(cleanClassStudentName(s.fullName));
+    setEditFullNameEn(s.fullNameEn || transliterateArabicToEnglish(s.fullName));
     setEditGrade(s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى');
     setEditParentName(s.parentName || '');
     setEditParentPhone(s.parentPhone || '');
     setEditNationalId(s.nationalId || '');
+    setEditDateOfBirth(s.dateOfBirth || resolveStudentBirthDate(s));
     setEditNotes(s.notes || '');
     setEditPhotoUrl(s.photoUrl || '');
   };
@@ -181,18 +186,24 @@ export default function ClassroomStudentsTab() {
   const handleUpdateStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent || !editFullName.trim()) return;
+    const finalFullName = editFullName.trim();
+    const finalFullNameEn = editFullNameEn.trim() || transliterateArabicToEnglish(finalFullName);
+    const finalDateOfBirth = editDateOfBirth.trim() || resolveStudentBirthDate({ grade: editGrade });
+
     saveClassStudent({
       ...editingStudent,
-      fullName: editFullName.trim(),
+      fullName: finalFullName,
+      fullNameEn: finalFullNameEn,
       grade: editGrade.trim(),
       parentName: editParentName.trim(),
       parentPhone: editParentPhone.trim(),
       nationalId: editNationalId.trim(),
+      dateOfBirth: finalDateOfBirth,
       notes: editNotes.trim(),
       photoUrl: editPhotoUrl.trim(),
     });
     if (editPhotoUrl.trim()) {
-      updateStudentPhotoAcrossStores(editingStudent.id, editPhotoUrl.trim(), editFullName.trim());
+      updateStudentPhotoAcrossStores(editingStudent.id, editPhotoUrl.trim(), finalFullName);
     }
     refresh();
     setEditingStudent(null);
@@ -378,7 +389,7 @@ export default function ClassroomStudentsTab() {
                     onClick={() =>
                       setShowCertData({
                         studentName: selectedStudent.fullName,
-                        studentNameEn: selectedStudent.fullNameEn,
+                        studentNameEn: selectedStudent.fullNameEn || transliterateArabicToEnglish(selectedStudent.fullName),
                         programTitle: 'برنامج التأهيل الشامل وصعوبات التعلم',
                         completionDate: new Date().toLocaleDateString('ar-SA'),
                         score: 92,
@@ -483,11 +494,11 @@ export default function ClassroomStudentsTab() {
               <div className="grid gap-4 sm:grid-cols-3 text-xs">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <span className="text-slate-400 font-bold block mb-1">الرقم القومي / الهوية:</span>
-                  <span className="font-mono font-black text-slate-800">{selectedStudent.nationalId || '1098234561'}</span>
+                  <span className="font-mono font-black text-slate-800">{selectedStudent.nationalId || 'غير مسجل'}</span>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <span className="text-slate-400 font-bold block mb-1">تاريخ الميلاد:</span>
-                  <span className="font-mono font-black text-slate-800">{selectedStudent.dateOfBirth || '2019-04-12'}</span>
+                  <span className="font-mono font-black text-slate-800">{selectedStudent.dateOfBirth || resolveStudentBirthDate(selectedStudent)}</span>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <span className="text-slate-400 font-bold block mb-1">تاريخ التسجيل بالفصل:</span>
@@ -665,6 +676,10 @@ export default function ClassroomStudentsTab() {
         <StudentProfileModal
           student={profileStudent}
           onClose={() => setProfileStudent(null)}
+          onStudentUpdated={(updated) => {
+            setProfileStudent(updated);
+            refresh();
+          }}
         />
       )}
 
@@ -680,7 +695,7 @@ export default function ClassroomStudentsTab() {
               <button
                 type="button"
                 onClick={() => setEditingStudent(null)}
-                className="rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
               >
                 ✕
               </button>
@@ -719,7 +734,7 @@ export default function ClassroomStudentsTab() {
                       <button
                         type="button"
                         onClick={() => setEditPhotoUrl('')}
-                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                        className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
                       >
                         إزالة الصورة
                       </button>
@@ -728,18 +743,51 @@ export default function ClassroomStudentsTab() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-slate-700 mb-1">
-                  اسم الطالب الكامل <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editFullName}
-                  onChange={(e) => setEditFullName(e.target.value)}
-                  placeholder="مثال: احمد ابراهيم زويل"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
-                />
+              {/* Full Name & English Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1">
+                    اسم الطالب بالعربية <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFullName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditFullName(val);
+                      if (!editFullNameEn || editFullNameEn === transliterateArabicToEnglish(editFullName)) {
+                        setEditFullNameEn(transliterateArabicToEnglish(val));
+                      }
+                    }}
+                    placeholder="مثال: أحمد إبراهيم علي"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-black text-slate-700">
+                      الاسم بالإنجليزية
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditFullNameEn(transliterateArabicToEnglish(editFullName))}
+                      className="text-[10px] font-black text-teal-700 hover:text-teal-900 flex items-center gap-0.5 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200 cursor-pointer"
+                      title="ترجمة الاسم تلقائياً"
+                    >
+                      🪄 ترجمة ذكية
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={editFullNameEn}
+                    onChange={(e) => setEditFullNameEn(e.target.value)}
+                    placeholder="Ahmed Ibrahim Ali"
+                    dir="ltr"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -751,7 +799,7 @@ export default function ClassroomStudentsTab() {
                     type="text"
                     value={editParentName}
                     onChange={(e) => setEditParentName(e.target.value)}
-                    placeholder="مثال: ابراهيم زويل"
+                    placeholder="مثال: إبراهيم علي"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
                   />
                 </div>
@@ -770,7 +818,7 @@ export default function ClassroomStudentsTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-black text-slate-700 mb-1">
                     الصف / الفصل الدراسي
@@ -784,15 +832,36 @@ export default function ClassroomStudentsTab() {
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-700 mb-1">
-                    رقم الهوية الوطنية (اختياري)
+                    رقم الهوية الوطنية / الإقامة
                   </label>
                   <input
                     type="text"
                     value={editNationalId}
                     onChange={(e) => setEditNationalId(e.target.value)}
                     placeholder="10xxxxxxxx"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none font-mono"
                     dir="ltr"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-black text-slate-700">
+                      تاريخ الميلاد
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditDateOfBirth(resolveStudentBirthDate({ grade: editGrade }))}
+                      className="text-[10px] font-black text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                      title="حساب حسب الصف"
+                    >
+                      تلقائي
+                    </button>
+                  </div>
+                  <input
+                    type="date"
+                    value={editDateOfBirth}
+                    onChange={(e) => setEditDateOfBirth(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none font-mono"
                   />
                 </div>
               </div>

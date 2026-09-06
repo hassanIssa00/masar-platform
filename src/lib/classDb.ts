@@ -4,6 +4,7 @@ import { syncDocToCloud, deleteDocFromCloud, readCloudCache, writeCloudCache } f
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 import { normalizeArabicText, isStudentNameMatch } from './nameMatching';
+import { transliterateArabicToEnglish, resolveStudentBirthDate } from './transliteration';
 
 export type ClassStudentRecord = {
   id: string;
@@ -453,10 +454,10 @@ export function getClassStudents(): ClassStudentRecord[] {
         const clsRecord: ClassStudentRecord = {
           id: ms.id || `cls-${Date.now()}`,
           fullName: ms.fullName,
-          fullNameEn: ms.fullNameEn || '',
+          fullNameEn: ms.fullNameEn || transliterateArabicToEnglish(ms.fullName),
           grade: ms.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
           nationalId: ms.nationalId || '',
-          dateOfBirth: ms.dateOfBirth || '',
+          dateOfBirth: ms.dateOfBirth || resolveStudentBirthDate(ms),
           parentName: ms.parentName || `ولي أمر ${ms.fullName}`,
           parentPhone: ms.parentPhone || '',
           photoUrl: ms.photoUrl || '',
@@ -472,14 +473,52 @@ export function getClassStudents(): ClassStudentRecord[] {
         existingNames.add(normName);
         hasNew = true;
         void syncDocToCloud(CLOUD_COLLECTION, clsRecord.id, clsRecord);
-      } else if (isClassStudent && normName && ms.photoUrl) {
-        // Also update photoUrl on EXISTING class students if the main store has a photo they're missing
+      } else if (isClassStudent && normName) {
         const existingIdx = activeClassList.findIndex((s) => s.fullName.trim().toLowerCase() === normName || s.id === ms.id);
-        if (existingIdx >= 0 && !activeClassList[existingIdx].photoUrl) {
-          activeClassList[existingIdx] = { ...activeClassList[existingIdx], photoUrl: ms.photoUrl, updatedAt: new Date().toISOString() };
-          hasUpdated = true;
-          void syncDocToCloud(CLOUD_COLLECTION, activeClassList[existingIdx].id, activeClassList[existingIdx]);
+        if (existingIdx >= 0) {
+          let rec = activeClassList[existingIdx];
+          let changed = false;
+          if (!rec.fullNameEn) {
+            rec = { ...rec, fullNameEn: ms.fullNameEn || transliterateArabicToEnglish(rec.fullName) };
+            changed = true;
+          }
+          if (!rec.dateOfBirth) {
+            rec = { ...rec, dateOfBirth: ms.dateOfBirth || resolveStudentBirthDate(rec) };
+            changed = true;
+          }
+          if (!rec.nationalId && ms.nationalId) {
+            rec = { ...rec, nationalId: ms.nationalId };
+            changed = true;
+          }
+          if (!rec.photoUrl && ms.photoUrl) {
+            rec = { ...rec, photoUrl: ms.photoUrl };
+            changed = true;
+          }
+          if (changed) {
+            activeClassList[existingIdx] = { ...rec, updatedAt: new Date().toISOString() };
+            hasUpdated = true;
+            void syncDocToCloud(CLOUD_COLLECTION, rec.id, activeClassList[existingIdx]);
+          }
         }
+      }
+    });
+
+    // Also ensure all current class students have fullNameEn and dateOfBirth filled
+    activeClassList.forEach((s, idx) => {
+      let changed = false;
+      let updated = { ...s };
+      if (!updated.fullNameEn) {
+        updated.fullNameEn = transliterateArabicToEnglish(updated.fullName);
+        changed = true;
+      }
+      if (!updated.dateOfBirth) {
+        updated.dateOfBirth = resolveStudentBirthDate(updated);
+        changed = true;
+      }
+      if (changed) {
+        activeClassList[idx] = updated;
+        hasUpdated = true;
+        void syncDocToCloud(CLOUD_COLLECTION, updated.id, updated);
       }
     });
 
@@ -531,21 +570,25 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
   let target: ClassStudentRecord;
 
   if (existingIndex >= 0) {
+    const finalFullName = cleanName || list[existingIndex].fullName;
     target = {
       ...list[existingIndex],
       ...student,
-      fullName: cleanName || list[existingIndex].fullName,
+      fullName: finalFullName,
+      fullNameEn: student.fullNameEn || list[existingIndex].fullNameEn || transliterateArabicToEnglish(finalFullName),
+      dateOfBirth: student.dateOfBirth || list[existingIndex].dateOfBirth || resolveStudentBirthDate(list[existingIndex]),
       updatedAt: now,
     };
     list[existingIndex] = target;
   } else {
+    const finalFullName = cleanName || student.fullName;
     target = {
       id: student.id || `cls-std-${Date.now()}`,
-      fullName: cleanName || student.fullName,
-      fullNameEn: student.fullNameEn || '',
+      fullName: finalFullName,
+      fullNameEn: student.fullNameEn || transliterateArabicToEnglish(finalFullName),
       grade: student.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
       nationalId: student.nationalId || '',
-      dateOfBirth: student.dateOfBirth || '',
+      dateOfBirth: student.dateOfBirth || resolveStudentBirthDate(student),
       parentName: student.parentName || '',
       parentPhone: student.parentPhone || '',
       photoUrl: student.photoUrl || '',
