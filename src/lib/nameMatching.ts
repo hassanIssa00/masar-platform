@@ -37,35 +37,45 @@ export function normalizeArabicText(text?: string | null): string {
  * - Word overlap >= 2 words (handles partial name registration)
  */
 export function isStudentNameMatch(name1?: string | null, name2?: string | null): boolean {
-  const n1 = normalizeArabicText(name1);
-  const n2 = normalizeArabicText(name2);
+  let n1 = normalizeArabicText(name1);
+  let n2 = normalizeArabicText(name2);
   if (!n1 || !n2 || n1.length < 2 || n2.length < 2) return false;
 
-  // Exact match
-  if (n1 === n2) return true;
+  // Strip common structural prefixes like "فصل " or "طالب "
+  n1 = n1.replace(/^(فصل|طالب|الطالب)\s*[:\-–\/]?\s*/gi, '').trim();
+  n2 = n2.replace(/^(فصل|طالب|الطالب)\s*[:\-–\/]?\s*/gi, '').trim();
 
-  // Substring containment
-  if (n1.includes(n2) || n2.includes(n1)) return true;
+  // 1. Exact match after cleaning
+  if (n1 === n2) return true;
 
   const words1 = n1.split(' ').filter(Boolean);
   const words2 = n2.split(' ').filter(Boolean);
 
-  // First two words match (student first name + father name)
-  if (words1.length >= 2 && words2.length >= 2 && words1[0] === words2[0] && words1[1] === words2[1]) {
+  // If either name has only 1 single word (e.g. just "أحمد"), NEVER match unless exactly equal
+  if (words1.length < 2 || words2.length < 2) {
+    return n1 === n2;
+  }
+
+  // 2. First two words match (student first name + father's name)
+  // e.g. "أحمد إبراهيم زويل" and "أحمد إبراهيم" -> true
+  // but "أحمد إبراهيم زويل" and "أحمد ربيع" -> false (different fathers)
+  if (words1[0] === words2[0] && words1[1] === words2[1]) {
     return true;
   }
 
-  // Word overlap: if 2+ words match between the two names, consider them the same person
-  const set1 = new Set(words1);
-  let overlapCount = 0;
-  for (const w of words2) {
-    if (set1.has(w)) overlapCount++;
+  // 3. Substring containment ONLY if the shorter string has 2+ words (first + second name)
+  if (words1.length >= 2 && words2.length >= 2) {
+    if (n1.includes(n2) || n2.includes(n1)) return true;
   }
-  if (overlapCount >= 2) return true;
 
-  // First name match + any other word overlap
-  if (words1.length >= 1 && words2.length >= 1 && words1[0] === words2[0] && overlapCount >= 1) {
-    return true;
+  // 4. Word overlap: MUST match first name AND have at least 2 words overlapping
+  if (words1[0] === words2[0]) {
+    const set1 = new Set(words1);
+    let overlapCount = 0;
+    for (const w of words2) {
+      if (set1.has(w)) overlapCount++;
+    }
+    if (overlapCount >= 2) return true;
   }
 
   return false;

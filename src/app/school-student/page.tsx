@@ -320,9 +320,15 @@ export default function StudentDashboard() {
       const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
       const studentCurrAssignments = currAssignments.filter((a: any) => isMatch(a.studentId, a.studentName, a.studentAccountId));
       currAsHomework = studentCurrAssignments.map((a: any) => {
-        const matchLog = logs.find(l => (l.studentId === a.studentId || (l as any).studentAccountId === a.studentAccountId) && (l.subject === a.subjectTitle || (l as any).subjectSlug === a.subjectSlug));
+        const matchLog = logs.find(l =>
+          ((l.studentId && (l.studentId === id || l.studentId === a.studentId)) ||
+           ((l as any).studentAccountId && ((l as any).studentAccountId === id || (l as any).studentAccountId === a.studentAccountId))) &&
+          (l.subject === a.subjectTitle || (l as any).subjectSlug === a.subjectSlug)
+        );
         const isReviewed = matchLog?.status === 'reviewed' || (matchLog?.grade !== undefined);
         const isSubmitted = matchLog?.status === 'submitted';
+        // Only mark submitted if this student specifically has a submission or assignment was directly submitted by them
+        const isDirectAssignmentSubmitted = a.status === 'submitted' && (a.studentId === id || a.studentAccountId === id);
         return {
           id: a.id || `assign_${a.subjectSlug}_${a.studentId}`,
           studentId: a.studentId || id,
@@ -330,7 +336,7 @@ export default function StudentDashboard() {
           title: `واجب ${a.subjectTitle || 'المنهج'} (ص ${a.fromPage} - ${a.toPage})`,
           description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${a.fromPage}) إلى صفحة (${a.toPage}).`,
           dueDate: a.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-          status: (isReviewed ? 'reviewed' : isSubmitted ? 'submitted' : (a.status === 'submitted' ? 'submitted' : 'assigned')) as 'assigned' | 'submitted' | 'reviewed',
+          status: (isReviewed ? 'reviewed' : isSubmitted ? 'submitted' : (isDirectAssignmentSubmitted ? 'submitted' : 'assigned')) as 'assigned' | 'submitted' | 'reviewed',
           createdAt: a.assignedAt || new Date().toISOString(),
           subjectSlug: a.subjectSlug,
           subjectTitle: a.subjectTitle,
@@ -431,6 +437,7 @@ export default function StudentDashboard() {
       {studentRecord && (
         <StudentProfileCard
           student={{
+            id: studentRecord.id || studentId,
             fullName: studentRecord.fullName || studentName,
             grade: studentRecord.grade,
             photoUrl: studentRecord.photoUrl || studentPhoto,
@@ -449,6 +456,13 @@ export default function StudentDashboard() {
           greeting="مرحباً بك يا بطل 👋"
           variant="student"
           showParent={true}
+          allowPhotoUpload={true}
+          onPhotoUpdated={(newPhoto) => {
+            setStudentPhoto(newPhoto);
+            if (studentRecord) {
+              setStudentRecord({ ...studentRecord, photoUrl: newPhoto });
+            }
+          }}
         />
       )}
 

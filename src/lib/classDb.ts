@@ -148,9 +148,23 @@ export function deleteStudentNote(noteId: string) {
 export function getStudentHomeworkLogs(studentId: string, studentName?: string): StudentHomeworkLog[] {
   const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => {
-    if (studentId && (h.studentId === studentId || h.studentId === 'all' || h.studentAccountId === studentId || h.parentAccountId === studentId)) return true;
-    if (studentName && h.studentName && isStudentNameMatch(studentName, h.studentName)) return true;
-    if (normSearchName && h.studentName && normalizeArabicText(h.studentName) === normSearchName) return true;
+    if (!h) return false;
+    // Strictly forbid 'all' for individual student homework logs
+    if (h.studentId === 'all' || h.studentName === 'جميع طلاب الفصل') return false;
+
+    // Direct ID match
+    if (studentId) {
+      if (h.studentId === studentId || h.studentAccountId === studentId || h.parentAccountId === studentId) return true;
+      // If this log explicitly belongs to a DIFFERENT student ID, do NOT leak it via loose name match!
+      if (h.studentId && h.studentId !== studentId && !h.studentId.startsWith('hw-log')) return false;
+    }
+
+    // Name match fallback only if studentId is not specified or log had no studentId
+    if (normSearchName && h.studentName) {
+      const normHwName = normalizeArabicText(h.studentName);
+      if (normHwName === normSearchName) return true;
+      if (isStudentNameMatch(studentName, h.studentName)) return true;
+    }
     return false;
   });
 }
@@ -223,9 +237,15 @@ export function getStudentCertificateLogs(studentId: string, studentName?: strin
   const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return readList<StudentCertificateLog>(CERT_LOG_KEY).filter(c => {
     if (!c || c.studentId === 'all' || c.studentName === 'جميع طلاب الفصل') return false;
-    if (studentId && (c.studentId === studentId || c.studentAccountId === studentId)) return true;
-    if (studentName && c.studentName && isStudentNameMatch(studentName, c.studentName)) return true;
-    if (normSearchName && c.studentName && normalizeArabicText(c.studentName) === normSearchName) return true;
+    if (studentId) {
+      if (c.studentId === studentId || c.studentAccountId === studentId) return true;
+      if (c.studentId && c.studentId !== studentId && !c.studentId.startsWith('cert-log')) return false;
+    }
+    if (normSearchName && c.studentName) {
+      const normCertName = normalizeArabicText(c.studentName);
+      if (normCertName === normSearchName) return true;
+      if (isStudentNameMatch(studentName, c.studentName)) return true;
+    }
     return false;
   });
 }
@@ -639,14 +659,163 @@ export function getStudentBadges(studentId: string, studentName?: string): Stude
   const normSearchName = studentName ? normalizeArabicText(studentName) : '';
   return all.filter((b) => {
     if (!b || b.studentId === 'all' || b.studentName === 'جميع طلاب الفصل') return false;
-    if (studentId && (b.studentId === studentId || b.studentAccountId === studentId)) return true;
-    if (studentName && b.studentName && isStudentNameMatch(studentName, b.studentName)) return true;
-    if (normSearchName && b.studentName && normalizeArabicText(b.studentName) === normSearchName) return true;
+    if (studentId) {
+      if (b.studentId === studentId || b.studentAccountId === studentId) return true;
+      if (b.studentId && b.studentId !== studentId) return false;
+    }
+    if (normSearchName && b.studentName) {
+      const normBadgeName = normalizeArabicText(b.studentName);
+      if (normBadgeName === normSearchName) return true;
+      if (isStudentNameMatch(studentName, b.studentName)) return true;
+    }
     return false;
   });
 }
 
 export function getAllBadges(): StudentBadgeRecord[] {
   return readCloudCache<StudentBadgeRecord>(BADGES_KEY);
+}
+
+/**
+ * Centrally updates and synchronizes a student's photo across all data stores:
+ * - class_students (Dr. Ismail's classroom roster)
+ * - students (Masar platform student list)
+ * - accounts (linked student account)
+ * - local session (if matching current logged in student)
+ * - cloud Firestore collections
+ */
+export function updateStudentPhotoAcrossStores(
+  studentId: string,
+  photoUrl: string,
+  studentName?: string
+): { success: boolean; photoUrl: string } {
+  if (!studentId && !studentName) return { success: false, photoUrl: '' };
+
+  const normTargetName = studentName ? normalizeArabicText(studentName) : '';
+
+  // 1. Update in class_students
+  try {
+    const classStudents = getClassStudents();
+    let classUpdated = false;
+    const updatedClassList = classStudents.map((cs) => {
+      const match =
+        (studentId && cs.id === studentId) ||
+        (studentId && (cs as any).studentAccountId === studentId) ||
+        (normTargetName && cs.fullName && normalizeArabicText(cs.fullName) === normTargetName);
+      if (match) {
+        classUpdated = true;
+        return { ...cs, photoUrl, updatedAt: new Date().toISOString() };
+      }
+      return cs;
+    });
+    if (classUpdated) {
+      writeList(CLASS_STUDENTS_KEY, updatedClassList);
+      const matched = updatedClassList.find(
+        (c) =>
+          (studentId && c.id === studentId) ||
+          (normTargetName && c.fullName && normalizeArabicText(c.fullName) === normTargetName)
+      );
+      if (matched) {
+        void syncDocToCloud(CLOUD_COLLECTION, matched.id, matched);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating photo in class_students:', err);
+  }
+
+  // 2. Update in masar.students.v1
+  try {
+    const allStudents = readList<any>('masar.students.v1');
+    let stUpdated = false;
+    const updatedStList = allStudents.map((st) => {
+      const match =
+        (studentId && st.id === studentId) ||
+        (studentId && st.studentAccountId === studentId) ||
+        (normTargetName && st.fullName && normalizeArabicText(st.fullName) === normTargetName);
+      if (match) {
+        stUpdated = true;
+        return { ...st, photoUrl, updatedAt: new Date().toISOString() };
+      }
+      return st;
+    });
+    if (stUpdated) {
+      writeList('masar.students.v1', updatedStList);
+      const matched = updatedStList.find(
+        (s) =>
+          (studentId && s.id === studentId) ||
+          (normTargetName && s.fullName && normalizeArabicText(s.fullName) === normTargetName)
+      );
+      if (matched) {
+        void syncDocToCloud('students', matched.id, matched);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating photo in students:', err);
+  }
+
+  // 3. Update in masar.accounts.v1
+  try {
+    const allAccounts = readList<any>('masar.accounts.v1');
+    let accUpdated = false;
+    const updatedAccList = allAccounts.map((acc) => {
+      const match =
+        (studentId && acc.id === studentId) ||
+        (studentId && acc.linkedStudentId === studentId) ||
+        (normTargetName && acc.name && normalizeArabicText(acc.name) === normTargetName);
+      if (match) {
+        accUpdated = true;
+        return { ...acc, photoUrl, updatedAt: new Date().toISOString() };
+      }
+      return acc;
+    });
+    if (accUpdated) {
+      writeList('masar.accounts.v1', updatedAccList);
+      const matched = updatedAccList.find(
+        (a) =>
+          (studentId && a.id === studentId) ||
+          (normTargetName && a.name && normalizeArabicText(a.name) === normTargetName)
+      );
+      if (matched) {
+        void syncDocToCloud('accounts', matched.id, matched);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating photo in accounts:', err);
+  }
+
+  // 4. Update local session if matching
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('masar.session.v1') || sessionStorage.getItem('masar.session.v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          (parsed.id === studentId ||
+            parsed.linkedStudentId === studentId ||
+            (normTargetName && parsed.name && normalizeArabicText(parsed.name) === normTargetName))
+        ) {
+          parsed.photoUrl = photoUrl;
+          localStorage.setItem('masar.session.v1', JSON.stringify(parsed));
+          try { sessionStorage.setItem('masar.session.v1', JSON.stringify(parsed)); } catch {}
+          window.dispatchEvent(new CustomEvent('masar:session-changed', { detail: parsed }));
+        }
+      }
+    } catch {}
+
+    // 5. Fire cross-view update events
+    window.dispatchEvent(
+      new CustomEvent('masar:cloud-cache-update', {
+        detail: { key: CLASS_STUDENTS_KEY, photoUrl, studentId },
+      })
+    );
+    window.dispatchEvent(
+      new CustomEvent('masar:student-photo-updated', {
+        detail: { studentId, photoUrl },
+      })
+    );
+  }
+
+  return { success: true, photoUrl };
 }
 

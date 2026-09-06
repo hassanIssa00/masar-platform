@@ -5,13 +5,13 @@ import Image from 'next/image';
 import {
   UsersRound, Sparkles, BookOpenCheck, Award, FileText,
   UserRound, Plus, Trash2, CheckSquare, Square, CheckCircle2,
-  Phone, Calendar, Search, ShieldCheck, Edit3
+  Phone, Calendar, Search, ShieldCheck, Edit3, Camera, Upload
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import {
   getClassStudents, saveClassStudent, deleteClassStudent,
-  cleanClassStudentName, ClassStudentRecord
+  cleanClassStudentName, updateStudentPhotoAcrossStores, ClassStudentRecord
 } from '@/lib/classDb';
 import CertificateModal from './CertificateModal';
 import StudentProfileCard from './StudentProfileCard';
@@ -31,6 +31,7 @@ export default function ClassroomStudentsTab() {
   const [newGrade, setNewGrade] = useState('الصف الأول الابتدائي — فصل د. إسماعيل عيسى');
   const [newParentName, setNewParentName] = useState('');
   const [newParentPhone, setNewParentPhone] = useState('');
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
 
   // Edit Student Modal
   const [editingStudent, setEditingStudent] = useState<ClassStudentRecord | null>(null);
@@ -40,6 +41,7 @@ export default function ClassroomStudentsTab() {
   const [editParentPhone, setEditParentPhone] = useState('');
   const [editNationalId, setEditNationalId] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editPhotoUrl, setEditPhotoUrl] = useState('');
 
   // Certificate Modal
   const [showCertData, setShowCertData] = useState<{
@@ -111,6 +113,36 @@ export default function ClassroomStudentsTab() {
     setTimeout(() => setMessage(''), 4000);
   };
 
+  const processImageFile = (file: File, callback: (dataUrl: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 240;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > maxDim) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          }
+        } else {
+          if (h > maxDim) {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName.trim()) return;
@@ -119,15 +151,20 @@ export default function ClassroomStudentsTab() {
       grade: newGrade,
       parentName: newParentName.trim(),
       parentPhone: newParentPhone.trim(),
+      photoUrl: newPhotoUrl.trim(),
       assignedProgram: 'reading',
       assignedPrograms: ['reading'],
     });
+    if (newPhotoUrl.trim()) {
+      updateStudentPhotoAcrossStores(created.id, newPhotoUrl.trim(), newFullName.trim());
+    }
     refresh();
     setSelectedId(created.id);
     setShowAddModal(false);
     setNewFullName('');
     setNewParentName('');
     setNewParentPhone('');
+    setNewPhotoUrl('');
   };
 
   const openEditModal = (s: ClassStudentRecord) => {
@@ -138,6 +175,7 @@ export default function ClassroomStudentsTab() {
     setEditParentPhone(s.parentPhone || '');
     setEditNationalId(s.nationalId || '');
     setEditNotes(s.notes || '');
+    setEditPhotoUrl(s.photoUrl || '');
   };
 
   const handleUpdateStudent = (e: React.FormEvent) => {
@@ -151,7 +189,11 @@ export default function ClassroomStudentsTab() {
       parentPhone: editParentPhone.trim(),
       nationalId: editNationalId.trim(),
       notes: editNotes.trim(),
+      photoUrl: editPhotoUrl.trim(),
     });
+    if (editPhotoUrl.trim()) {
+      updateStudentPhotoAcrossStores(editingStudent.id, editPhotoUrl.trim(), editFullName.trim());
+    }
     refresh();
     setEditingStudent(null);
     setMessage('تم تحديث وحفظ بيانات الطالب بنجاح ✨');
@@ -239,12 +281,12 @@ export default function ClassroomStudentsTab() {
                             <div className={`flex h-full w-full items-center justify-center font-black text-sm ${
                               active ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
                             }`}>
-                              {s.fullName.charAt(0)}
+                              {cleanClassStudentName(s.fullName).charAt(0) || s.fullName.charAt(0)}
                             </div>
                           )}
                         </div>
                         <div>
-                          <h3 className="text-sm font-black text-slate-900">{s.fullName}</h3>
+                          <h3 className="text-sm font-black text-slate-900">{cleanClassStudentName(s.fullName)}</h3>
                           <p className="text-[11px] font-bold text-slate-500">{s.grade}</p>
                           {(() => {
                             const presence = formatLastSeen(s.studentLastActiveAt || s.studentLastLoginAt || s.lastActiveAt || s.lastLoginAt);
@@ -281,6 +323,7 @@ export default function ClassroomStudentsTab() {
               {/* Student Profile Card */}
               <StudentProfileCard
                 student={{
+                  id: selectedStudent.id,
                   fullName: selectedStudent.fullName,
                   grade: selectedStudent.grade,
                   photoUrl: selectedStudent.photoUrl,
@@ -297,6 +340,10 @@ export default function ClassroomStudentsTab() {
                   lastLoginAt: selectedStudent.lastLoginAt,
                 }}
                 variant="classroom"
+                allowPhotoUpload={true}
+                onPhotoUpdated={() => {
+                  refresh();
+                }}
               />
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
@@ -511,6 +558,44 @@ export default function ClassroomStudentsTab() {
                 />
               </div>
 
+              {/* Photo Upload Section */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="relative h-14 w-14 shrink-0 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+                  {newPhotoUrl ? (
+                    <Image src={newPhotoUrl} alt="صورة الطالب" fill unoptimized className="object-cover" />
+                  ) : (
+                    <div className="text-xl text-slate-400">👤</div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-slate-800">صورة الطالب الشخصية (اختياري)</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 border border-teal-200 px-3 py-1.5 text-[11px] font-black text-teal-800 hover:bg-teal-100 cursor-pointer transition">
+                      <Camera size={13} />
+                      <span>{newPhotoUrl ? 'تغيير الصورة' : 'رفع صورة الطالب 📸'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) processImageFile(file, setNewPhotoUrl);
+                        }}
+                      />
+                    </label>
+                    {newPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNewPhotoUrl('')}
+                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                      >
+                        إزالة
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
@@ -602,6 +687,47 @@ export default function ClassroomStudentsTab() {
             </div>
 
             <form onSubmit={handleUpdateStudent} className="space-y-4">
+              {/* Student Photo Section */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+                  {editPhotoUrl ? (
+                    <Image src={editPhotoUrl} alt="صورة الطالب" fill unoptimized className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-teal-50 text-teal-700 font-black text-lg">
+                      {editFullName.charAt(0) || 'ط'}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-slate-800">صورة الطالب الشخصية</p>
+                  <p className="text-[10px] text-slate-500 mb-1.5 font-bold">تظهر في بطاقة الطالب والملف التعريفي والشهادات</p>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 border border-teal-200 px-3 py-1.5 text-[11px] font-black text-teal-800 hover:bg-teal-100 cursor-pointer transition">
+                      <Camera size={13} />
+                      <span>{editPhotoUrl ? 'تغيير الصورة 📷' : 'رفع صورة جديدة 📸'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) processImageFile(file, setEditPhotoUrl);
+                        }}
+                      />
+                    </label>
+                    {editPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditPhotoUrl('')}
+                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                      >
+                        إزالة الصورة
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-black text-slate-700 mb-1">
                   اسم الطالب الكامل <span className="text-rose-500">*</span>

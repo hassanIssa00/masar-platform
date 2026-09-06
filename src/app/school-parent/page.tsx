@@ -744,6 +744,7 @@ export default function SchoolParentPage() {
             {/* Child Profile Card */}
             <StudentProfileCard
               student={{
+                id: studentRecord?.id,
                 fullName: studentRecord?.fullName || 'الطالب البطل',
                 grade: studentRecord?.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
                 photoUrl: studentRecord?.photoUrl,
@@ -760,6 +761,12 @@ export default function SchoolParentPage() {
                 lastLoginAt: (studentRecord as any)?.lastLoginAt,
               }}
               variant="parent"
+              allowPhotoUpload={true}
+              onPhotoUpdated={(newPhoto) => {
+                if (studentRecord) {
+                  setStudentRecord({ ...studentRecord, photoUrl: newPhoto });
+                }
+              }}
               showParent={true}
               greeting="بيانات طفلي المسجل في فصل د. إسماعيل عيسى 🌟"
             />

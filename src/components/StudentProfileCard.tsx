@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck } from 'lucide-react';
+import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck, Camera, Check, Loader2 } from 'lucide-react';
 import { formatLastSeen } from '@/lib/presence';
-import { cleanClassStudentName } from '@/lib/classDb';
+import { cleanClassStudentName, updateStudentPhotoAcrossStores } from '@/lib/classDb';
 
 export interface StudentProfileData {
+  id?: string;
   fullName: string;
   grade?: string;
   photoUrl?: string;
@@ -28,6 +30,10 @@ interface StudentProfileCardProps {
   greeting?: string;
   /** Show parent info section (default: true) */
   showParent?: boolean;
+  /** Allow uploading/changing student photo (default: true) */
+  allowPhotoUpload?: boolean;
+  /** Callback when photo is updated */
+  onPhotoUpdated?: (photoUrl: string) => void;
   /** Variant: 'doctor' = dark sidebar, 'parent' = warm card, 'classroom' = teal theme, 'student' = emerald student theme */
   variant?: 'doctor' | 'parent' | 'classroom' | 'student';
   className?: string;
@@ -37,9 +43,63 @@ export default function StudentProfileCard({
   student,
   greeting,
   showParent = true,
+  allowPhotoUpload = true,
+  onPhotoUpdated,
   variant = 'doctor',
   className = '',
 }: StudentProfileCardProps) {
+  const [currentPhoto, setCurrentPhoto] = useState(student?.photoUrl || '');
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  useEffect(() => {
+    setCurrentPhoto(student?.photoUrl || '');
+  }, [student?.photoUrl]);
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 240;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > maxDim) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          }
+        } else {
+          if (h > maxDim) {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+        setCurrentPhoto(dataUrl);
+        setUploading(false);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3500);
+
+        // Update across all local & cloud stores
+        const sid = student.id || (student as any).studentId || '';
+        updateStudentPhotoAcrossStores(sid, dataUrl, student.fullName);
+        onPhotoUpdated?.(dataUrl);
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const validName = cleanClassStudentName(student?.fullName || '') || 'طالب';
   const cleanParentName = student?.parentName
     ? student.parentName.replace(/^ولي أمر:\s*فصل\s*/i, 'ولي أمر: ').replace(/^فصل\s*/i, '').trim()
@@ -52,9 +112,9 @@ export default function StudentProfileCard({
     .join('') || 'ط';
 
   const studentPresence = formatLastSeen(
-    student.studentLastActiveAt || student.studentLastLoginAt || student.lastActiveAt || student.lastLoginAt,
+    student?.studentLastActiveAt || student?.studentLastLoginAt || student?.lastActiveAt || student?.lastLoginAt,
   );
-  const parentPresence = formatLastSeen(student.parentLastActiveAt || student.parentLastLoginAt);
+  const parentPresence = formatLastSeen(student?.parentLastActiveAt || student?.parentLastLoginAt);
 
   const bgClass =
     variant === 'student'
@@ -70,18 +130,18 @@ export default function StudentProfileCard({
       {/* Top Banner */}
       <div className={`${bgClass} p-5 flex items-center gap-4`}>
         {/* Avatar */}
-        <div className="relative h-20 w-20 shrink-0">
-          {student.photoUrl && (student.photoUrl.startsWith('data:') || student.photoUrl.startsWith('http') || student.photoUrl.startsWith('/')) ? (
+        <div className="relative h-20 w-20 shrink-0 group">
+          {currentPhoto && (currentPhoto.startsWith('data:') || currentPhoto.startsWith('http') || currentPhoto.startsWith('/')) ? (
             <Image
-              src={student.photoUrl}
+              src={currentPhoto}
               alt={student.fullName}
               fill
               unoptimized
               className="rounded-full object-cover ring-4 ring-white/30 shadow-xl"
             />
-          ) : student.photoUrl && student.photoUrl.length <= 4 ? (
+          ) : currentPhoto && currentPhoto.length <= 4 ? (
             <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 ring-4 ring-white/20 text-white text-3xl shadow-inner select-none">
-              {student.photoUrl}
+              {currentPhoto}
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 ring-4 ring-white/20 text-white font-black text-2xl shadow-inner">
@@ -99,6 +159,29 @@ export default function StudentProfileCard({
             }`}
             title={studentPresence.title}
           />
+
+          {/* Interactive Photo Upload Camera Button */}
+          {allowPhotoUpload && (
+            <label
+              className="absolute -bottom-1 -left-1 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white text-slate-800 shadow-md ring-2 ring-white/90 hover:bg-slate-100 hover:scale-110 active:scale-95 transition"
+              title="رفع أو تغيير صورة الطالب 📸"
+            >
+              {uploading ? (
+                <Loader2 size={13} className="animate-spin text-teal-600" />
+              ) : uploadSuccess ? (
+                <Check size={14} className="text-emerald-600 font-bold" />
+              ) : (
+                <Camera size={13} className="text-teal-700" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={handlePhotoUpload}
+              />
+            </label>
+          )}
         </div>
 
         {/* Name & Grade */}
@@ -106,6 +189,11 @@ export default function StudentProfileCard({
           {greeting && (
             <p className="text-xs font-black text-emerald-200 mb-0.5 flex items-center gap-1">
               <span>{greeting}</span>
+              {uploadSuccess && (
+                <span className="text-[11px] font-black text-emerald-300 mr-2 bg-emerald-900/40 px-2 py-0.5 rounded-full">
+                  ✓ تم تحديث الصورة
+                </span>
+              )}
             </p>
           )}
           <h2 className="text-xl font-black text-white leading-tight">{student.fullName}</h2>

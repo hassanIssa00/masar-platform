@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
   const childName = String(body.childName || '').trim();
   const detectedStudentId = String(body.detectedStudentId || '').trim();
   const grade = String(body.grade || '').trim();
+  const photoUrl = String(body.photoUrl || '').trim() || undefined;
 
   if (!email || !email.includes('@') || password.trim().length < 6) {
     return NextResponse.json({ ok: false, error: 'بيانات التسجيل غير مكتملة أو كلمة المرور قصيرة.' }, { status: 400 });
@@ -303,6 +304,7 @@ export async function POST(req: NextRequest) {
             reviewStatus: 'awaiting-doctor-review',
             createdAt: now,
             updatedAt: now,
+            ...(photoUrl ? { photoUrl } : {}),
           };
           pendingStudentWrite = { docId: accountId, data: newStudentRecord };
           linkedStudentId = accountId;
@@ -327,6 +329,7 @@ export async function POST(req: NextRequest) {
     createdAt: now,
     lastLoginAt: now,
     onboardingRequired: role === 'parent' || role === 'student',
+    ...(photoUrl ? { photoUrl } : {}),
     ...(linkedStudentId ? { linkedStudentId } : {}),
     ...(linkedStudentEmail ? { linkedStudentEmail } : {}),
     ...(linkedStudentName ? { linkedStudentName } : {}),
