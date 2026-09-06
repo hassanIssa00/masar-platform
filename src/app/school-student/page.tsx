@@ -715,7 +715,9 @@ export default function StudentDashboard() {
                   fileType: f.mimeType?.includes('pdf') ? 'pdf' : 'image',
                 })),
                 uploadedBooks: [],
-              }} />
+              }}
+              studentId={studentId || studentRecord?.id}
+              />
             );
           })}
         </div>
@@ -969,12 +971,13 @@ export default function StudentDashboard() {
 }
 
 // ── Subject Card Component ─────────────────────────────────────────────────
-function SubjectCard({ subject }: { subject: { slug?: string; name: string; subtitle?: string; badge?: string; pageCount?: number; icon: string; color: string; topics: string[]; files?: any[]; uploadedBooks?: any[] } }) {
+function SubjectCard({ subject, studentId }: { subject: { slug?: string; name: string; subtitle?: string; badge?: string; pageCount?: number; icon: string; color: string; topics: string[]; files?: any[]; uploadedBooks?: any[] }; studentId?: string }) {
   const [open, setOpen] = useState(false);
   const hasFiles = (subject.files?.length ?? 0) > 0;
+  const bookHref = `/programs/curricula/${subject.slug}${studentId ? `?student=${encodeURIComponent(studentId)}&from=school-student` : '?from=school-student'}`;
 
   return (
-    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden`}>
+    <div className={`bg-white rounded-2xl border shadow-xs overflow-hidden`}>
       <div className="p-4 flex items-center justify-between gap-3 bg-white">
         <div className="flex items-center gap-3">
           <span className="text-3xl">{subject.icon}</span>
@@ -999,8 +1002,8 @@ function SubjectCard({ subject }: { subject: { slug?: string; name: string; subt
         <div className="flex items-center gap-2">
           {subject.slug && (
             <Link
-              href={`/programs/curricula/${subject.slug}`}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
+              href={bookHref}
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
             >
               <span>فتح الكتاب التفاعلي ✍️</span>
             </Link>
@@ -1025,7 +1028,7 @@ function SubjectCard({ subject }: { subject: { slug?: string; name: string; subt
                 <p className="text-[10px] text-teal-700 font-bold">يمكنك الكتابة والتلوين وحل الواجبات مباشرة داخل صفحات هذا المنهج.</p>
               </div>
               <Link
-                href={`/programs/curricula/${subject.slug}`}
+                href={bookHref}
                 className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shrink-0 transition"
               >
                 دخول الكتاب 📖

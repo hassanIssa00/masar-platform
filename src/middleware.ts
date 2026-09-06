@@ -85,10 +85,16 @@ const PUBLIC_PATHS = [
   '/waitlist',
   '/verify/',
   '/account-generator',
+  '/programs',
+  '/programs/',
+  '/programs/curricula',
+  '/programs/curricula/',
   '/programs/simple-spelling',
   '/programs/reading',
   '/programs/math',
   '/programs/learning-difficulties',
+  '/games',
+  '/games/',
   // ── Post-registration enrollment flow (MASAR student path) ──────────────────
   '/student/new',     // Step 1: Enter student details
   '/survey',          // Step 2: Parent survey
@@ -97,17 +103,24 @@ const PUBLIC_PATHS = [
   // ── Post-registration enrollment flow (IKHLAS student path) ─────────────────
   '/school-student/setup', // Step 1: DOB + avatar setup
   '/school-student',       // Student dashboard (IKHLAS)
+  '/school-student/',
   // ── Parent portals (have own client-side auth guard) ──────────────────────
   '/parent',
+  '/parent/',
   '/school-parent',
+  '/school-parent/',
   // ── Doctor / Admin portals (have own client-side auth guard) ──────────────
   '/dashboard',
+  '/dashboard/',
   '/students',
+  '/students/',
   '/reports',
+  '/reports/',
   '/calendar',
   '/attendance',
   '/homework',
   '/branches',
+  '/branches/',
   '/platform-settings',
   '/invoices',
   '/messages',

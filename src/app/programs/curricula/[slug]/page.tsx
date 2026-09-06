@@ -30,17 +30,26 @@ export default async function CurriculumBookPage({ params }: PageProps) {
       <div className="flex">
         <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
-          {/* Breadcrumbs */}
-          <div className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Link href="/programs" className="hover:text-teal-700">
-              المسارات
+          {/* Breadcrumbs & Quick Return to Student Portal */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <Link href="/programs" className="hover:text-teal-700">
+                المسارات
+              </Link>
+              <ChevronLeft size={14} />
+              <Link href="/programs/curricula" className="hover:text-teal-700">
+                المناهج التعليمية
+              </Link>
+              <ChevronLeft size={14} />
+              <span className="font-black text-slate-900">{curriculum.title}</span>
+            </div>
+
+            <Link
+              href="/school-student?tab=curriculum"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow-xs transition"
+            >
+              <span>⬅️ رجوع لبوابة الطالب (فصل د. إسماعيل)</span>
             </Link>
-            <ChevronLeft size={14} />
-            <Link href="/programs/curricula" className="hover:text-teal-700">
-              المناهج التعليمية
-            </Link>
-            <ChevronLeft size={14} />
-            <span className="font-black text-slate-900">{curriculum.title}</span>
           </div>
 
           <CurriculumInteractiveWorkbook curriculum={curriculum} />

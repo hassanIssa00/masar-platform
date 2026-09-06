@@ -127,13 +127,17 @@ export default function CurriculumInteractiveWorkbook({
   }
 
   function getActiveStudentId() {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search).get('student');
+      if (sp) return sp;
+    }
     const session = getSession();
-    const allStudents = getStudents();
+    const allStudents = [...getStudents(), ...getClassStudents()];
 
     if (session?.role === 'student') {
       return (
         allStudents.find(
-          (student) =>
+          (student: any) =>
             student.id === session.linkedStudentId ||
             student.linkedStudentId === session.linkedStudentId ||
             student.studentAccountId === session.id ||
@@ -152,7 +156,8 @@ export default function CurriculumInteractiveWorkbook({
 
   function getActiveStudent() {
     const activeId = getActiveStudentId();
-    return getStudents().find((student) => student.id === activeId) ?? null;
+    const pool = [...getStudents(), ...getClassStudents()];
+    return pool.find((student) => student.id === activeId) ?? null;
   }
 
   function shouldTrackStudentActivity() {
