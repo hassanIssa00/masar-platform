@@ -115,6 +115,7 @@ export default function IkhlasJeddahPage() {
       'studentCertLogs',
       'studentBadges',
       'reports',
+      'surveys',
       'messages',
       'notifications'
     ], true).then(() => syncStudents()).catch(() => {});

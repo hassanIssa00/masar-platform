@@ -396,9 +396,18 @@ function SurveyContent() {
     });
     await syncDocToCloud('surveys', savedSurvey.id, savedSurvey).catch(() => {});
 
+    const parentNameVal = savedStudent.parentName || session?.name || '';
+    const parentPhoneVal = savedStudent.parentPhone || parentPhone || '';
+    const parentAccountIdVal = savedStudent.parentAccountId || session?.id || '';
+    const parentEmailVal = savedStudent.parentEmail || session?.email || '';
+
     const rep1 = saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
+      parentName: parentNameVal,
+      parentPhone: parentPhoneVal,
+      parentAccountId: parentAccountIdVal,
+      parentEmail: parentEmailVal,
       grade,
       program: 'إجابات الاستبيان التفصيلية',
       programColor: '#334155',
@@ -425,6 +434,10 @@ function SurveyContent() {
     const rep2 = saveReport({
       studentId: savedStudent.id,
       studentName: savedStudent.fullName,
+      parentName: parentNameVal,
+      parentPhone: parentPhoneVal,
+      parentAccountId: parentAccountIdVal,
+      parentEmail: parentEmailVal,
       grade,
       program: 'التقرير التحليلي الشامل',
       programColor: '#4f46e5',
@@ -438,6 +451,12 @@ function SurveyContent() {
       answers: [],
       domains: clinicalDomains,
     });
+    await syncDocToCloud('reports', rep2.id, rep2).catch(() => {});
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collection: 'surveys', id: savedSurvey.id } }));
+      window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { collection: 'reports', id: rep1.id } }));
+    }
 
     const reviewedStudent = updateStudent(savedStudent.id, { reviewStatus: 'awaiting-doctor-review' });
     if (reviewedStudent) {

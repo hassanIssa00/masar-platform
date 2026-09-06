@@ -9,7 +9,10 @@ import {
 } from 'lucide-react';
 import { getClassParents, getClassStudents, ClassParentRecord,
   getStudentHomeworkLogs, getStudentNotes, getStudentCertificateLogs } from '@/lib/classDb';
-import { saveMessage, saveReport, saveActivity, getReports, ReportRecord } from '@/lib/cloudStore';
+import { saveMessage, saveReport, saveActivity, getReports, getSurveys, ReportRecord } from '@/lib/cloudStore';
+import { pullCloudDataToLocal } from '@/lib/firestoreSync';
+import { isStudentNameMatch } from '@/lib/nameMatching';
+import { synthesizeSurveyReports } from '@/lib/surveyAnalysis';
 import { createNotification } from '@/lib/notifications';
 import { formatLastSeen } from '@/lib/presence';
 import PrintableReportModal from '@/components/PrintableReportModal';
@@ -17,6 +20,7 @@ import PrintableReportModal from '@/components/PrintableReportModal';
 export default function ClassroomParentsTab() {
   const [parents, setParents] = useState<ClassParentRecord[]>([]);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [dataVersion, setDataVersion] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [zoomUrlInput, setZoomUrlInput] = useState('');
@@ -57,6 +61,30 @@ export default function ClassroomParentsTab() {
     refresh();
   }, []);
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      refresh();
+      setDataVersion((v) => v + 1);
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('masar:cloud-cache-update', handleUpdate);
+
+    void pullCloudDataToLocal(
+      ['reports', 'surveys', 'students', 'classStudents', 'messages', 'notifications'],
+      true
+    )
+      .then(() => {
+        refresh();
+        setDataVersion((v) => v + 1);
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('masar:cloud-cache-update', handleUpdate);
+    };
+  }, [selectedParentId]);
+
   const filteredParents = useMemo(() => {
     if (!searchQuery.trim()) return parents;
     const q = searchQuery.toLowerCase();
@@ -83,18 +111,91 @@ export default function ClassroomParentsTab() {
   const diagnosticStudentReports = useMemo(() => {
     if (!selectedParent) return [];
     const students = getClassStudents();
-    const linkedStudent = students.find((s) => s.fullName === selectedParent.studentName);
-    const sid = linkedStudent?.id ?? selectedParent.id;
+    const linkedStudent = students.find(
+      (s) =>
+        s.id === selectedParent.studentId ||
+        (selectedParent.studentName && isStudentNameMatch(s.fullName, selectedParent.studentName))
+    );
+    const sid = selectedParent.studentId || linkedStudent?.id || selectedParent.id.replace(/^prt-/, '');
     const sName = selectedParent.studentName;
+    const parentPhoneDigits = selectedParent.phone ? selectedParent.phone.replace(/\D/g, '').slice(-9) : '';
 
     const allReports = getReports();
-    const matched = allReports.filter(
-      (r) =>
-        r.studentId === sid ||
-        r.studentName === sName ||
-        (linkedStudent?.fullName && r.studentName === linkedStudent.fullName) ||
-        (sName && r.studentName && (r.studentName.trim() === sName.trim() || r.studentName.includes(sName) || sName.includes(r.studentName)))
-    );
+    const matched = allReports.filter((r) => {
+      if (r.studentId && (r.studentId === sid || r.studentId === selectedParent.studentId || (linkedStudent && r.studentId === linkedStudent.id))) {
+        return true;
+      }
+      if (sName && isStudentNameMatch(r.studentName, sName)) {
+        return true;
+      }
+      if (linkedStudent?.fullName && isStudentNameMatch(r.studentName, linkedStudent.fullName)) {
+        return true;
+      }
+      if (parentPhoneDigits && r.parentPhone) {
+        const rPhoneDigits = r.parentPhone.replace(/\D/g, '').slice(-9);
+        if (rPhoneDigits && rPhoneDigits === parentPhoneDigits) return true;
+      }
+      if (selectedParent.name && r.parentName && isStudentNameMatch(r.parentName, selectedParent.name)) {
+        return true;
+      }
+      return false;
+    });
+
+    // Check surveys collection and synthesize survey reports if missing from reports
+    const allSurveys = getSurveys();
+    const matchingSurveys = allSurveys.filter((s) => {
+      if (s.studentId && (s.studentId === sid || s.studentId === selectedParent.studentId || (linkedStudent && s.studentId === linkedStudent.id))) {
+        return true;
+      }
+      if (sName && isStudentNameMatch(s.studentName, sName)) {
+        return true;
+      }
+      if (linkedStudent?.fullName && isStudentNameMatch(s.studentName, linkedStudent.fullName)) {
+        return true;
+      }
+      if (parentPhoneDigits && s.parentPhone) {
+        const sPhoneDigits = s.parentPhone.replace(/\D/g, '').slice(-9);
+        if (sPhoneDigits && sPhoneDigits === parentPhoneDigits) return true;
+      }
+      if (selectedParent.name && s.parentName && isStudentNameMatch(s.parentName, selectedParent.name)) {
+        return true;
+      }
+      return false;
+    });
+
+    if (matchingSurveys.length > 0) {
+      matchingSurveys.sort(
+        (a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
+      );
+      const latestSurvey = matchingSurveys[0];
+
+      const hasSurveyAnswers = matched.some(
+        (r) => r.type === 'survey-answers' || r.program?.includes('إجابات الاستبيان')
+      );
+      const hasClinicalAnalysis = matched.some(
+        (r) => r.type === 'clinical-analysis' || r.program?.includes('التقرير التحليلي الشامل') || r.program?.includes('تحليلي شامل')
+      );
+
+      if (!hasSurveyAnswers || !hasClinicalAnalysis) {
+        const { surveyAnswersReport, clinicalAnalysisReport } = synthesizeSurveyReports(latestSurvey, {
+          studentId: sid,
+          studentName: sName || linkedStudent?.fullName,
+          grade: linkedStudent?.grade || latestSurvey.grade,
+          parentName: selectedParent.name,
+          parentPhone: selectedParent.phone,
+          parentAccountId: (linkedStudent as any)?.parentAccountId || (selectedParent as any).accountId,
+        });
+
+        if (!hasSurveyAnswers) {
+          saveReport(surveyAnswersReport);
+          matched.push(surveyAnswersReport);
+        }
+        if (!hasClinicalAnalysis) {
+          saveReport(clinicalAnalysisReport);
+          matched.push(clinicalAnalysisReport);
+        }
+      }
+    }
 
     const findBest = (matcher: (r: ReportRecord) => boolean) => {
       const list = matched.filter(matcher);
@@ -131,15 +232,19 @@ export default function ClassroomParentsTab() {
     const otherReports = matched.filter((r) => !slotIds.has(r.id));
 
     return [...slotReports, ...otherReports];
-  }, [selectedParent]);
+  }, [selectedParent, dataVersion]);
 
   const handleSendDiagnosticReports = async () => {
     if (!selectedParent || selectedDiagnosticReportIds.size === 0) return;
     setReportLoading(true);
 
     const students = getClassStudents();
-    const linkedStudent = students.find((s) => s.fullName === selectedParent.studentName);
-    const sid = linkedStudent?.id ?? selectedParent.id;
+    const linkedStudent = students.find(
+      (s) =>
+        s.id === selectedParent.studentId ||
+        (selectedParent.studentName && isStudentNameMatch(s.fullName, selectedParent.studentName))
+    );
+    const sid = selectedParent.studentId || linkedStudent?.id || selectedParent.id.replace(/^prt-/, '');
     const parentAccId = (linkedStudent as any)?.parentAccountId || (linkedStudent as any)?.linkedParentId || (selectedParent as any).accountId;
 
     const chosenReports = diagnosticStudentReports.filter((r) => selectedDiagnosticReportIds.has(r.id));
@@ -147,6 +252,11 @@ export default function ClassroomParentsTab() {
     for (const report of chosenReports) {
       saveReport({
         ...report,
+        studentId: report.studentId || sid,
+        studentName: report.studentName || selectedParent.studentName,
+        parentPhone: report.parentPhone || selectedParent.phone,
+        parentName: report.parentName || selectedParent.name,
+        parentAccountId: report.parentAccountId || parentAccId,
         status: 'completed',
         dispatchedToParent: true,
         dispatchedByDoctor: true,
@@ -188,6 +298,7 @@ export default function ClassroomParentsTab() {
     setActionSuccess(`✅ تم إرسال (${titles}) إلى بوابة ولي أمر ${selectedParent.studentName} بنجاح! 📄`);
     setSelectedDiagnosticReportIds(new Set());
     setReportLoading(false);
+    setDataVersion((v) => v + 1);
     setTimeout(() => setActionSuccess(''), 5000);
   };
 
@@ -1147,7 +1258,9 @@ export default function ClassroomParentsTab() {
       {/* Official Diagnostic Report Preview Modal (PrintableReportModal) */}
       {previewingReport && (() => {
         const students = getClassStudents();
-        const linked = selectedParent ? students.find((s) => s.fullName === selectedParent.studentName) : null;
+        const linked = selectedParent
+          ? students.find((s) => s.id === selectedParent.studentId || (selectedParent.studentName && isStudentNameMatch(s.fullName, selectedParent.studentName)))
+          : null;
         return (
           <PrintableReportModal
             report={previewingReport}
