@@ -5,13 +5,13 @@ import Image from 'next/image';
 import {
   UsersRound, Sparkles, BookOpenCheck, Award, FileText,
   UserRound, Plus, Trash2, CheckSquare, Square, CheckCircle2,
-  Phone, Calendar, Search, ShieldCheck
+  Phone, Calendar, Search, ShieldCheck, Edit3
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
 import {
   getClassStudents, saveClassStudent, deleteClassStudent,
-  ClassStudentRecord
+  cleanClassStudentName, ClassStudentRecord
 } from '@/lib/classDb';
 import CertificateModal from './CertificateModal';
 import StudentProfileCard from './StudentProfileCard';
@@ -31,6 +31,15 @@ export default function ClassroomStudentsTab() {
   const [newGrade, setNewGrade] = useState('الصف الأول الابتدائي — فصل د. إسماعيل عيسى');
   const [newParentName, setNewParentName] = useState('');
   const [newParentPhone, setNewParentPhone] = useState('');
+
+  // Edit Student Modal
+  const [editingStudent, setEditingStudent] = useState<ClassStudentRecord | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editGrade, setEditGrade] = useState('');
+  const [editParentName, setEditParentName] = useState('');
+  const [editParentPhone, setEditParentPhone] = useState('');
+  const [editNationalId, setEditNationalId] = useState('');
+  const [editNotes, setEditNotes] = useState('');
 
   // Certificate Modal
   const [showCertData, setShowCertData] = useState<{
@@ -119,6 +128,34 @@ export default function ClassroomStudentsTab() {
     setNewFullName('');
     setNewParentName('');
     setNewParentPhone('');
+  };
+
+  const openEditModal = (s: ClassStudentRecord) => {
+    setEditingStudent(s);
+    setEditFullName(cleanClassStudentName(s.fullName));
+    setEditGrade(s.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى');
+    setEditParentName(s.parentName || '');
+    setEditParentPhone(s.parentPhone || '');
+    setEditNationalId(s.nationalId || '');
+    setEditNotes(s.notes || '');
+  };
+
+  const handleUpdateStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent || !editFullName.trim()) return;
+    saveClassStudent({
+      ...editingStudent,
+      fullName: editFullName.trim(),
+      grade: editGrade.trim(),
+      parentName: editParentName.trim(),
+      parentPhone: editParentPhone.trim(),
+      nationalId: editNationalId.trim(),
+      notes: editNotes.trim(),
+    });
+    refresh();
+    setEditingStudent(null);
+    setMessage('تم تحديث وحفظ بيانات الطالب بنجاح ✨');
+    setTimeout(() => setMessage(''), 4000);
   };
 
   const handleDelete = (id: string) => {
@@ -312,6 +349,15 @@ export default function ClassroomStudentsTab() {
                   >
                     <FileText size={16} className="text-teal-600" />
                     ملف الطالب
+                  </button>
+
+                  <button
+                    onClick={() => openEditModal(selectedStudent)}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 hover:bg-slate-50 transition cursor-pointer shadow-xs"
+                    title="تعديل بيانات الطالب"
+                  >
+                    <Edit3 size={15} className="text-teal-600" />
+                    تعديل البيانات
                   </button>
 
                   <button
@@ -535,6 +581,127 @@ export default function ClassroomStudentsTab() {
           student={profileStudent}
           onClose={() => setProfileStudent(null)}
         />
+      )}
+
+      {/* Edit Student Modal */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" dir="rtl">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Edit3 size={18} className="text-teal-600" />
+                تعديل بيانات الطالب بالفصل
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingStudent(null)}
+                className="rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateStudent} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">
+                  اسم الطالب الكامل <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="مثال: احمد ابراهيم زويل"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1">
+                    اسم ولي الأمر
+                  </label>
+                  <input
+                    type="text"
+                    value={editParentName}
+                    onChange={(e) => setEditParentName(e.target.value)}
+                    placeholder="مثال: ابراهيم زويل"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1">
+                    رقم هاتف ولي الأمر
+                  </label>
+                  <input
+                    type="tel"
+                    value={editParentPhone}
+                    onChange={(e) => setEditParentPhone(e.target.value)}
+                    placeholder="05xxxxxxxx"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1">
+                    الصف / الفصل الدراسي
+                  </label>
+                  <input
+                    type="text"
+                    value={editGrade}
+                    onChange={(e) => setEditGrade(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1">
+                    رقم الهوية الوطنية (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNationalId}
+                    onChange={(e) => setEditNationalId(e.target.value)}
+                    placeholder="10xxxxxxxx"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">
+                  ملاحظات المعلم الخاصة
+                </label>
+                <textarea
+                  rows={2}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="أي ملاحظات حول مستوى الطالب أو الخطة الفردية..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-900 focus:border-teal-600 focus:bg-white focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 rounded-xl bg-teal-700 py-3 text-xs font-black text-white hover:bg-teal-800 transition shadow-sm cursor-pointer"
+                >
+                  حفظ التعديلات سحابياً ✨
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="rounded-xl border border-slate-200 px-5 py-3 text-xs font-black text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

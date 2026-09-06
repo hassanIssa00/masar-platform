@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck } from 'lucide-react';
 import { formatLastSeen } from '@/lib/presence';
+import { cleanClassStudentName } from '@/lib/classDb';
 
 export interface StudentProfileData {
   fullName: string;
@@ -39,7 +40,10 @@ export default function StudentProfileCard({
   variant = 'doctor',
   className = '',
 }: StudentProfileCardProps) {
-  const validName = (student?.fullName || '').trim() || 'طالب';
+  const validName = cleanClassStudentName(student?.fullName || '') || 'طالب';
+  const cleanParentName = student?.parentName
+    ? student.parentName.replace(/^ولي أمر:\s*فصل\s*/i, 'ولي أمر: ').replace(/^فصل\s*/i, '').trim()
+    : '';
   const initials = validName
     .split(' ')
     .filter(Boolean)
@@ -157,7 +161,7 @@ export default function StudentProfileCard({
         )}
 
         {showParent && student.parentName && (
-          <InfoRow icon={<User size={15} className="text-teal-600" />} label="ولي الأمر" value={student.parentName} />
+          <InfoRow icon={<User size={15} className="text-teal-600" />} label="ولي الأمر" value={cleanParentName || student.parentName} />
         )}
         {showParent && student.parentPhone && (
           <InfoRow icon={<Phone size={15} className="text-teal-600" />} label="هاتف ولي الأمر" value={student.parentPhone} />

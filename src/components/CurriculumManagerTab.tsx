@@ -47,10 +47,11 @@ import {
 import { curriculaList, CurriculumSubject, getCurriculumBySlug } from '@/data/curriculaData';
 import CurriculumInteractiveWorkbook from '@/components/CurriculumInteractiveWorkbook';
 import { saveMessage } from '@/lib/cloudStore';
-import { saveStudentHomeworkLog } from '@/lib/classDb';
-import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { saveStudentHomeworkLog, getStudentHomeworkLogs, getClassStudents, cleanClassStudentName } from '@/lib/classDb';
+import { readCloudCache, syncDocToCloud, writeCloudCache, pullCloudDataToLocal } from '@/lib/firestoreSync';
 import { createNotification } from '@/lib/notifications';
-import { createHomework } from '@/lib/homework';
+import { createHomework, getLocalHomework } from '@/lib/homework';
+import { isStudentNameMatch } from '@/lib/nameMatching';
 
 const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
 
@@ -101,14 +102,144 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
   const [sendingQuiz, setSendingQuiz] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
 
-  const [activeAssignments, setActiveAssignments] = useState<any[]>(() => readCloudCache(ASSIGNMENTS_KEY));
+  const [activeAssignments, setActiveAssignments] = useState<any[]>([]);
+
+  const refreshAssignments = useCallback(() => {
+    const rawCurr = readCloudCache<any>(ASSIGNMENTS_KEY);
+    const pool = students.length > 0 ? students : getClassStudents().map(s => ({ id: s.id, name: s.fullName, phone: s.parentPhone, grade: s.grade }));
+    const allLogs: any[] = [];
+
+    pool.forEach((s) => {
+      getStudentHomeworkLogs(s.id, s.name).forEach((l) => {
+        if (!allLogs.some((x) => x.id === l.id)) allLogs.push(l);
+      });
+    });
+
+    const cachedLogs = readCloudCache<any>('masar_student_hw_logs_v1');
+    cachedLogs.forEach((l) => {
+      if (!allLogs.some((x) => x.id === l.id)) allLogs.push(l);
+    });
+
+    const allHw = getLocalHomework();
+    const map = new Map<string, any>();
+
+    // 1. Add raw curriculum assignments
+    rawCurr.forEach((a) => {
+      const key = a.id || `${a.studentId}_${a.subjectSlug}_${a.fromPage}_${a.toPage}`;
+      map.set(key, {
+        ...a,
+        studentName: cleanClassStudentName(a.studentName),
+      });
+    });
+
+    // 2. Add/merge student homework logs (captures student submissions, review status, grades)
+    allLogs.forEach((log) => {
+      const isCurriculum = Boolean(log.subjectSlug || log.fromPage || log.title?.includes('واجب') || log.type === 'CURRICULUM' || log.title?.includes('ص '));
+      if (!isCurriculum) return;
+
+      const matchedStudent = pool.find(s => s.id === log.studentId || (log.studentAccountId && s.id === log.studentAccountId) || (s.name && log.studentName && isStudentNameMatch(s.name, log.studentName)));
+      const sName = cleanClassStudentName(matchedStudent?.name || log.studentName || 'طالب');
+
+      const pageMatch = log.title?.match(/(\d+)\s*[-–]\s*(\d+)/);
+      const fromP = log.fromPage || (pageMatch ? Number(pageMatch[1]) : 1);
+      const toP = log.toPage || (pageMatch ? Number(pageMatch[2]) : 5);
+
+      // Match with existing assignment or synthesize
+      const existingKey = Array.from(map.keys()).find((k) => {
+        const item = map.get(k);
+        return item.id === log.id ||
+          (item.studentId === log.studentId && (item.subjectSlug === log.subjectSlug || item.subjectTitle === log.subject));
+      });
+
+      if (existingKey) {
+        const existing = map.get(existingKey);
+        map.set(existingKey, {
+          ...existing,
+          studentName: sName,
+          status: log.status || existing.status || 'assigned',
+          grade: log.grade ?? existing.grade,
+          teacherFeedback: log.teacherFeedback || existing.teacherFeedback,
+          fromPage: existing.fromPage || fromP,
+          toPage: existing.toPage || toP,
+        });
+      } else {
+        const subSlug = log.subjectSlug || curriculaList.find(c => c.title === log.subject)?.slug || 'lughati';
+        map.set(log.id, {
+          id: log.id,
+          studentId: log.studentId,
+          studentName: sName,
+          subjectSlug: subSlug,
+          subjectTitle: log.subject || 'المنهج الدراسي',
+          fromPage: fromP,
+          toPage: toP,
+          status: log.status || 'assigned',
+          grade: log.grade,
+          teacherFeedback: log.teacherFeedback,
+          assignedAt: log.createdAt || new Date().toISOString(),
+        });
+      }
+    });
+
+    // 3. Merge general homework
+    allHw.forEach((hw) => {
+      if (hw.type === 'CURRICULUM' || hw.subjectSlug || hw.fromPage || hw.title?.includes('ص ')) {
+        const existingKey = Array.from(map.keys()).find((k) => {
+          const item = map.get(k);
+          return item.id === hw.id;
+        });
+        if (!existingKey) {
+          const pageMatch = hw.title?.match(/(\d+)\s*[-–]\s*(\d+)/);
+          const fromP = (hw as any).fromPage || (pageMatch ? Number(pageMatch[1]) : 1);
+          const toP = (hw as any).toPage || (pageMatch ? Number(pageMatch[2]) : 5);
+          const subSlug = hw.subjectSlug || curriculaList.find(c => c.title === (hw as any).subjectTitle || c.title === hw.title)?.slug || 'lughati';
+          map.set(hw.id, {
+            id: hw.id,
+            studentId: hw.studentId,
+            studentName: cleanClassStudentName(hw.studentName),
+            subjectSlug: subSlug,
+            subjectTitle: (hw as any).subjectTitle || hw.title,
+            fromPage: fromP,
+            toPage: toP,
+            status: hw.status || 'assigned',
+            grade: (hw as any).grade,
+            assignedAt: hw.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    });
+
+    const merged = Array.from(map.values()).sort(
+      (a, b) => new Date(b.assignedAt || 0).getTime() - new Date(a.assignedAt || 0).getTime()
+    );
+    setActiveAssignments(merged);
+  }, [students]);
 
   useEffect(() => {
-    setActiveAssignments(readCloudCache(ASSIGNMENTS_KEY));
+    refreshAssignments();
     if (students.length > 0 && !assignStudentId) {
       setAssignStudentId(students[0].id);
     }
-  }, [students, assignStudentId]);
+  }, [students, assignStudentId, refreshAssignments]);
+
+  useEffect(() => {
+    const handleUpdate = () => refreshAssignments();
+    window.addEventListener('masar:cloud-cache-update', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('masar:cloud-cache-update', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [refreshAssignments]);
+
+  useEffect(() => {
+    if (managerView === 'assignments') {
+      refreshAssignments();
+      void pullCloudDataToLocal(
+        ['curriculumAssignments', 'studentHomeworkLogs', 'homework', 'curriculumDrawings'],
+        true
+      ).then(() => refreshAssignments()).catch(() => {});
+    }
+  }, [managerView, refreshAssignments]);
 
   const selectedCurriculum = getCurriculumBySlug(selectedBookSlug) || curriculaList[0];
 
@@ -694,28 +825,52 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
                         {a.subjectTitle || a.subjectSlug}
                       </span>
                       <span className="text-[11px] font-bold text-slate-400">
-                        {new Date(a.assignedAt).toLocaleDateString('ar-SA')}
+                        {new Date(a.assignedAt || Date.now()).toLocaleDateString('ar-SA')}
                       </span>
                     </div>
-                    <h4 className="font-black text-slate-950 text-sm">{a.studentName}</h4>
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-black text-slate-950 text-sm">{a.studentName}</h4>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        a.status === 'submitted'
+                          ? 'bg-blue-100 text-blue-800'
+                          : a.status === 'reviewed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {a.status === 'submitted'
+                          ? '⏳ قيد المراجعة'
+                          : a.status === 'reviewed'
+                          ? (a.grade !== undefined ? `⭐ تم التصحيح (${a.grade}/10)` : '✅ تم التصحيح')
+                          : '📝 مطلوب حلّه'}
+                      </span>
+                    </div>
                     <p className="mt-2 text-xs font-bold text-slate-700 bg-slate-50 rounded-lg p-2 border border-slate-100">
                       📖 الصفحات المطلوبة: من صفحة <span className="font-black text-indigo-950">{a.fromPage}</span> إلى <span className="font-black text-indigo-950">{a.toPage}</span>
                     </p>
+                    {a.teacherFeedback && (
+                      <p className="mt-1.5 text-[11px] font-bold text-slate-500 bg-slate-50/60 rounded-lg p-1.5 border border-dashed border-slate-200">
+                        💬 ملاحظات المعلم: {a.teacherFeedback}
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-4 flex items-center gap-2 pt-2 border-t border-slate-100">
                     <button
                       onClick={() => handleOpenBook(a.subjectSlug)}
-                      className="flex-1 rounded-lg bg-slate-950 text-white px-3 py-1.5 text-xs font-black hover:bg-indigo-900"
+                      className="flex-1 rounded-lg bg-slate-950 text-white px-3 py-2 text-xs font-black hover:bg-indigo-900 transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      معاينة صفحات الواجب
+                      <Eye size={14} /> معاينة صفحات الواجب
                     </button>
                     {onNavigateToCorrection && (
                       <button
                         onClick={onNavigateToCorrection}
-                        className="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-3 py-1.5 text-xs font-black hover:bg-emerald-100"
+                        className={`rounded-lg px-3 py-2 text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                          a.status === 'submitted'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                            : 'border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                        }`}
                       >
-                        تصحيح الحلول
+                        <PenTool size={13} /> {a.status === 'submitted' ? 'تصحيح الحل الآن ✍️' : 'تصحيح الحلول'}
                       </button>
                     )}
                   </div>

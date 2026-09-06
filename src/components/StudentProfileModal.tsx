@@ -7,6 +7,7 @@ import {
   getStudentNotes, saveStudentNote, deleteStudentNote,
   getStudentHomeworkLogs, saveStudentHomeworkLog, deleteStudentHomeworkLog,
   getStudentCertificateLogs, saveStudentCertificateLog, deleteStudentCertificateLog,
+  cleanClassStudentName,
 } from '@/lib/classDb';
 import { formatLastSeen } from '@/lib/presence';
 
@@ -112,10 +113,10 @@ export default function StudentProfileModal({ student, onClose }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-white font-black text-lg">
-                {student.fullName.charAt(0)}
+                {cleanClassStudentName(student.fullName).charAt(0)}
               </div>
               <div>
-                <h2 className="text-lg font-black text-white">{student.fullName}</h2>
+                <h2 className="text-lg font-black text-white">{cleanClassStudentName(student.fullName)}</h2>
                 <p className="text-sm text-teal-200 font-bold">{student.grade}</p>
               </div>
             </div>
@@ -146,7 +147,7 @@ export default function StudentProfileModal({ student, onClose }: Props) {
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {([
-                  ['الاسم الكامل',      student.fullName],
+                  ['الاسم الكامل',      cleanClassStudentName(student.fullName)],
                   ['الاسم بالإنجليزية', student.fullNameEn || '—'],
                   ['الصف / الفصل',      student.grade],
                   ['رقم الهوية',        student.nationalId || '—'],

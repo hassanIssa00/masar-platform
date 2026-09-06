@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { readCloudCache, writeCloudCache, syncDocToCloud } from './firestoreSync';
 import { getSession } from './cloudStore';
@@ -133,7 +133,7 @@ const PRESENCE_THROTTLE_MS = 3 * 60 * 1000; // Ping at most once every 3 minutes
  * Pings the server presence endpoint to mark the current user (student or parent)
  * as active right now, updating timestamps across accounts, students, and class_students.
  */
-export async function recordUserPresence(opts?: { role?: string; studentId?: string }): Promise<void> {
+export async function recordUserPresence(opts?: { role?: string; studentId?: string; studentName?: string }): Promise<void> {
   if (typeof window === 'undefined') return;
 
   const now = Date.now();
@@ -145,7 +145,8 @@ export async function recordUserPresence(opts?: { role?: string; studentId?: str
   try {
     const session = getSession();
     const role = opts?.role || session?.role;
-    const studentId = opts?.studentId || session?.linkedStudentId;
+    const studentId = opts?.studentId || session?.linkedStudentId || (session?.role === 'student' ? session?.id : undefined);
+    const studentName = opts?.studentName || session?.name;
 
     void fetch('/api/auth/presence', {
       method: 'POST',
@@ -154,6 +155,7 @@ export async function recordUserPresence(opts?: { role?: string; studentId?: str
       body: JSON.stringify({
         role,
         studentId,
+        studentName,
       }),
     }).catch(() => {});
   } catch {}

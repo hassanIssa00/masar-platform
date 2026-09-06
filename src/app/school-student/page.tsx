@@ -21,7 +21,7 @@ import {
   StudentRecord, AccountRecord
 } from '@/lib/cloudStore';
 import {
-  getClassStudents, ClassStudentRecord,
+  getClassStudents, saveClassStudent, ClassStudentRecord,
   getStudentCertificateLogs, StudentCertificateLog,
   getStudentHomeworkLogs,
 } from '@/lib/classDb';
@@ -172,7 +172,24 @@ export default function StudentDashboard() {
       });
 
       // Record student presence
-      void recordUserPresence({ role: 'student', studentId: resolvedId });
+      void recordUserPresence({ role: 'student', studentId: resolvedId, studentName: finalName });
+
+      // Directly record active presence in class_students and sync to Firestore
+      try {
+        const clsList = getClassStudents();
+        const matchedCs = clsList.find(cs =>
+          (resolvedId && (cs.id === resolvedId || cs.studentAccountId === resolvedId)) ||
+          (finalName && isStudentNameMatch(cs.fullName, finalName))
+        );
+        if (matchedCs) {
+          const nowIso = new Date().toISOString();
+          saveClassStudent({
+            ...matchedCs,
+            studentLastActiveAt: nowIso,
+            lastActiveAt: nowIso,
+          });
+        }
+      } catch {}
 
       // Load homework from Firestore (via local cache pulled above)
       loadHomework(finalName, resolvedId);
@@ -184,9 +201,24 @@ export default function StudentDashboard() {
     void loadStudentPortal();
     const presenceInterval = setInterval(() => {
       if (!cancelled && currentResolvedId) {
-        void recordUserPresence({ role: 'student', studentId: currentResolvedId });
+        void recordUserPresence({ role: 'student', studentId: currentResolvedId, studentName: currentFinalName });
+        try {
+          const clsList = getClassStudents();
+          const matchedCs = clsList.find(cs =>
+            (currentResolvedId && (cs.id === currentResolvedId || cs.studentAccountId === currentResolvedId)) ||
+            (currentFinalName && isStudentNameMatch(cs.fullName, currentFinalName))
+          );
+          if (matchedCs) {
+            const nowIso = new Date().toISOString();
+            saveClassStudent({
+              ...matchedCs,
+              studentLastActiveAt: nowIso,
+              lastActiveAt: nowIso,
+            });
+          }
+        } catch {}
       }
-    }, 4 * 60 * 1000);
+    }, 2 * 60 * 1000);
 
     const unsubscribe = subscribeToCloudUpdates(() => {
       if (!cancelled && currentResolvedId) {

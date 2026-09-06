@@ -26,6 +26,8 @@ export type ClassStudentRecord = {
   parentLastActiveAt?: string;
   lastLoginAt?: string;
   lastActiveAt?: string;
+  studentAccountId?: string;
+  parentAccountId?: string;
   schoolBranch?: string;
   source?: string;
   createdAt: string;
@@ -324,7 +326,8 @@ export function getClassStudents(): ClassStudentRecord[] {
         hadPruned = true;
         deleteDocFromCloud(CLOUD_COLLECTION, s.id);
       } else {
-        activeClassList.push(s);
+        const cleanedFullName = cleanClassStudentName(s.fullName);
+        activeClassList.push(cleanedFullName !== s.fullName ? { ...s, fullName: cleanedFullName } : s);
       }
     });
 
@@ -409,10 +412,19 @@ export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[
   return getClassStudents();
 }
 
+export function cleanClassStudentName(name?: string | null): string {
+  if (!name) return '';
+  const trimmed = name.trim();
+  // Clean accidental prefix e.g. "فصل احمد ابراهيم زويل" -> "احمد ابراهيم زويل"
+  const cleaned = trimmed.replace(/^فصل\s*[:\-–\/]?\s*/i, '').trim();
+  return cleaned || trimmed;
+}
+
 export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullName: string }): ClassStudentRecord {
   const list = getClassStudents();
   const now = new Date().toISOString();
   const existingIndex = list.findIndex((s) => s.id === student.id);
+  const cleanName = cleanClassStudentName(student.fullName);
 
   let target: ClassStudentRecord;
 
@@ -420,13 +432,14 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
     target = {
       ...list[existingIndex],
       ...student,
+      fullName: cleanName || list[existingIndex].fullName,
       updatedAt: now,
     };
     list[existingIndex] = target;
   } else {
     target = {
       id: student.id || `cls-std-${Date.now()}`,
-      fullName: student.fullName,
+      fullName: cleanName || student.fullName,
       fullNameEn: student.fullNameEn || '',
       grade: student.grade || 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى',
       nationalId: student.nationalId || '',
