@@ -94,23 +94,13 @@ export async function broadcastScheduleToParents(
   schedule: Period[],
   customNote?: string
 ): Promise<BroadcastResult> {
-  const allMainStudents = getStudents();
+  // ISOLATION: Only broadcast to Dr. Ismail's class students (IKHLAS_JEDDAH)
   const classStudents = getClassStudents();
 
-  // Combine unique students across main db and class db
-  const targetMap = new Map<string, { id: string; name: string; phone?: string; parentName?: string }>();
+  const targets = classStudents.map((s) => ({
+    id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName,
+  }));
 
-  classStudents.forEach((s) => {
-    targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-  });
-
-  allMainStudents.forEach((s) => {
-    if (!targetMap.has(s.id)) {
-      targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-    }
-  });
-
-  const targets = Array.from(targetMap.values());
   if (targets.length === 0) {
     return { success: false, count: 0, message: 'لا يوجد أولياء أمور مسجلين حالياً.' };
   }
@@ -159,23 +149,13 @@ export async function broadcastScheduleToStudents(
   schedule: Period[],
   customNote?: string
 ): Promise<BroadcastResult> {
-  const allMainStudents = getStudents();
+  // ISOLATION: Only broadcast to Dr. Ismail's class students (IKHLAS_JEDDAH)
   const classStudents = getClassStudents();
 
-  // Combine unique students across main db and class db
-  const targetMap = new Map<string, { id: string; name: string; phone?: string; parentName?: string }>();
+  const targets = classStudents.map((s) => ({
+    id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName,
+  }));
 
-  classStudents.forEach((s) => {
-    targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-  });
-
-  allMainStudents.forEach((s) => {
-    if (!targetMap.has(s.id)) {
-      targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-    }
-  });
-
-  const targets = Array.from(targetMap.values());
   if (targets.length === 0) {
     return { success: false, count: 0, message: 'لا يوجد طلاب مسجلين حالياً.' };
   }
@@ -235,25 +215,17 @@ export async function broadcastHomeworkToParents(hwData: {
   toPage?: number;
   subjectSlug?: string;
 }): Promise<BroadcastResult> {
-  const allMainStudents = getStudents();
+  // ISOLATION: Only broadcast to Dr. Ismail's class students (IKHLAS_JEDDAH)
   const classStudents = getClassStudents();
 
-  const targetMap = new Map<string, { id: string; name: string; phone?: string; parentName?: string }>();
+  const targets = classStudents.map((s) => ({
+    id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName,
+  }));
 
-  classStudents.forEach((s) => {
-    targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-  });
-
-  allMainStudents.forEach((s) => {
-    if (!targetMap.has(s.id)) {
-      targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName });
-    }
-  });
-
-  const targets = Array.from(targetMap.values());
   if (targets.length === 0) {
     return { success: false, count: 0, message: 'لا يوجد طلاب مسجلين لإرسال الواجب إليهم.' };
   }
+
 
   const allAccounts = typeof window !== 'undefined' ? getAccounts() : [];
   const localItems = getLocalHomework();
@@ -400,26 +372,27 @@ export async function broadcastAssessmentToStudentsAndParents(data: {
   const allMainStudents = getStudents();
   const classStudents = getClassStudents();
 
-  const targetMap = new Map<string, { id: string; name: string; phone?: string; parentName?: string; schoolBranch?: string }>();
+  // ISOLATION: Properly filter by branch
+  // - IKHLAS_JEDDAH → classStudents only (Dr. Ismail's class)
+  // - MASAR → mainStudents only (main Masar platform)
+  // - ALL or undefined → both combined (admin use case)
+  let targets: { id: string; name: string; phone?: string; parentName?: string }[] = [];
 
-  classStudents.forEach((s) => {
-    targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName, schoolBranch: (s as any).schoolBranch || 'IKHLAS_JEDDAH' });
-  });
-
-  allMainStudents.forEach((s) => {
-    if (!targetMap.has(s.id)) {
-      targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName, schoolBranch: (s as any).schoolBranch || 'MASAR' });
-    }
-  });
-
-  let targets = Array.from(targetMap.values());
-  if (data.branch && data.branch !== 'ALL') {
-    targets = targets.filter((t) => t.schoolBranch === data.branch || (data.branch === 'IKHLAS_JEDDAH' && t.schoolBranch !== 'MASAR'));
+  if (!data.branch || data.branch === 'ALL') {
+    const targetMap = new Map<string, { id: string; name: string; phone?: string; parentName?: string }>();
+    classStudents.forEach((s) => targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName }));
+    allMainStudents.forEach((s) => { if (!targetMap.has(s.id)) targetMap.set(s.id, { id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName }); });
+    targets = Array.from(targetMap.values());
+  } else if (data.branch === 'IKHLAS_JEDDAH') {
+    targets = classStudents.map((s) => ({ id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName }));
+  } else if (data.branch === 'MASAR') {
+    targets = allMainStudents.map((s) => ({ id: s.id, name: s.fullName, phone: s.parentPhone, parentName: s.parentName }));
   }
 
   if (targets.length === 0) {
     return { success: false, count: 0, message: 'لا يوجد طلاب مسجلون في هذا المسار لإرسال الاختبار إليهم.' };
   }
+
 
   const baseAssessmentId = `test_assign_${Date.now()}`;
   let sentCount = 0;
