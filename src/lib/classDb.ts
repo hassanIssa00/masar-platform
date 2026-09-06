@@ -71,8 +71,10 @@ export type StudentHomeworkLog = {
   fromPage?: number;
   toPage?: number;
   dueDate: string;
-  grade?: number; // out of 10
+  grade?: number | string; // out of 10 or '10/10'
   status: 'assigned' | 'submitted' | 'late' | 'missing' | 'reviewed';
+  type?: 'CURRICULUM' | 'QUIZ' | 'TEXT';
+  questions?: any[];
   teacherFeedback?: string;
   submissionAnswers?: Record<string, any>;
   submittedAt?: string;
@@ -230,6 +232,86 @@ export function saveStudentHomeworkLog(log: Omit<StudentHomeworkLog, 'id' | 'cre
 export function deleteStudentHomeworkLog(id: string) {
   writeList(HW_LOG_KEY, readList<StudentHomeworkLog>(HW_LOG_KEY).filter(h => h.id !== id));
   deleteDocFromCloud(CLOUD_HW_LOGS, id);
+}
+
+/**
+ * Permanently delete an assignment and all its associated records across:
+ * - curriculum_assignments & masar.curriculumAssignments.v1
+ * - homework & masar.homework.v1
+ * - student_homework_logs & masar_student_hw_logs_v1
+ */
+export async function deleteAssignmentPermanently(target: {
+  id?: string;
+  studentId?: string;
+  studentName?: string;
+  subjectSlug?: string;
+  subjectTitle?: string;
+  fromPage?: number;
+  toPage?: number;
+  title?: string;
+}): Promise<void> {
+  const targetId = target.id;
+  const sId = target.studentId;
+  const sSlug = target.subjectSlug;
+  const fromP = target.fromPage;
+  const targetTitle = target.title;
+
+  // 1. Delete from curriculumAssignments cache & cloud
+  const ASSIGNMENTS_KEY = 'masar.curriculumAssignments.v1';
+  const currList = readList<any>(ASSIGNMENTS_KEY);
+  const remainingCurr = currList.filter((a) => {
+    if (targetId && a.id === targetId) return false;
+    if (sId && sSlug && a.studentId === sId && a.subjectSlug === sSlug && (fromP === undefined || a.fromPage === fromP)) return false;
+    return true;
+  });
+  writeList(ASSIGNMENTS_KEY, remainingCurr);
+  if (targetId) {
+    void deleteDocFromCloud('curriculum_assignments', targetId);
+  }
+  if (sId && sSlug) {
+    void deleteDocFromCloud('curriculum_assignments', `${sId}_${sSlug}`);
+  }
+
+  // 2. Delete from homework cache & cloud
+  const HW_KEY = 'masar.homework.v1';
+  const hwList = readList<any>(HW_KEY);
+  const remainingHw = hwList.filter((h) => {
+    if (targetId && h.id === targetId) return false;
+    if (targetTitle && h.title === targetTitle && (!sId || h.studentId === sId)) return false;
+    if (sId && sSlug && h.studentId === sId && h.subjectSlug === sSlug && (fromP === undefined || h.fromPage === fromP)) return false;
+    return true;
+  });
+  writeList(HW_KEY, remainingHw);
+  if (targetId) {
+    void deleteDocFromCloud('homework', targetId);
+  }
+
+  // 3. Delete from studentHomeworkLogs cache & cloud
+  const hwLogs = readList<any>(HW_LOG_KEY);
+  const toDeleteLogs: string[] = [];
+  const remainingLogs = hwLogs.filter((l) => {
+    const matchId = targetId && l.id === targetId;
+    const matchTitle = targetTitle && l.title === targetTitle && (!sId || l.studentId === sId);
+    const matchSubject = sId && sSlug && l.studentId === sId && (l.subjectSlug === sSlug || l.subject === target.subjectTitle) && (fromP === undefined || l.fromPage === fromP);
+    if (matchId || matchTitle || matchSubject) {
+      if (l.id) toDeleteLogs.push(l.id);
+      return false;
+    }
+    return true;
+  });
+  writeList(HW_LOG_KEY, remainingLogs);
+  toDeleteLogs.forEach((id) => deleteDocFromCloud(CLOUD_HW_LOGS, id));
+  if (targetId && !toDeleteLogs.includes(targetId)) {
+    deleteDocFromCloud(CLOUD_HW_LOGS, targetId);
+  }
+
+  // 4. Dispatch cloud cache update events
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: ASSIGNMENTS_KEY } }));
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: HW_KEY } }));
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: HW_LOG_KEY } }));
+    window.dispatchEvent(new CustomEvent('storage'));
+  }
 }
 
 // ── Student Certificate Logs ──────────────────────────────────────────────

@@ -22,6 +22,11 @@ import {
   Mic,
   Square,
   Upload,
+  Trophy,
+  Award,
+  HelpCircle,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import {
   parseHomeworkCurriculum,
@@ -66,6 +71,37 @@ export default function StudentInteractiveHomeworkModal({
 
   // If not a curriculum pages homework, fallback to classic submission (text/image/audio)
   const isCurriculumHw = Boolean(parsed);
+  const isQuizHw = hw.type === 'QUIZ' || Boolean(hw.questions && hw.questions.length > 0);
+  const quizQuestions = hw.questions || [];
+
+  // Quiz Solver State
+  const [quizIndex, setQuizIndex] = useState<number>(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>(() => {
+    return hw.submissionAnswers?.answers || {};
+  });
+  const [quizSubmitted, setQuizSubmitted] = useState<boolean>(
+    Boolean(hw.status === 'submitted' || hw.status === 'reviewed' || hw.submissionAnswers)
+  );
+  const [quizResult, setQuizResult] = useState<{ score: number; total: number; correct: number } | null>(() => {
+    if (hw.submissionAnswers?.score !== undefined) {
+      return {
+        score: Number(hw.submissionAnswers.score),
+        total: Number(hw.submissionAnswers.totalQuestions || quizQuestions.length || 5),
+        correct: Number(hw.submissionAnswers.correctCount || 0),
+      };
+    }
+    if (typeof (hw as any).grade === 'string' && (hw as any).grade.includes('/10')) {
+      const parsedScore = parseInt((hw as any).grade.split('/')[0], 10);
+      if (!isNaN(parsedScore)) {
+        return {
+          score: parsedScore,
+          total: quizQuestions.length || 5,
+          correct: Math.round((parsedScore / 10) * (quizQuestions.length || 5)),
+        };
+      }
+    }
+    return null;
+  });
 
   const [currentPage, setCurrentPage] = useState<number>(parsed?.fromPage || 1);
   const [tool, setTool] = useState<Tool>('pen');
@@ -250,6 +286,158 @@ export default function StudentInteractiveHomeworkModal({
     writeCloudCache(DRAWINGS_KEY, updated);
   };
 
+  const getQuestionText = (q: any): string => q?.text || q?.question || '';
+  const getQuestionOptions = (q: any): string[] => (Array.isArray(q?.options) ? q.options : []);
+  const getCorrectAnswerIndex = (q: any): number => {
+    if (typeof q?.correctAnswerIndex === 'number') return q.correctAnswerIndex;
+    if (typeof q?.correctAnswer === 'string' && Array.isArray(q?.options)) {
+      const idx = q.options.findIndex(
+        (o: string) =>
+          o.trim() === q.correctAnswer.trim() ||
+          o.includes(q.correctAnswer) ||
+          q.correctAnswer.includes(o)
+      );
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  };
+
+  // Submit solved quiz to Dr. Ismail and update records
+  const handleSubmitQuiz = async () => {
+    if (quizQuestions.length === 0) return;
+    const answeredCount = Object.keys(selectedAnswers).length;
+    if (answeredCount < quizQuestions.length) {
+      const confirmSubmit = window.confirm(`لقد أجبت على ${answeredCount} من أصل ${quizQuestions.length} أسئلة. هل ترغب في تسليم الكويز الآن؟`);
+      if (!confirmSubmit) return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      let correct = 0;
+      quizQuestions.forEach((q, idx) => {
+        const correctIdx = getCorrectAnswerIndex(q);
+        if (selectedAnswers[idx] === correctIdx) {
+          correct++;
+        }
+      });
+      const total = quizQuestions.length;
+      const score = Math.round((correct / (total || 1)) * 10);
+      const submittedAt = new Date().toISOString();
+      const gradeStr = `${score}/10`;
+
+      // 1. Mark status as submitted
+      updateHomeworkStatus(hw.id, 'submitted', `تم حل الكويز بنتيجة ${gradeStr}`, {
+        grade: score,
+        quizScore: score,
+        correctCount: correct,
+        totalQuestions: total,
+        answers: selectedAnswers,
+      });
+
+      // 2. Save to homework log
+      saveStudentHomeworkLog({
+        id: hw.id,
+        studentId,
+        studentName,
+        title: hw.title,
+        subject: parsed?.subjectTitle || (hw as any).subject || 'كويز تفاعلي',
+        subjectSlug: parsed?.subjectSlug,
+        fromPage: parsed?.fromPage,
+        toPage: parsed?.toPage,
+        dueDate: hw.dueDate,
+        status: 'submitted',
+        submittedAt,
+        type: 'QUIZ',
+        questions: quizQuestions,
+        grade: score,
+        teacherFeedback: score >= 9 ? 'ممتاز جداً! إجابات نموذجية بارك الله فيك 🌟' : score >= 7 ? 'أحسنت! نتيجة جيدة جداً، استمر في التقدم 👍' : 'جهد طيب يا بطل، راجع الأسئلة مع المعلم لمزيد من الإتقان 💪',
+        submissionAnswers: {
+          answers: selectedAnswers,
+          score,
+          totalQuestions: total,
+          correctCount: correct,
+        },
+      });
+
+      // 3. Update curriculum assignments cache and cloud sync
+      try {
+        const currAssignments = readCloudCache<any>('masar.curriculumAssignments.v1');
+        const updatedCurr = currAssignments.map((a: any) => {
+          if (a.id === hw.id || (a.studentId === studentId && a.subjectSlug === parsed?.subjectSlug && Number(a.fromPage) === Number(parsed?.fromPage))) {
+            return {
+              ...a,
+              status: 'submitted',
+              submittedAt,
+              grade: score,
+              submissionAnswers: { answers: selectedAnswers, score, totalQuestions: total, correctCount: correct },
+            };
+          }
+          return a;
+        });
+        writeCloudCache('masar.curriculumAssignments.v1', updatedCurr);
+        void syncDocToCloud('curriculum_assignments', hw.id, {
+          id: hw.id,
+          studentId,
+          studentName,
+          subjectSlug: parsed?.subjectSlug,
+          fromPage: parsed?.fromPage,
+          toPage: parsed?.toPage,
+          status: 'submitted',
+          submittedAt,
+          grade: score,
+          type: 'QUIZ',
+          questions: quizQuestions,
+          submissionAnswers: { answers: selectedAnswers, score, totalQuestions: total, correctCount: correct },
+        });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: 'masar.curriculumAssignments.v1', id: hw.id } }));
+        }
+      } catch (e) {
+        console.error('Error syncing quiz assignment status:', e);
+      }
+
+      // 4. Notify Doctor
+      void createNotification({
+        type: 'homework',
+        title: `🎯 نتيجة كويز: ${studentName}`,
+        body: `أكمل الطالب البطل ${studentName} حل كويز "${hw.title}" وحصل على درجة ${gradeStr} (${correct} إجابات صحيحة من ${total})!`,
+        link: `/branches/ikhlas-jeddah`,
+        targetRole: 'doctor',
+        studentId,
+        studentName,
+      });
+
+      // 5. Confirmation Notification to Parent
+      void createNotification({
+        type: 'homework',
+        title: `🎯 نتيجة كويز ابنكم: ${studentName}`,
+        body: `أكمل بطلنا ${studentName} حل كويز "${hw.title}" بنجاح وحصل على ${gradeStr}! بارك الله فيه 🎉`,
+        link: `/school-parent?tab=homework`,
+        targetRole: 'parent',
+        studentId,
+        studentName,
+      });
+
+      // 6. Send Message to Doctor
+      saveMessage({
+        studentId,
+        from: 'student',
+        to: 'doctor',
+        body: `🎯 قام الطالب (${studentName}) بحل كويز (${hw.title}) وحصل على درجة ${gradeStr} (${correct} إجابات صحيحة من أصل ${total}).`,
+        read: false,
+      });
+
+      setQuizResult({ score, total, correct });
+      setQuizSubmitted(true);
+      setSubmittedSuccess(true);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تسليم الكويز.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Submit solved homework to Dr. Ismail
   const handleSubmitHomework = async () => {
     setIsSubmitting(true);
@@ -396,16 +584,21 @@ export default function StudentInteractiveHomeworkModal({
         <div className="px-4 py-3 bg-gradient-to-l from-slate-900 via-teal-950 to-slate-900 text-white flex items-center justify-between gap-3 border-b border-teal-800/40 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-teal-600/30 border border-teal-400/40 flex items-center justify-center text-lg shrink-0">
-              ✏️
+              {isQuizHw ? '🎯' : '✏️'}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] sm:text-xs bg-teal-500/20 text-teal-300 font-black px-2 py-0.5 rounded-md border border-teal-400/30 shrink-0">
-                  {parsed?.subjectTitle || 'واجب مدرسي'}
+                  {isQuizHw ? 'كويز تفاعلي ذكي' : (parsed?.subjectTitle || 'واجب مدرسي')}
                 </span>
-                {parsed && (
+                {parsed && !isQuizHw && (
                   <span className="text-[10px] sm:text-xs text-amber-300 font-black truncate">
                     صفحات: {parsed.fromPage} – {parsed.toPage}
+                  </span>
+                )}
+                {isQuizHw && quizQuestions.length > 0 && (
+                  <span className="text-[10px] sm:text-xs text-amber-300 font-black truncate">
+                    {quizQuestions.length} أسئلة
                   </span>
                 )}
               </div>
@@ -422,8 +615,211 @@ export default function StudentInteractiveHomeworkModal({
           </button>
         </div>
 
-        {/* ── SUCCESS BANNER ON SUBMIT ── */}
-        {submittedSuccess ? (
+        {/* ── QUIZ RUNNER OR HOMEWORK SOLVER ── */}
+        {isQuizHw ? (
+          /* ── INTERACTIVE QUIZ RUNNER ── */
+          <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
+            {quizSubmitted && quizResult ? (
+              /* Results & Review Screen */
+              <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto w-full">
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm text-center space-y-3">
+                  <div className="w-20 h-20 rounded-full bg-amber-100 border-2 border-amber-300 text-amber-600 flex items-center justify-center text-4xl mx-auto shadow-inner animate-bounce">
+                    🏆
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">
+                    {quizResult.score >= 9 ? 'ما شاء الله! ممتاز ومتألق يا بطل 🌟' : quizResult.score >= 7 ? 'أحسنت! نتيجة رائعة ومتميزة 👏' : 'عمل جيد يا بطل! واصل التدريب 💪'}
+                  </h3>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800">
+                    <span className="text-xs font-bold">الدرجة النهائية:</span>
+                    <span className="text-2xl font-black text-emerald-600">{quizResult.score} / 10</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-500">
+                    أجبت بشكل صحيح على {quizResult.correct} من أصل {quizResult.total} أسئلة · تم إرسال نتيجتك وحلك فوراً لدكتور إسماعيل عيسى وولي أمرك ✅
+                  </p>
+                </div>
+
+                {/* Question by question review */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-600 px-1">مراجعة الإجابات والحلول النموذجية:</h4>
+                  {quizQuestions.map((q, qIdx) => {
+                    const studentChoice = selectedAnswers[qIdx];
+                    const correctIdx = getCorrectAnswerIndex(q);
+                    const isCorrect = studentChoice === correctIdx;
+                    const qText = getQuestionText(q);
+                    const qOptions = getQuestionOptions(q);
+                    return (
+                      <div
+                        key={q.id || qIdx}
+                        className={`p-4 rounded-2xl border transition bg-white ${
+                          isCorrect ? 'border-emerald-200 shadow-xs' : 'border-rose-200 shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-xs font-black text-slate-800">سؤال {qIdx + 1}</span>
+                          <span className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
+                            isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {isCorrect ? 'إجابة صحيحة ✅' : 'إجابة خاطئة ❌'}
+                          </span>
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-slate-900 mb-3">{qText}</p>
+                        <div className="space-y-1.5">
+                          {qOptions.map((opt, optIdx) => {
+                            const isThisCorrect = optIdx === correctIdx;
+                            const isThisSelected = studentChoice === optIdx;
+                            return (
+                              <div
+                                key={optIdx}
+                                className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-bold border ${
+                                  isThisCorrect
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                                    : isThisSelected
+                                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                                    : 'bg-slate-50 border-slate-100 text-slate-600'
+                                }`}
+                              >
+                                <span>{['أ', 'ب', 'ج', 'د'][optIdx] || optIdx + 1}. {opt}</span>
+                                {isThisCorrect && <span className="text-[10px] text-emerald-700 font-black">الإجابة النموذجية ⭐</span>}
+                                {!isThisCorrect && isThisSelected && <span className="text-[10px] text-rose-700 font-black">إجابتك ❌</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {q.explanation && (
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-800">
+                            💡 {q.explanation}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onSubmitSuccess()}
+                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer shadow-md"
+                >
+                  إغلاق والعودة للبوابة
+                </button>
+              </div>
+            ) : (
+              /* Active Quiz Question Runner */
+              <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 max-w-2xl mx-auto w-full">
+                <div className="space-y-5">
+                  {/* Stepper Tabs */}
+                  <div className="flex items-center justify-between gap-1.5 overflow-x-auto pb-1">
+                    {quizQuestions.map((_, idx) => {
+                      const isAnswered = selectedAnswers[idx] !== undefined;
+                      const isCurrent = idx === quizIndex;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setQuizIndex(idx)}
+                          className={`flex-1 min-w-[40px] py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer text-center ${
+                            isCurrent
+                              ? 'bg-teal-700 text-white shadow-md ring-2 ring-teal-400'
+                              : isAnswered
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {idx + 1} {isAnswered && !isCurrent && '✓'}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Question Box */}
+                  {quizQuestions[quizIndex] && (
+                    <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs bg-teal-50 border border-teal-200 text-teal-800 font-black px-3 py-1 rounded-full">
+                          السؤال {quizIndex + 1} من {quizQuestions.length}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {selectedAnswers[quizIndex] !== undefined ? '✅ تم اختيار إجابة' : '⏳ بانتظار إجابتك'}
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 leading-relaxed">
+                        {getQuestionText(quizQuestions[quizIndex])}
+                      </h3>
+
+                      {/* Options */}
+                      <div className="space-y-2.5 pt-2">
+                        {getQuestionOptions(quizQuestions[quizIndex]).map((opt, optIdx) => {
+                          const isSelected = selectedAnswers[quizIndex] === optIdx;
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAnswers((prev) => ({ ...prev, [quizIndex]: optIdx }));
+                              }}
+                              className={`w-full text-right p-3.5 sm:p-4 rounded-2xl border text-xs sm:text-sm font-bold transition flex items-center justify-between gap-3 cursor-pointer ${
+                                isSelected
+                                  ? 'bg-teal-50 border-teal-600 text-teal-950 ring-2 ring-teal-500 shadow-sm'
+                                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-teal-300 hover:bg-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
+                                  isSelected ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-700'
+                                }`}>
+                                  {['أ', 'ب', 'ج', 'د'][optIdx] || optIdx + 1}
+                                </span>
+                                <span>{opt}</span>
+                              </div>
+                              {isSelected && <span className="text-teal-600 font-black text-sm">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Controls */}
+                <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-200 mt-4">
+                  <button
+                    type="button"
+                    disabled={quizIndex === 0}
+                    onClick={() => setQuizIndex((i) => Math.max(0, i - 1))}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-black hover:bg-slate-50 transition disabled:opacity-30 cursor-pointer"
+                  >
+                    السابق
+                  </button>
+
+                  <div className="text-[11px] font-bold text-slate-500">
+                    أجبت على {Object.keys(selectedAnswers).length} من {quizQuestions.length}
+                  </div>
+
+                  {quizIndex < quizQuestions.length - 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setQuizIndex((i) => Math.min(quizQuestions.length - 1, i + 1))}
+                      className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-black transition cursor-pointer"
+                    >
+                      التالي
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={handleSubmitQuiz}
+                      className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      <span>تسليم الكويز الآن 🚀</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : submittedSuccess ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-emerald-50">
             <div className="w-20 h-20 rounded-full bg-emerald-100 border-2 border-emerald-300 text-emerald-600 flex items-center justify-center text-4xl mx-auto animate-bounce shadow-md">
               🎉

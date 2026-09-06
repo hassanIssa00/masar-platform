@@ -1,6 +1,6 @@
 'use client';
 
-import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
+import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 
 export interface HomeworkRecord {
   id: string;
@@ -14,12 +14,22 @@ export interface HomeworkRecord {
   description: string;
   dueDate: string;
   status: 'assigned' | 'submitted' | 'reviewed';
-  type?: 'TEXT' | 'CURRICULUM' | 'MULTIPLE_CHOICE';
+  type?: 'TEXT' | 'CURRICULUM' | 'MULTIPLE_CHOICE' | 'QUIZ';
   subjectSlug?: string;
   subjectTitle?: string;
   fromPage?: number;
   toPage?: number;
-  grade?: number; // score out of 10 or 100
+  grade?: number | string; // score out of 10 or 100
+  questions?: Array<{
+    id?: string | number;
+    text?: string;
+    question?: string;
+    options?: string[];
+    correctAnswer?: string;
+    correctAnswerIndex?: number;
+    explanation?: string;
+  }>;
+  submissionAnswers?: any;
   parentNotes?: string;
   doctorFeedback?: string;
   createdAt: string;
@@ -77,10 +87,16 @@ export function updateHomeworkStatus(
   id: string,
   status: HomeworkRecord['status'],
   parentNotes?: string,
-  optionsOrGrade?: { grade?: number; doctorFeedback?: string } | number
+  optionsOrGrade?: { grade?: number | string; doctorFeedback?: string; quizScore?: number; correctCount?: number; totalQuestions?: number; answers?: any } | number | string
 ) {
-  const resolvedGrade = typeof optionsOrGrade === 'number' ? optionsOrGrade : optionsOrGrade?.grade;
+  const resolvedGrade = typeof optionsOrGrade === 'number' || typeof optionsOrGrade === 'string' ? optionsOrGrade : optionsOrGrade?.grade;
   const resolvedDoctorFeedback = typeof optionsOrGrade === 'object' && optionsOrGrade !== null ? optionsOrGrade.doctorFeedback : (status === 'reviewed' ? parentNotes : undefined);
+  const extraSubmissionAnswers = typeof optionsOrGrade === 'object' && optionsOrGrade !== null && (optionsOrGrade.answers || optionsOrGrade.quizScore !== undefined) ? {
+    answers: optionsOrGrade.answers,
+    score: optionsOrGrade.quizScore,
+    correctCount: optionsOrGrade.correctCount,
+    totalQuestions: optionsOrGrade.totalQuestions,
+  } : undefined;
 
   const current = getLocalHomework();
   const updated = current.map((h) =>
@@ -91,6 +107,7 @@ export function updateHomeworkStatus(
           parentNotes: parentNotes !== undefined ? parentNotes : h.parentNotes,
           grade: resolvedGrade !== undefined ? resolvedGrade : h.grade,
           doctorFeedback: resolvedDoctorFeedback !== undefined ? resolvedDoctorFeedback : h.doctorFeedback,
+          submissionAnswers: extraSubmissionAnswers !== undefined ? extraSubmissionAnswers : h.submissionAnswers,
           updatedAt: new Date().toISOString(),
         }
       : h
@@ -102,5 +119,15 @@ export function updateHomeworkStatus(
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: LOCAL_KEY } }));
+  }
+}
+
+export async function deleteHomework(id: string): Promise<void> {
+  const current = getLocalHomework();
+  const updated = current.filter((h) => h.id !== id);
+  saveLocalHomework(updated);
+  await deleteDocFromCloud('homework', id);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('masar:cloud-cache-update', { detail: { key: LOCAL_KEY, id } }));
   }
 }

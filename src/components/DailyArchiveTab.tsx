@@ -57,7 +57,7 @@ export interface StudentHomeworkItem {
   dueDate: string;
   date: string;
   status: 'assigned' | 'submitted' | 'late' | 'missing' | 'reviewed';
-  grade?: number;
+  grade?: number | string;
   feedback?: string;
   submittedAt?: string;
 }
@@ -430,7 +430,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     const missing = activeStudentHomework.filter(r => r.status === 'missing' || r.status === 'assigned').length;
     const late = activeStudentHomework.filter(r => r.status === 'late').length;
     const graded = activeStudentHomework.filter(r => r.grade !== undefined);
-    const avgGrade = graded.length > 0 ? (graded.reduce((sum, r) => sum + (r.grade || 0), 0) / graded.length).toFixed(1) : '—';
+    const avgGrade = graded.length > 0 ? (graded.reduce((sum, r) => sum + (Number(typeof r.grade === 'string' ? r.grade.split('/')[0] : r.grade) || 0), 0) / graded.length).toFixed(1) : '—';
     const rate = total > 0 ? Math.round((submitted / total) * 100) : 100;
     return { total, submitted, missing, late, avgGrade, rate };
   }, [activeStudentHomework]);

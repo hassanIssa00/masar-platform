@@ -655,54 +655,68 @@ export default function StudentDashboard() {
           </p>
         </div>
       ) : (
-        homeworks.map(hw => (
-          <div key={hw.id}
-            onClick={() => setSelectedHw(hw)}
-            className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md cursor-pointer hover:border-emerald-200 transition-all">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><BookOpen size={18} /></div>
-                <div>
-                  <h3 className="font-black text-sm text-gray-800">{hw.title}</h3>
-                  {hw.description && <p className="text-xs text-gray-500 mt-0.5 max-w-xs">{hw.description}</p>}
-                  <p className="text-[10px] font-bold text-slate-400 mt-1">📅 التسليم: {hw.dueDate || 'غير محدد'}</p>
+        homeworks.map(hw => {
+          const isQuiz = hw.type === 'QUIZ' || Boolean((hw as any).questions && (hw as any).questions.length > 0);
+          return (
+            <div key={hw.id}
+              onClick={() => setSelectedHw(hw)}
+              className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md cursor-pointer hover:border-emerald-200 transition-all">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-xl ${isQuiz ? 'bg-amber-50 text-amber-600' : 'bg-teal-50 text-teal-600'}`}>
+                    {isQuiz ? <span className="text-lg">🎯</span> : <BookOpen size={18} />}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-sm text-gray-800">{hw.title}</h3>
+                      {isQuiz && (
+                        <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-black px-2 py-0.5 rounded-md">
+                          كويز ذكي 🎯
+                        </span>
+                      )}
+                    </div>
+                    {hw.description && <p className="text-xs text-gray-500 mt-0.5 max-w-xs">{hw.description}</p>}
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">📅 التسليم: {hw.dueDate || 'غير محدد'}</p>
+                  </div>
                 </div>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                  hw.status === 'assigned' ? 'bg-amber-100 text-amber-700' :
+                  hw.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
+                  'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {hw.status === 'assigned' ? '📝 مطلوب' :
+                   hw.status === 'submitted' ? '⏳ قيد المراجعة' :
+                   (hw as any).grade !== undefined ? `⭐ ${(hw as any).grade}/10` : '✅ تم التصحيح'}
+                </span>
               </div>
-              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                hw.status === 'assigned' ? 'bg-amber-100 text-amber-700' :
-                hw.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
-                'bg-emerald-100 text-emerald-700'
-              }`}>
-                {hw.status === 'assigned' ? '📝 مطلوب' :
-                 hw.status === 'submitted' ? '⏳ قيد المراجعة' :
-                 (hw as any).grade !== undefined ? `⭐ ${(hw as any).grade}/10` : '✅ تم التصحيح'}
-              </span>
+              {/* Grade & Feedback display when reviewed */}
+              {(hw.status === 'reviewed' || (hw as any).grade !== undefined) && (
+                <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <span className="text-xl">🏆</span>
+                  <div>
+                    <p className="text-xs font-black text-emerald-800">الدرجة: {(hw as any).grade}/10</p>
+                    {(hw as any).doctorFeedback && (
+                      <p className="text-[11px] font-bold text-slate-600 mt-0.5">💬 د. إسماعيل: {(hw as any).doctorFeedback}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {hw.status === 'assigned' ? (
+                <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
+                  className="mt-2 w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                  {isQuiz ? <span className="text-sm">🎯</span> : <Send size={13} />}
+                  <span>{isQuiz ? 'بدء حل الكويز التفاعلي 🎯' : 'حل وتسليم الواجب بالكتاب تفاعلياً ✍️'}</span>
+                </button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
+                  className="mt-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                  {isQuiz ? <span className="text-sm">🏆</span> : <BookOpen size={13} />}
+                  <span>{isQuiz ? 'استعراض نتيجة وإجابات الكويز 👁️' : 'استعراض حلي في الكتاب 👁️'}</span>
+                </button>
+              )}
             </div>
-            {/* Grade & Feedback display when reviewed */}
-            {hw.status === 'reviewed' && (hw as any).grade !== undefined && (
-              <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <span className="text-xl">🏆</span>
-                <div>
-                  <p className="text-xs font-black text-emerald-800">درجتك: {(hw as any).grade}/10</p>
-                  {(hw as any).doctorFeedback && (
-                    <p className="text-[11px] font-bold text-slate-600 mt-0.5">💬 د. إسماعيل: {(hw as any).doctorFeedback}</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {hw.status === 'assigned' ? (
-              <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
-                className="mt-2 w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
-                <Send size={13} /> حل وتسليم الواجب بالكتاب تفاعلياً ✍️
-              </button>
-            ) : (
-              <button onClick={(e) => { e.stopPropagation(); setSelectedHw(hw); }}
-                className="mt-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
-                <BookOpen size={13} /> استعراض حلي في الكتاب 👁️
-              </button>
-            )}
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );

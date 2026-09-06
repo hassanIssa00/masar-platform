@@ -523,6 +523,8 @@ export default function SchoolParentPage() {
           status: h.status,
           grade: h.grade,
           doctorFeedback: h.doctorFeedback,
+          questions: h.questions,
+          submissionAnswers: h.submissionAnswers,
         });
       }
     });
@@ -533,17 +535,17 @@ export default function SchoolParentPage() {
       const hwId = ca.id || `curr_hw_${ca.subjectSlug}_${ca.studentId}`;
       // Check by id AND by title AND by subjectSlug+fromPage+toPage to avoid duplicates
       const existingEntry = map.get(hwId) || Array.from(map.values()).find(
-        (x) => x.title === `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})` ||
+        (x) => x.title === (ca.title || `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`) ||
           (ca.subjectSlug && x.subjectSlug === ca.subjectSlug &&
             Number(x.fromPage) === Number(ca.fromPage) && Number(x.toPage) === Number(ca.toPage))
       );
       if (!existingEntry) {
         map.set(hwId, {
           id: hwId,
-          title: `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`,
-          description: `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${ca.fromPage}) إلى صفحة (${ca.toPage}).`,
+          title: ca.title || `واجب ${ca.subjectTitle || 'المنهج'} (ص ${ca.fromPage} - ${ca.toPage})`,
+          description: ca.description || `حل التدريبات والأنشطة التفاعلية بالكتاب المدرسي من صفحة (${ca.fromPage}) إلى صفحة (${ca.toPage}).`,
           dueDate: ca.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-          type: 'CURRICULUM_PAGES',
+          type: ca.type || 'CURRICULUM_PAGES',
           fromPage: ca.fromPage,
           toPage: ca.toPage,
           subjectSlug: ca.subjectSlug,
@@ -551,11 +553,16 @@ export default function SchoolParentPage() {
           status: ca.status || 'assigned',
           grade: ca.grade,
           teacherFeedback: ca.teacherFeedback,
+          questions: ca.questions,
+          submissionAnswers: ca.submissionAnswers,
         });
       } else {
         if (ca.status) existingEntry.status = ca.status;
         if (ca.grade !== undefined) existingEntry.grade = ca.grade;
         if (ca.teacherFeedback) existingEntry.teacherFeedback = ca.teacherFeedback;
+        if (ca.questions && !existingEntry.questions) existingEntry.questions = ca.questions;
+        if (ca.submissionAnswers) existingEntry.submissionAnswers = ca.submissionAnswers;
+        if (ca.type) existingEntry.type = ca.type;
       }
     });
 
@@ -574,18 +581,23 @@ export default function SchoolParentPage() {
           title: log.title,
           description: log.teacherFeedback || `واجب مدرسي مكلف من قبل د. إسماعيل عيسى (${log.subject || 'المادة'})`,
           dueDate: log.dueDate || new Date().toISOString().slice(0, 10),
-          type: 'TEXT',
+          type: (log as any).type || 'TEXT',
           fromPage: log.fromPage,
           toPage: log.toPage,
           subjectSlug: log.subjectSlug,
           status: log.status,
           grade: log.grade,
           teacherFeedback: log.teacherFeedback,
+          questions: (log as any).questions,
+          submissionAnswers: (log as any).submissionAnswers,
         });
       } else {
         if (log.status) existing.status = log.status;
         if (log.grade !== undefined) existing.grade = log.grade;
         if (log.teacherFeedback) existing.teacherFeedback = log.teacherFeedback;
+        if ((log as any).questions && !existing.questions) existing.questions = (log as any).questions;
+        if ((log as any).submissionAnswers) existing.submissionAnswers = (log as any).submissionAnswers;
+        if ((log as any).type) existing.type = (log as any).type;
       }
     });
 

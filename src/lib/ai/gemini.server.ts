@@ -11,6 +11,7 @@ export interface GeminiMessage {
   role: 'user' | 'assistant' | 'model' | 'system';
   content: string;
   image?: { mimeType: string; data: string };
+  images?: Array<{ mimeType: string; data: string }>;
 }
 
 export interface CallGeminiOptions {
@@ -102,7 +103,18 @@ export async function callGeminiApi({
           if (msg.content) {
             parts.push({ text: msg.content });
           }
-          if (msg.image && msg.image.data) {
+          if (msg.images && Array.isArray(msg.images)) {
+            for (const img of msg.images) {
+              if (img && img.data) {
+                parts.push({
+                  inlineData: {
+                    mimeType: img.mimeType || 'image/jpeg',
+                    data: img.data,
+                  },
+                });
+              }
+            }
+          } else if (msg.image && msg.image.data) {
             parts.push({
               inlineData: {
                 mimeType: msg.image.mimeType || 'image/png',

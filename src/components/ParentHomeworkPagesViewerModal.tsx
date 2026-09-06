@@ -74,6 +74,145 @@ export default function ParentHomeworkPagesViewerModal({
     setImageError(false);
   }, [currentPage, parsed, studentId, homework?.studentId]);
 
+  const isQuiz = homework?.type === 'QUIZ' || (Array.isArray(homework?.questions) && homework.questions.length > 0);
+  if (isQuiz) {
+    const quizQuestions = homework?.questions || [];
+    const submission = homework?.submissionAnswers;
+    const isSubmitted = homework?.status === 'submitted' || homework?.status === 'reviewed' || Boolean(submission);
+    const studentAnswers = submission?.answers || {};
+    const score = submission?.score ?? (typeof homework?.grade === 'string' ? homework.grade.replace('/10', '') : undefined);
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto" dir="rtl">
+        <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden animate-scale-in">
+          {/* Header */}
+          <div className="p-4 sm:p-5 bg-gradient-to-l from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between gap-3 border-b border-indigo-800/40 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-xl shrink-0">
+                🎯
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-indigo-500/20 text-indigo-300 font-black px-2.5 py-0.5 rounded-lg border border-indigo-400/30">
+                    كويز إلكتروني تفاعلي
+                  </span>
+                  {homework?.dueDate && (
+                    <span className="text-[11px] text-amber-300 font-bold">
+                      📅 {new Date(homework.dueDate).toLocaleDateString('ar-SA')}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-black text-sm sm:text-base text-white mt-1 truncate">
+                  {homework?.title || 'كويز الطالب'}
+                </h3>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+              title="إغلاق"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-50">
+            {/* Status & Score Banner */}
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className={`text-[11px] font-black px-2.5 py-1 rounded-full ${
+                  isSubmitted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {isSubmitted ? '✅ تم الحل والتسليم بنجاح' : '⏳ بانتظار حل الطالب'}
+                </span>
+                <p className="text-xs font-bold text-slate-600 mt-1">
+                  {isSubmitted
+                    ? `أتم الطالب ${studentName || ''} الكويز وتم رصد درجاته وإرسالها للمعلم.`
+                    : `هذا الكويز متاح للطالب ليقوم بحله إلكترونياً من حسابه.`}
+                </p>
+              </div>
+
+              {score !== undefined && (
+                <div className="text-center bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2 shrink-0">
+                  <span className="text-[10px] font-black text-emerald-800 block">درجة الكويز</span>
+                  <span className="text-2xl font-black text-emerald-600">{score}/10</span>
+                </div>
+              )}
+            </div>
+
+            {/* Questions review */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black text-slate-700 px-1">أسئلة الكويز والإجابات:</h4>
+              {quizQuestions.map((q: any, qIdx: number) => {
+                const studentAns = studentAnswers[qIdx];
+                const hasAnswered = studentAns !== undefined;
+                const isCorrect = studentAns === q.correctAnswerIndex;
+
+                return (
+                  <div key={qIdx} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-800">سؤال {qIdx + 1}</span>
+                      {hasAnswered && (
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                          isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {isCorrect ? 'إجابة صحيحة ✓' : 'إجابة غير صحيحة ✗'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">{q.question}</p>
+
+                    <div className="space-y-1.5 pt-1">
+                      {q.options?.map((opt: string, optIdx: number) => {
+                        const isCorrectOpt = optIdx === q.correctAnswerIndex;
+                        const isStudentOpt = studentAns === optIdx;
+
+                        return (
+                          <div
+                            key={optIdx}
+                            className={`flex items-center justify-between p-2 rounded-xl text-xs font-bold border ${
+                              isCorrectOpt
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                                : isStudentOpt
+                                ? 'bg-rose-50 border-rose-300 text-rose-900'
+                                : 'bg-slate-50 border-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <span>{['أ', 'ب', 'ج', 'د'][optIdx] || optIdx + 1}. {opt}</span>
+                            {isCorrectOpt && <span className="text-[10px] text-emerald-700 font-black">الإجابة الصحيحة ⭐</span>}
+                            {!isCorrectOpt && isStudentOpt && <span className="text-[10px] text-rose-700 font-black">إجابة الطالب ❌</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {q.explanation && (
+                      <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-800 mt-2">
+                        💡 {q.explanation}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 bg-white border-t border-slate-200 shrink-0">
+            <button
+              onClick={onClose}
+              className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition cursor-pointer shadow-md"
+            >
+              إغلاق النافذة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!parsed) {
     // Fallback if not a curriculum pages homework
     return (
