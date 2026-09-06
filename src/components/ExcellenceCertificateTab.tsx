@@ -116,8 +116,10 @@ export default function ExcellenceCertificateTab({ students }: Props) {
         });
       });
 
-      // 2. From all platform students (masar.students.v1)
-      const allPlatformStudents = getStudents();
+      // 2. Only platform students explicitly assigned to IKHLAS_JEDDAH
+      const allPlatformStudents = getStudents().filter(
+        (s) => s.schoolBranch === 'IKHLAS_JEDDAH' || s.source === 'ikhlas-jeddah'
+      );
       allPlatformStudents.forEach(s => {
         if (!s.id || !s.fullName) return;
         const normName = normalizeArabicText(s.fullName);

@@ -26,6 +26,8 @@ export type ClassStudentRecord = {
   parentLastActiveAt?: string;
   lastLoginAt?: string;
   lastActiveAt?: string;
+  schoolBranch?: string;
+  source?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -301,10 +303,37 @@ export function getClassStudents(): ClassStudentRecord[] {
   // Deleted students must never come back automatically.
   // The list is only populated via saveClassStudent() or fetchClassStudentsFromCloud().
 
-  // ☁️ Auto-sync: merge any students registered under IKHLAS_JEDDAH from the main students store
+  // 🛡️ Filter out any rogue non-class students (e.g. MASAR platform students like Ahmed Fares)
+  let activeClassList: ClassStudentRecord[] = [];
   try {
     const mainStudents = readCloudCache<any>('masar.students.v1');
-    const existingNames = new Set(list.map((s) => s.fullName.trim().toLowerCase()));
+    let hadPruned = false;
+
+    list.forEach((s) => {
+      const matchMain = mainStudents.find(
+        (ms: any) => ms.id === s.id || (ms.fullName && s.fullName && isStudentNameMatch(ms.fullName, s.fullName))
+      );
+
+      const isMasarPlatformOnly =
+        s.schoolBranch === 'MASAR' ||
+        (matchMain && matchMain.schoolBranch === 'MASAR') ||
+        (matchMain && matchMain.schoolBranch !== 'IKHLAS_JEDDAH' && matchMain.branch !== 'IKHLAS_JEDDAH' && (!matchMain.grade || !matchMain.grade.includes('فصل')) && (!matchMain.fullName || !matchMain.fullName.includes('ربيع'))) ||
+        (s.fullName && (s.fullName.includes('فارس عبد الله') || s.fullName.includes('احمد فارس')) && s.schoolBranch !== 'IKHLAS_JEDDAH');
+
+      if (isMasarPlatformOnly) {
+        hadPruned = true;
+        deleteDocFromCloud(CLOUD_COLLECTION, s.id);
+      } else {
+        activeClassList.push(s);
+      }
+    });
+
+    if (hadPruned) {
+      writeCloudCache(CLASS_STUDENTS_KEY, activeClassList);
+    }
+
+    // ☁️ Auto-sync: merge any students registered under IKHLAS_JEDDAH from the main students store
+    const existingNames = new Set(activeClassList.map((s) => s.fullName.trim().toLowerCase()));
 
     let hasNew = false;
     let hasUpdated = false;
@@ -329,32 +358,35 @@ export function getClassStudents(): ClassStudentRecord[] {
           notes: ms.notes || '',
           assignedProgram: ms.assignedProgram || 'reading',
           assignedPrograms: ms.assignedPrograms || ['reading'],
+          schoolBranch: 'IKHLAS_JEDDAH',
+          source: 'ikhlas-jeddah',
           createdAt: ms.createdAt || new Date().toISOString(),
           updatedAt: ms.updatedAt || new Date().toISOString(),
         };
-        list.push(clsRecord);
+        activeClassList.push(clsRecord);
         existingNames.add(normName);
         hasNew = true;
         void syncDocToCloud(CLOUD_COLLECTION, clsRecord.id, clsRecord);
       } else if (isClassStudent && normName && ms.photoUrl) {
         // Also update photoUrl on EXISTING class students if the main store has a photo they're missing
-        const existingIdx = list.findIndex((s) => s.fullName.trim().toLowerCase() === normName || s.id === ms.id);
-        if (existingIdx >= 0 && !list[existingIdx].photoUrl) {
-          list[existingIdx] = { ...list[existingIdx], photoUrl: ms.photoUrl, updatedAt: new Date().toISOString() };
+        const existingIdx = activeClassList.findIndex((s) => s.fullName.trim().toLowerCase() === normName || s.id === ms.id);
+        if (existingIdx >= 0 && !activeClassList[existingIdx].photoUrl) {
+          activeClassList[existingIdx] = { ...activeClassList[existingIdx], photoUrl: ms.photoUrl, updatedAt: new Date().toISOString() };
           hasUpdated = true;
-          void syncDocToCloud(CLOUD_COLLECTION, list[existingIdx].id, list[existingIdx]);
+          void syncDocToCloud(CLOUD_COLLECTION, activeClassList[existingIdx].id, activeClassList[existingIdx]);
         }
       }
     });
 
     if (hasNew || hasUpdated) {
-      writeCloudCache(CLASS_STUDENTS_KEY, list);
+      writeCloudCache(CLASS_STUDENTS_KEY, activeClassList);
     }
   } catch (err) {
     console.warn('classDb sync warning:', err);
+    activeClassList = list;
   }
 
-  return list;
+  return activeClassList;
 }
 
 export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[]> {
@@ -362,8 +394,14 @@ export async function fetchClassStudentsFromCloud(): Promise<ClassStudentRecord[
     const snap = await getDocs(collection(db, CLOUD_COLLECTION));
     if (!snap.empty) {
       const items = snap.docs.map((d) => d.data() as ClassStudentRecord);
-      writeList(CLASS_STUDENTS_KEY, items);
-      return items;
+      const cleanItems = items.filter((s) => {
+        const isMasar =
+          s.schoolBranch === 'MASAR' ||
+          (s.fullName && (s.fullName.includes('فارس عبد الله') || s.fullName.includes('احمد فارس')) && s.schoolBranch !== 'IKHLAS_JEDDAH');
+        return !isMasar;
+      });
+      writeList(CLASS_STUDENTS_KEY, cleanItems);
+      return cleanItems;
     }
   } catch (e) {
     console.error('Error fetching class students from cloud DB:', e);
@@ -399,6 +437,8 @@ export function saveClassStudent(student: Partial<ClassStudentRecord> & { fullNa
       notes: student.notes || '',
       assignedProgram: student.assignedProgram || 'reading',
       assignedPrograms: student.assignedPrograms || ['reading'],
+      schoolBranch: 'IKHLAS_JEDDAH',
+      source: 'ikhlas-jeddah',
       createdAt: now,
       updatedAt: now,
     };

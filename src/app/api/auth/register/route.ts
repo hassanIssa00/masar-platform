@@ -399,7 +399,9 @@ export async function POST(req: NextRequest) {
       ...(pendingStudentWrite
         ? [
             adminDb.collection('students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true }),
-            adminDb.collection('class_students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true }),
+            ...(schoolBranch === 'IKHLAS_JEDDAH'
+              ? [adminDb.collection('class_students').doc(pendingStudentWrite.docId).set(pendingStudentWrite.data, { merge: true })]
+              : []),
           ]
         : []),
       adminDb.collection('auth_credentials').doc(accountId).set(credential, { merge: true }),

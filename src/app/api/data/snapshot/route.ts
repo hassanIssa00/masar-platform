@@ -366,10 +366,31 @@ export async function GET(req: NextRequest) {
     collections.map(async ([payloadKey, collectionName]) => {
       try {
         const snap = await adminDb.collection(collectionName).limit(MAX_DOCS_PER_COLLECTION).get();
-        const items = snap.docs.map((doc) => {
+        let items = snap.docs.map((doc) => {
           const data = doc.data();
           return { ...data, id: data.id || data.accountId || doc.id } as SnapshotItem;
         });
+
+        // 🛡️ Purge any MASAR-only platform students accidentally saved to class_students
+        if (payloadKey === 'classStudents') {
+          const validClassItems: SnapshotItem[] = [];
+          for (const item of items) {
+            const fullName = String(item.fullName || item.name || '');
+            const isMasarOnly =
+              item.schoolBranch === 'MASAR' ||
+              (item.source && item.source !== 'ikhlas-jeddah' && item.schoolBranch !== 'IKHLAS_JEDDAH') ||
+              (fullName.includes('فارس عبد الله') && item.schoolBranch !== 'IKHLAS_JEDDAH');
+
+            if (isMasarOnly) {
+              // Delete rogue doc from class_students in Firestore
+              adminDb.collection('class_students').doc(String(item.id)).delete().catch(() => {});
+            } else {
+              validClassItems.push(item);
+            }
+          }
+          items = validClassItems;
+        }
+
         rawCollectionItems.set(payloadKey, items);
       } catch (error) {
         console.error(`[snapshot] Failed reading ${collectionName}:`, error);
@@ -411,7 +432,19 @@ export async function GET(req: NextRequest) {
           adminDb.collection('students').limit(100).get().catch(() => null),
         ]);
         if (clsSnap) {
-          clsSnap.docs.forEach((d) => rosterItems.push({ ...d.data(), id: d.id }));
+          clsSnap.docs.forEach((d) => {
+            const data = d.data();
+            const fullName = String(data.fullName || data.name || '');
+            const isMasarOnly =
+              data.schoolBranch === 'MASAR' ||
+              (data.source && data.source !== 'ikhlas-jeddah' && data.schoolBranch !== 'IKHLAS_JEDDAH') ||
+              (fullName.includes('فارس عبد الله') && data.schoolBranch !== 'IKHLAS_JEDDAH');
+            if (!isMasarOnly) {
+              rosterItems.push({ ...data, id: d.id });
+            } else {
+              adminDb.collection('class_students').doc(d.id).delete().catch(() => {});
+            }
+          });
         }
         if (stdSnap) {
           stdSnap.docs.forEach((d) => rosterItems.push({ ...d.data(), id: d.id }));

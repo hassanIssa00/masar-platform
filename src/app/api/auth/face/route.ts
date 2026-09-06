@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     await Promise.all([
       adminDb.collection('students').doc(linkedStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
-      adminDb.collection('class_students').doc(linkedStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
+      adminDb.collection('class_students').doc(linkedStudentId).update(studentUpdate).catch(() => {}),
     ]);
   }
 
