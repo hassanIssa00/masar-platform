@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FaceAuthService — Browser-side Face Recognition
  * - تقنية: MediaPipe Tasks Vision من Google (2024)
  * - 478 landmark ثلاثية الأبعاد لكل وجه (بدلاً من 128-dim في face-api.js)
@@ -17,9 +17,11 @@ import {
 } from './firestoreSync';
 
 // ─── MediaPipe Config ─────────────────────────────────────────────────────────
-const WASM_URL =
+const LOCAL_WASM_PATH = '/mediapipe/wasm';
+const LOCAL_MODEL_PATH = '/mediapipe/face_landmarker.task';
+const CDN_WASM_URL =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm';
-const MODEL_URL =
+const CDN_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 // Collection جديدة — v2 حتى لا تتعارض مع records قديمة بصيغة face-api.js
@@ -40,18 +42,43 @@ export async function initFaceAuth(): Promise<void> {
   loadPromise = (async () => {
     const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
 
-    const filesetResolver = await FilesetResolver.forVisionTasks(WASM_URL);
+    let filesetResolver: any = null;
+    let modelPath = LOCAL_MODEL_PATH;
 
-    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-      baseOptions: {
-        modelAssetPath: MODEL_URL,
-        delegate: 'GPU',
-      },
-      outputFaceBlendshapes: true,
-      runningMode: 'VIDEO',
-      numFaces: 1,
-    });
-  })();
+    try {
+      filesetResolver = await FilesetResolver.forVisionTasks(LOCAL_WASM_PATH);
+    } catch (localErr) {
+      console.warn('[FaceAuth] Failed loading local WASM, falling back to CDN:', localErr);
+      filesetResolver = await FilesetResolver.forVisionTasks(CDN_WASM_URL);
+      modelPath = CDN_MODEL_URL;
+    }
+
+    try {
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: modelPath,
+          delegate: 'GPU',
+        },
+        outputFaceBlendshapes: true,
+        runningMode: 'VIDEO',
+        numFaces: 1,
+      });
+    } catch (gpuErr) {
+      console.warn('[FaceAuth] GPU delegate failed, trying CPU fallback:', gpuErr);
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: modelPath,
+          delegate: 'CPU',
+        },
+        outputFaceBlendshapes: true,
+        runningMode: 'VIDEO',
+        numFaces: 1,
+      });
+    }
+  })().catch((err) => {
+    loadPromise = null;
+    throw err;
+  });
 
   return loadPromise;
 }

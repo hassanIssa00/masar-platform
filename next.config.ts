@@ -53,9 +53,9 @@ const CSP_DIRECTIVES = [
   // Fallback for unspecified directives
   "default-src 'self'",
 
-  // Scripts: same origin + Next.js inline hydration + reCAPTCHA
-  // 'unsafe-eval' is required by face-api.js (TensorFlow.js backend uses eval for WASM)
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com",
+  // Scripts: same origin + Next.js inline hydration + reCAPTCHA + MediaPipe
+  // 'unsafe-eval' is required by MediaPipe / TensorFlow.js WASM compilation
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://cdn.jsdelivr.net",
 
   // Styles: same origin + inline (Next.js) + Google Fonts
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -70,8 +70,8 @@ const CSP_DIRECTIVES = [
   // Media: blob: URIs required for WebRTC MediaStream (LiveKit camera/mic)
   "media-src 'self' blob:",
 
-  // Workers: blob: required for face-api.js/TensorFlow.js Web Workers
-  "worker-src 'self' blob:",
+  // Workers: blob: and cdn.jsdelivr.net required for MediaPipe Web Workers
+  "worker-src 'self' blob: https://cdn.jsdelivr.net",
 
   // Block legacy plugin/embed vectors
   "object-src 'none'",
@@ -82,6 +82,9 @@ const CSP_DIRECTIVES = [
   // Fetch/XHR connections — all external services used by browser-side code:
   [
     "connect-src 'self'",
+    // MediaPipe Vision WASM & models
+    "https://cdn.jsdelivr.net",
+    "https://storage.googleapis.com",
     // Firebase Firestore / Realtime Database
     "https://*.googleapis.com",
     "https://*.firebaseio.com",

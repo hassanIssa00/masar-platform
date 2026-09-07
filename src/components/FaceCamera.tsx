@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
@@ -64,14 +64,17 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
       await initFaceAuth();
       setPhase('camera');
     } catch (e: any) {
-      const errName = e?.name || 'UnknownError';
-      const errText = e?.message || String(e);
+      console.error('[FaceCamera] startCamera error:', e);
+      const errName = e?.name || '';
+      const errText = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         setErrorMsg('المتصفح يمنع الكاميرا. اضغط على أيقونة القفل 🔒 بجانب رابط الموقع واختر "السماح بالكاميرا" ثم أعد التحميل.');
       } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
         setErrorMsg('لم يتم العثور على كاميرا متصلة بالجهاز.');
+      } else if (errText && !errText.includes('[object Event]') && !errText.includes('{}')) {
+        setErrorMsg(`تعذر تشغيل الكاميرا: ${errText}`);
       } else {
-        setErrorMsg(`تعذر تشغيل الكاميرا: (${errName}: ${errText})`);
+        setErrorMsg('تعذر تحميل محرك الذكاء الاصطناعي للوجه. اضغط على "إعادة المحاولة" أدناه.');
       }
       setPhase('error');
     }
@@ -196,8 +199,8 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
             <p className="text-xs font-bold text-red-200 max-w-xs leading-relaxed">{errorMsg}</p>
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button type="button" onClick={startCamera}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition shadow-lg active:scale-95">
-                <Camera size={16} /> تفعيل الكاميرا
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition shadow-lg active:scale-95 cursor-pointer">
+                <Camera size={16} /> إعادة المحاولة 🔄
               </button>
               <button type="button" onClick={onCancel}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">
