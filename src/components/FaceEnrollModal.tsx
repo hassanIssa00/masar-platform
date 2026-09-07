@@ -1,32 +1,48 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, ScanFace, CheckCircle2, ChevronRight, Lock, Eye, AlertTriangle } from 'lucide-react';
+import { Shield, ScanFace, CheckCircle2, ChevronRight, AlertTriangle } from 'lucide-react';
 import FaceCamera from './FaceCamera';
-import { enrollFace, unenrollFace } from '@/lib/faceAuth';
+import { enrollFace } from '@/lib/faceAuth';
 
 interface Props {
   userId: string;
   userName: string;
+  userRole?: string;
+  userEmail?: string;
+  schoolBranch?: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 type Step = 'intro' | 'consent' | 'camera' | 'done';
 
-export default function FaceEnrollModal({ userId, userName, onSuccess, onCancel }: Props) {
-  const [step, setStep] = useState<Step>('intro');
+export default function FaceEnrollModal({
+  userId,
+  userName,
+  userRole,
+  userEmail,
+  schoolBranch,
+  onSuccess,
+  onCancel,
+}: Props) {
+  const [step, setStep]   = useState<Step>('intro');
   const [agreed, setAgreed] = useState(false);
 
-  const handleDescriptor = (descriptor: Float32Array) => {
-    enrollFace(userId, descriptor);
+  const handleEmbedding = (embedding: number[]) => {
+    enrollFace(userId, embedding, {
+      userName,
+      userRole,
+      userEmail,
+      schoolBranch,
+    });
     setStep('done');
     setTimeout(onSuccess, 1800);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md"
       dir="rtl"
     >
       <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-emerald-900/40 shadow-2xl overflow-hidden">
@@ -63,7 +79,7 @@ export default function FaceEnrollModal({ userId, userName, onSuccess, onCancel 
 
               <div className="space-y-2 text-sm text-slate-300 bg-slate-800/40 rounded-xl p-4 border border-slate-700">
                 <p className="font-black text-white mb-2">كيف يعمل النظام؟</p>
-                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الكاميرا تلتقط وجهك وتحوله لـ 128 رقم رياضي فقط</span></div>
+                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الكاميرا تلتقط وجهك وتحوله لـ 478 نقطة رياضية ثلاثية الأبعاد</span></div>
                 <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الأرقام دي بتتشفّر وتُحفظ على جهازك — مش على أي سيرفر</span></div>
                 <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الصورة الأصلية لا تُحفظ أبداً — مستحيل استرجاعها</span></div>
                 <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>كلمة المرور تفضل شغالة كـ Fallback في أي وقت</span></div>
@@ -113,7 +129,9 @@ export default function FaceEnrollModal({ userId, userName, onSuccess, onCancel 
                 <button
                   onClick={() => agreed && setStep('camera')}
                   disabled={!agreed}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition ${agreed ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 transition ${
+                    agreed ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  }`}
                 >
                   ابدأ التسجيل <ScanFace size={16} />
                 </button>
@@ -129,9 +147,8 @@ export default function FaceEnrollModal({ userId, userName, onSuccess, onCancel 
               </p>
               <FaceCamera
                 mode="enroll"
-                onSuccess={handleDescriptor}
+                onSuccess={handleEmbedding}
                 onCancel={() => setStep('intro')}
-                challenge="blink"
               />
             </div>
           )}

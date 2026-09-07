@@ -162,18 +162,24 @@ export default function RegisterPage() {
       const matched = detectedStudent || findMatchingStudentForParent(session || { name: parentName, phone, email }, allStudents);
       const studentParam = matched?.id || (session as any)?.linkedStudentId || '';
       // Always direct parent to complete parent profile (name, age, children count, national ID, phone) first
-      router.push(`/student/new?flow=parent${studentParam ? `&student=${encodeURIComponent(studentParam)}` : ''}`);
+      router.push(`/student/new?flow=parent${studentParam ? `&student=${encodeURIComponent(studentParam)}` : ''}&firstLogin=1`);
       return;
     }
     if (type === 'student') {
-      router.push(getMasarStartPath(type));
+      if (branch === 'IKHLAS_JEDDAH') {
+        const session = getSession();
+        const sParam = session?.linkedStudentId || session?.id ? `?student=${encodeURIComponent(session?.linkedStudentId || session?.id)}&firstLogin=1` : '?firstLogin=1';
+        router.push(`/school-student${sParam}`);
+      } else {
+        router.push(getMasarStartPath(type) + '&firstLogin=1');
+      }
       return;
     }
     if (branch === 'IKHLAS_JEDDAH') {
-      router.push('/branches/ikhlas-jeddah');
+      router.push('/branches/ikhlas-jeddah?firstLogin=1');
       return;
     }
-    router.push(getMasarStartPath(type));
+    router.push(getMasarStartPath(type) + '&firstLogin=1');
   };
 
   // Pull latest accounts from Firestore on mount so duplicate checks are always accurate
@@ -511,13 +517,16 @@ export default function RegisterPage() {
 
     setTimeout(() => {
       if (accountType === 'parent') {
-        router.push(targetStudentId ? `/student/new?flow=parent&student=${encodeURIComponent(targetStudentId)}` : '/student/new?flow=parent');
+        router.push(targetStudentId ? `/student/new?flow=parent&student=${encodeURIComponent(targetStudentId)}&firstLogin=1` : '/student/new?flow=parent&firstLogin=1');
       } else if (accountType === 'student') {
-        router.push(targetStudentId ? `/student/new?flow=student&student=${encodeURIComponent(targetStudentId)}` : '/student/new?flow=student');
+        const studentUrl = schoolBranch === 'IKHLAS_JEDDAH'
+          ? (targetStudentId ? `/school-student?student=${encodeURIComponent(targetStudentId)}&firstLogin=1` : '/school-student?firstLogin=1')
+          : (targetStudentId ? `/student/new?flow=student&student=${encodeURIComponent(targetStudentId)}&firstLogin=1` : '/student/new?flow=student&firstLogin=1');
+        router.push(studentUrl);
       } else if (schoolBranch === 'IKHLAS_JEDDAH') {
-        router.push('/branches/ikhlas-jeddah');
+        router.push('/branches/ikhlas-jeddah?firstLogin=1');
       } else {
-        router.push('/dashboard');
+        router.push('/dashboard?firstLogin=1');
       }
     }, 600);
   };

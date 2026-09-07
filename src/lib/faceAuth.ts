@@ -1,56 +1,62 @@
-/**
+﻿/**
  * FaceAuthService — Browser-side Face Recognition
- * - Face detection via TinyFaceDetector (fast & lightweight)
- * - 128-dim face descriptor (embedding) via face-api.js
- * - Embedding stored obfuscated in Firestore-backed platform cache (never raw image)
- * - Liveness: eye-blink detection via Eye Aspect Ratio (EAR)
+ * - تقنية: MediaPipe Tasks Vision من Google (2024)
+ * - 478 landmark ثلاثية الأبعاد لكل وجه (بدلاً من 128-dim في face-api.js)
+ * - مقارنة بـ Cosine Similarity (أدق من Euclidean Distance)
+ * - Liveness: كشف الرمشة عبر blendshapes مدمجة في MediaPipe
+ * - التخزين: plain JSON في Firestore (لا XOR obfuscation)
  */
 
-const MODELS_URL = '/face-models';
-const STORAGE_KEY = 'masar.face.v1';
-const SIMILARITY_THRESHOLD = 0.42; // euclidean distance (lower = more similar)
-const EAR_BLINK_THRESHOLD = 0.22;
+'use client';
 
-let modelsLoaded = false;
+import {
+  deleteDocFromCloud,
+  readCloudCache,
+  syncDocToCloud,
+  writeCloudCache,
+} from './firestoreSync';
 
-// ─── Lazy load face-api.js (client-only) ────────────────────────────────────
-async function loadModels() {
-  if (modelsLoaded) return;
+// ─── MediaPipe Config ─────────────────────────────────────────────────────────
+const WASM_URL =
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm';
+const MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-  const faceapi = await import('face-api.js');
+// Collection جديدة — v2 حتى لا تتعارض مع records قديمة بصيغة face-api.js
+const STORAGE_KEY = 'masar.face.v2';
 
-  await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL),
-    faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URL),
-  ]);
-  modelsLoaded = true;
+// Cosine similarity threshold — 0.90 = 90% تشابه للقبول
+const COSINE_THRESHOLD = 0.90;
+
+// ─── Singleton FaceLandmarker ─────────────────────────────────────────────────
+let faceLandmarker: any = null;
+let loadPromise: Promise<void> | null = null;
+
+// ─── Lazy Load MediaPipe FaceLandmarker ──────────────────────────────────────
+export async function initFaceAuth(): Promise<void> {
+  if (faceLandmarker) return;
+  if (loadPromise) return loadPromise;
+
+  loadPromise = (async () => {
+    const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+
+    const filesetResolver = await FilesetResolver.forVisionTasks(WASM_URL);
+
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: MODEL_URL,
+        delegate: 'GPU',
+      },
+      outputFaceBlendshapes: true,
+      runningMode: 'VIDEO',
+      numFaces: 1,
+    });
+  })();
+
+  return loadPromise;
 }
 
-// ─── Lightweight obfuscation before writing the descriptor to cloud ─────────
-function obfuscate(data: number[]): string {
-  const key = 'MASAR_FACE_SECURE_2026_XK9';
-  const json = JSON.stringify(data);
-  let result = '';
-  for (let i = 0; i < json.length; i++) {
-    result += String.fromCharCode(json.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  }
-  return btoa(result);
-}
-
-function deobfuscate(encoded: string): number[] {
-  const key = 'MASAR_FACE_SECURE_2026_XK9';
-  const raw = atob(encoded);
-  let result = '';
-  for (let i = 0; i < raw.length; i++) {
-    result += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  }
-  return JSON.parse(result);
-}
-
-import { deleteDocFromCloud, readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
-
+// ─── Face Record Interface ────────────────────────────────────────────────────
 export interface FaceRecord {
   userId: string;
   userName?: string;
@@ -58,7 +64,7 @@ export interface FaceRecord {
   userRole?: string;
   parentName?: string;
   schoolBranch?: string;
-  embeddingEnc: string;         // obfuscated embedding
+  embedding: number[];
   enrolledAt: string;
 }
 
@@ -70,34 +76,56 @@ function writeStore(records: FaceRecord[]) {
   writeCloudCache(STORAGE_KEY, records);
 }
 
-// ─── Eye Aspect Ratio for liveness ──────────────────────────────────────────
-function eyeAspectRatio(landmarks: {x: number; y: number}[]): number {
-  // EAR = (||p2-p6|| + ||p3-p5||) / (2 * ||p1-p4||)
-  const dist = (a: {x:number;y:number}, b: {x:number;y:number}) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-  const A = dist(landmarks[1], landmarks[5]);
-  const B = dist(landmarks[2], landmarks[4]);
-  const C = dist(landmarks[0], landmarks[3]);
-  return (A + B) / (2.0 * C);
+// ─── Geometric Normalization ──────────────────────────────────────────────────
+function normalizeLandmarks(
+  landmarks: { x: number; y: number; z: number }[],
+): number[] {
+  if (!landmarks || landmarks.length < 10) return [];
+
+  const center = landmarks[1] ?? landmarks[0];
+  const cx = center.x;
+  const cy = center.y;
+  const cz = center.z;
+
+  const leftEye  = landmarks[263] ?? landmarks[0];
+  const rightEye = landmarks[33]  ?? landmarks[0];
+  const scale =
+    Math.hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y) || 1;
+
+  const result: number[] = [];
+  for (const lm of landmarks) {
+    result.push(
+      (lm.x - cx) / scale,
+      (lm.y - cy) / scale,
+      (lm.z - cz) / scale,
+    );
+  }
+  return result;
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
-
-export async function initFaceAuth(): Promise<void> {
-  await loadModels();
+// ─── Cosine Similarity ────────────────────────────────────────────────────────
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (!a || !b || a.length !== b.length || a.length === 0) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot  += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
 }
 
-/**
- * Detect face + extract descriptor from a video element.
- * Returns null if no face found.
- */
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 export async function detectFace(video: HTMLVideoElement): Promise<{
-  descriptor: Float32Array;
-  landmarks: any;
-  expressions: any;
-  box: { x: number; y: number; width: number; height: number };
+  embedding: number[];
+  landmarks: { x: number; y: number; z: number }[];
+  blendshapes: { categoryName: string; score: number }[];
+  box: { x: number; y: number; width: number; height: number } | null;
 } | null> {
   if (
+    !faceLandmarker ||
     !video ||
     video.paused ||
     video.ended ||
@@ -109,161 +137,119 @@ export async function detectFace(video: HTMLVideoElement): Promise<{
   }
 
   try {
-    const faceapi = await import('face-api.js');
+    const nowMs = performance.now();
+    const result = faceLandmarker.detectForVideo(video, nowMs);
 
-    // ─ Draw video to a fixed-size canvas to avoid tensor shape mismatch ─
-    // face-api TinyFaceDetector requires inputSize ∈ {128,160,224,320,416,512,608}
-    const INPUT_SIZE = 224;
-    const offscreen = document.createElement('canvas');
-    offscreen.width = INPUT_SIZE;
-    offscreen.height = INPUT_SIZE;
-    const ctx = offscreen.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
+    if (!result.faceLandmarks || result.faceLandmarks.length === 0) return null;
 
-    const detection = await faceapi
-      .detectSingleFace(
-        offscreen,
-        new faceapi.TinyFaceDetectorOptions({ inputSize: INPUT_SIZE, scoreThreshold: 0.4 })
-      )
-      .withFaceLandmarks()
-      .withFaceDescriptor()
-      .withFaceExpressions();
+    const landmarks = result.faceLandmarks[0] as {
+      x: number;
+      y: number;
+      z: number;
+    }[];
+    const embedding   = normalizeLandmarks(landmarks);
+    const blendshapes: { categoryName: string; score: number }[] =
+      result.faceBlendshapes?.[0]?.categories ?? [];
 
-    if (!detection) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const lm of landmarks) {
+      if (lm.x < minX) minX = lm.x;
+      if (lm.y < minY) minY = lm.y;
+      if (lm.x > maxX) maxX = lm.x;
+      if (lm.y > maxY) maxY = lm.y;
+    }
 
-    // Scale bounding box back to original video dimensions for correct overlay
-    const scaleX = video.videoWidth / INPUT_SIZE;
-    const scaleY = video.videoHeight / INPUT_SIZE;
-    const origBox = {
-      x: detection.detection.box.x * scaleX,
-      y: detection.detection.box.y * scaleY,
-      width: detection.detection.box.width * scaleX,
-      height: detection.detection.box.height * scaleY,
+    const box = {
+      x:      minX * video.videoWidth,
+      y:      minY * video.videoHeight,
+      width:  (maxX - minX) * video.videoWidth,
+      height: (maxY - minY) * video.videoHeight,
     };
 
-    return {
-      descriptor: detection.descriptor,
-      landmarks: detection.landmarks,
-      expressions: detection.expressions,
-      box: origBox,
-    };
+    return { embedding, landmarks, blendshapes, box };
   } catch (err) {
-    console.warn('detectFace frame exception caught & gracefully handled:', err);
+    console.warn('detectFace error:', err);
     return null;
   }
 }
 
-/**
- * Check liveness: detects a blink via Eye Aspect Ratio.
- * Requires taking 2 frames and comparing EAR.
- */
-export function checkBlink(landmarks: any): { isBlinking: boolean; ear: number } {
-  const pts = landmarks.positions;
-  // Left eye: indices 36-41, Right eye: 42-47
-  const leftEye = pts.slice(36, 42);
-  const rightEye = pts.slice(42, 48);
-  const leftEAR = eyeAspectRatio(leftEye);
-  const rightEAR = eyeAspectRatio(rightEye);
-  const ear = (leftEAR + rightEAR) / 2;
-  return { isBlinking: ear < EAR_BLINK_THRESHOLD, ear };
+export function checkBlink(
+  blendshapes: { categoryName: string; score: number }[],
+): { isBlinking: boolean; score: number } {
+  if (!blendshapes || blendshapes.length === 0) {
+    return { isBlinking: false, score: 0 };
+  }
+  const leftBlink  = blendshapes.find(b => b.categoryName === 'eyeBlinkLeft')?.score  ?? 0;
+  const rightBlink = blendshapes.find(b => b.categoryName === 'eyeBlinkRight')?.score ?? 0;
+  const score      = (leftBlink + rightBlink) / 2;
+  return { isBlinking: score > 0.35, score };
 }
 
-/**
- * Enroll a user's face. Stores obfuscated embedding + profile metadata in Firestore Cloud.
- */
 export function enrollFace(
   userId: string,
-  descriptor: Float32Array,
-  meta?: { userName?: string; userEmail?: string; userRole?: string; parentName?: string; schoolBranch?: string }
+  embedding: number[],
+  meta?: {
+    userName?: string;
+    userEmail?: string;
+    userRole?: string;
+    parentName?: string;
+    schoolBranch?: string;
+  },
 ): void {
-  const records = readStore().filter(r => r.userId !== userId); // remove old
+  const records = readStore().filter(r => r.userId !== userId);
   const newRecord: FaceRecord = {
     userId,
-    userName: meta?.userName,
-    userEmail: meta?.userEmail,
-    userRole: meta?.userRole,
-    parentName: meta?.parentName,
+    userName:     meta?.userName,
+    userEmail:    meta?.userEmail,
+    userRole:     meta?.userRole,
+    parentName:   meta?.parentName,
     schoolBranch: meta?.schoolBranch,
-    embeddingEnc: obfuscate(Array.from(descriptor)),
-    enrolledAt: new Date().toISOString(),
+    embedding,
+    enrolledAt:   new Date().toISOString(),
   };
   records.push(newRecord);
   writeStore(records);
-  syncDocToCloud('faceRecords', userId, newRecord);
+  syncDocToCloud('faceRecordsV2', userId, newRecord);
 }
 
-
-
-/**
- * Verify a face descriptor against enrolled user.
- * Returns true if match within threshold.
- */
-export function verifyFace(userId: string, descriptor: Float32Array): {
-  match: boolean;
-  distance: number;
-} {
-  const faceapi_euclidean = (a: number[], b: Float32Array) => {
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
-    return Math.sqrt(sum);
-  };
-
+export function verifyFace(
+  userId: string,
+  embedding: number[],
+): { match: boolean; similarity: number } {
   const records = readStore();
-  const record = records.find(r => r.userId === userId);
-  if (!record) return { match: false, distance: Infinity };
-
-  const stored = deobfuscate(record.embeddingEnc);
-  const distance = faceapi_euclidean(stored, descriptor);
-  return { match: distance < SIMILARITY_THRESHOLD, distance };
+  const record  = records.find(r => r.userId === userId);
+  if (!record) return { match: false, similarity: 0 };
+  const similarity = cosineSimilarity(record.embedding, embedding);
+  return { match: similarity >= COSINE_THRESHOLD, similarity };
 }
 
-/**
- * Find the best matching user across ALL enrolled users.
- * Used for "login with face without typing email first".
- */
-export function findBestMatch(descriptor: Float32Array): {
+export function findBestMatch(embedding: number[]): {
   userId: string | null;
-  distance: number;
+  similarity: number;
 } {
-  const faceapi_euclidean = (a: number[], b: Float32Array) => {
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
-    return Math.sqrt(sum);
-  };
-
   const records = readStore();
-  let best = { userId: null as string | null, distance: Infinity };
+  let best = { userId: null as string | null, similarity: 0 };
   for (const r of records) {
-    const stored = deobfuscate(r.embeddingEnc);
-    const d = faceapi_euclidean(stored, descriptor);
-    if (d < best.distance) best = { userId: r.userId, distance: d };
+    const sim = cosineSimilarity(r.embedding, embedding);
+    if (sim > best.similarity) best = { userId: r.userId, similarity: sim };
   }
-  if (best.distance > SIMILARITY_THRESHOLD) return { userId: null, distance: best.distance };
+  if (best.similarity < COSINE_THRESHOLD) {
+    return { userId: null, similarity: best.similarity };
+  }
   return best;
 }
 
-/**
- * Check if a user has an enrolled face.
- */
 export function isFaceEnrolled(userId: string): boolean {
   return readStore().some(r => r.userId === userId);
 }
 
-/**
- * Remove face enrollment for a user (local + cloud).
- */
 export function removeFaceEnrollment(userId: string): void {
   writeStore(readStore().filter(r => r.userId !== userId));
-  deleteDocFromCloud('faceRecords', userId);
+  deleteDocFromCloud('faceRecordsV2', userId);
 }
 
-/** Alias for removeFaceEnrollment */
 export const unenrollFace = removeFaceEnrollment;
 
-/**
- * Get enrollment date for a user.
- */
 export function getEnrollmentDate(userId: string): string | null {
   return readStore().find(r => r.userId === userId)?.enrolledAt ?? null;
 }

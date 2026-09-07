@@ -34,6 +34,10 @@ import StudentInteractiveHomeworkModal from '@/components/StudentInteractiveHome
 import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import NotificationBell from '@/components/NotificationBell';
 import { recordUserPresence } from '@/lib/presence';
+import dynamic from 'next/dynamic';
+import { isFaceEnrolled as checkFaceEnrolled } from '@/lib/faceAuth';
+
+const FaceEnrollModal = dynamic(() => import('@/components/FaceEnrollModal'), { ssr: false });
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -55,6 +59,10 @@ export default function StudentDashboard() {
   const [studentId, setStudentId] = useState<string>('');
 
   const [selectedHw, setSelectedHw] = useState<HomeworkRecord | null>(null);
+  const [faceEnrolled, setFaceEnrolled] = useState(false);
+  const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
+  const [showOneTimeFacePrompt, setShowOneTimeFacePrompt] = useState(false);
+  const [faceToastMsg, setFaceToastMsg] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +204,21 @@ export default function StudentDashboard() {
       // Load certificates
       loadCertificates(resolvedId, finalName);
       setLoading(false);
+
+      // Check Face ID enrollment status & trigger one-time prompt if newly registered or not enrolled
+      const isEnrolled = checkFaceEnrolled(resolvedId);
+      setFaceEnrolled(isEnrolled);
+
+      if (!isEnrolled) {
+        const promptKey = `masar_face_prompt_seen_${resolvedId}`;
+        const seen = typeof window !== 'undefined' ? localStorage.getItem(promptKey) : null;
+        const isFirst = urlParams?.get('firstLogin') === '1' || urlParams?.get('new') === '1' || !seen;
+        if (isFirst) {
+          setTimeout(() => {
+            setShowOneTimeFacePrompt(true);
+          }, 850);
+        }
+      }
     };
 
     void loadStudentPortal();
@@ -431,6 +454,30 @@ export default function StudentDashboard() {
     { key: 'certificates', label: 'شهاداتي',                                 icon: Trophy },
   ];
 
+  const handleDismissOneTimePrompt = () => {
+    setShowOneTimeFacePrompt(false);
+    const idToMark = studentId || studentRecord?.id;
+    if (idToMark && typeof window !== 'undefined') {
+      localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+    }
+  };
+
+  const handleStartFaceEnroll = () => {
+    setShowOneTimeFacePrompt(false);
+    setShowFaceEnrollModal(true);
+  };
+
+  const handleFaceEnrollSuccess = () => {
+    setShowFaceEnrollModal(false);
+    setFaceEnrolled(true);
+    const idToMark = studentId || studentRecord?.id;
+    if (idToMark && typeof window !== 'undefined') {
+      localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+    }
+    setFaceToastMsg('🎉 تم تسجيل بصمة وجهك بنجاح! يمكنك الآن تسجيل الدخول بوجهك في أي وقت.');
+    setTimeout(() => setFaceToastMsg(''), 6000);
+  };
+
   // ── Home Tab ───────────────────────────────────────────────────────────────
   const renderHomeTab = () => (
     <div className="space-y-5">
@@ -457,6 +504,8 @@ export default function StudentDashboard() {
           variant="student"
           showParent={true}
           allowPhotoUpload={true}
+          isFaceEnrolled={faceEnrolled}
+          onEnrollFaceRequested={() => setShowFaceEnrollModal(true)}
           onPhotoUpdated={(newPhoto) => {
             setStudentPhoto(newPhoto);
             if (studentRecord) {
@@ -464,6 +513,43 @@ export default function StudentDashboard() {
             }
           }}
         />
+      )}
+
+      {/* Face ID Quick Action Banner */}
+      {!faceEnrolled ? (
+        <div className="bg-gradient-to-l from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-300/80 rounded-3xl p-4 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <ScanFace size={22} />
+            </div>
+            <div className="text-right">
+              <h4 className="text-xs sm:text-sm font-black text-slate-900">سجّل بصمة وجهك للدخول السريع 📸</h4>
+              <p className="text-[11px] font-bold text-slate-500">سجّل ملامحك لمرة واحدة لتسجيل الدخول بلمح البصر دون الحاجة لكتابة كلمة المرور.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFaceEnrollModal(true)}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 active:scale-95 cursor-pointer"
+          >
+            <Camera size={14} />
+            <span>سجّل الآن</span>
+          </button>
+        </div>
+      ) : (
+        <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+            <span className="text-xs font-black text-emerald-900">بصمة الوجه مفعلة لحسابك للدخول السريع 🔒</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFaceEnrollModal(true)}
+            className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
+          >
+            إعادة التسجيل 🔄
+          </button>
+        </div>
       )}
 
       {/* Quick Homework Preview */}
@@ -1023,6 +1109,87 @@ export default function StudentDashboard() {
           onSubmitSuccess={() => {
             setSelectedHw(null);
             loadHomework(studentName, studentId, true);
+          }}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {faceToastMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] max-w-md w-full px-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="bg-emerald-700 text-white p-4 rounded-2xl shadow-2xl border border-emerald-500 flex items-center justify-between gap-3 text-xs font-black">
+            <span>{faceToastMsg}</span>
+            <button onClick={() => setFaceToastMsg('')} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* One-Time Face ID Invitation Modal */}
+      {showOneTimeFacePrompt && !faceEnrolled && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in duration-300" dir="rtl">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden text-right ring-4 ring-emerald-500/10">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-teal-600 via-emerald-600 to-teal-700 p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="w-16 h-16 rounded-2xl bg-white/20 border border-white/30 text-white flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <ScanFace size={34} />
+              </div>
+              <h3 className="text-xl font-black text-white">تفعيل بصمة الوجه (Face ID) 🌟</h3>
+              <p className="text-xs text-emerald-100 font-bold mt-1">
+                مرحباً بك يا بطل! سجّل وجهك لمرة واحدة فقط للدخول السريع دائماً
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="space-y-2.5">
+                {[
+                  { icon: '⚡', title: 'دخول سريع بلمح البصر', desc: 'بمجرد النظر للكاميرا يفتح حسابك فوراً بدون كلمة مرور' },
+                  { icon: '🔒', title: 'أمان وخصوصية تامة', desc: 'لا تُحفظ أي صورة لك — بياناتك مشفرة محلياً' },
+                  { icon: '🎯', title: 'تسجيل لمرة واحدة فقط', desc: 'تستغرق أقل من 10 ثوانٍ وتريحك في كل مرة تدخل فيها' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span className="text-2xl shrink-0">{item.icon}</span>
+                    <div>
+                      <h5 className="text-xs font-black text-slate-900">{item.title}</h5>
+                      <p className="text-[11px] font-bold text-slate-500 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleStartFaceEnroll}
+                  className="flex-1 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer"
+                >
+                  <Camera size={16} />
+                  <span>سجّل بصمة وجهك الآن 📸</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissOneTimePrompt}
+                  className="py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition cursor-pointer"
+                >
+                  لاحقاً / تخطي
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Face Enroll Modal */}
+      {showFaceEnrollModal && (
+        <FaceEnrollModal
+          userId={studentId || (studentRecord as any)?.id || ''}
+          userName={studentName}
+          userRole="student"
+          schoolBranch={isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR'}
+          onSuccess={handleFaceEnrollSuccess}
+          onCancel={() => {
+            setShowFaceEnrollModal(false);
+            handleDismissOneTimePrompt();
           }}
         />
       )}

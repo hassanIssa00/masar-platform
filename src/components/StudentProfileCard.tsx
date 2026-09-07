@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck, Camera, Check, Loader2 } from 'lucide-react';
+import { Phone, GraduationCap, User, Calendar, IdCard, Activity, UserCheck, Camera, Check, Loader2, ScanFace } from 'lucide-react';
 import { formatLastSeen } from '@/lib/presence';
 import { cleanClassStudentName, updateStudentPhotoAcrossStores } from '@/lib/classDb';
 
@@ -34,6 +34,10 @@ interface StudentProfileCardProps {
   allowPhotoUpload?: boolean;
   /** Callback when photo is updated */
   onPhotoUpdated?: (photoUrl: string) => void;
+  /** Face ID enrollment status */
+  isFaceEnrolled?: boolean;
+  /** Callback to launch face enrollment */
+  onEnrollFaceRequested?: () => void;
   /** Variant: 'doctor' = dark sidebar, 'parent' = warm card, 'classroom' = teal theme, 'student' = emerald student theme */
   variant?: 'doctor' | 'parent' | 'classroom' | 'student';
   className?: string;
@@ -45,6 +49,8 @@ export default function StudentProfileCard({
   showParent = true,
   allowPhotoUpload = true,
   onPhotoUpdated,
+  isFaceEnrolled = false,
+  onEnrollFaceRequested,
   variant = 'doctor',
   className = '',
 }: StudentProfileCardProps) {
@@ -216,12 +222,53 @@ export default function StudentProfileCard({
               <span className={`h-1.5 w-1.5 rounded-full ${studentPresence.dotClass}`} />
               {studentPresence.text}
             </span>
+            {isFaceEnrolled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/40 border border-emerald-300/40 px-2.5 py-0.5 text-[10px] font-black text-emerald-200 shadow-xs">
+                <ScanFace size={11} />
+                بصمة الوجه مفعلة 🔒
+              </span>
+            ) : onEnrollFaceRequested ? (
+              <button
+                type="button"
+                onClick={onEnrollFaceRequested}
+                className="inline-flex items-center gap-1 rounded-full bg-white/25 hover:bg-white/35 border border-white/40 px-2.5 py-0.5 text-[10px] font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
+                title="اضغط لتسجيل بصمة وجهك للدخول السريع"
+              >
+                <ScanFace size={11} />
+                تفعيل بصمة الوجه 📸
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
 
       {/* Info Grid */}
       <div className="divide-y divide-slate-100">
+        {/* Face ID Status Row */}
+        <InfoRow
+          icon={<ScanFace size={15} className="text-emerald-600" />}
+          label="بصمة الوجه الذكية (Face ID)"
+          value={
+            isFaceEnrolled ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Check size={12} className="text-emerald-600 font-bold" />
+                مفعلة للدخول السريع بلمح البصر 🔒
+              </span>
+            ) : onEnrollFaceRequested ? (
+              <button
+                type="button"
+                onClick={onEnrollFaceRequested}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                <Camera size={12} />
+                <span>سجّل بصمة وجهك الآن 📸</span>
+              </button>
+            ) : (
+              <span className="text-xs font-bold text-slate-400">غير مسجلة بعد</span>
+            )
+          }
+        />
+
         {/* Student Presence Activity */}
         <InfoRow
           icon={<Activity size={15} className="text-emerald-600" />}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound } from 'lucide-react';
@@ -24,7 +24,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
 
-  const handleDescriptor = async (descriptor: Float32Array) => {
+  const handleEmbedding = async (embedding: number[]) => {
     let resolvedAccount: AccountRecord | null = null;
 
     try {
@@ -32,7 +32,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ descriptor: Array.from(descriptor) }),
+        body: JSON.stringify({ embedding }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok || !data.account) {
@@ -51,17 +51,13 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     }
 
     const account = resolvedAccount;
-    if (!account) {
-      setPhase('fail');
-      return;
-    }
+    if (!account) { setPhase('fail'); return; }
 
     setMatchedName(account.name);
     setPhase('success');
     setSession(account, false, false);
     trackEvent('login', { userId: account.id, userName: account.name });
 
-    // Redirect based on role
     setTimeout(() => {
       if (account.role === 'doctor' || account.role === 'specialist' || account.role === 'teacher') {
         router.push('/dashboard');
@@ -96,6 +92,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         </div>
 
         <div className="p-6 space-y-4">
+
           {phase === 'no_enrolled' && (
             <div className="flex flex-col items-center gap-4 py-5">
               <div className="w-14 h-14 rounded-full bg-amber-50 border-2 border-amber-400 flex items-center justify-center">
@@ -119,9 +116,8 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           {phase === 'scanning' && (
             <FaceCamera
               mode="verify"
-              onSuccess={handleDescriptor}
+              onSuccess={handleEmbedding}
               onCancel={onCancel}
-              challenge="blink"
             />
           )}
 
@@ -169,13 +165,12 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
 
         </div>
 
-        {/* Footer cancel controls */}
         <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
           <button onClick={onCancel} className="font-bold text-slate-500 hover:text-slate-800 transition">
             إلغاء الدخول
           </button>
           <button onClick={onFallback} className="font-bold text-emerald-700 hover:underline">
-            استخدام البصمة أو كلمة المرور
+            استخدام كلمة المرور
           </button>
         </div>
 
