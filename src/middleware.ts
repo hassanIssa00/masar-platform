@@ -82,6 +82,8 @@ const PUBLIC_PATHS = [
   '/auth/register',
   '/login',
   '/register',
+  '/privacy',
+  '/privacy/',
   '/waitlist',
   '/verify/',
   '/account-generator',

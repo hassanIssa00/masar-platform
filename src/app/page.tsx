@@ -913,7 +913,9 @@ export default function Home() {
       <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs font-bold text-slate-500">
         <div className="mx-auto max-w-7xl px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>جميع الحقوق محفوظة © {new Date().getFullYear()} - منصة مسار التأهيل د. إسماعيل عيسى</p>
-          <div className="flex items-center gap-4 text-slate-600">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-600">
+            <Link href="/privacy" className="hover:text-teal-700 font-bold transition">سياسة الخصوصية (Privacy Policy)</Link>
+            <span>•</span>
             <Link href="/auth/login" className="hover:text-slate-900 transition">تسجيل الدخول</Link>
             <span>•</span>
             <Link href="/auth/register" className="hover:text-slate-900 transition">التسجيل</Link>
