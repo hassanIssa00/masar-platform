@@ -27,8 +27,8 @@ const CDN_MODEL_URL =
 // Collection جديدة — v2 حتى لا تتعارض مع records قديمة بصيغة face-api.js
 const STORAGE_KEY = 'masar.face.v2';
 
-// Cosine similarity threshold — 0.90 = 90% تشابه للقبول
-const COSINE_THRESHOLD = 0.90;
+// Cosine similarity threshold — 0.85 = 85% تشابه للقبول
+const COSINE_THRESHOLD = 0.85;
 
 // ─── Singleton FaceLandmarker ─────────────────────────────────────────────────
 let faceLandmarker: any = null;
@@ -214,7 +214,7 @@ export function checkBlink(
   return { isBlinking: score > 0.35, score };
 }
 
-export function enrollFace(
+export async function enrollFace(
   userId: string,
   embedding: number[],
   meta?: {
@@ -226,7 +226,7 @@ export function enrollFace(
     parentName?: string;
     schoolBranch?: string;
   },
-): void {
+): Promise<void> {
   const records = readStore().filter(
     r => r.userId !== userId && (!meta?.accountId || r.userId !== meta.accountId) && (!meta?.studentId || r.userId !== meta.studentId)
   );
@@ -244,13 +244,14 @@ export function enrollFace(
   };
   records.push(newRecord);
   writeStore(records);
-  syncDocToCloud('faceRecordsV2', userId, newRecord);
+  const writes = [syncDocToCloud('faceRecordsV2', userId, newRecord)];
   if (meta?.accountId && meta.accountId !== userId) {
-    syncDocToCloud('faceRecordsV2', meta.accountId, { ...newRecord, userId: meta.accountId });
+    writes.push(syncDocToCloud('faceRecordsV2', meta.accountId, { ...newRecord, userId: meta.accountId }));
   }
   if (meta?.studentId && meta.studentId !== userId) {
-    syncDocToCloud('faceRecordsV2', meta.studentId, { ...newRecord, userId: meta.studentId });
+    writes.push(syncDocToCloud('faceRecordsV2', meta.studentId, { ...newRecord, userId: meta.studentId }));
   }
+  await Promise.allSettled(writes);
 }
 
 export function verifyFace(

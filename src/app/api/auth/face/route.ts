@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 
-// Cosine similarity threshold — نفس قيمة الـ client-side
-const COSINE_THRESHOLD = 0.90;
+// Cosine similarity threshold — 0.85 = 85% تشابه للقبول
+const COSINE_THRESHOLD = 0.85;
 
 type FaceRecordV2 = {
   userId?: string;
@@ -80,9 +80,11 @@ export async function POST(req: NextRequest) {
     }
   });
 
+  console.log(`[FaceID] Scanned ${snap.size} records in faceRecordsV2. Best match: ${best.userId} with similarity ${best.similarity.toFixed(4)} (threshold: ${COSINE_THRESHOLD})`);
+
   if (!best.userId || best.similarity < COSINE_THRESHOLD) {
     return NextResponse.json(
-      { ok: false, reason: 'no_match', error: 'لم يتم التعرف على الوجه.' },
+      { ok: false, reason: 'no_match', error: 'لم يتم التعرف على الوجه.', similarity: best.similarity },
       { status: 401 },
     );
   }

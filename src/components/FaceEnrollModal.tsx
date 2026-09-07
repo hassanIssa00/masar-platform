@@ -33,15 +33,19 @@ export default function FaceEnrollModal({
   const [step, setStep]   = useState<Step>('intro');
   const [agreed, setAgreed] = useState(false);
 
-  const handleEmbedding = (embedding: number[]) => {
-    enrollFace(userId, embedding, {
-      accountId: accountId || userId,
-      studentId: studentId || userId,
-      userName,
-      userRole,
-      userEmail,
-      schoolBranch,
-    });
+  const handleEmbedding = async (embedding: number[]) => {
+    try {
+      await enrollFace(userId, embedding, {
+        accountId: accountId || userId,
+        studentId: studentId || userId,
+        userName,
+        userRole,
+        userEmail,
+        schoolBranch,
+      });
+    } catch (err) {
+      console.error('[FaceEnroll] Error saving face record:', err);
+    }
     setStep('done');
     setTimeout(onSuccess, 1800);
   };

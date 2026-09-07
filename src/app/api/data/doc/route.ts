@@ -14,6 +14,7 @@ const ALLOWED_COLLECTIONS = new Set([
   'ikhlasPosts',
   'calendar_sessions',
   'faceRecords',
+  'faceRecordsV2',
   'notifications',
   'attendance',
   'assessment_templates',
@@ -131,6 +132,7 @@ function canMutate(role: string, collectionName: string, method: 'write' | 'dele
     'student_learning_activity',
     'simple_spelling_drawings',
     'faceRecords',
+    'faceRecordsV2',
   ].includes(collectionName);
 }
 
