@@ -137,6 +137,7 @@ const PUBLIC_PATHS = [
   '/apple-icon.png',
   '/icon.png',
   '/robots.txt',
+  '/mediapipe/',
 ];
 
 /**
@@ -163,10 +164,11 @@ function matchesPublicPath(pathname: string, publicPath: string) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // ── Always allow static assets ──────────────────────────────────────────────
+  // ── Always allow static assets & MediaPipe assets ───────────────────────────
   if (
     pathname.startsWith('/_next/') ||
-    pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf|otf|css|js|map)$/)
+    pathname.startsWith('/mediapipe/') ||
+    pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf|otf|css|js|map|wasm|task)$/)
   ) {
     return NextResponse.next();
   }
@@ -219,7 +221,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all paths except Next.js internals and static files
-    '/((?!_next/static|_next/image|favicon\\.ico|apple-icon\\.png|icon\\.png|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.webp|.*\\.woff2?).*)',
+    // Run on all paths except Next.js internals, mediapipe, and static files
+    '/((?!_next/static|_next/image|mediapipe|favicon\\.ico|apple-icon\\.png|icon\\.png|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.webp|.*\\.woff2?|.*\\.wasm|.*\\.task).*)',
   ],
 };
