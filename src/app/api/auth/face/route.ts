@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 
@@ -7,6 +7,12 @@ const COSINE_THRESHOLD = 0.90;
 
 type FaceRecordV2 = {
   userId?: string;
+  accountId?: string;
+  studentId?: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: 'doctor' | 'parent' | 'student' | 'specialist' | 'teacher';
+  schoolBranch?: 'MASAR' | 'IKHLAS_JEDDAH';
   embedding?: number[];
 };
 
@@ -57,7 +63,11 @@ export async function POST(req: NextRequest) {
 
   // جلب كل سجلات الوجه من Firestore (faceRecordsV2)
   const snap = await adminDb.collection('faceRecordsV2').get();
-  let best: { userId: string | null; similarity: number } = { userId: null, similarity: 0 };
+  let best: { userId: string | null; record: FaceRecordV2 | null; similarity: number } = {
+    userId: null,
+    record: null,
+    similarity: 0,
+  };
 
   snap.docs.forEach((doc) => {
     const record = doc.data() as FaceRecordV2;
@@ -65,7 +75,9 @@ export async function POST(req: NextRequest) {
     const userId = record.userId || doc.id;
     if (!stored || !userId) return;
     const sim = cosineSimilarity(stored, embedding);
-    if (sim > best.similarity) best = { userId, similarity: sim };
+    if (sim > best.similarity) {
+      best = { userId, record, similarity: sim };
+    }
   });
 
   if (!best.userId || best.similarity < COSINE_THRESHOLD) {
@@ -75,34 +87,70 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // جلب بيانات الحساب
-  const accountDoc = await adminDb.collection('accounts').doc(best.userId).get();
+  // جلب بيانات الحساب مع fallback ذكي
+  let accountDoc = await adminDb.collection('accounts').doc(best.userId).get();
+
+  if (!accountDoc.exists && best.record?.accountId) {
+    accountDoc = await adminDb.collection('accounts').doc(best.record.accountId).get();
+  }
+
   if (!accountDoc.exists) {
+    const byLinked = await adminDb.collection('accounts').where('linkedStudentId', '==', best.userId).limit(1).get();
+    if (!byLinked.empty) {
+      accountDoc = byLinked.docs[0];
+    }
+  }
+
+  if (!accountDoc.exists) {
+    const studentDoc = await adminDb.collection('students').doc(best.userId).get();
+    if (studentDoc.exists) {
+      const sData = studentDoc.data() as any;
+      const accId = sData?.studentAccountId || sData?.accountId;
+      if (accId) {
+        accountDoc = await adminDb.collection('accounts').doc(accId).get();
+      }
+    }
+  }
+
+  if (!accountDoc.exists) {
+    const csDoc = await adminDb.collection('class_students').doc(best.userId).get();
+    if (csDoc.exists) {
+      const csData = csDoc.data() as any;
+      const accId = csData?.studentAccountId || csData?.accountId;
+      if (accId) {
+        accountDoc = await adminDb.collection('accounts').doc(accId).get();
+      }
+    }
+  }
+
+  let account: any = null;
+
+  if (accountDoc.exists) {
+    const data = accountDoc.data() as AccountData;
+    account = {
+      id:           data.id || accountDoc.id,
+      name:         data.name || best.record?.userName || 'مستخدم جديد',
+      email:        String(data.email || best.record?.userEmail || `${best.userId}@masarplatform.org`).trim().toLowerCase(),
+      role:         data.role || best.record?.userRole || 'student',
+      schoolBranch: data.schoolBranch || best.record?.schoolBranch || 'MASAR',
+      phone:        data.phone,
+      linkedStudentId: data.linkedStudentId || best.record?.studentId,
+    };
+  } else if (best.record?.userName || best.record?.userRole) {
+    account = {
+      id:           best.userId,
+      name:         best.record.userName || 'طالب مسار',
+      email:        best.record.userEmail || `${best.userId}@masarplatform.org`,
+      role:         best.record.userRole || 'student',
+      schoolBranch: best.record.schoolBranch || 'MASAR',
+      linkedStudentId: best.record.studentId || best.userId,
+    };
+  } else {
     return NextResponse.json(
-      { ok: false, reason: 'account_missing', error: 'تم التعرف على الوجه لكن الحساب غير موجود.' },
+      { ok: false, reason: 'account_missing', error: 'تم التعرف على الوجه لكن تعذر ربطه بالحساب.' },
       { status: 404 },
     );
   }
-
-  const data = accountDoc.data() as AccountData;
-  const email = String(data.email || '').trim().toLowerCase();
-  const role  = data.role;
-
-  if (!email || !role) {
-    return NextResponse.json(
-      { ok: false, error: 'بيانات الحساب المرتبط بالوجه غير مكتملة.' },
-      { status: 409 },
-    );
-  }
-
-  const account = {
-    id:           data.id || accountDoc.id,
-    name:         data.name || 'مستخدم جديد',
-    email,
-    role,
-    schoolBranch: data.schoolBranch,
-    phone:        data.phone,
-  };
 
   const token = await createSessionToken(account);
   if (!token) {
@@ -110,17 +158,19 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  await accountDoc.ref.set(
-    { lastLoginAt: now, lastActiveAt: now, lastLoginProvider: 'face' },
-    { merge: true },
-  );
+  if (accountDoc.exists && accountDoc.ref) {
+    await accountDoc.ref.set(
+      { lastLoginAt: now, lastActiveAt: now, lastLoginProvider: 'face' },
+      { merge: true },
+    );
+  }
 
-  const linkedStudentId = data.linkedStudentId;
+  const linkedStudentId = account.linkedStudentId;
   if (linkedStudentId) {
     const studentUpdate =
-      role === 'student'
+      account.role === 'student'
         ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now }
-        : role === 'parent'
+        : account.role === 'parent'
         ? { parentLastLoginAt: now, parentLastActiveAt: now }
         : { lastLoginAt: now, lastActiveAt: now };
 

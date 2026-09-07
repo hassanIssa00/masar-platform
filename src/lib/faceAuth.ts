@@ -86,6 +86,8 @@ export async function initFaceAuth(): Promise<void> {
 // ─── Face Record Interface ────────────────────────────────────────────────────
 export interface FaceRecord {
   userId: string;
+  accountId?: string;
+  studentId?: string;
   userName?: string;
   userEmail?: string;
   userRole?: string;
@@ -216,6 +218,8 @@ export function enrollFace(
   userId: string,
   embedding: number[],
   meta?: {
+    accountId?: string;
+    studentId?: string;
     userName?: string;
     userEmail?: string;
     userRole?: string;
@@ -223,9 +227,13 @@ export function enrollFace(
     schoolBranch?: string;
   },
 ): void {
-  const records = readStore().filter(r => r.userId !== userId);
+  const records = readStore().filter(
+    r => r.userId !== userId && (!meta?.accountId || r.userId !== meta.accountId) && (!meta?.studentId || r.userId !== meta.studentId)
+  );
   const newRecord: FaceRecord = {
     userId,
+    accountId:    meta?.accountId,
+    studentId:    meta?.studentId,
     userName:     meta?.userName,
     userEmail:    meta?.userEmail,
     userRole:     meta?.userRole,
@@ -237,6 +245,12 @@ export function enrollFace(
   records.push(newRecord);
   writeStore(records);
   syncDocToCloud('faceRecordsV2', userId, newRecord);
+  if (meta?.accountId && meta.accountId !== userId) {
+    syncDocToCloud('faceRecordsV2', meta.accountId, { ...newRecord, userId: meta.accountId });
+  }
+  if (meta?.studentId && meta.studentId !== userId) {
+    syncDocToCloud('faceRecordsV2', meta.studentId, { ...newRecord, userId: meta.studentId });
+  }
 }
 
 export function verifyFace(
@@ -244,7 +258,7 @@ export function verifyFace(
   embedding: number[],
 ): { match: boolean; similarity: number } {
   const records = readStore();
-  const record  = records.find(r => r.userId === userId);
+  const record  = records.find(r => r.userId === userId || r.accountId === userId || r.studentId === userId);
   if (!record) return { match: false, similarity: 0 };
   const similarity = cosineSimilarity(record.embedding, embedding);
   return { match: similarity >= COSINE_THRESHOLD, similarity };
@@ -267,11 +281,12 @@ export function findBestMatch(embedding: number[]): {
 }
 
 export function isFaceEnrolled(userId: string): boolean {
-  return readStore().some(r => r.userId === userId);
+  if (!userId) return false;
+  return readStore().some(r => r.userId === userId || r.accountId === userId || r.studentId === userId);
 }
 
 export function removeFaceEnrollment(userId: string): void {
-  writeStore(readStore().filter(r => r.userId !== userId));
+  writeStore(readStore().filter(r => r.userId !== userId && r.accountId !== userId && r.studentId !== userId));
   deleteDocFromCloud('faceRecordsV2', userId);
 }
 

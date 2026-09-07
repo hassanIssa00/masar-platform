@@ -7,6 +7,8 @@ import { enrollFace } from '@/lib/faceAuth';
 
 interface Props {
   userId: string;
+  accountId?: string;
+  studentId?: string;
   userName: string;
   userRole?: string;
   userEmail?: string;
@@ -19,6 +21,8 @@ type Step = 'intro' | 'consent' | 'camera' | 'done';
 
 export default function FaceEnrollModal({
   userId,
+  accountId,
+  studentId,
   userName,
   userRole,
   userEmail,
@@ -31,6 +35,8 @@ export default function FaceEnrollModal({
 
   const handleEmbedding = (embedding: number[]) => {
     enrollFace(userId, embedding, {
+      accountId: accountId || userId,
+      studentId: studentId || userId,
       userName,
       userRole,
       userEmail,

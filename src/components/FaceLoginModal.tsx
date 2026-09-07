@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound } from 'lucide-react';
@@ -17,10 +17,7 @@ type Phase = 'scanning' | 'success' | 'fail' | 'no_enrolled';
 
 export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>(() => {
-    if (typeof window === 'undefined') return 'scanning';
-    return getAccounts().some((account) => isFaceEnrolled(account.id)) ? 'scanning' : 'no_enrolled';
-  });
+  const [phase, setPhase] = useState<Phase>('scanning');
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
 
@@ -59,12 +56,16 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     trackEvent('login', { userId: account.id, userName: account.name });
 
     setTimeout(() => {
-      if (account.role === 'doctor' || account.role === 'specialist' || account.role === 'teacher') {
+      const role = account.role;
+      const branch = (account as any).schoolBranch;
+      if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
         router.push('/dashboard');
-      } else if (account.role === 'student') {
-        router.push('/kids');
+      } else if (role === 'student') {
+        const studentId = account.linkedStudentId || account.id;
+        const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+        router.push(`/school-student${sParam}`);
       } else {
-        router.push('/parent');
+        router.push(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
       }
     }, 1500);
   };

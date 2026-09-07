@@ -63,6 +63,7 @@ export default function StudentDashboard() {
   const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
   const [showOneTimeFacePrompt, setShowOneTimeFacePrompt] = useState(false);
   const [faceToastMsg, setFaceToastMsg] = useState('');
+  const [accountSessionId, setAccountSessionId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +76,7 @@ export default function StudentDashboard() {
       const session = getSession() ?? await hydrateSessionFromServer();
       if (cancelled) return;
       if (!session) { router.replace('/login'); return; }
+      if (session.id) setAccountSessionId(session.id);
       if (session.role === 'doctor' || session.role === 'specialist') { router.replace('/dashboard'); return; }
       // Route parent by school branch: IKHLAS_JEDDAH → school-parent, MASAR → parent
       if (session.role === 'parent') { router.replace((session as any).schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent'); return; }
@@ -1182,7 +1184,9 @@ export default function StudentDashboard() {
       {/* Face Enroll Modal */}
       {showFaceEnrollModal && (
         <FaceEnrollModal
-          userId={studentId || (studentRecord as any)?.id || ''}
+          userId={accountSessionId || studentId || (studentRecord as any)?.id || ''}
+          accountId={accountSessionId}
+          studentId={studentId || (studentRecord as any)?.id || ''}
           userName={studentName}
           userRole="student"
           schoolBranch={isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR'}
