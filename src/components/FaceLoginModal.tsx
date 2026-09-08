@@ -20,12 +20,10 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const [phase, setPhase] = useState<Phase>('scanning');
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
+  const [activeAccount, setActiveAccount] = useState<AccountRecord | null>(null);
 
-  const handleEmbedding = async (embedding: number[]) => {
-    // Show verifying phase with visual feedback
-    setPhase('verifying');
-    const startTime = Date.now();
-
+  /** Continuous background matching function - runs while live camera streams */
+  const handleLiveVerify = async (embedding: number[]): Promise<{ ok: boolean; name?: string }> => {
     let resolvedAccount: AccountRecord | null = null;
 
     try {
@@ -39,11 +37,9 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       if (res.ok && data?.ok && data.account) {
         resolvedAccount = data.account as AccountRecord;
       }
-    } catch (apiErr) {
-      console.warn('[FaceLoginModal] Cloud face auth error, attempting local match:', apiErr);
-    }
+    } catch {}
 
-    // Client-side fallback: check locally registered faces if server didn't resolve
+    // Local fallback check
     if (!resolvedAccount) {
       try {
         const { findBestFaceMatch } = await import('@/lib/faceAuth');
@@ -58,64 +54,60 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
                  (match.record?.studentId && a.linkedStudentId === match.record.studentId) ||
                  (match.record?.userName && a.name.trim().toLowerCase() === match.record.userName.trim().toLowerCase())
           );
-          if (found) {
-            resolvedAccount = found;
-          }
-        }
-      } catch (localErr) {
-        console.warn('[FaceLoginModal] Local match fallback error:', localErr);
-      }
-    }
-
-    // Ensure at least 1000ms of verifying display for smooth UX feedback
-    const elapsed = Date.now() - startTime;
-    if (elapsed < 1000) {
-      await new Promise(r => setTimeout(r, 1000 - elapsed));
-    }
-
-    if (!resolvedAccount) {
-      const count = failCount + 1;
-      setFailCount(count);
-      if (count >= 3) {
-        onFallback();
-      } else {
-        setPhase('fail');
-      }
-      return;
-    }
-
-    const account = resolvedAccount;
-    setMatchedName(account.name);
-    setPhase('success');
-    setSession(account, false, false);
-    trackEvent('login', { userId: account.id, userName: account.name });
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('masar_last_login_provider', 'face');
-        localStorage.setItem(`masar_face_enrolled_${account.id}`, 'true');
-        localStorage.setItem(`masar_face_prompt_seen_${account.id}`, '1');
-        const sid = account.linkedStudentId;
-        if (sid) {
-          localStorage.setItem(`masar_face_enrolled_${sid}`, 'true');
-          localStorage.setItem(`masar_face_prompt_seen_${sid}`, '1');
+          if (found) resolvedAccount = found;
         }
       } catch {}
     }
 
-    setTimeout(() => {
-      const role = account.role;
-      const branch = (account as any).schoolBranch;
-      if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
-        router.push('/dashboard');
-      } else if (role === 'student') {
-        const studentId = account.linkedStudentId || account.id;
-        const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
-        router.push(`/school-student${sParam}`);
-      } else {
-        router.push(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
+    if (resolvedAccount) {
+      setActiveAccount(resolvedAccount);
+      setMatchedName(resolvedAccount.name);
+      return { ok: true, name: resolvedAccount.name };
+    }
+
+    return { ok: false };
+  };
+
+  /** Triggered once FaceCamera confirms success on the live video feed */
+  const handleVerifiedSuccess = () => {
+    const account = activeAccount;
+    setPhase('success');
+
+    if (account) {
+      setSession(account, false, false);
+      trackEvent('login', { userId: account.id, userName: account.name });
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('masar_last_login_provider', 'face');
+          localStorage.setItem(`masar_face_enrolled_${account.id}`, 'true');
+          localStorage.setItem(`masar_face_prompt_seen_${account.id}`, '1');
+          const sid = account.linkedStudentId;
+          if (sid) {
+            localStorage.setItem(`masar_face_enrolled_${sid}`, 'true');
+            localStorage.setItem(`masar_face_prompt_seen_${sid}`, '1');
+          }
+        } catch {}
       }
-    }, 1500);
+
+      setTimeout(() => {
+        const role = account.role;
+        const branch = (account as any).schoolBranch;
+        if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
+          router.push('/dashboard');
+        } else if (role === 'student') {
+          const studentId = account.linkedStudentId || account.id;
+          const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+          router.push(`/school-student${sParam}`);
+        } else {
+          router.push(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
+        }
+      }, 1200);
+    } else {
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1200);
+    }
   };
 
   return (
@@ -165,7 +157,8 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           {phase === 'scanning' && (
             <FaceCamera
               mode="verify"
-              onSuccess={handleEmbedding}
+              onVerify={handleLiveVerify}
+              onSuccess={handleVerifiedSuccess}
               onCancel={onCancel}
             />
           )}

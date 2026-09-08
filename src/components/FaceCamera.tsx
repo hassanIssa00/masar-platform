@@ -11,6 +11,8 @@ interface Props {
   userId?: string;
   /** Called on successful VERIFY — receives single clean averaged embedding + snapshot */
   onSuccess?: (embedding: number[], photoSnapshot?: string) => void;
+  /** Live continuous verification callback for real-time unlock */
+  onVerify?: (embedding: number[], photoSnapshot?: string) => Promise<{ ok: boolean; name?: string } | boolean>;
   /** Called on successful ENROLL — receives ALL 5 pose embeddings + frontal snapshot */
   onEnrollSuccess?: (embeddings: number[][], photoSnapshot?: string) => void;
   onCancel: () => void;
@@ -170,7 +172,9 @@ type Phase =
 
 export default function FaceCamera({
   mode,
+  userId,
   onSuccess,
+  onVerify,
   onEnrollSuccess,
   onCancel,
 }: Props) {
@@ -188,6 +192,7 @@ export default function FaceCamera({
   const poseOkRef         = useRef(false);
   const successCalledRef  = useRef(false);
   const poseHoldRef       = useRef(0);   // frames held in correct pose
+  const isCheckingRef     = useRef(false);
 
   // Multi-frame verification accumulation (~30 clean frontal frames = ~1.5 - 1.8s)
   const verifyCandidatesRef = useRef<number[][]>([]);
@@ -371,30 +376,66 @@ export default function FaceCamera({
         } else if (!eyesOpen) {
           setScanStatusText('يرجى فتح العينين بشكل طبيعي 👁️');
         } else {
-          // Clean frontal, open-eyed frame: accumulate for noise cancellation
+          // Clean frame (whether smiling, talking, or neutral)
           verifyCandidatesRef.current.push(embedding);
           const count = verifyCandidatesRef.current.length;
-          const pct   = Math.min(100, Math.round((count / TARGET_VERIFY_FRAMES) * 100));
-          setProgress(pct);
 
-          if (pct < 30) {
-            setScanStatusText('🎯 جاري ضبط محاذاة الوجه وتتبع الملامح...');
-          } else if (pct < 70) {
-            setScanStatusText('📐 جاري تحليل 478 نقطة هندسية والنسب التشريحية...');
-          } else if (pct < 98) {
-            setScanStatusText('🔒 جاري مطابقة البصمة البيومترية مع السجلات...');
+          if (onVerify) {
+            // Live continuous verification mode (like Apple Face ID)
+            const targetBatch = 12; // ~0.35s of continuous frames
+            const pct = Math.min(95, Math.round((count / targetBatch) * 100));
+            setProgress(pct);
+            setScanStatusText('🔒 جاري فحص ومطابقة البصمة البيومترية لحظياً...');
+
+            if (count >= targetBatch && !isCheckingRef.current && !successCalledRef.current) {
+              isCheckingRef.current = true;
+              const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
+              const snap   = captureSnapshot();
+              verifyCandidatesRef.current = []; // Reset window to keep streaming
+
+              onVerify(avgEmb, snap)
+                .then((res) => {
+                  isCheckingRef.current = false;
+                  const isMatch = typeof res === 'boolean' ? res : Boolean(res && res.ok);
+                  if (isMatch) {
+                    successCalledRef.current = true;
+                    setProgress(100);
+                    const matchedName = typeof res === 'object' && res?.name ? res.name : '';
+                    setScanStatusText(matchedName ? `✅ مرحباً بك يا ${matchedName}` : '✅ تم التحقق البيومتري بنجاح');
+                    setPhase('success');
+                    setTimeout(() => {
+                      onSuccess?.(avgEmb, snap);
+                    }, 400);
+                  }
+                })
+                .catch(() => {
+                  isCheckingRef.current = false;
+                });
+            }
           } else {
-            setScanStatusText('✅ تم التقاط وتحليل البصمة بدقة فائقة');
-          }
+            // Standard batch verify
+            const pct = Math.min(100, Math.round((count / TARGET_VERIFY_FRAMES) * 100));
+            setProgress(pct);
 
-          if (count >= TARGET_VERIFY_FRAMES && !successCalledRef.current) {
-            successCalledRef.current = true;
-            const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
-            const snap   = captureSnapshot();
-            setPhase('success');
-            setTimeout(() => {
-              onSuccess?.(avgEmb, snap);
-            }, 350);
+            if (pct < 30) {
+              setScanStatusText('🎯 جاري ضبط محاذاة الوجه وتتبع الملامح...');
+            } else if (pct < 70) {
+              setScanStatusText('📐 جاري تحليل 478 نقطة هندسية والنسب التشريحية...');
+            } else if (pct < 98) {
+              setScanStatusText('🔒 جاري مطابقة البصمة البيومترية مع السجلات...');
+            } else {
+              setScanStatusText('✅ تم التقاط وتحليل البصمة بدقة فائقة');
+            }
+
+            if (count >= TARGET_VERIFY_FRAMES && !successCalledRef.current) {
+              successCalledRef.current = true;
+              const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
+              const snap   = captureSnapshot();
+              setPhase('success');
+              setTimeout(() => {
+                onSuccess?.(avgEmb, snap);
+              }, 350);
+            }
           }
         }
       }
@@ -480,7 +521,7 @@ export default function FaceCamera({
 
     animRef.current = requestAnimationFrame(runLoop);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, onSuccess, onEnrollSuccess]);
+  }, [mode, onSuccess, onVerify, onEnrollSuccess]);
 
   useEffect(() => {
     const activePhases: Phase[] = [

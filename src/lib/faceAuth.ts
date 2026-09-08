@@ -342,24 +342,44 @@ export function compareBiometricFaces(
     sigDiff /= sigLen;
   }
 
-  // Calibrated biometric thresholds (robust to natural tilt, lighting & expression changes):
+  // 3. Rigid Craniofacial Bone Architecture (Immune to smiles, laughter, talking, expressions)
+  // Nose bridge, eye sockets, supraorbital brow, and temples
+  const RIGID_BONES = [
+    168, 6, 197, 195, 5, 4, 1, 2, 98, 327,
+    33, 133, 263, 362, 130, 243, 463, 359,
+    10, 107, 336, 67, 297, 109, 338,
+    234, 454, 127, 356
+  ];
+  let rigidMae = 0;
+  for (const b of RIGID_BONES) {
+    const idx = b * 3;
+    rigidMae += Math.abs(stored[idx] - query[idx]) +
+                Math.abs(stored[idx + 1] - query[idx + 1]) +
+                Math.abs(stored[idx + 2] - query[idx + 2]);
+  }
+  rigidMae /= (RIGID_BONES.length * 3);
+
+  // Calibrated biometric thresholds (robust to natural expressions: smiling, laughing, speaking, mobile tilt):
   // Condition 1: High overall landmark alignment after canonical rotation
-  const cond1 = cosine >= 0.9960 && mae <= 0.021 && (sigLen === 0 || sigDiff <= 0.125);
-  // Condition 2: Deep facial bone proportions match (jaw, cheekbones, eye spacing)
-  const cond2 = sigLen > 0 && sigDiff <= 0.095 && cosine >= 0.9950 && mae <= 0.024;
-  // Condition 3: Very close raw landmark fit (direct frontal match)
-  const cond3 = mae <= 0.016 && cosine >= 0.9960;
+  const cond1 = cosine >= 0.9955 && mae <= 0.024 && (sigLen === 0 || sigDiff <= 0.14);
+  // Condition 2: Deep facial bone proportions match
+  const cond2 = sigLen > 0 && sigDiff <= 0.11 && cosine >= 0.9940 && mae <= 0.028;
+  // Condition 3: Rigid skull bone structure match (immune to smile, open mouth, talking)
+  const cond3 = rigidMae <= 0.022 && cosine >= 0.9945;
+  // Condition 4: Close raw landmark fit
+  const cond4 = mae <= 0.018 && cosine >= 0.9950;
 
-  const isMatch = cond1 || cond2 || cond3;
+  const isMatch = cond1 || cond2 || cond3 || cond4;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.024 - mae) / 0.024));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9950) / 0.0050));
+  const landmarkScore = Math.max(0, Math.min(1, (0.028 - mae) / 0.028));
+  const rigidScore    = Math.max(0, Math.min(1, (0.026 - rigidMae) / 0.026));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9940) / 0.0060));
   const sigScore      = sigLen > 0
-    ? Math.max(0, Math.min(1, (0.13 - sigDiff) / 0.13))
+    ? Math.max(0, Math.min(1, (0.14 - sigDiff) / 0.14))
     : landmarkScore;
 
   const similarity = isMatch
-    ? Math.min(0.99, Math.max(0.85, 0.40 * landmarkScore + 0.35 * cosineScore + 0.25 * sigScore))
+    ? Math.min(0.99, Math.max(0.85, 0.35 * rigidScore + 0.30 * landmarkScore + 0.20 * cosineScore + 0.15 * sigScore))
     : Math.max(0, 0.4 * landmarkScore + 0.3 * cosineScore + 0.3 * sigScore) * 0.65;
 
   return { isMatch, similarity, confidence: Math.round(similarity * 100), mae, cosine, sigDiff };
