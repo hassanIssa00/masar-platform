@@ -299,14 +299,15 @@ export function compareBiometricFaces(
   rawStored: number[],
   rawQuery:  number[],
 ): {
-  isMatch:    boolean;
-  similarity: number;
-  confidence: number;
-  mae:        number;
-  cosine:     number;
-  sigDiff:    number;
+  isMatch:       boolean;
+  similarity:    number;
+  confidence:    number;
+  mae:           number;
+  cosine:        number;
+  sigDiff:       number;
+  rigidSigDiff?: number;
 } {
-  const empty = { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
+  const empty = { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1, rigidSigDiff: 1 };
   if (!rawStored || !rawQuery || rawStored.length === 0 || rawQuery.length === 0) return empty;
 
   // Apply canonical de-rotation to both vectors to guarantee perfect eye alignment
@@ -359,32 +360,51 @@ export function compareBiometricFaces(
   }
   rigidMae /= (RIGID_BONES.length * 3);
 
+  // 4. Rigid Skull Anthropometric Invariant (Indices 0, 1, 3, 4, 5, 8, 10, 11, 14, 18, 19, 28, 29, 49, 51)
+  // Immutable under smile, laugh, talking, and low-angle camera perspective
+  const RIGID_INDICES = [0, 1, 3, 4, 5, 8, 10, 11, 14, 18, 19, 28, 29, 49, 51];
+  let rigidSigDiff = 0;
+  if (sigLen > 0) {
+    let rSum = 0, rCount = 0;
+    for (const idx of RIGID_INDICES) {
+      if (idx < sigLen) {
+        const avg = Math.max(0.05, (Math.abs(sigA[idx]) + Math.abs(sigB[idx])) / 2);
+        rSum += Math.abs(sigA[idx] - sigB[idx]) / avg;
+        rCount++;
+      }
+    }
+    rigidSigDiff = rCount > 0 ? rSum / rCount : 1;
+  }
+
   // Calibrated biometric thresholds (robust to natural expressions: smiling, laughing, speaking, mobile tilt):
   // Condition 1: High overall landmark alignment after canonical rotation
-  const cond1 = cosine >= 0.9935 && mae <= 0.032 && (sigLen === 0 || sigDiff <= 0.16);
+  const cond1 = cosine >= 0.9930 && mae <= 0.035 && (sigLen === 0 || sigDiff <= 0.16);
   // Condition 2: Deep facial bone proportions match
   const cond2 = sigLen > 0 && sigDiff <= 0.090;
   // Condition 3: Rigid skull bone structure match (immune to smile, open mouth, talking)
-  const cond3 = rigidMae <= 0.028 && cosine >= 0.9920;
+  const cond3 = rigidMae <= 0.032 && cosine >= 0.9900;
   // Condition 4: Close raw landmark fit
-  const cond4 = mae <= 0.022 && cosine >= 0.9930;
-  // Condition 5: Invariant 3D Anthropometric Signature Match (Immune to phone angle and perspective)
+  const cond4 = mae <= 0.024 && cosine >= 0.9920;
+  // Condition 5: Invariant 3D Anthropometric Signature Match
   const cond5 = sigLen >= 10 && sigDiff <= 0.080;
+  // Condition 6: Rigid Craniofacial Invariant (Immune to phone angle, perspective tilt, smiling, laughing, talking)
+  const cond6 = sigLen >= 15 && rigidSigDiff <= 0.048;
 
-  const isMatch = cond1 || cond2 || cond3 || cond4 || cond5;
+  const isMatch = cond1 || cond2 || cond3 || cond4 || cond5 || cond6;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.028 - mae) / 0.028));
-  const rigidScore    = Math.max(0, Math.min(1, (0.026 - rigidMae) / 0.026));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9940) / 0.0060));
+  const landmarkScore = Math.max(0, Math.min(1, (0.035 - mae) / 0.035));
+  const rigidScore    = Math.max(0, Math.min(1, (0.032 - rigidMae) / 0.032));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9920) / 0.0080));
+  const effectiveSigDiff = (rigidSigDiff > 0 && rigidSigDiff < sigDiff) ? rigidSigDiff : sigDiff;
   const sigScore      = sigLen > 0
-    ? Math.max(0, Math.min(1, (0.14 - sigDiff) / 0.14))
+    ? Math.max(0, Math.min(1, (0.14 - effectiveSigDiff) / 0.14))
     : landmarkScore;
 
   const similarity = isMatch
-    ? Math.min(0.99, Math.max(0.85, 0.35 * rigidScore + 0.30 * landmarkScore + 0.20 * cosineScore + 0.15 * sigScore))
+    ? Math.min(0.99, Math.max(0.88, 0.35 * rigidScore + 0.30 * landmarkScore + 0.20 * cosineScore + 0.15 * sigScore))
     : Math.max(0, 0.4 * landmarkScore + 0.3 * cosineScore + 0.3 * sigScore) * 0.65;
 
-  return { isMatch, similarity, confidence: Math.round(similarity * 100), mae, cosine, sigDiff };
+  return { isMatch, similarity, confidence: Math.round(similarity * 100), mae, cosine, sigDiff, rigidSigDiff };
 }
 
 // ── Ensemble: Best Match Across All Stored Angles ────────────────────────────

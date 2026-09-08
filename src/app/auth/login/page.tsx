@@ -118,6 +118,18 @@ export default function LoginPage() {
         setForgotStep(2);
         if (oob) setForgotCode(oob);
       }
+
+      // Pre-warm Face ID templates in background for instant sub-second matching
+      fetch('/api/auth/face?templates=1')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.ok && Array.isArray(data.templates) && data.templates.length > 0) {
+            try {
+              localStorage.setItem('masar.face.v2', JSON.stringify(data.templates));
+            } catch {}
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 

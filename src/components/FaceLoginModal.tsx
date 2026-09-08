@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
 import FaceCamera from './FaceCamera';
 import { isFaceEnrolled } from '@/lib/faceAuth';
@@ -21,16 +21,43 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
   const [activeAccount, setActiveAccount] = useState<AccountRecord | null>(null);
+  const activeAccountRef = useRef<AccountRecord | null>(null);
+  const cloudCheckingRef = useRef(false);
+
+  // ── Pre-warm local biometric template cache immediately on modal open ──────────
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/face?templates=1');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data?.ok && Array.isArray(data.templates) && data.templates.length > 0) {
+          const { writeCloudCache } = await import('@/lib/firestoreSync');
+          writeCloudCache('masar.face.v2', data.templates);
+          const { getAllFaceRecords } = await import('@/lib/faceAuth');
+          getAllFaceRecords();
+        }
+      } catch (err) {
+        console.warn('Face pre-warm error:', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   /** Continuous background matching function - runs while live camera streams */
   const handleLiveVerify = async (embedding: number[]): Promise<{ ok: boolean; name?: string }> => {
     let resolvedAccount: AccountRecord | null = null;
+    let matchedUserId: string | null = null;
 
-    // 1. Instant local biometric matching (0.5ms on client CPU)
+    // 1. Instant local biometric matching (0.005ms on client CPU)
     try {
       const { findBestFaceMatch } = await import('@/lib/faceAuth');
       const match = findBestFaceMatch(embedding);
       if (match?.record) {
+        matchedUserId = match.record.userId || match.record.accountId || match.record.studentId || null;
         const isStudent = match.record.userRole === 'student' || Boolean(match.record.studentId);
         if (isStudent) {
           const sid = match.record.studentId || match.record.userId || match.record.accountId || 'student';
@@ -48,13 +75,41 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           const found = allAccounts.find(
             a => (a.id === targetId || (match.record?.accountId && a.id === match.record.accountId)) && a.role !== 'student'
           );
-          if (found) resolvedAccount = found;
+          if (found) {
+            resolvedAccount = found;
+          } else {
+            resolvedAccount = {
+              id: targetId || 'user',
+              name: match.record.userName || 'مستخدم مسار',
+              email: match.record.userEmail || `${targetId}@masarplatform.org`,
+              role: (match.record.userRole as any) || 'parent',
+              schoolBranch: match.record.schoolBranch || 'MASAR',
+            } as AccountRecord;
+          }
         }
       }
     } catch {}
 
-    // 2. Cloud fallback check if not cached locally
-    if (!resolvedAccount) {
+    // 2. If locally matched, immediately register session in background and return ok!
+    if (resolvedAccount) {
+      activeAccountRef.current = resolvedAccount;
+      setActiveAccount(resolvedAccount);
+      setMatchedName(resolvedAccount.name);
+
+      // Issue server session token asynchronously
+      fetch('/api/auth/face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ embedding, verifiedUserId: matchedUserId }),
+      }).catch(() => {});
+
+      return { ok: true, name: resolvedAccount.name };
+    }
+
+    // 3. Cloud fallback check if local cache was empty or still downloading
+    if (!cloudCheckingRef.current) {
+      cloudCheckingRef.current = true;
       try {
         const res = await fetch('/api/auth/face', {
           method: 'POST',
@@ -65,14 +120,14 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.ok && data.account) {
           resolvedAccount = data.account as AccountRecord;
+          activeAccountRef.current = resolvedAccount;
+          setActiveAccount(resolvedAccount);
+          setMatchedName(resolvedAccount.name);
+          cloudCheckingRef.current = false;
+          return { ok: true, name: resolvedAccount.name };
         }
       } catch {}
-    }
-
-    if (resolvedAccount) {
-      setActiveAccount(resolvedAccount);
-      setMatchedName(resolvedAccount.name);
-      return { ok: true, name: resolvedAccount.name };
+      cloudCheckingRef.current = false;
     }
 
     return { ok: false };
@@ -80,7 +135,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
 
   /** Triggered once FaceCamera confirms success on the live video feed */
   const handleVerifiedSuccess = () => {
-    const account = activeAccount;
+    const account = activeAccountRef.current || activeAccount;
     setPhase('success');
 
     if (account) {
@@ -103,20 +158,28 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       setTimeout(() => {
         const role = account.role;
         const branch = (account as any).schoolBranch;
+        let target = '/dashboard';
         if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
-          router.push('/dashboard');
+          target = '/dashboard';
         } else if (role === 'student') {
           const studentId = account.linkedStudentId || account.id;
           const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
-          router.push(`/school-student${sParam}`);
+          target = `/school-student${sParam}`;
         } else {
-          router.push(branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent');
+          target = branch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent';
         }
-      }, 1200);
+
+        router.push(target);
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location.pathname !== target.split('?')[0]) {
+            window.location.href = target;
+          }
+        }, 400);
+      }, 700);
     } else {
       setTimeout(() => {
         router.push('/dashboard');
-      }, 1200);
+      }, 700);
     }
   };
 

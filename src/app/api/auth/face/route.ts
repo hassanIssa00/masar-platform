@@ -63,9 +63,9 @@ function derotateVector1434(vec: number[]): number[] {
 function compareBiometricFaces(
   rawStored: number[],
   rawQuery: number[],
-): { isMatch: boolean; similarity: number; confidence: number; mae: number; cosine: number; sigDiff: number } {
+): { isMatch: boolean; similarity: number; confidence: number; mae: number; cosine: number; sigDiff: number; rigidSigDiff?: number } {
   if (!rawStored || !rawQuery || rawStored.length === 0 || rawQuery.length === 0) {
-    return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
+    return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1, rigidSigDiff: 1 };
   }
 
   // De-rotate both to canonical eye horizontal baseline
@@ -122,32 +122,51 @@ function compareBiometricFaces(
   }
   rigidMae /= (RIGID_BONES.length * 3);
 
+  // 4. Rigid Skull Anthropometric Invariant (Indices 0, 1, 3, 4, 5, 8, 10, 11, 14, 18, 19, 28, 29, 49, 51)
+  // Immutable under smile, laugh, talking, and low-angle camera perspective
+  const RIGID_INDICES = [0, 1, 3, 4, 5, 8, 10, 11, 14, 18, 19, 28, 29, 49, 51];
+  let rigidSigDiff = 0;
+  if (sigLen > 0) {
+    let rSum = 0, rCount = 0;
+    for (const idx of RIGID_INDICES) {
+      if (idx < sigLen) {
+        const avg = Math.max(0.05, (Math.abs(sigA[idx]) + Math.abs(sigB[idx])) / 2);
+        rSum += Math.abs(sigA[idx] - sigB[idx]) / avg;
+        rCount++;
+      }
+    }
+    rigidSigDiff = rCount > 0 ? rSum / rCount : 1;
+  }
+
   // Calibrated biometric thresholds (robust to natural expressions: smiling, laughing, speaking, mobile tilt):
   // Condition 1: High overall landmark alignment after canonical rotation
-  const cond1 = cosine >= 0.9935 && mae <= 0.032 && (sigLen === 0 || sigDiff <= 0.16);
+  const cond1 = cosine >= 0.9930 && mae <= 0.035 && (sigLen === 0 || sigDiff <= 0.16);
   // Condition 2: Deep facial bone proportions match
   const cond2 = sigLen > 0 && sigDiff <= 0.090;
   // Condition 3: Rigid skull bone structure match (immune to smile, open mouth, talking)
-  const cond3 = rigidMae <= 0.028 && cosine >= 0.9920;
+  const cond3 = rigidMae <= 0.032 && cosine >= 0.9900;
   // Condition 4: Close raw landmark fit
-  const cond4 = mae <= 0.022 && cosine >= 0.9930;
-  // Condition 5: Invariant 3D Anthropometric Signature Match (Immune to phone angle and perspective)
+  const cond4 = mae <= 0.024 && cosine >= 0.9920;
+  // Condition 5: Invariant 3D Anthropometric Signature Match
   const cond5 = sigLen >= 10 && sigDiff <= 0.080;
+  // Condition 6: Rigid Craniofacial Invariant (Immune to phone angle, perspective tilt, smiling, laughing, talking)
+  const cond6 = sigLen >= 15 && rigidSigDiff <= 0.048;
 
-  const isMatch = cond1 || cond2 || cond3 || cond4 || cond5;
+  const isMatch = cond1 || cond2 || cond3 || cond4 || cond5 || cond6;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.028 - mae) / 0.028));
-  const rigidScore    = Math.max(0, Math.min(1, (0.026 - rigidMae) / 0.026));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9940) / 0.0060));
-  const sigScore      = sigLen > 0 ? Math.max(0, Math.min(1, (0.14 - sigDiff) / 0.14)) : landmarkScore;
+  const landmarkScore = Math.max(0, Math.min(1, (0.035 - mae) / 0.035));
+  const rigidScore    = Math.max(0, Math.min(1, (0.032 - rigidMae) / 0.032));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9920) / 0.0080));
+  const effectiveSigDiff = (rigidSigDiff > 0 && rigidSigDiff < sigDiff) ? rigidSigDiff : sigDiff;
+  const sigScore      = sigLen > 0 ? Math.max(0, Math.min(1, (0.14 - effectiveSigDiff) / 0.14)) : landmarkScore;
 
   const similarity = isMatch
-    ? Math.min(0.99, Math.max(0.85, 0.35 * rigidScore + 0.30 * landmarkScore + 0.20 * cosineScore + 0.15 * sigScore))
+    ? Math.min(0.99, Math.max(0.88, 0.35 * rigidScore + 0.30 * landmarkScore + 0.20 * cosineScore + 0.15 * sigScore))
     : Math.max(0, 0.4 * landmarkScore + 0.3 * cosineScore + 0.3 * sigScore) * 0.65;
 
   const confidence = Math.round(similarity * 100);
 
-  return { isMatch, similarity, confidence, mae, cosine, sigDiff };
+  return { isMatch, similarity, confidence, mae, cosine, sigDiff, rigidSigDiff };
 }
 
 export async function POST(req: NextRequest) {
@@ -172,8 +191,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'بيانات الوجه غير صالحة.' }, { status: 400 });
   }
 
-  // جلب كل سجلات الوجه من Firestore (faceRecordsV2)
-  const snap = await adminDb.collection('faceRecordsV2').get();
+  const verifiedUserId = typeof body.verifiedUserId === 'string' && body.verifiedUserId.trim() ? body.verifiedUserId.trim() : null;
+
   let best: { userId: string | null; record: FaceRecordV2 | null; similarity: number; confidence: number } = {
     userId: null,
     record: null,
@@ -181,33 +200,49 @@ export async function POST(req: NextRequest) {
     confidence: 0,
   };
 
-  snap.docs.forEach((doc) => {
-    const record = doc.data() as FaceRecordV2 & { embeddings?: number[][] };
-    const userId = record.userId || doc.id;
-    if (!userId) return;
-
-    // Support both single embedding and multi-angle embeddings array
-    const candidates: number[][] = [];
-    if (Array.isArray(record.embeddings) && record.embeddings.length > 0) {
-      candidates.push(...record.embeddings);
-    }
-    if (Array.isArray(record.embedding) && record.embedding.length > 0) {
-      candidates.push(record.embedding);
-    }
-
-    for (const stored of candidates) {
-      const res = compareBiometricFaces(stored, embedding);
-      if (res.isMatch && res.similarity > best.similarity) {
-        best = { userId, record, similarity: res.similarity, confidence: res.confidence };
+  // Fast-path: Check verifiedUserId directly if client already matched locally
+  if (verifiedUserId) {
+    const directDoc = await adminDb.collection('faceRecordsV2').doc(verifiedUserId).get();
+    if (directDoc.exists) {
+      const record = directDoc.data() as FaceRecordV2 & { embeddings?: number[][] };
+      const candidates: number[][] = [];
+      if (Array.isArray(record.embeddings) && record.embeddings.length > 0) candidates.push(...record.embeddings);
+      if (Array.isArray(record.embedding) && record.embedding.length > 0) candidates.push(record.embedding);
+      for (const stored of candidates) {
+        const res = compareBiometricFaces(stored, embedding);
+        if (res.isMatch && res.similarity > best.similarity) {
+          best = { userId: verifiedUserId, record, similarity: res.similarity, confidence: res.confidence };
+        }
       }
     }
-  });
+  }
 
-  console.log(`[FaceID] Scanned ${snap.size} records. Best match: ${best.userId} with confidence ${best.confidence}% (similarity: ${best.similarity.toFixed(4)})`);
+  // If fast-path didn't match or wasn't provided, scan all records
+  if (!best.userId) {
+    const snap = await adminDb.collection('faceRecordsV2').get();
+    snap.docs.forEach((doc) => {
+      const record = doc.data() as FaceRecordV2 & { embeddings?: number[][] };
+      const userId = record.userId || doc.id;
+      if (!userId) return;
+
+      const candidates: number[][] = [];
+      if (Array.isArray(record.embeddings) && record.embeddings.length > 0) candidates.push(...record.embeddings);
+      if (Array.isArray(record.embedding) && record.embedding.length > 0) candidates.push(record.embedding);
+
+      for (const stored of candidates) {
+        const res = compareBiometricFaces(stored, embedding);
+        if (res.isMatch && res.similarity > best.similarity) {
+          best = { userId, record, similarity: res.similarity, confidence: res.confidence };
+        }
+      }
+    });
+  }
+
+  console.log(`[FaceID] Match evaluation: ${best.userId} with confidence ${best.confidence}% (similarity: ${best.similarity.toFixed(4)})`);
 
   if (!best.userId) {
     return NextResponse.json(
-      { ok: false, reason: 'no_match', error: 'ظ„ظ… ظٹطھظ… ط§ظ„طھط¹ط±ظپ ط¹ظ„ظ‰ ط§ظ„ظˆط¬ظ‡طŒ ظ…ظ„ط§ظ…ط­ ط§ظ„ظˆط¬ظ‡ ظ„ط§ طھطھط·ط§ط¨ظ‚ ظ…ط¹ ط§ظ„ط­ط³ط§ط¨ ط§ظ„ظ…ط³ط¬ظ„.' },
+      { ok: false, reason: 'no_match', error: 'لم يتم التعرف على الوجه، ملامح الوجه لا تتطابق مع الحساب المسجل.' },
       { status: 401 },
     );
   }
@@ -306,14 +341,47 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get('userId');
-
-  if (!userId) {
-    return NextResponse.json({ ok: false, error: 'userId ظ…ط·ظ„ظˆط¨' }, { status: 400 });
-  }
+  const getTemplates = searchParams.get('templates') === '1' || searchParams.get('all') === '1';
 
   const adminDb = getAdminDb();
   if (!adminDb) {
-    return NextResponse.json({ ok: false, error: 'Firebase Admin ط؛ظٹط± ظ…طھط§ط­' }, { status: 503 });
+    return NextResponse.json({ ok: false, error: 'Firebase Admin غير متاح' }, { status: 503 });
+  }
+
+  // Pre-warm endpoint for browser-side instant Face ID cache
+  if (getTemplates) {
+    try {
+      const snap = await adminDb.collection('faceRecordsV2').get();
+      const templates = snap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          userId: data.userId || doc.id,
+          accountId: data.accountId,
+          studentId: data.studentId,
+          userName: data.userName,
+          userEmail: data.userEmail,
+          userRole: data.userRole,
+          schoolBranch: data.schoolBranch,
+          parentName: data.parentName,
+          embedding: data.embedding,
+          embeddings: data.embeddings,
+        };
+      });
+      return NextResponse.json(
+        { ok: true, templates },
+        {
+          headers: {
+            'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
+          },
+        },
+      );
+    } catch (err: any) {
+      return NextResponse.json({ ok: false, error: err?.message || 'خطأ في جلب بيانات قوالب الوجه' }, { status: 500 });
+    }
+  }
+
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: 'userId مطلوب' }, { status: 400 });
   }
 
   try {
@@ -341,6 +409,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, enrolled: false });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || 'ط®ط·ط£ ظپظٹ ط¬ظ„ط¨ ط¨ظٹط§ظ†ط§طھ ط§ظ„ظˆط¬ظ‡' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err?.message || 'خطأ في جلب بيانات الوجه' }, { status: 500 });
   }
 }

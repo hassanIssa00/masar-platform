@@ -193,6 +193,7 @@ export default function FaceCamera({
   const successCalledRef  = useRef(false);
   const poseHoldRef       = useRef(0);   // frames held in correct pose
   const isCheckingRef     = useRef(false);
+  const scanFrameCountRef = useRef(0);
 
   // Multi-frame verification accumulation (~30 clean frontal frames = ~1.5 - 1.8s)
   const verifyCandidatesRef = useRef<number[][]>([]);
@@ -376,30 +377,31 @@ export default function FaceCamera({
 
           if (onVerify) {
             // Instant continuous verification stream (like Apple Face ID)
-            const targetBatch = 8; // ~0.20s of frames for ultra-fast match
-            const pct = Math.min(95, Math.round((count / targetBatch) * 100));
-            setProgress(pct);
-            setScanStatusText('🔒 جاري التعرف ومطابقة بصمة الوجه فورياً...');
-
-            if (count >= targetBatch && !isCheckingRef.current && !successCalledRef.current) {
+            // Test each frame live. If a match is detected, unlock instantly in sub-second time.
+            if (!isCheckingRef.current && !successCalledRef.current) {
               isCheckingRef.current = true;
-              const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
-              const snap   = captureSnapshot();
-              verifyCandidatesRef.current = [];
+              const snap = captureSnapshot();
 
-              onVerify(avgEmb, snap)
+              onVerify(embedding, snap)
                 .then((res) => {
                   isCheckingRef.current = false;
                   const isMatch = typeof res === 'boolean' ? res : Boolean(res && res.ok);
-                  if (isMatch) {
+                  if (isMatch && !successCalledRef.current) {
                     successCalledRef.current = true;
                     setProgress(100);
+                    poseOkRef.current = true;
                     const matchedName = typeof res === 'object' && res?.name ? res.name : '';
                     setScanStatusText(matchedName ? `✅ مرحباً بك يا ${matchedName}` : '✅ تم التحقق البيومتري بنجاح');
                     setPhase('success');
                     setTimeout(() => {
-                      onSuccess?.(avgEmb, snap);
-                    }, 400);
+                      onSuccess?.(embedding, snap);
+                    }, 280);
+                  } else if (!successCalledRef.current) {
+                    // Smooth monotonic scanning indicator — NEVER flaps back to 0%
+                    scanFrameCountRef.current = (scanFrameCountRef.current + 1) % 120;
+                    const smoothProgress = Math.min(95, 35 + Math.round((scanFrameCountRef.current / 120) * 60));
+                    setProgress(smoothProgress);
+                    setScanStatusText('🔒 جاري التعرف ومطابقة بصمة الوجه فورياً...');
                   }
                 })
                 .catch(() => {
