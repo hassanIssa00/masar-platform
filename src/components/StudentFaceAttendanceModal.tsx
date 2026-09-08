@@ -266,22 +266,33 @@ export default function StudentFaceAttendanceModal({
                 isLoading={false}
               />
 
-              <div className="flex items-center justify-between gap-3 pt-2">
+              <div className="flex flex-col gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={checkGPSLocation}
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={handleClassroomAllow}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
-                  <RefreshCw size={14} />
-                  <span>إعادة فحص موقعي الآن</span>
+                  <CheckCircle2 size={16} />
+                  <span>السماح الفوري والمتابعة للوجه — أنا داخل الفصل مع المعلم ✅</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
-                >
-                  إغلاق
-                </button>
+
+                <div className="flex items-center justify-between gap-2.5">
+                  <button
+                    type="button"
+                    onClick={checkGPSLocation}
+                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw size={14} />
+                    <span>إعادة فحص موقعي الآن</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
+                  >
+                    إغلاق
+                  </button>
+                </div>
               </div>
             </div>
           )}

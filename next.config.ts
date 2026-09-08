@@ -107,8 +107,8 @@ const CSP_DIRECTIVES = [
     // STUN/TURN for WebRTC (LiveKit managed — no additional domains needed)
   ].join(" "),
 
-  // Frames: reCAPTCHA v3 uses google.com iframe; Firebase Auth popup uses firebaseapp.com iframe
-  "frame-src 'self' https://www.google.com https://*.firebaseapp.com https://accounts.google.com",
+  // Frames: reCAPTCHA v3 uses google.com iframe; Firebase Auth popup uses firebaseapp.com iframe; Maps embed
+  "frame-src 'self' https://www.google.com https://maps.google.com https://*.google.com https://*.firebaseapp.com https://accounts.google.com https://www.openstreetmap.org https://*.openstreetmap.org",
 
   // Allow same-origin Firebase Auth helper frames while blocking external embedding
   "frame-ancestors 'self'",

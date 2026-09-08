@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   MapPin, Compass, Navigation, ShieldCheck, AlertTriangle,
-  ZoomIn, ZoomOut, RefreshCw, ExternalLink, School, User
+  RefreshCw, ExternalLink, School, User, Route
 } from 'lucide-react';
 import { SchoolLocationConfig, GeofenceResult } from '@/lib/schoolLocation';
 
@@ -24,47 +24,37 @@ export default function InteractiveGeofenceMap({
   isLoading = false,
   compact = false,
 }: Props) {
-  const [zoomLevel, setZoomLevel] = useState<number>(16);
-  const [focusTarget, setFocusTarget] = useState<'school' | 'student' | 'fit'>('fit');
+  // 'fit' displays both student and school with the route between them
+  const [focusTarget, setFocusTarget] = useState<'fit' | 'school' | 'student'>('fit');
 
-  // Compute map center and bounding box
-  const centerLat = studentCoords && focusTarget === 'student'
-    ? studentCoords.lat
-    : focusTarget === 'school'
-      ? school.lat
-      : studentCoords
-        ? (school.lat + studentCoords.lat) / 2
-        : school.lat;
-
-  const centerLng = studentCoords && focusTarget === 'student'
-    ? studentCoords.lng
-    : focusTarget === 'school'
-      ? school.lng
-      : studentCoords
-        ? (school.lng + studentCoords.lng) / 2
-        : school.lng;
-
-  // OpenStreetMap embed URL with dynamic markers
-  // OpenStreetMap export iframe supports bbox
-  const bboxPadding = Math.max(0.003, Math.min(0.04, (geofenceResult?.distanceMeters || 200) / 111000 * 1.5));
-  const minLat = Math.min(school.lat, studentCoords?.lat ?? school.lat) - bboxPadding;
-  const maxLat = Math.max(school.lat, studentCoords?.lat ?? school.lat) + bboxPadding;
-  const minLng = Math.min(school.lng, studentCoords?.lng ?? school.lng) - bboxPadding;
-  const maxLng = Math.max(school.lng, studentCoords?.lng ?? school.lng) + bboxPadding;
-
-  const osmIframeUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${school.lat}%2C${school.lng}`;
+  // Generate Google Maps embed URL
+  let mapUrl = '';
+  if (focusTarget === 'fit' && studentCoords) {
+    // Directions view shows both origin (student) and destination (school) regardless of distance
+    mapUrl = `https://maps.google.com/maps?saddr=${studentCoords.lat},${studentCoords.lng}&daddr=${school.lat},${school.lng}&hl=ar&output=embed`;
+  } else if (focusTarget === 'student' && studentCoords) {
+    mapUrl = `https://maps.google.com/maps?q=${studentCoords.lat},${studentCoords.lng}&hl=ar&z=16&output=embed`;
+  } else {
+    // Default to school view
+    mapUrl = `https://maps.google.com/maps?q=${school.lat},${school.lng}&hl=ar&z=17&output=embed`;
+  }
 
   const isWithin = geofenceResult?.isWithin ?? false;
   const distanceText = geofenceResult?.distanceText ?? '--';
 
+  // Direct external Google Maps link
+  const externalMapsUrl = studentCoords
+    ? `https://www.google.com/maps/dir/?api=1&origin=${studentCoords.lat},${studentCoords.lng}&destination=${school.lat},${school.lng}`
+    : school.mapsUrl;
+
   return (
-    <div className={`relative overflow-hidden rounded-3xl border ${
-      isWithin ? 'border-emerald-300 bg-emerald-50/40 shadow-emerald-500/5' : 'border-rose-300 bg-rose-50/40 shadow-rose-500/5'
+    <div className={`relative overflow-hidden rounded-3xl border-2 ${
+      isWithin ? 'border-emerald-300 bg-emerald-50/40 shadow-emerald-500/10' : 'border-rose-300 bg-rose-50/40 shadow-rose-500/10'
     } shadow-lg transition-all`} dir="rtl">
 
       {/* Map Header Status Bar */}
       <div className={`flex items-center justify-between px-4 py-3 border-b ${
-        isWithin ? 'bg-emerald-100/70 border-emerald-200 text-emerald-950' : 'bg-rose-100/70 border-rose-200 text-rose-950'
+        isWithin ? 'bg-emerald-100/80 border-emerald-200 text-emerald-950' : 'bg-rose-100/80 border-rose-200 text-rose-950'
       }`}>
         <div className="flex items-center gap-2">
           {isWithin ? (
@@ -78,7 +68,7 @@ export default function InteractiveGeofenceMap({
           )}
           <div>
             <h4 className="text-xs font-black leading-tight flex items-center gap-1.5">
-              <span>{isWithin ? 'داخل النطاق الجغرافي المعتمد' : 'خارج النطاق الجغرافي للمدرسة'}</span>
+              <span>{isWithin ? 'داخل النطاق الجغرافي المعتمد ✅' : 'خارج النطاق الجغرافي للمدرسة ⛔'}</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
                 isWithin ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
               }`}>
@@ -101,60 +91,87 @@ export default function InteractiveGeofenceMap({
               title="إعادة فحص موقعي الجغرافي"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
-              <span className="hidden sm:inline">تحديث الموقع</span>
+              <span className="hidden sm:inline">تحديث</span>
             </button>
           )}
 
           <a
-            href={school.mapsUrl}
+            href={externalMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 bg-white/90 hover:bg-white text-blue-700 border border-blue-200/80 px-2.5 py-1.5 rounded-xl text-[11px] font-black transition active:scale-95 shadow-2xs"
-            title="فتح في خرائط Google"
+            title="فتح في تطبيق خرائط Google"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Google Maps</span>
+            <span className="hidden sm:inline">خرائط Google</span>
           </a>
         </div>
       </div>
 
+      {/* Interactive View Switcher Tabs */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 text-white text-[11px] font-black border-b border-slate-800 gap-1 overflow-x-auto">
+        <span className="text-[10px] text-slate-400 shrink-0 ml-1">عرض الخريطة:</span>
+        <div className="flex items-center gap-1">
+          {studentCoords && (
+            <button
+              type="button"
+              onClick={() => setFocusTarget('fit')}
+              className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                focusTarget === 'fit'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <Route className="w-3 h-3" />
+              <span>المسار بالكامل (موقعي والمدرسة)</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setFocusTarget('school')}
+            className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+              focusTarget === 'school'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            <School className="w-3 h-3" />
+            <span>مدرسة الإخلاص</span>
+          </button>
+          {studentCoords && (
+            <button
+              type="button"
+              onClick={() => setFocusTarget('student')}
+              className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                focusTarget === 'student'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <User className="w-3 h-3" />
+              <span>موقعي الحالي</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Interactive Map Viewport */}
-      <div className={`relative w-full ${compact ? 'h-52' : 'h-72'} bg-slate-100 overflow-hidden`}>
-        {/* OpenStreetMap Tile Layer Embed */}
+      <div className={`relative w-full ${compact ? 'h-60' : 'h-80'} bg-slate-100 overflow-hidden`}>
+        {/* Google Maps Embed Iframe */}
         <iframe
+          key={mapUrl}
           title="خريطة النطاق الجغرافي لمدرسة الإخلاص"
-          src={osmIframeUrl}
+          src={mapUrl}
           className="w-full h-full border-0 pointer-events-auto"
           loading="lazy"
         />
-
-        {/* Floating Interactive Visual HUD (Overlaid on the map) */}
-        <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
-          <button
-            type="button"
-            onClick={() => setFocusTarget(focusTarget === 'school' ? 'student' : 'school')}
-            className="bg-white/95 backdrop-blur-xs text-slate-800 border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-black shadow-md flex items-center gap-1.5 hover:bg-white transition"
-          >
-            {focusTarget === 'school' ? (
-              <>
-                <User className="w-3 h-3 text-indigo-600" />
-                <span>تركيز على موقعي</span>
-              </>
-            ) : (
-              <>
-                <School className="w-3 h-3 text-emerald-600" />
-                <span>تركيز على المدرسة</span>
-              </>
-            )}
-          </button>
-        </div>
 
         {/* Floating Distance HUD Pill */}
         <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between bg-slate-900/90 backdrop-blur-md text-white rounded-2xl px-4 py-2.5 shadow-xl border border-white/10 text-xs">
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${isWithin ? 'bg-emerald-400 animate-ping' : 'bg-rose-400 animate-pulse'}`} />
             <div>
-              <span className="text-[10px] text-slate-300 block leading-tight">المسافة بينك وبين الفصل:</span>
+              <span className="text-[10px] text-slate-300 block leading-tight">المسافة بينك وبين المدرسة:</span>
               <span className="font-black text-sm text-white">{distanceText}</span>
             </div>
           </div>
@@ -166,14 +183,14 @@ export default function InteractiveGeofenceMap({
         </div>
       </div>
 
-      {/* Footer Instruction Text */}
+      {/* Footer Details */}
       <div className="px-4 py-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
         <span className="flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-          <span>موقع المدرسة المعتمد: {school.lat.toFixed(5)}, {school.lng.toFixed(5)}</span>
+          <span>موقع مدرسة الإخلاص: {school.lat.toFixed(4)}, {school.lng.toFixed(4)}</span>
         </span>
-        <span className="text-[10px] text-slate-400 font-normal">
-          {studentCoords ? `إحداثيات جهازك: ${studentCoords.lat.toFixed(5)}, ${studentCoords.lng.toFixed(5)}` : 'جاري قراءة GPS...'}
+        <span className="text-[10px] text-slate-400 font-mono font-normal">
+          {studentCoords ? `إحداثيات جهازك: ${studentCoords.lat.toFixed(4)}, ${studentCoords.lng.toFixed(4)}` : 'جاري قراءة GPS...'}
         </span>
       </div>
     </div>
