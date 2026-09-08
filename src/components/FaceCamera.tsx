@@ -228,6 +228,13 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
           </div>
         )}
 
+        {phase === 'challenge' && !challengeDone && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 border-2 border-amber-600 text-slate-950 font-black text-xs shadow-2xl animate-bounce whitespace-nowrap">
+            <span className="text-base">👁️</span>
+            <span>أغمض عينيك ببطء للتحقق</span>
+          </div>
+        )}
+
         {phase === 'capturing' && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-800">
             <div className="h-full bg-emerald-400 transition-all duration-200" style={{ width: `${progress}%` }} />
@@ -237,36 +244,34 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
 
       {/* تعليمة الرمشة */}
       {phase === 'challenge' && !challengeDone && (
-        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-right w-full max-w-sm animate-pulse">
-          <span className="text-2xl">👁️</span>
+        <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-right w-full max-w-sm shadow-lg shadow-amber-400/20 animate-pulse">
+          <div className="w-11 h-11 rounded-2xl bg-amber-500 border border-amber-600/40 flex items-center justify-center shrink-0 text-2xl shadow-inner">
+            👁️
+          </div>
           <div>
-            <p className="text-sm font-black text-amber-300">اغمض عينيك ببطء</p>
-            <p className="text-xs text-amber-400/70">Slowly blink your eyes</p>
+            <p className="text-base font-black text-slate-950 leading-tight">أغمض عينيك ببطء الآن</p>
+            <p className="text-xs font-black text-amber-950/85 mt-0.5">Slowly close and open your eyes</p>
           </div>
         </div>
       )}
 
       {phase === 'camera' && !faceDetected && (
-        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-800/80 border border-slate-700 text-right w-full max-w-sm">
-          <Camera size={20} className="text-slate-400" />
-          <p className="text-sm font-bold text-slate-300">ضع وجهك أمام الكاميرا بوضوح</p>
+        <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 border-2 border-slate-700 text-right w-full max-w-sm shadow-sm">
+          <Camera size={20} className="text-amber-400 shrink-0" />
+          <p className="text-sm font-black text-white">ضع وجهك أمام الكاميرا بوضوح</p>
         </div>
       )}
 
       {phase === 'capturing' && (
-        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/40 text-right w-full max-w-sm">
-          <Loader2 size={18} className="text-emerald-400 animate-spin" />
-          <p className="text-sm font-black text-emerald-300">جاري التقاط البيانات البيومترية...</p>
+        <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-emerald-600 border-2 border-emerald-700 text-white text-right w-full max-w-sm shadow-md">
+          <Loader2 size={18} className="text-white animate-spin shrink-0" />
+          <p className="text-sm font-black text-white">جاري التقاط البيانات البيومترية...</p>
         </div>
       )}
 
-      <p className="text-[11px] text-slate-500 text-center max-w-xs">
+      <p className="text-[11px] font-bold text-slate-600 text-center max-w-xs">
         🔒 وجهك يُعالَج محلياً على جهازك فقط. لا تُخزَّن أي صورة — فقط بيانات رياضية مشفرة.
       </p>
-
-      <button onClick={onCancel} className="text-xs font-bold text-slate-500 hover:text-white transition underline">
-        إلغاء / استخدام كلمة المرور
-      </button>
     </div>
   );
 }

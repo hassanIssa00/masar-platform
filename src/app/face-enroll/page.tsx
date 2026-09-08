@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -319,11 +319,13 @@ export default function FaceEnrollPage() {
                 </div>
               )}
               {phase === 'challenge' && !blinkDone && (
-                <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4 animate-pulse">
-                  <span className="text-2xl">😉</span>
+                <div className="flex items-center gap-3.5 bg-amber-400 border-2 border-amber-500 rounded-2xl p-4 animate-pulse text-slate-950 shadow-md">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500 border border-amber-600/40 flex items-center justify-center shrink-0 text-2xl shadow-inner">
+                    👁️
+                  </div>
                   <div>
-                    <p className="text-sm font-black text-blue-900">أطرف عينيك مرة واحدة</p>
-                    <p className="text-xs font-bold text-blue-600">للتحقق من أنك حقيقي وليس صورة</p>
+                    <p className="text-base font-black text-slate-950">أغمض عينيك ببطء الآن</p>
+                    <p className="text-xs font-black text-amber-950/80 mt-0.5">أغمض عينيك وافتحهما للتحقق من أنك حقيقي</p>
                   </div>
                 </div>
               )}
