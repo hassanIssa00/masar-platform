@@ -164,11 +164,15 @@ function matchesPublicPath(pathname: string, publicPath: string) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // ── Always allow static assets & MediaPipe assets ───────────────────────────
+  // ── Always allow static assets, SEO files & face models ────────────────────
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/mediapipe/') ||
-    pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf|otf|css|js|map|wasm|task)$/)
+    pathname.startsWith('/face-models/') ||
+    pathname.startsWith('/google') ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
+    pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf|otf|css|js|map|wasm|task|bin|json|html|xml|txt)$/)
   ) {
     return NextResponse.next();
   }
