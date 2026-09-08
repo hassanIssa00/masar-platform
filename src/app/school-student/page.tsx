@@ -207,15 +207,46 @@ export default function StudentDashboard() {
       loadCertificates(resolvedId, finalName);
       setLoading(false);
 
-      // Check Face ID enrollment status & trigger one-time prompt if newly registered or not enrolled
-      const isEnrolled = checkFaceEnrolled(resolvedId);
-      setFaceEnrolled(isEnrolled);
+      // Check Face ID enrollment status & trigger one-time prompt ONLY if not enrolled
+      const isLoginViaFace = typeof window !== 'undefined' && localStorage.getItem('masar_last_login_provider') === 'face';
+      const sessionHasFace = Boolean((session as any)?.hasFaceId || (session as any)?.lastLoginProvider === 'face');
+      const localEnrolled = typeof window !== 'undefined' && (
+        localStorage.getItem(`masar_face_enrolled_${resolvedId}`) === 'true' ||
+        localStorage.getItem(`masar_face_enrolled_${session.id}`) === 'true'
+      );
+      
+      let isEnrolled = isLoginViaFace || sessionHasFace || localEnrolled || checkFaceEnrolled(resolvedId) || checkFaceEnrolled(session.id);
 
       if (!isEnrolled) {
+        // Also check server in real-time from Firestore faceRecordsV2
+        try {
+          const checkId = resolvedId || session.id;
+          const res = await fetch(`/api/auth/face?userId=${encodeURIComponent(checkId)}`, { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.enrolled) {
+              isEnrolled = true;
+              if (typeof window !== 'undefined') {
+                try {
+                  localStorage.setItem(`masar_face_enrolled_${resolvedId}`, 'true');
+                  localStorage.setItem(`masar_face_enrolled_${session.id}`, 'true');
+                  localStorage.setItem(`masar_face_prompt_seen_${resolvedId}`, '1');
+                  localStorage.setItem(`masar_face_prompt_seen_${session.id}`, '1');
+                } catch {}
+              }
+            }
+          }
+        } catch {}
+      }
+
+      setFaceEnrolled(isEnrolled);
+
+      // Trigger one-time prompt ONLY if truly not enrolled AND prompt hasn't been seen/dismissed
+      if (!isEnrolled) {
         const promptKey = `masar_face_prompt_seen_${resolvedId}`;
-        const seen = typeof window !== 'undefined' ? localStorage.getItem(promptKey) : null;
-        const isFirst = urlParams?.get('firstLogin') === '1' || urlParams?.get('new') === '1' || !seen;
-        if (isFirst) {
+        const promptKeySession = `masar_face_prompt_seen_${session.id}`;
+        const seen = typeof window !== 'undefined' ? (localStorage.getItem(promptKey) || localStorage.getItem(promptKeySession)) : null;
+        if (!seen) {
           setTimeout(() => {
             setShowOneTimeFacePrompt(true);
           }, 850);
@@ -458,9 +489,13 @@ export default function StudentDashboard() {
 
   const handleDismissOneTimePrompt = () => {
     setShowOneTimeFacePrompt(false);
-    const idToMark = studentId || studentRecord?.id;
-    if (idToMark && typeof window !== 'undefined') {
-      localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+    const idToMark = studentId || studentRecord?.id || accountSessionId;
+    if (typeof window !== 'undefined') {
+      try {
+        if (idToMark) localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+        if (accountSessionId) localStorage.setItem(`masar_face_prompt_seen_${accountSessionId}`, '1');
+        if (studentId) localStorage.setItem(`masar_face_prompt_seen_${studentId}`, '1');
+      } catch {}
     }
   };
 
@@ -472,9 +507,22 @@ export default function StudentDashboard() {
   const handleFaceEnrollSuccess = () => {
     setShowFaceEnrollModal(false);
     setFaceEnrolled(true);
-    const idToMark = studentId || studentRecord?.id;
-    if (idToMark && typeof window !== 'undefined') {
-      localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+    const idToMark = studentId || studentRecord?.id || accountSessionId;
+    if (typeof window !== 'undefined') {
+      try {
+        if (idToMark) {
+          localStorage.setItem(`masar_face_prompt_seen_${idToMark}`, '1');
+          localStorage.setItem(`masar_face_enrolled_${idToMark}`, 'true');
+        }
+        if (accountSessionId) {
+          localStorage.setItem(`masar_face_prompt_seen_${accountSessionId}`, '1');
+          localStorage.setItem(`masar_face_enrolled_${accountSessionId}`, 'true');
+        }
+        if (studentId) {
+          localStorage.setItem(`masar_face_prompt_seen_${studentId}`, '1');
+          localStorage.setItem(`masar_face_enrolled_${studentId}`, 'true');
+        }
+      } catch {}
     }
     setFaceToastMsg('🎉 تم تسجيل بصمة وجهك بنجاح! يمكنك الآن تسجيل الدخول بوجهك في أي وقت.');
     setTimeout(() => setFaceToastMsg(''), 6000);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
+import { authenticateRequest } from '@/lib/auth/authorization';
 
 // Cosine similarity threshold — 0.85 = 85% تشابه للقبول
 const COSINE_THRESHOLD = 0.85;
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
   if (accountDoc.exists && accountDoc.ref) {
     await accountDoc.ref.set(
-      { lastLoginAt: now, lastActiveAt: now, lastLoginProvider: 'face' },
+      { lastLoginAt: now, lastActiveAt: now, lastLoginProvider: 'face', hasFaceId: true },
       { merge: true },
     );
   }
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
   if (linkedStudentId) {
     const studentUpdate =
       account.role === 'student'
-        ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now }
+        ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now, hasFaceId: true }
         : account.role === 'parent'
         ? { parentLastLoginAt: now, parentLastActiveAt: now }
         : { lastLoginAt: now, lastActiveAt: now };
@@ -182,7 +183,11 @@ export async function POST(req: NextRequest) {
     ]);
   }
 
-  const response = NextResponse.json({ ok: true, account, similarity: best.similarity });
+  const response = NextResponse.json({
+    ok: true,
+    account: { ...account, hasFaceId: true, lastLoginProvider: 'face' },
+    similarity: best.similarity,
+  });
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure:   process.env.NODE_ENV === 'production',
@@ -190,4 +195,47 @@ export async function POST(req: NextRequest) {
     path:     '/',
   });
   return response;
+}
+
+export async function GET(req: NextRequest) {
+  const adminDb = getAdminDb();
+  if (!adminDb) {
+    return NextResponse.json({ ok: false, error: 'Firebase Admin غير متوفر' }, { status: 503 });
+  }
+
+  const auth = await authenticateRequest(req);
+  const url = new URL(req.url);
+  const targetId = url.searchParams.get('userId') || auth.user?.id || '';
+
+  if (!targetId) {
+    return NextResponse.json({ ok: true, enrolled: false });
+  }
+
+  // 1. Direct doc by targetId in faceRecordsV2
+  const direct = await adminDb.collection('faceRecordsV2').doc(targetId).get();
+  if (direct.exists) {
+    return NextResponse.json({ ok: true, enrolled: true, enrolledAt: direct.data()?.enrolledAt || null });
+  }
+
+  // 2. Query by userId, accountId, or studentId
+  const [byUser, byAccount, byStudent] = await Promise.all([
+    adminDb.collection('faceRecordsV2').where('userId', '==', targetId).limit(1).get().catch(() => null),
+    adminDb.collection('faceRecordsV2').where('accountId', '==', targetId).limit(1).get().catch(() => null),
+    adminDb.collection('faceRecordsV2').where('studentId', '==', targetId).limit(1).get().catch(() => null),
+  ]);
+
+  if ((byUser && !byUser.empty) || (byAccount && !byAccount.empty) || (byStudent && !byStudent.empty)) {
+    return NextResponse.json({ ok: true, enrolled: true });
+  }
+
+  // 3. Check account document hasFaceId or lastLoginProvider === 'face'
+  const accDoc = await adminDb.collection('accounts').doc(targetId).get().catch(() => null);
+  if (accDoc && accDoc.exists) {
+    const accData = accDoc.data() as any;
+    if (accData?.hasFaceId || accData?.lastLoginProvider === 'face') {
+      return NextResponse.json({ ok: true, enrolled: true });
+    }
+  }
+
+  return NextResponse.json({ ok: true, enrolled: false });
 }

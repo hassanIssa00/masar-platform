@@ -26,6 +26,7 @@ import StudentAchievementsTab from '@/components/StudentAchievementsTab';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { recordUserPresence } from '@/lib/presence';
+import { isFaceEnrolled } from '@/lib/faceAuth';
 
 function isGeneratedAlias(email?: string | null) {
   if (!email) return true;
@@ -49,6 +50,7 @@ export default function ParentDashboard() {
   const [sessionEmail, setSessionEmail] = useState('');
   // Prevents "no student linked" flash before cloud data loads
   const [isLoading, setIsLoading] = useState(true);
+  const [isStudentFaceEnrolled, setIsStudentFaceEnrolled] = useState(false);
 
   const handleLogout = () => {
     clearSession();
@@ -475,6 +477,36 @@ export default function ParentDashboard() {
       if (match?.id) ids.add(match.id);
     } catch {}
     return ids;
+  }, [selectedStudent]);
+
+  useEffect(() => {
+    if (!selectedStudent?.id) {
+      setIsStudentFaceEnrolled(false);
+      return;
+    }
+    const sid = selectedStudent.id;
+    const accId = selectedStudent.studentAccountId;
+    const enrolled = isFaceEnrolled(sid) ||
+      Boolean(accId && isFaceEnrolled(accId)) ||
+      (typeof window !== 'undefined' && (
+        localStorage.getItem(`masar_face_enrolled_${sid}`) === 'true' ||
+        (accId && localStorage.getItem(`masar_face_enrolled_${accId}`) === 'true')
+      ));
+    setIsStudentFaceEnrolled(Boolean(enrolled));
+    if (!enrolled) {
+      fetch(`/api/auth/face?userId=${encodeURIComponent(sid)}`, { credentials: 'include' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.enrolled) {
+            setIsStudentFaceEnrolled(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`masar_face_enrolled_${sid}`, 'true');
+              if (accId) localStorage.setItem(`masar_face_enrolled_${accId}`, 'true');
+            }
+          }
+        })
+        .catch(() => {});
+    }
   }, [selectedStudent]);
 
   const selectedStudentNormName = useMemo(() => {
@@ -1222,17 +1254,37 @@ export default function ParentDashboard() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className={`rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border ${
+              isStudentFaceEnrolled
+                ? 'bg-emerald-950 text-white border-emerald-500/40'
+                : 'border-emerald-200 bg-emerald-50/70'
+            }`}>
               <div>
-                <h3 className="text-sm font-black text-emerald-950">تسجيل بصمة الوجه البيومترية للطفل</h3>
-                <p className="text-xs font-bold text-emerald-800 mt-1">تتيح للطفل تسجيل الدخول السريع عبر الكاميرا بدون كتابة كلمات مرور.</p>
+                <h3 className={`text-sm font-black flex items-center gap-2 ${isStudentFaceEnrolled ? 'text-white' : 'text-emerald-950'}`}>
+                  <ScanFace size={18} className={isStudentFaceEnrolled ? 'text-emerald-300' : 'text-emerald-700'} />
+                  <span>{isStudentFaceEnrolled ? 'بصمة الوجه البيومترية للطفل مفعلة 🔒' : 'تسجيل بصمة الوجه البيومترية للطفل'}</span>
+                  {isStudentFaceEnrolled && (
+                    <span className="bg-emerald-400/20 text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-400/30">
+                      مسجلة ومفعلة ✓
+                    </span>
+                  )}
+                </h3>
+                <p className={`text-xs font-bold mt-1 ${isStudentFaceEnrolled ? 'text-teal-100 opacity-90' : 'text-emerald-800'}`}>
+                  {isStudentFaceEnrolled
+                    ? 'تم تسجيل بصمة وجه الطفل بنجاح، ويمكنه تسجيل الدخول السريع عبر الكاميرا بدون كلمة مرور.'
+                    : 'تتيح للطفل تسجيل الدخول السريع عبر الكاميرا بدون كتابة كلمات مرور.'}
+                </p>
               </div>
               <Link
                 href="/face-enroll"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-6 py-3 text-xs font-black text-white hover:bg-emerald-800 transition shadow-sm shrink-0"
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-xs font-black transition shadow-sm shrink-0 ${
+                  isStudentFaceEnrolled
+                    ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                    : 'bg-emerald-700 text-white hover:bg-emerald-800'
+                }`}
               >
                 <ScanFace size={18} />
-                <span>فتح تسجيل الوجه</span>
+                <span>{isStudentFaceEnrolled ? 'تحديث بصمة الوجه' : 'فتح تسجيل الوجه'}</span>
               </Link>
             </div>
           </section>

@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
   let phone = account.phone;
   let photoUrl = account.photoUrl;
   let onboardingRequired = account.onboardingRequired;
+  let hasFaceId = Boolean((account as any)?.hasFaceId || (account as any)?.lastLoginProvider === 'face');
+  let lastLoginProvider = (account as any)?.lastLoginProvider || null;
 
   try {
     const adminDb = getAdminDb();
@@ -98,6 +100,8 @@ export async function GET(req: NextRequest) {
       phone = phone || accData.phone;
       photoUrl = photoUrl || accData.photoUrl;
       onboardingRequired = onboardingRequired ?? accData.onboardingRequired;
+      hasFaceId = hasFaceId || Boolean(accData.hasFaceId || accData.lastLoginProvider === 'face');
+      lastLoginProvider = lastLoginProvider || accData.lastLoginProvider || null;
 
       const email = cleanEmail(account.email);
       const explicitStudentEmail = cleanEmail(linkedStudentEmail);
@@ -158,6 +162,8 @@ export async function GET(req: NextRequest) {
       phone,
       photoUrl,
       onboardingRequired,
+      hasFaceId,
+      lastLoginProvider,
       linkedStudentId,
       linkedStudentEmail,
       linkedStudentName,

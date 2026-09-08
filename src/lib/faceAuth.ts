@@ -244,6 +244,20 @@ export async function enrollFace(
   };
   records.push(newRecord);
   writeStore(records);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`masar_face_enrolled_${userId}`, 'true');
+      localStorage.setItem(`masar_face_prompt_seen_${userId}`, 'true');
+      if (meta?.accountId) {
+        localStorage.setItem(`masar_face_enrolled_${meta.accountId}`, 'true');
+        localStorage.setItem(`masar_face_prompt_seen_${meta.accountId}`, 'true');
+      }
+      if (meta?.studentId) {
+        localStorage.setItem(`masar_face_enrolled_${meta.studentId}`, 'true');
+        localStorage.setItem(`masar_face_prompt_seen_${meta.studentId}`, 'true');
+      }
+    } catch {}
+  }
   const writes = [syncDocToCloud('faceRecordsV2', userId, newRecord)];
   if (meta?.accountId && meta.accountId !== userId) {
     writes.push(syncDocToCloud('faceRecordsV2', meta.accountId, { ...newRecord, userId: meta.accountId }));
@@ -283,7 +297,31 @@ export function findBestMatch(embedding: number[]): {
 
 export function isFaceEnrolled(userId: string): boolean {
   if (!userId) return false;
+  if (typeof window !== 'undefined') {
+    if (localStorage.getItem(`masar_face_enrolled_${userId}`) === 'true') return true;
+  }
   return readStore().some(r => r.userId === userId || r.accountId === userId || r.studentId === userId);
+}
+
+export async function checkFaceEnrolledCloud(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  if (isFaceEnrolled(userId)) return true;
+  try {
+    const res = await fetch(`/api/auth/face?userId=${encodeURIComponent(userId)}`, { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.enrolled) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`masar_face_enrolled_${userId}`, 'true');
+            localStorage.setItem(`masar_face_prompt_seen_${userId}`, 'true');
+          } catch {}
+        }
+        return true;
+      }
+    }
+  } catch {}
+  return false;
 }
 
 export function removeFaceEnrollment(userId: string): void {

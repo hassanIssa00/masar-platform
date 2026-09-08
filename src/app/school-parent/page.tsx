@@ -24,6 +24,7 @@ import NotificationBell from '@/components/NotificationBell';
 import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesViewerModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { recordUserPresence } from '@/lib/presence';
+import { isFaceEnrolled } from '@/lib/faceAuth';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -58,6 +59,7 @@ export default function SchoolParentPage() {
   const [replyText, setReplyText] = useState('');
   const [replySending, setReplySending] = useState(false);
   const [replySent, setReplySent] = useState(false);
+  const [parentFaceEnrolled, setParentFaceEnrolled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +107,29 @@ export default function SchoolParentPage() {
       // Set parent name from session directly
       setParentName(session.name || 'ولي الأمر');
       if (session.email) setSessionEmail(session.email);
-      if (session.phone) setSessionPhone(session.phone);
+      // Check if parent has enrolled Face ID
+      const isLoginViaFace = typeof window !== 'undefined' && localStorage.getItem('masar_last_login_provider') === 'face';
+      const sessionHasFace = Boolean((session as any)?.hasFaceId || (session as any)?.lastLoginProvider === 'face');
+      const localFaceEnrolled = typeof window !== 'undefined' && (
+        localStorage.getItem(`masar_face_enrolled_${session.id}`) === 'true' ||
+        localStorage.getItem(`masar_face_enrolled_${(session as any)?.linkedStudentId}`) === 'true'
+      );
+      let enrolled = isLoginViaFace || sessionHasFace || localFaceEnrolled || isFaceEnrolled(session.id);
+      if (!enrolled) {
+        try {
+          const res = await fetch(`/api/auth/face?userId=${encodeURIComponent(session.id)}`, { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.enrolled) {
+              enrolled = true;
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(`masar_face_enrolled_${session.id}`, 'true');
+              }
+            }
+          }
+        } catch {}
+      }
+      setParentFaceEnrolled(enrolled);
 
       // Pull latest data from cloud before searching
       await pullCloudDataToLocal(['students', 'accounts', 'surveys', 'homework', 'notifications', 'ikhlasPosts', 'ikhlasLogs', 'studentCertLogs', 'classStudents', 'studentBadges', 'reports', 'messages', 'studentHomeworkLogs', 'curriculumAssignments'], true).catch(() => {});
@@ -728,27 +752,49 @@ export default function SchoolParentPage() {
               </div>
             )}
 
-            {/* Face Biometric Enrollment Banner for Parent */}
-            <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 text-white shadow-xl border border-emerald-700/50 relative overflow-hidden flex items-center justify-between gap-4">
+            {/* Face Biometric Status/Enrollment Banner for Parent */}
+            <div className={`rounded-3xl p-5 text-white shadow-xl relative overflow-hidden flex items-center justify-between gap-4 border ${
+              parentFaceEnrolled
+                ? 'bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 border-emerald-500/40'
+                : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 border-emerald-700/50'
+            }`}>
               <div className="flex items-center gap-3.5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 shadow-inner">
-                  <ScanFace size={24} className="text-emerald-300" />
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
+                  parentFaceEnrolled
+                    ? 'bg-emerald-500/30 border border-emerald-400/50 text-emerald-300'
+                    : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300'
+                }`}>
+                  <ScanFace size={24} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm text-white">تسجيل الوجه البيومتري 📷</h3>
-                    <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-400/30">دخول سريع</span>
+                    <h3 className="font-black text-sm text-white">
+                      {parentFaceEnrolled ? 'بصمة الوجه مفعلة ومسجلة 🔒' : 'تسجيل الوجه البيومتري 📷'}
+                    </h3>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                      parentFaceEnrolled
+                        ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
+                        : 'bg-amber-400/20 text-amber-300 border-amber-400/30'
+                    }`}>
+                      {parentFaceEnrolled ? 'مفعل ✓' : 'دخول سريع'}
+                    </span>
                   </div>
                   <p className="text-xs font-bold text-teal-100 opacity-90 mt-0.5">
-                    سجّل ملامح وجهك الآن لتبدأ الدخول المباشر للمنصة بمجرد النظر للكاميرا بدون كلمة مرور
+                    {parentFaceEnrolled
+                      ? 'تم تسجيل بصمة وجهك بنجاح. يمكنك الدخول للمنصة مباشرة عبر الكاميرا بدون كلمة مرور.'
+                      : 'سجّل ملامح وجهك الآن لتبدأ الدخول المباشر للمنصة بمجرد النظر للكاميرا بدون كلمة مرور'}
                   </p>
                 </div>
               </div>
               <Link
                 href="/face-enroll"
-                className="shrink-0 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-xs px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                className={`shrink-0 text-white font-black text-xs px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer ${
+                  parentFaceEnrolled
+                    ? 'bg-white/10 hover:bg-white/20 border border-white/20'
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'
+                }`}
               >
-                <span>سجّل وجهك</span>
+                <span>{parentFaceEnrolled ? 'تحديث البصمة' : 'سجّل وجهك'}</span>
                 <ChevronLeft size={14} />
               </Link>
             </div>
@@ -773,6 +819,7 @@ export default function SchoolParentPage() {
                 lastLoginAt: (studentRecord as any)?.lastLoginAt,
               }}
               variant="parent"
+              isFaceEnrolled={parentFaceEnrolled}
               allowPhotoUpload={true}
               onPhotoUpdated={(newPhoto) => {
                 if (studentRecord) {

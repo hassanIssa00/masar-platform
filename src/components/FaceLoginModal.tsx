@@ -55,6 +55,19 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     setSession(account, false, false);
     trackEvent('login', { userId: account.id, userName: account.name });
 
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('masar_last_login_provider', 'face');
+        localStorage.setItem(`masar_face_enrolled_${account.id}`, 'true');
+        localStorage.setItem(`masar_face_prompt_seen_${account.id}`, '1');
+        const sid = account.linkedStudentId;
+        if (sid) {
+          localStorage.setItem(`masar_face_enrolled_${sid}`, 'true');
+          localStorage.setItem(`masar_face_prompt_seen_${sid}`, '1');
+        }
+      } catch {}
+    }
+
     setTimeout(() => {
       const role = account.role;
       const branch = (account as any).schoolBranch;
