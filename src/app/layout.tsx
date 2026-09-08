@@ -94,7 +94,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || 'google-site-verification-masar',
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || 'google93a1e546c3b9eae0',
   },
 };
 
