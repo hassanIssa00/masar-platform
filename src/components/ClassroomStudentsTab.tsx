@@ -5,7 +5,7 @@ import Image from 'next/image';
 import {
   UsersRound, Sparkles, BookOpenCheck, Award, FileText,
   UserRound, Plus, Trash2, CheckSquare, Square, CheckCircle2,
-  Phone, Calendar, Search, ShieldCheck, Edit3, Camera, Upload
+  Phone, Calendar, Search, ShieldCheck, Edit3, Camera, Upload, ScanFace
 } from 'lucide-react';
 import { curriculumPrograms } from '@/data/curriculum';
 import { pullCloudDataToLocal } from '@/lib/firestoreSync';
@@ -57,6 +57,7 @@ export default function ClassroomStudentsTab() {
 
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
   const [profileStudent, setProfileStudent] = useState<ClassStudentRecord | null>(null);
+  const [faceEnrolledIds, setFaceEnrolledIds] = useState<Set<string>>(new Set());
 
   const refresh = () => {
     const list = getClassStudents();
@@ -72,6 +73,20 @@ export default function ClassroomStudentsTab() {
     pullCloudDataToLocal(['classStudents', 'students', 'accounts']).then(() => {
       refresh();
     }).catch(() => {});
+    fetch('/api/auth/face-records', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json && Array.isArray(json.records)) {
+          const ids = new Set<string>();
+          json.records.forEach((r: any) => {
+            if (r.userId) ids.add(r.userId);
+            if (r.accountId) ids.add(r.accountId);
+            if (r.studentId) ids.add(r.studentId);
+          });
+          setFaceEnrolledIds(ids);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const filteredStudents = useMemo(() => {
@@ -308,6 +323,21 @@ export default function ClassroomStudentsTab() {
                               </div>
                             );
                           })()}
+                          {(() => {
+                            const isEnrolled = faceEnrolledIds.has(s.id) ||
+                              Boolean((s as any).accountId && faceEnrolledIds.has((s as any).accountId)) ||
+                              Boolean((s as any).studentAccountId && faceEnrolledIds.has((s as any).studentAccountId));
+                            return (
+                              <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black border ${
+                                isEnrolled
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                              }`}>
+                                <ScanFace size={9} />
+                                {isEnrolled ? 'Face ID مسجّل ✓' : 'Face ID غير مسجّل'}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-slate-400">
@@ -351,6 +381,11 @@ export default function ClassroomStudentsTab() {
                   lastLoginAt: selectedStudent.lastLoginAt,
                 }}
                 variant="classroom"
+                isFaceEnrolled={
+                  faceEnrolledIds.has(selectedStudent.id) ||
+                  Boolean((selectedStudent as any).accountId && faceEnrolledIds.has((selectedStudent as any).accountId)) ||
+                  Boolean((selectedStudent as any).studentAccountId && faceEnrolledIds.has((selectedStudent as any).studentAccountId))
+                }
                 allowPhotoUpload={true}
                 onPhotoUpdated={() => {
                   refresh();
@@ -364,6 +399,21 @@ export default function ClassroomStudentsTab() {
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
                     <CheckCircle2 size={12} /> حساب نشط بالفصل
                   </span>
+                  {(() => {
+                    const isEnrolled = faceEnrolledIds.has(selectedStudent.id) ||
+                      Boolean((selectedStudent as any).accountId && faceEnrolledIds.has((selectedStudent as any).accountId)) ||
+                      Boolean((selectedStudent as any).studentAccountId && faceEnrolledIds.has((selectedStudent as any).studentAccountId));
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black border ${
+                        isEnrolled
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                        <ScanFace size={12} />
+                        بصمة الوجه: {isEnrolled ? 'مسجّلة ومفعلة ✓' : 'غير مسجّلة'}
+                      </span>
+                    );
+                  })()}
                   {(() => {
                     const stPresence = formatLastSeen(selectedStudent.studentLastActiveAt || selectedStudent.studentLastLoginAt || selectedStudent.lastActiveAt || selectedStudent.lastLoginAt);
                     return (

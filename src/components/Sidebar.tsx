@@ -9,7 +9,7 @@ import {
   BookOpen, FileText, Gamepad2, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, UsersRound, X,
   ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban,
-  Sparkles, ShieldCheck
+  Sparkles, ShieldCheck, ScanFace
 } from 'lucide-react';
 import { clearSession, getSession, getStudents, getReports, hydrateSessionFromServer } from '@/lib/cloudStore';
 
@@ -118,6 +118,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
       links: [
         { name: 'لوحة التشغيل', path: '/dashboard', icon: BarChart3 },
         { name: 'مساعد الذكاء الاصطناعي', path: '/ai-assistant', icon: Bot, badge: 'AI ⚡', badgeColor: 'bg-emerald-400 text-slate-950 border-emerald-300 font-black shadow-xs' },
+        { name: 'سجلات Face ID', path: '/face-id', icon: ScanFace, badge: 'جديد', badgeColor: 'bg-violet-500 text-white border-violet-400 font-black shadow-xs' },
       ],
     },
     {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Users, Calendar, FileText, Activity, ArrowLeft, Heart,
-  ShieldAlert, UserRoundPlus, ClipboardCheck, Stamp, Bot, BarChart3, ClipboardList, Building2
+  ShieldAlert, UserRoundPlus, ClipboardCheck, Stamp, Bot, BarChart3, ClipboardList, Building2, ScanFace
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
@@ -136,6 +136,9 @@ export default function Dashboard() {
               </Link>
               <Link href="/bi-dashboard" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 التحليلات BI
+              </Link>
+              <Link href="/face-id" className="bg-violet-500/80 hover:bg-violet-400 text-white text-xs font-black px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 border border-violet-400/50">
+                <ScanFace size={13} /> سجلات Face ID
               </Link>
               <Link href="/iep" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 خطط IEP

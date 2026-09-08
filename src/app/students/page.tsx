@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle, CheckSquare, Square, CheckCircle2, Eye, PencilLine, ClipboardList } from 'lucide-react';
+import { BookOpenCheck, FileText, MessageSquareText, Trash2, UserRound, UsersRound, Sparkles, AlertTriangle, CheckSquare, Square, CheckCircle2, Eye, PencilLine, ClipboardList, ScanFace } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { curriculumPrograms } from '@/data/curriculum';
@@ -55,6 +55,9 @@ export default function StudentsControlPage() {
   const [selectedTrackSlugs, setSelectedTrackSlugs] = useState<string[]>([]);
   const [trackCategoryFilter, setTrackCategoryFilter] = useState<'all' | 'curriculum' | 'program'>('all');
   const [systemFilter, setSystemFilter] = useState<'all' | 'masar' | 'classroom'>('all');
+
+  // Face ID enrollment status — Set of IDs (userId / accountId / studentId) enrolled with face biometrics
+  const [faceEnrolledIds, setFaceEnrolledIds] = useState<Set<string>>(new Set());
 
   const refresh = async () => {
     const session = getSession() ?? await hydrateSessionFromServer();
@@ -123,6 +126,22 @@ export default function StudentsControlPage() {
       await pullCloudDataToLocal([...STUDENTS_SYNC_KEYS]).catch(() => {});
       // 3. Update view once fresh cloud data arrives
       if (!cancelled) await refresh();
+      // 4. Load Face ID enrollment status
+      try {
+        const faceRes = await fetch('/api/auth/face-records', { credentials: 'include' });
+        if (faceRes.ok) {
+          const faceJson = await faceRes.json();
+          if (!cancelled && Array.isArray(faceJson.records)) {
+            const ids = new Set<string>();
+            faceJson.records.forEach((r: any) => {
+              if (r.userId)    ids.add(r.userId);
+              if (r.accountId) ids.add(r.accountId);
+              if (r.studentId) ids.add(r.studentId);
+            });
+            setFaceEnrolledIds(ids);
+          }
+        }
+      } catch {}
     })();
 
     const unsubscribe = subscribeToCloudUpdates(() => void refresh(), [...STUDENTS_SYNC_KEYS]);
@@ -628,6 +647,9 @@ export default function StudentsControlPage() {
                     .map((student) => {
                     const count = (student.assignedPrograms?.length || (student.assignedProgram ? 1 : 0));
                     const isSelected = selectedStudent?.id === student.id;
+                    const isFaceEnrolled = faceEnrolledIds.has(student.id) ||
+                      (student as any).accountId && faceEnrolledIds.has((student as any).accountId) ||
+                      (student as any).studentAccountId && faceEnrolledIds.has((student as any).studentAccountId);
                     return (
                       <div
                         key={student.id}
@@ -658,6 +680,15 @@ export default function StudentsControlPage() {
                                 </div>
                               );
                             })()}
+                            {/* Face ID badge */}
+                            <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black border ${
+                              isFaceEnrolled
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-50 text-slate-400 border-slate-200'
+                            }`}>
+                              <ScanFace size={9} />
+                              {isFaceEnrolled ? 'Face ID مسجّل ✓' : 'Face ID غير مسجّل'}
+                            </div>
                           </div>
                         </button>
 
@@ -707,6 +738,21 @@ export default function StudentsControlPage() {
                                   🏫 طالب مسجل في فصل د. إسماعيل عيسى
                                 </span>
                               )}
+                              {(() => {
+                                const isEnrolled = faceEnrolledIds.has(selectedStudent.id) ||
+                                  Boolean((selectedStudent as any).accountId && faceEnrolledIds.has((selectedStudent as any).accountId)) ||
+                                  Boolean((selectedStudent as any).studentAccountId && faceEnrolledIds.has((selectedStudent as any).studentAccountId));
+                                return (
+                                  <span className={`rounded-md font-black text-[10px] px-2 py-0.5 border flex items-center gap-1 ${
+                                    isEnrolled
+                                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                      : 'bg-slate-100 text-slate-600 border-slate-300'
+                                  }`}>
+                                    <ScanFace size={11} />
+                                    {isEnrolled ? 'بصمة الوجه (Face ID): مسجّلة ✓' : 'بصمة الوجه (Face ID): غير مسجّلة'}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedStudent.fullName}</h2>
                           </div>
