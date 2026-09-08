@@ -45,16 +45,25 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         const { findBestFaceMatch } = await import('@/lib/faceAuth');
         const match = findBestFaceMatch(embedding);
         if (match?.record) {
-          const allAccounts = getAccounts();
-          const targetId = match.record.userId || match.record.accountId || match.record.studentId;
-          const found = allAccounts.find(
-            a => a.id === targetId ||
-                 a.linkedStudentId === targetId ||
-                 (match.record?.accountId && a.id === match.record.accountId) ||
-                 (match.record?.studentId && a.linkedStudentId === match.record.studentId) ||
-                 (match.record?.userName && a.name.trim().toLowerCase() === match.record.userName.trim().toLowerCase())
-          );
-          if (found) resolvedAccount = found;
+          const isStudent = match.record.userRole === 'student' || Boolean(match.record.studentId);
+          if (isStudent) {
+            const sid = match.record.studentId || match.record.userId || match.record.accountId || 'student';
+            resolvedAccount = {
+              id: sid,
+              name: match.record.userName || 'طالب مسار',
+              email: match.record.userEmail || `${sid}@masarplatform.org`,
+              role: 'student',
+              schoolBranch: match.record.schoolBranch || 'IKHLAS_JEDDAH',
+              linkedStudentId: sid,
+            } as AccountRecord;
+          } else {
+            const allAccounts = getAccounts();
+            const targetId = match.record.userId || match.record.accountId;
+            const found = allAccounts.find(
+              a => (a.id === targetId || (match.record?.accountId && a.id === match.record.accountId)) && a.role !== 'student'
+            );
+            if (found) resolvedAccount = found;
+          }
         }
       } catch {}
     }
