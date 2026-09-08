@@ -360,9 +360,9 @@ export default function FaceCamera({
       }
 
       if (curPhase === 'scanning') {
-        const isFrontal   = Math.abs(pose.yaw) < 0.18 && Math.abs(pose.pitch) < 0.18;
-        const eyesOpen    = !isBlinking && blinkScore < 0.35;
-        const faceAdequate = box ? (box.width >= v.videoWidth * 0.18) : true;
+        const isFrontal   = Math.abs(pose.yaw) < 0.24 && Math.abs(pose.pitch) < 0.24;
+        const eyesOpen    = !isBlinking && blinkScore < 0.40;
+        const faceAdequate = box ? (box.width >= v.videoWidth * 0.16) : true;
 
         if (!faceAdequate) {
           setScanStatusText('يرجى الاقتراب قليلاً من الكاميرا 🔍');

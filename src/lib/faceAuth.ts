@@ -101,17 +101,64 @@ export function normalizeLandmarks(
 
   const leftEye  = landmarks[263] ?? landmarks[0];
   const rightEye = landmarks[33]  ?? landmarks[0];
-  const scale    = Math.hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y) || 1;
+
+  const dx = leftEye.x - rightEye.x;
+  const dy = leftEye.y - rightEye.y;
+  const scale = Math.hypot(dx, dy) || 1;
+
+  // 2D Invariant Roll Angle (aligns eye line horizontally)
+  const angle = Math.atan2(dy, dx);
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
 
   const result: number[] = [];
   for (const lm of landmarks) {
-    result.push(
-      (lm.x - cx) / scale,
-      (lm.y - cy) / scale,
-      ((lm.z || 0) - cz) / scale,
-    );
+    const tx = (lm.x - cx) / scale;
+    const ty = (lm.y - cy) / scale;
+    const tz = ((lm.z || 0) - cz) / scale;
+
+    // Canonical rotation to cancel head tilt
+    const rx = tx * cos - ty * sin;
+    const ry = tx * sin + ty * cos;
+
+    result.push(rx, ry, tz);
   }
   return result;
+}
+
+// ── De-rotate any 1434 vector into canonical horizontal orientation (Backward Compatible) ──
+export function derotateVector1434(vec: number[]): number[] {
+  if (!vec || vec.length < 1434) return vec;
+
+  // Landmark 33: right eye -> index 33*3 = 99
+  // Landmark 263: left eye -> index 263*3 = 789
+  const rEyeX = vec[99], rEyeY = vec[100];
+  const lEyeX = vec[789], lEyeY = vec[790];
+
+  const dx = lEyeX - rEyeX;
+  const dy = lEyeY - rEyeY;
+  const angle = Math.atan2(dy, dx);
+
+  if (Math.abs(angle) < 0.001) return vec; // Already horizontally aligned
+
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
+
+  const out = new Array(vec.length);
+  for (let i = 0; i < 478; i++) {
+    const idx = i * 3;
+    const x = vec[idx];
+    const y = vec[idx + 1];
+    const z = vec[idx + 2];
+
+    out[idx] = x * cos - y * sin;
+    out[idx + 1] = x * sin + y * cos;
+    out[idx + 2] = z;
+  }
+  for (let i = 1434; i < vec.length; i++) {
+    out[i] = vec[i];
+  }
+  return out;
 }
 
 // ── 52 Invariant Anthropometric Biometric Ratios ──────────────────────────────
@@ -248,10 +295,9 @@ export function estimateHeadPose(
   return { yaw, pitch };
 }
 
-// ── High-Precision Single-Pair Comparison ────────────────────────────────────
 export function compareBiometricFaces(
-  stored: number[],
-  query:  number[],
+  rawStored: number[],
+  rawQuery:  number[],
 ): {
   isMatch:    boolean;
   similarity: number;
@@ -261,7 +307,11 @@ export function compareBiometricFaces(
   sigDiff:    number;
 } {
   const empty = { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
-  if (!stored || !query || stored.length === 0 || query.length === 0) return empty;
+  if (!rawStored || !rawQuery || rawStored.length === 0 || rawQuery.length === 0) return empty;
+
+  // Apply canonical de-rotation to both vectors to guarantee perfect eye alignment
+  const stored = derotateVector1434(rawStored);
+  const query  = derotateVector1434(rawQuery);
 
   const rawLen = Math.min(1434, stored.length, query.length);
   if (rawLen < 30) return empty;
@@ -286,26 +336,26 @@ export function compareBiometricFaces(
   const sigLen = Math.min(sigA.length, sigB.length);
   if (sigLen > 0) {
     for (let i = 0; i < sigLen; i++) {
-      // Clamp avg to 0.05 minimum to prevent near-zero canthal-tilt / Z-depth
-      // ratios from causing relative errors to explode (e.g., 0.001/0.002 = 50%)
       const avg = Math.max(0.05, (Math.abs(sigA[i]) + Math.abs(sigB[i])) / 2);
       sigDiff  += Math.abs(sigA[i] - sigB[i]) / avg;
     }
     sigDiff /= sigLen;
   }
 
-  // Calibrated biometric threshold:
-  // Condition 1: High overall landmark alignment
-  const cond1 = cosine >= 0.9978 && mae <= 0.024 && (sigLen === 0 || sigDiff <= 0.115);
-  // Condition 2: Deep facial bone proportions match (ratio difference <= 8.5%, cosine >= 0.9970, mae <= 0.026)
-  const cond2 = sigLen > 0 && sigDiff <= 0.085 && cosine >= 0.9970 && mae <= 0.026;
+  // Calibrated biometric thresholds (robust to natural tilt, lighting & expression changes):
+  // Condition 1: High overall landmark alignment after canonical rotation
+  const cond1 = cosine >= 0.9960 && mae <= 0.021 && (sigLen === 0 || sigDiff <= 0.125);
+  // Condition 2: Deep facial bone proportions match (jaw, cheekbones, eye spacing)
+  const cond2 = sigLen > 0 && sigDiff <= 0.095 && cosine >= 0.9950 && mae <= 0.024;
+  // Condition 3: Very close raw landmark fit (direct frontal match)
+  const cond3 = mae <= 0.016 && cosine >= 0.9960;
 
-  const isMatch = cond1 || cond2;
+  const isMatch = cond1 || cond2 || cond3;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.026 - mae) / 0.026));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9970) / 0.0030));
+  const landmarkScore = Math.max(0, Math.min(1, (0.024 - mae) / 0.024));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9950) / 0.0050));
   const sigScore      = sigLen > 0
-    ? Math.max(0, Math.min(1, (0.12 - sigDiff) / 0.12))
+    ? Math.max(0, Math.min(1, (0.13 - sigDiff) / 0.13))
     : landmarkScore;
 
   const similarity = isMatch

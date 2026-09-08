@@ -67,10 +67,10 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       }
     }
 
-    // Ensure at least 600ms of verifying display for smooth UX
+    // Ensure at least 1000ms of verifying display for smooth UX feedback
     const elapsed = Date.now() - startTime;
-    if (elapsed < 600) {
-      await new Promise(r => setTimeout(r, 600 - elapsed));
+    if (elapsed < 1000) {
+      await new Promise(r => setTimeout(r, 1000 - elapsed));
     }
 
     if (!resolvedAccount) {

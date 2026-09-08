@@ -24,14 +24,53 @@ type AccountData = {
   linkedStudentId?: string;
 };
 
+// ── De-rotate any 1434 vector into canonical horizontal orientation (Backward Compatible) ──
+function derotateVector1434(vec: number[]): number[] {
+  if (!vec || vec.length < 1434) return vec;
+
+  // Landmark 33: right eye -> index 33*3 = 99
+  // Landmark 263: left eye -> index 263*3 = 789
+  const rEyeX = vec[99], rEyeY = vec[100];
+  const lEyeX = vec[789], lEyeY = vec[790];
+
+  const dx = lEyeX - rEyeX;
+  const dy = lEyeY - rEyeY;
+  const angle = Math.atan2(dy, dx);
+
+  if (Math.abs(angle) < 0.001) return vec; // Already horizontally aligned
+
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
+
+  const out = new Array(vec.length);
+  for (let i = 0; i < 478; i++) {
+    const idx = i * 3;
+    const x = vec[idx];
+    const y = vec[idx + 1];
+    const z = vec[idx + 2];
+
+    out[idx] = x * cos - y * sin;
+    out[idx + 1] = x * sin + y * cos;
+    out[idx + 2] = z;
+  }
+  for (let i = 1434; i < vec.length; i++) {
+    out[i] = vec[i];
+  }
+  return out;
+}
+
 // ── High-Precision Server-side Biometric Comparison ────────────────────────────
 function compareBiometricFaces(
-  stored: number[],
-  query: number[],
+  rawStored: number[],
+  rawQuery: number[],
 ): { isMatch: boolean; similarity: number; confidence: number; mae: number; cosine: number; sigDiff: number } {
-  if (!stored || !query || stored.length === 0 || query.length === 0) {
+  if (!rawStored || !rawQuery || rawStored.length === 0 || rawQuery.length === 0) {
     return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
   }
+
+  // De-rotate both to canonical eye horizontal baseline
+  const stored = derotateVector1434(rawStored);
+  const query = derotateVector1434(rawQuery);
 
   const rawLen = Math.min(1434, stored.length, query.length);
   if (rawLen < 30) {
@@ -66,17 +105,19 @@ function compareBiometricFaces(
     sigDiff /= sigLen;
   }
 
-  // Calibrated biometric threshold:
-  // Condition 1: High overall landmark alignment
-  const cond1 = cosine >= 0.9978 && mae <= 0.024 && (sigLen === 0 || sigDiff <= 0.115);
-  // Condition 2: Deep facial bone proportions match (ratio difference <= 8.5%, cosine >= 0.9970, mae <= 0.026)
-  const cond2 = sigLen > 0 && sigDiff <= 0.085 && cosine >= 0.9970 && mae <= 0.026;
+  // Calibrated biometric thresholds (robust to natural tilt, lighting & expression changes):
+  // Condition 1: High overall landmark alignment after canonical rotation
+  const cond1 = cosine >= 0.9960 && mae <= 0.021 && (sigLen === 0 || sigDiff <= 0.125);
+  // Condition 2: Deep facial bone proportions match
+  const cond2 = sigLen > 0 && sigDiff <= 0.095 && cosine >= 0.9950 && mae <= 0.024;
+  // Condition 3: Very close raw landmark fit
+  const cond3 = mae <= 0.016 && cosine >= 0.9960;
 
-  const isMatch = cond1 || cond2;
+  const isMatch = cond1 || cond2 || cond3;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.026 - mae) / 0.026));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9970) / 0.0030));
-  const sigScore      = sigLen > 0 ? Math.max(0, Math.min(1, (0.12 - sigDiff) / 0.12)) : landmarkScore;
+  const landmarkScore = Math.max(0, Math.min(1, (0.024 - mae) / 0.024));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9950) / 0.0050));
+  const sigScore      = sigLen > 0 ? Math.max(0, Math.min(1, (0.13 - sigDiff) / 0.13)) : landmarkScore;
 
   const similarity = isMatch
     ? Math.min(0.99, Math.max(0.85, 0.40 * landmarkScore + 0.35 * cosineScore + 0.25 * sigScore))
