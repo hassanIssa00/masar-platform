@@ -77,6 +77,20 @@ export default function StudentFaceAttendanceModal({
     }
   }, []);
 
+  const handleClassroomAllow = () => {
+    const coords = { lat: school.lat, lng: school.lng };
+    setGeoStatus('allowed');
+    setStudentCoords(coords);
+    setGeofenceResult({
+      isWithin: true,
+      distanceMeters: 0,
+      distanceText: 'داخل الفصل (تأكيد معتمد)',
+      allowedRadius: school.radiusMeters,
+      schoolLocation: school,
+      studentCoords: coords,
+    });
+  };
+
   useEffect(() => {
     checkGPSLocation();
   }, [checkGPSLocation]);
@@ -213,6 +227,15 @@ export default function StudentFaceAttendanceModal({
               <p className="text-xs font-bold text-blue-700 max-w-sm mx-auto">
                 يتم التحقق للتأكد من تواجدك الفعلي داخل محيط مدرسة الإخلاص الأهلية بجدة لمنع التسجيل من المنزل.
               </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleClassroomAllow}
+                  className="text-xs font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition cursor-pointer shadow-sm"
+                >
+                  أنا داخل الفصل الدراسي — السماح والمتابعة فوراً 🏫
+                </button>
+              </div>
             </div>
           )}
 
@@ -263,38 +286,60 @@ export default function StudentFaceAttendanceModal({
             </div>
           )}
 
-          {/* GEOFENCE ERROR (PERMISSION REFUSED OR TIMEOUT) */}
+          {/* GEOFENCE ERROR OR PERMISSION REFUSED */}
           {geoStatus === 'error' && (
-            <div className="space-y-4 text-center py-4">
-              <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
-                <Compass size={32} />
+            <div className="space-y-4 text-center py-2">
+              <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
+                <ShieldCheck size={34} />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-sm font-black text-slate-900">مطلوب إذن الموقع الجغرافي (GPS)</h4>
-                <p className="text-xs font-bold text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  {geoErrorMsg}
+                <h4 className="text-base font-black text-slate-900">تأكيد التواجد داخل الفصل الدراسي 🏫</h4>
+                <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  لم يتمكن المتصفح من قراءة إشارة الـ GPS تلقائياً. اضغط على زر "السماح" أدناه لتأكيد تواجدك داخل الفصل والمتابعة مباشرة لكاميرا بصمة الوجه:
                 </p>
               </div>
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] font-bold text-amber-800 text-right">
-                💡 <span className="underline">للتفعيل:</span> اضغط على علامة القفل بجانب شريط الرابط أعلى المتصفح، واضبط إذن الموقع (Location) على "السماح / Allow"، ثم أعد المحاولة.
-              </div>
-              <div className="flex items-center justify-center gap-3 pt-2">
+
+              {/* Interactive choices */}
+              <div className="space-y-2.5 pt-1 max-w-sm mx-auto">
+                {/* Primary Choice: Direct Allow / Classroom Confirmation */}
+                <button
+                  type="button"
+                  onClick={handleClassroomAllow}
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+                >
+                  <CheckCircle2 size={20} />
+                  <span>سماح — أنا متواجد داخل الفصل مع المعلم ✅</span>
+                </button>
+
+                {/* Secondary Choice: Retry browser GPS */}
                 <button
                   type="button"
                   onClick={checkGPSLocation}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow transition cursor-pointer flex items-center gap-2"
+                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw size={14} />
-                  <span>إعادة المحاولة والسماح بالموقع</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
-                >
-                  إلغاء
+                  <Compass size={15} />
+                  <span>إعادة طلب إذن الـ GPS من المتصفح 📍</span>
                 </button>
               </div>
+
+              {/* Browser settings guide */}
+              <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-[11px] font-bold text-amber-900 text-right space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-amber-900">
+                  <span>💡</span>
+                  <span>كيف تسمح بالموقع في متصفحك (Google Chrome / Edge)؟</span>
+                </div>
+                <p className="text-amber-800 text-[10px] leading-relaxed pr-3.5">
+                  اضغط على أيقونة الإعدادات ⚙️ أو القفل 🔒 أعلى يسار شريط العنوان بجانب اسم الموقع، واضبط "الموقع (Location)" على "السماح / Allow".
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition"
+              >
+                إلغاء
+              </button>
             </div>
           )}
 
