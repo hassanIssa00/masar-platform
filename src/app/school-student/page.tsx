@@ -11,6 +11,7 @@ import {
   Calendar, BookMarked, Trophy, ChevronDown, ChevronUp, RefreshCw
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS, getTodayPeriods, getCurrentPeriod, getSavedSchedule, Period } from '@/data/ikhlasSchedule';
+import { getSaudiNow } from '@/lib/saudiTime';
 import { curriculaList } from '@/data/curriculaData';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
@@ -606,19 +607,22 @@ export default function StudentDashboard() {
 
             <button
               type="button"
+              disabled={!curActivePeriod}
               onClick={() => {
                 if (curActivePeriod) {
                   setTargetPeriodForModal({ periodNumber: curActivePeriod.periodNumber, subjectName: curActivePeriod.subjectName });
-                } else {
-                  setTargetPeriodForModal(null);
+                  setShowFaceAttendanceModal(true);
                 }
-                setShowFaceAttendanceModal(true);
               }}
-              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-sm shadow-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              className={`w-full sm:w-auto px-6 py-4 rounded-2xl font-black text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 shrink-0 ${
+                curActivePeriod
+                  ? 'bg-white hover:bg-emerald-50 text-emerald-950 cursor-pointer active:scale-95 shadow-emerald-950/20'
+                  : 'bg-white/40 text-white/70 cursor-not-allowed shadow-none'
+              }`}
             >
-              <Camera size={20} className="text-emerald-600" />
+              <Camera size={20} className={curActivePeriod ? 'text-emerald-600' : 'text-white/60'} />
               <span>
-                {curActivePeriod ? `تسجيل حضور (${PERIOD_NAMES[curActivePeriod.periodNumber] || `الحصة ${curActivePeriod.periodNumber}`}) 📸` : 'سجّل حضور الحصة بالوجه 📸'}
+                {curActivePeriod ? `تسجيل حضور (${PERIOD_NAMES[curActivePeriod.periodNumber] || `الحصة ${curActivePeriod.periodNumber}`}) 📸` : 'لا توجد حصة جارية الآن ⏸️'}
               </span>
             </button>
           </div>
@@ -672,7 +676,10 @@ export default function StudentDashboard() {
             {periodsToDisplay.map((p) => {
               const rec = todayPeriodsAttendance[p.periodNumber];
               const isPresent = rec?.status === 'present';
-              const isCurrent = curActivePeriod?.periodNumber === p.periodNumber;
+              const saudi = getSaudiNow();
+              const isCurrent = curActivePeriod?.periodNumber === p.periodNumber || (saudi.hhmm >= p.startTime && saudi.hhmm <= p.endTime);
+              const isPassed = !isPresent && !isCurrent && (saudi.hhmm > p.endTime);
+              const isFuture = !isPresent && !isCurrent && (saudi.hhmm < p.startTime);
               const periodTitle = PERIOD_NAMES[p.periodNumber] || `الحصة ${p.periodNumber}`;
 
               return (
@@ -683,6 +690,8 @@ export default function StudentDashboard() {
                       ? 'bg-emerald-50/50 border-emerald-300 shadow-xs'
                       : isCurrent
                       ? 'bg-amber-50/70 border-amber-400 shadow-md ring-2 ring-amber-400/40'
+                      : isPassed
+                      ? 'bg-rose-50/40 border-rose-200/80 opacity-90'
                       : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -707,6 +716,10 @@ export default function StudentDashboard() {
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
                         <span>جارية الآن</span>
+                      </span>
+                    ) : isPassed ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
+                        <span>انتهت ✕</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200/80 text-slate-600 shrink-0">
@@ -738,32 +751,39 @@ export default function StudentDashboard() {
                   {/* Action Button */}
                   <div>
                     {isPresent ? (
+                      <div className="w-full py-2 px-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-800 text-[11px] font-black flex items-center justify-center gap-1.5 select-none">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        <span>تم توثيق الحضور ✓</span>
+                      </div>
+                    ) : isCurrent ? (
                       <button
                         type="button"
                         onClick={() => {
                           setTargetPeriodForModal({ periodNumber: p.periodNumber, subjectName: p.subjectName });
                           setShowFaceAttendanceModal(true);
                         }}
-                        className="w-full py-2 px-3 rounded-xl bg-white hover:bg-emerald-100/60 border border-emerald-200 text-emerald-800 text-[11px] font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl text-white text-[11px] font-black transition flex items-center justify-center gap-1.5 shadow-md bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/40 cursor-pointer active:scale-95"
                       >
-                        <RefreshCw size={12} />
-                        <span>إعادة التحقق</span>
+                        <ScanFace size={14} />
+                        <span>سجّل حضور الحصة الآن 📸</span>
+                      </button>
+                    ) : isPassed ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-400 text-[11px] font-bold cursor-not-allowed flex items-center justify-center gap-1.5 select-none"
+                      >
+                        <Clock size={12} className="text-slate-400" />
+                        <span>انتهى وقت الحصة ⛔</span>
                       </button>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          setTargetPeriodForModal({ periodNumber: p.periodNumber, subjectName: p.subjectName });
-                          setShowFaceAttendanceModal(true);
-                        }}
-                        className={`w-full py-2 px-3 rounded-xl text-white text-[11px] font-black transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
-                          isCurrent
-                            ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/40'
-                            : 'bg-slate-800 hover:bg-slate-900'
-                        }`}
+                        disabled
+                        className="w-full py-2 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-400 text-[11px] font-bold cursor-not-allowed flex items-center justify-center gap-1.5 select-none"
                       >
-                        <ScanFace size={13} />
-                        <span>سجّل حضور الحصة</span>
+                        <Clock size={12} className="text-slate-400" />
+                        <span>تبدأ الساعة {p.startTime} ⏳</span>
                       </button>
                     )}
                   </div>

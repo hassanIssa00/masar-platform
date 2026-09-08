@@ -77,20 +77,6 @@ export default function StudentFaceAttendanceModal({
     }
   }, []);
 
-  const handleClassroomAllow = () => {
-    const coords = { lat: school.lat, lng: school.lng };
-    setGeoStatus('allowed');
-    setStudentCoords(coords);
-    setGeofenceResult({
-      isWithin: true,
-      distanceMeters: 0,
-      distanceText: 'داخل الفصل (تأكيد معتمد)',
-      allowedRadius: school.radiusMeters,
-      schoolLocation: school,
-      studentCoords: coords,
-    });
-  };
-
   useEffect(() => {
     checkGPSLocation();
   }, [checkGPSLocation]);
@@ -108,10 +94,10 @@ export default function StudentFaceAttendanceModal({
   };
 
   const handleFaceSuccess = async (embedding: number[], snapshot?: string) => {
-    // Safety check: Don't allow submission if GPS was not confirmed
-    if (geoStatus !== 'allowed') {
+    // Safety check: Don't allow submission if GPS was not confirmed or outside school
+    if (geoStatus !== 'allowed' || !geofenceResult?.isWithin) {
       setStatus('error');
-      setErrorMsg('لا يمكن تسجيل الحضور: لم يتم تأكيد تواجدك الجغرافي داخل محيط المدرسة.');
+      setErrorMsg('التسجيل مرفوض: أنت خارج النطاق الجغرافي للمدرسة ولا يمكن تسجيل حضورك عن بعد.');
       return;
     }
 
@@ -217,7 +203,7 @@ export default function StudentFaceAttendanceModal({
         {/* Modal Content */}
         <div className="p-6 space-y-4">
 
-          {/* ══════════════ 1. GPS GEOFENCE CHECK SECTION ══════════════ */}
+          {/* GPS CHECKING */}
           {geoStatus === 'checking' && (
             <div className="p-6 bg-blue-50/80 border border-blue-200 rounded-3xl text-center space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md shadow-blue-500/20 animate-pulse">
@@ -225,34 +211,25 @@ export default function StudentFaceAttendanceModal({
               </div>
               <h4 className="text-sm font-black text-blue-900">جاري فحص الموقع الجغرافي (GPS)...</h4>
               <p className="text-xs font-bold text-blue-700 max-w-sm mx-auto">
-                يتم التحقق للتأكد من تواجدك الفعلي داخل محيط مدرسة الإخلاص الأهلية بجدة لمنع التسجيل من المنزل.
+                يتم التحقق للتأكد من تواجدك الفعلي داخل محيط مدرسة الإخلاص الأهلية بجدة لمنع التسجيل عن بُعد.
               </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleClassroomAllow}
-                  className="text-xs font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition cursor-pointer shadow-sm"
-                >
-                  أنا داخل الفصل الدراسي — السماح والمتابعة فوراً 🏫
-                </button>
-              </div>
             </div>
           )}
 
-          {/* GEOFENCE DENIED (OUTSIDE SCHOOL) */}
+          {/* GEOFENCE DENIED (OUTSIDE SCHOOL) — HARD BLOCK: no bypass button */}
           {geoStatus === 'denied' && (
             <div className="space-y-3">
-              <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-rose-900">
-                    عفواً! أنت خارج النطاق الجغرافي للمدرسة ⛔
+              <div className="p-5 bg-rose-50 border-2 border-rose-400 rounded-2xl flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-black text-rose-900">
+                    ⛔ التسجيل مرفوض — أنت خارج النطاق الجغرافي للمدرسة
                   </h4>
                   <p className="text-xs font-bold text-rose-700 leading-relaxed">
                     {geoErrorMsg}
                   </p>
                   <p className="text-[11px] text-rose-600 font-medium">
-                    يُشترط التواجد داخل المدرسة على بعد أقل من {school.radiusMeters} متر لفتح الكاميرا وتسجيل الحضور.
+                    يُشترط التواجد داخل المدرسة على بعد أقل من {school.radiusMeters} متر لتسجيل الحضور. لا يمكن تجاوز هذا الشرط.
                   </p>
                 </div>
               </div>
@@ -266,70 +243,58 @@ export default function StudentFaceAttendanceModal({
                 isLoading={false}
               />
 
-              <div className="flex flex-col gap-2 pt-2">
+              <div className="flex items-center justify-between gap-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={handleClassroomAllow}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  onClick={checkGPSLocation}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <CheckCircle2 size={16} />
-                  <span>السماح الفوري والمتابعة للوجه — أنا داخل الفصل مع المعلم ✅</span>
+                  <RefreshCw size={14} />
+                  <span>إعادة فحص موقعي الآن</span>
                 </button>
-
-                <div className="flex items-center justify-between gap-2.5">
-                  <button
-                    type="button"
-                    onClick={checkGPSLocation}
-                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <RefreshCw size={14} />
-                    <span>إعادة فحص موقعي الآن</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
-                  >
-                    إغلاق
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
+                >
+                  إغلاق
+                </button>
               </div>
             </div>
           )}
 
-          {/* GEOFENCE ERROR OR PERMISSION REFUSED */}
+          {/* GEOFENCE ERROR OR PERMISSION REFUSED — NO BYPASS ALLOWED */}
           {geoStatus === 'error' && (
             <div className="space-y-4 text-center py-2">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
-                <ShieldCheck size={34} />
+              <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
+                <AlertTriangle size={34} />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-base font-black text-slate-900">تأكيد التواجد داخل الفصل الدراسي 🏫</h4>
+                <h4 className="text-base font-black text-slate-900">تعذر التحقق من الموقع الجغرافي (GPS) ⚠️</h4>
                 <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto leading-relaxed">
-                  لم يتمكن المتصفح من قراءة إشارة الـ GPS تلقائياً. اضغط على زر "السماح" أدناه لتأكيد تواجدك داخل الفصل والمتابعة مباشرة لكاميرا بصمة الوجه:
+                  {geoErrorMsg || 'يُشترط تفعيل خدمة الموقع الجغرافي (GPS) والسماح للمتصفح بالوصول للتأكد من تواجدك الفعلي داخل المدرسة.'}
+                </p>
+                <p className="text-[11px] font-black text-rose-600">
+                  ⛔ لا يمكن فتح كاميرا الحضور دون تأكيد تواجدك الجغرافي داخل محيط المدرسة.
                 </p>
               </div>
 
-              {/* Interactive choices */}
+              {/* Action buttons */}
               <div className="space-y-2.5 pt-1 max-w-sm mx-auto">
-                {/* Primary Choice: Direct Allow / Classroom Confirmation */}
-                <button
-                  type="button"
-                  onClick={handleClassroomAllow}
-                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
-                >
-                  <CheckCircle2 size={20} />
-                  <span>سماح — أنا متواجد داخل الفصل مع المعلم ✅</span>
-                </button>
-
-                {/* Secondary Choice: Retry browser GPS */}
                 <button
                   type="button"
                   onClick={checkGPSLocation}
-                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Compass size={15} />
-                  <span>إعادة طلب إذن الـ GPS من المتصفح 📍</span>
+                  <Compass size={16} />
+                  <span>إعادة فحص الموقع الجغرافي (GPS) 📍</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
+                >
+                  إغلاق
                 </button>
               </div>
 
@@ -337,20 +302,12 @@ export default function StudentFaceAttendanceModal({
               <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-[11px] font-bold text-amber-900 text-right space-y-1">
                 <div className="flex items-center gap-1.5 font-black text-amber-900">
                   <span>💡</span>
-                  <span>كيف تسمح بالموقع في متصفحك (Google Chrome / Edge)؟</span>
+                  <span>كيف تسمح بالموقع في متصفحك (Google Chrome / Safari)؟</span>
                 </div>
                 <p className="text-amber-800 text-[10px] leading-relaxed pr-3.5">
-                  اضغط على أيقونة الإعدادات ⚙️ أو القفل 🔒 أعلى يسار شريط العنوان بجانب اسم الموقع، واضبط "الموقع (Location)" على "السماح / Allow".
+                  اضغط على أيقونة الإعدادات ⚙️ أو القفل 🔒 بجانب اسم الموقع في شريط العنوان، واضبط "الموقع (Location)" على "السماح / Allow" ثم اضغط إعادة فحص.
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition"
-              >
-                إلغاء
-              </button>
             </div>
           )}
 

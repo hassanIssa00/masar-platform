@@ -909,18 +909,106 @@ export default function Home() {
 
       </main>
 
-      {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs font-bold text-slate-500">
-        <div className="mx-auto max-w-7xl px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>جميع الحقوق محفوظة © {new Date().getFullYear()} - منصة مسار التأهيل د. إسماعيل عيسى</p>
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-600">
-            <Link href="/privacy" className="hover:text-teal-700 font-bold transition">سياسة الخصوصية (Privacy Policy)</Link>
-            <span>•</span>
-            <Link href="/auth/login" className="hover:text-slate-900 transition">تسجيل الدخول</Link>
-            <span>•</span>
-            <Link href="/auth/register" className="hover:text-slate-900 transition">التسجيل</Link>
-            <span>•</span>
-            <Link href="https://nexus.masarplatform.org" className="hover:text-slate-900 transition">نظام NEXUS</Link>
+      {/* SEO-RICH FOOTER */}
+      <footer className="border-t border-slate-200 bg-slate-50 py-12 text-xs font-bold text-slate-600">
+        <div className="mx-auto max-w-7xl px-5 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-right">
+            {/* Col 1: Platform info */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <BrandMark size="sm" />
+                <span className="font-black text-slate-900 text-sm">منصة مَسَار التعليمية</span>
+              </div>
+              <p className="text-slate-500 text-[11px] leading-relaxed">
+                بإشراف د. إسماعيل عيسى — منصة رائدة متخصصة في تشخيص وتطوير قدرات الأطفال، علاج صعوبات التعلم، وبناء الخطط التربوية الفردية (IEP).
+              </p>
+            </div>
+
+            {/* Col 2: Educational Programs (Internal Links) */}
+            <div className="space-y-2.5">
+              <h4 className="font-black text-slate-900 text-xs text-teal-800">برامج صعوبات التعلم والتأسيس</h4>
+              <ul className="space-y-2 text-[11px]">
+                <li>
+                  <Link href="/programs/reading" className="hover:text-teal-700 transition">
+                    برنامج علاج صعوبات القراءة وتأسيس اللغة
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/programs/math" className="hover:text-teal-700 transition">
+                    برنامج علاج صعوبات الحساب والرياضيات
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/programs/learning-difficulties" className="hover:text-teal-700 transition">
+                    برنامج تشخيص وتأهيل صعوبات التعلم
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/programs/curricula" className="hover:text-teal-700 transition">
+                    المناهج التعليمية والأنشطة التفاعلية
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Diagnostics & Resources */}
+            <div className="space-y-2.5">
+              <h4 className="font-black text-slate-900 text-xs text-teal-800">التشخيص والمصادر</h4>
+              <ul className="space-y-2 text-[11px]">
+                <li>
+                  <Link href="/assessment" className="hover:text-teal-700 transition">
+                    اختبار تقييم وتشخيص مستوى الطفل
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/parent-guide" className="hover:text-teal-700 transition">
+                    دليل أولياء الأمور للتعامل مع صعوبات التعلم
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/resources" className="hover:text-teal-700 transition">
+                    المكتبة والمصادر التعليمية
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/waitlist" className="hover:text-teal-700 transition">
+                    التسجيل في قائمة الانتظار المسبقة
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: Links & Privacy */}
+            <div className="space-y-2.5">
+              <h4 className="font-black text-slate-900 text-xs text-teal-800">روابط المنصة</h4>
+              <ul className="space-y-2 text-[11px]">
+                <li>
+                  <Link href="/auth/login" className="hover:text-teal-700 transition">
+                    تسجيل الدخول (Face ID & Password)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/auth/register" className="hover:text-teal-700 transition">
+                    إنشاء حساب جديد
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="hover:text-teal-700 transition">
+                    سياسة الخصوصية والأمان
+                  </Link>
+                </li>
+                <li>
+                  <a href="/sitemap.xml" className="hover:text-teal-700 transition" target="_blank" rel="noopener">
+                    خريطة الموقع (Sitemap XML)
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+            <p>جميع الحقوق محفوظة © {new Date().getFullYear()} — منصة مَسَار بإشراف د. إسماعيل عيسى</p>
+            <p className="text-slate-400">مرخصة ومعتمدة للتدريب والتشخيص التربوي</p>
           </div>
         </div>
       </footer>

@@ -124,6 +124,8 @@ const CSP_DIRECTIVES = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  compress: true,
+  poweredByHeader: false,
   async rewrites() {
     return [
       {
@@ -157,7 +159,7 @@ const nextConfig: NextConfig = {
           // ── Referrer ───────────────────────────────────────────────────────
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
-          { key: 'X-DNS-Prefetch-Control', value: 'off' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
 
           // ── Legacy XSS filter (IE/old Edge) ───────────────────────────────
@@ -169,15 +171,17 @@ const nextConfig: NextConfig = {
           // ── Content Security Policy ────────────────────────────────────────
           { key: 'Content-Security-Policy', value: CSP_DIRECTIVES },
 
-
-
           // ── Permissions Policy ─────────────────────────────────────────────
-          // camera=(self)        — Face ID requires camera on same-origin pages only
-          // microphone=(self)    — Student oral assessments require recording audio
-          // geolocation=(self)   — Student classroom GPS geofencing
-          // payment=()           — No payment APIs used
-          // usb=()               — Not used
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()' },
+        ],
+      },
+      {
+        source: '/face-models/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
         ],
       },
       {

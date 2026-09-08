@@ -98,6 +98,9 @@ export default function LoginPage() {
   useEffect(() => {
     trackEvent('visit', { page: '/login' });
 
+    // Pre-warm Face ID neural models silently in background so when user taps Face Login, it's instant!
+    import('@/lib/faceAuth').then(({ initFaceAuth }) => initFaceAuth().catch(() => {}));
+
     // Check if coming back from Google redirect
     handleGoogleRedirectResult('parent').then(async (result) => {
       if (result && result.ok) {

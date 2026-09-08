@@ -24,10 +24,13 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const activeAccountRef = useRef<AccountRecord | null>(null);
   const cloudCheckingRef = useRef(false);
 
-  // ── Pre-warm local biometric template cache immediately on modal open ──────────
+  // ── Pre-warm local biometric template cache & AI models immediately on modal open ──────────
   useEffect(() => {
     let isMounted = true;
     (async () => {
+      // Warm up AI neural models in background
+      import('@/lib/faceAuth').then(({ initFaceAuth }) => initFaceAuth().catch(() => {}));
+
       try {
         const res = await fetch('/api/auth/face?templates=1');
         if (!res.ok) return;

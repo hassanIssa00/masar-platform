@@ -181,21 +181,37 @@ export default function ClassroomFaceAttendanceFullPage({
   // Continuous Face Scan Loop
   const startScanningLoop = () => {
     let lastScanTime = 0;
+    let lastMatchedId = '';   // consecutive match: two hits in a row = accept instantly
+    let consecutiveHits = 0;
 
     const loop = async (timestamp: number) => {
       if (!isScanningRef.current) return;
 
-      // Scan every 200ms to balance high accuracy with smooth 60fps UI
-      if (timestamp - lastScanTime > 200 && videoRef.current && videoRef.current.readyState >= 2) {
+      // Scan every 80ms — fast enough to feel instant, safe for GPU
+      if (timestamp - lastScanTime > 80 && videoRef.current && videoRef.current.readyState >= 2) {
         lastScanTime = timestamp;
         try {
           const detected = await detectFace(videoRef.current);
           if (detected && detected.box) {
             setCurrentFaceBox(detected.box);
             // Match against class enrolled faces
-            handleFaceDetected(detected.embedding);
+            const matchResult = await handleFaceDetected(detected.embedding);
+            // Consecutive-match fast-path: two frames matching same person → accepted
+            if (matchResult) {
+              if (matchResult === lastMatchedId) {
+                consecutiveHits++;
+              } else {
+                lastMatchedId = matchResult;
+                consecutiveHits = 1;
+              }
+            } else {
+              consecutiveHits = 0;
+              lastMatchedId = '';
+            }
           } else {
             setCurrentFaceBox(null);
+            consecutiveHits = 0;
+            lastMatchedId = '';
           }
         } catch (e) {
           console.warn('Scanning loop tick error:', e);
@@ -208,10 +224,10 @@ export default function ClassroomFaceAttendanceFullPage({
     animFrameRef.current = requestAnimationFrame(loop);
   };
 
-  // Process Detected Face Embedding
-  const handleFaceDetected = async (embedding: number[]) => {
+  // Process Detected Face Embedding — returns matched studentId or null
+  const handleFaceDetected = async (embedding: number[]): Promise<string | null> => {
     const allRecords = getAllFaceRecords();
-    if (allRecords.length === 0) return;
+    if (allRecords.length === 0) return null;
 
     // Match against enrolled faces
     let bestMatch: { record: FaceRecord | null; student: ClassStudentRecord | null; similarity: number } = {
@@ -254,14 +270,14 @@ export default function ClassroomFaceAttendanceFullPage({
     // Accept match only if strict biometric verification succeeds
     if (bestMatch.record && bestMatch.similarity >= 0.85) {
       const studentId = bestMatch.student?.id || bestMatch.record?.studentId || bestMatch.record?.userId || '';
-      const studentName = bestMatch.student?.fullName || bestMatch.record?.userName || 'ط·ط§ظ„ط¨';
+      const studentName = bestMatch.student?.fullName || bestMatch.record?.userName || 'طالب';
       const photoUrl = bestMatch.student?.photoUrl;
 
       const now = Date.now();
       const lastTime = lastRecognizedRef.current[studentId] || 0;
 
       // 15 seconds cooldown per student to prevent spamming
-      if (now - lastTime < 15000) return;
+      if (now - lastTime < 15000) return studentId; // still return id for consecutive tracking
       lastRecognizedRef.current[studentId] = now;
 
       // Check if student was already marked present for this specific period
@@ -325,7 +341,11 @@ export default function ClassroomFaceAttendanceFullPage({
       setActivePopup(eventItem);
       setTimeout(() => setActivePopup(null), 4000);
       refreshData();
+
+      return studentId;
     }
+
+    return null;
   };
 
   // Fullscreen toggle

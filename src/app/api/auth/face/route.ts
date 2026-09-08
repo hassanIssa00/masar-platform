@@ -68,6 +68,22 @@ function compareBiometricFaces(
     return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1, rigidSigDiff: 1 };
   }
 
+  // ── Modern 128-D Euclidean Vector Comparison (face-api / mobile & desktop) ──
+  if (rawStored.length === 128 && rawQuery.length === 128) {
+    let s = 0;
+    for (let i = 0; i < 128; i++) {
+      const d = rawStored[i] - rawQuery[i];
+      s += d * d;
+    }
+    const dist = Math.sqrt(s);
+    // Calibrated for mobile front camera & desktop: 0.60
+    const THRESH = 0.60;
+    const isMatch = dist < THRESH;
+    const similarity = Math.max(0, Math.min(0.99, 1 - dist / 0.9));
+    const confidence = Math.round(similarity * 100);
+    return { isMatch, similarity, confidence, mae: dist, cosine: 0, sigDiff: 0 };
+  }
+
   // De-rotate both to canonical eye horizontal baseline
   const stored = derotateVector1434(rawStored);
   const query = derotateVector1434(rawQuery);
