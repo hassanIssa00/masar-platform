@@ -11,7 +11,7 @@ import {
   AlertTriangle, Loader2, Star, MessageSquare,
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
-  Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive, Medal,
+  Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive, Medal, ScanFace,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -32,19 +32,21 @@ import AttendanceTabManager from '@/components/AttendanceTabManager';
 import ClassroomStudentsTab from '@/components/ClassroomStudentsTab';
 import ClassroomParentsTab from '@/components/ClassroomParentsTab';
 import ClassroomQuizzesTab from '@/components/ClassroomQuizzesTab';
-import StudentAIChatTab from '@/components/StudentAIChatTab';
+import MasarAIAssistant from '@/components/MasarAIAssistant';
 import CurriculumManagerTab from '@/components/CurriculumManagerTab';
 import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 import DailyArchiveTab from '@/components/DailyArchiveTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentBadgesManagerTab from '@/components/StudentBadgesManagerTab';
+import ClassroomFaceAttendanceFullPage from '@/components/ClassroomFaceAttendanceFullPage';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
 type Tab =
   | 'overview'
+  | 'face-attendance'
   | 'archive'
   | 'curriculum'
   | 'correction'
@@ -611,6 +613,7 @@ export default function IkhlasJeddahPage() {
       icon: BarChart3,
       items: [
         { key: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+        { key: 'face-attendance', label: 'الحضور الذكي ببصمة الوجه 📸', icon: ScanFace, badge: '⚡ جديد', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
         { key: 'archive', label: 'الأرشيف اليومي الشامل', icon: Archive, badge: '📁 أرشيف', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
         { key: 'ai-chat', label: 'مساعد المعلم AI', icon: Sparkles, badge: '⚡ AI', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
         { key: 'live', label: 'البث المباشر', icon: Radio, badge: '🔴 مباشر', badgeColor: 'bg-rose-500 text-white font-black' },
@@ -645,8 +648,9 @@ export default function IkhlasJeddahPage() {
       title: 'الحصص والجدول',
       icon: Clock,
       items: [
+        { key: 'face-attendance', label: 'كشك الحضور بالبصمة 📸', icon: ScanFace, badge: 'Face ID', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
         { key: 'schedule', label: 'جدول الحصص', icon: Clock },
-        { key: 'attendance', label: 'الحضور والغياب', icon: Users },
+        { key: 'attendance', label: 'كشف الحصص التقليدي', icon: Users },
         { key: 'meetings', label: 'الاجتماعات المرئية', icon: Video },
         { key: 'photos', label: 'أرشيف الصور والفعاليات', icon: Camera },
       ],
@@ -943,7 +947,11 @@ export default function IkhlasJeddahPage() {
         {activeTab === 'parents' && <ClassroomParentsTab />}
 
         {/* ════════════ شات AI للطلاب ════════════ */}
-        {activeTab === 'ai-chat' && <StudentAIChatTab />}
+        {activeTab === 'ai-chat' && (
+          <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden h-[750px] shadow-sm">
+            <MasarAIAssistant mode="embedded" branch="IKHLAS_JEDDAH" />
+          </div>
+        )}
 
         {/* ════════════ البث المباشر ════════════ */}
         {activeTab === 'live' && <LiveStreamTab isHost={true} />}
@@ -1044,35 +1052,67 @@ export default function IkhlasJeddahPage() {
           />
         )}
 
+        {/* ════════════ بوابة الحضور البيومتري الذكي ════════════ */}
+        {activeTab === 'face-attendance' && (
+          <ClassroomFaceAttendanceFullPage />
+        )}
+
         {/* ════════════ الحضور والانصراف ════════════ */}
         {activeTab === 'attendance' && (
-          <AttendanceTabManager
-            students={classStudents}
-            schedule={schedule}
-            currentPeriod={currentPeriod}
-            onSaveAttendance={async (attMap) => {
-              try {
-                await fetch(`${API}/school/attendance`, {
-                  method: 'POST',
-                  headers: authHeaders(),
-                  body: JSON.stringify({
-                    branch: BRANCH,
-                    date: new Date().toISOString().split('T')[0],
-                    records: Object.entries(attMap).flatMap(([sid, periods]) =>
-                      Object.entries(periods as Record<number, any>).map(([pNum, rec]) => ({
-                        studentId: sid,
-                        periodNumber: Number(pNum),
-                        status: rec.status,
-                        score: rec.score,
-                      }))
-                    ),
-                  })
-                });
-              } catch (e) {
-                console.warn('Backend offline (save attendance):', e);
-              }
-            }}
-          />
+          <div className="space-y-4">
+            {/* Quick biometric banner */}
+            <div className="bg-gradient-to-l from-emerald-600 to-teal-700 rounded-3xl p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shrink-0">
+                  <ScanFace size={26} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black flex items-center gap-2">
+                    <span>بوابة الحضور البيومتري الذكي (Face ID Hub)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black">جديد ⚡</span>
+                  </h3>
+                  <p className="text-xs text-emerald-100 font-bold mt-0.5">
+                    التحضير التلقائي بالكاميرا الحية والتعرف الصوتي على وجوه الطلاب بدقة 99%
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('face-attendance')}
+                className="px-5 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-black rounded-xl shadow transition flex items-center gap-2 cursor-pointer shrink-0 self-stretch sm:self-auto justify-center"
+              >
+                <ScanFace size={16} />
+                <span>فتح شاشة الكشك المباشر 📸</span>
+              </button>
+            </div>
+
+            <AttendanceTabManager
+              students={classStudents}
+              schedule={schedule}
+              currentPeriod={currentPeriod}
+              onSaveAttendance={async (attMap) => {
+                try {
+                  await fetch(`${API}/school/attendance`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                      branch: BRANCH,
+                      date: new Date().toISOString().split('T')[0],
+                      records: Object.entries(attMap).flatMap(([sid, periods]) =>
+                        Object.entries(periods as Record<number, any>).map(([pNum, rec]) => ({
+                          studentId: sid,
+                          periodNumber: Number(pNum),
+                          status: rec.status,
+                          score: rec.score,
+                        }))
+                      ),
+                    })
+                  });
+                } catch (e) {
+                  console.warn('Backend offline (save attendance):', e);
+                }
+              }}
+            />
+          </div>
         )}
 
 

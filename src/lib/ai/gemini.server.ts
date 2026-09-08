@@ -2,9 +2,9 @@ import 'server-only';
 
 // ── Model priority ─────────────────────────────────────────────────────────────
 export const GEMINI_MODELS = [
-  'gemini-2.5-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
+  'gemini-1.5-pro',
 ];
 
 export interface GeminiMessage {
@@ -156,8 +156,8 @@ export async function callGeminiApi({
         } else {
           const err = await res.json().catch(() => ({})) as GeminiApiResponse;
           console.warn(`[Gemini] ✗ ${model} key#${keyIndex} → HTTP ${res.status}:`, err?.error?.message);
-          // If key is invalid/expired, skip remaining models for this key
-          if (res.status === 400 || res.status === 403) break;
+          // If key is strictly invalid/unauthorized, skip remaining models for this key
+          if (res.status === 401 || (res.status === 403 && (err?.error?.message?.includes('API key') || err?.error?.message?.includes('API_KEY')))) break;
         }
       } catch (e: unknown) {
         if (e instanceof Error && e.name === 'AbortError') {

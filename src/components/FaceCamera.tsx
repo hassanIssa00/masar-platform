@@ -9,7 +9,7 @@ export type FaceCameraMode = 'enroll' | 'verify';
 interface Props {
   mode: FaceCameraMode;
   userId?: string;
-  onSuccess: (embedding: number[]) => void;
+  onSuccess: (embedding: number[], photoSnapshot?: string) => void;
   onCancel: () => void;
   challenge?: 'blink' | 'smile';
 }
@@ -27,6 +27,7 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
 
   const [phase, setPhase]             = useState<Phase>('loading');
   const [faceDetected, setFaceDetected] = useState(false);
+  const [hasMultipleFaces, setHasMultipleFaces] = useState(false);
   const [challengeDone, setChallengeDone] = useState(false);
   const [errorMsg, setErrorMsg]       = useState('');
   const [progress, setProgress]       = useState(0);
@@ -105,6 +106,7 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
 
     if (!result) {
       setFaceDetected(false);
+      setHasMultipleFaces(false);
       if (canvas) {
         const ctx = canvas.getContext('2d');
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
@@ -113,6 +115,18 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
       return;
     }
 
+    if (result.multipleFaces) {
+      setHasMultipleFaces(true);
+      setFaceDetected(true);
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      animRef.current = requestAnimationFrame(runLoop);
+      return;
+    }
+
+    setHasMultipleFaces(false);
     setFaceDetected(true);
     const { box, blendshapes, embedding } = result;
 
@@ -156,9 +170,33 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
         const next = prev + 25;
         if (next >= 100 && !successCalledRef.current) {
           successCalledRef.current = true;
+
+          // التقاط صورة حية لحظية من إطار الكاميرا
+          let snapshot: string | undefined;
+          try {
+            const v = videoRef.current;
+            if (v && v.videoWidth > 0 && v.videoHeight > 0) {
+              const snapCanvas = document.createElement('canvas');
+              snapCanvas.width = 240;
+              snapCanvas.height = 240;
+              const ctx = snapCanvas.getContext('2d');
+              if (ctx) {
+                ctx.translate(240, 0);
+                ctx.scale(-1, 1);
+                const minDim = Math.min(v.videoWidth, v.videoHeight);
+                const sx = (v.videoWidth - minDim) / 2;
+                const sy = (v.videoHeight - minDim) / 2;
+                ctx.drawImage(v, sx, sy, minDim, minDim, 0, 0, 240, 240);
+                snapshot = snapCanvas.toDataURL('image/jpeg', 0.85);
+              }
+            }
+          } catch (err) {
+            console.warn('[FaceCamera] Snapshot capture error:', err);
+          }
+
           setTimeout(() => {
             setPhase('success');
-            onSuccess(embedding);
+            onSuccess(embedding, snapshot);
           }, 200);
           return 100;
         }
@@ -242,8 +280,21 @@ export default function FaceCamera({ onSuccess, onCancel }: Props) {
         )}
       </div>
 
+      {/* تنبيه عند وجود أكثر من شخص */}
+      {hasMultipleFaces && (
+        <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-rose-600 border-2 border-rose-700 text-white text-right w-full max-w-sm shadow-lg shadow-rose-600/20 animate-pulse">
+          <div className="w-10 h-10 rounded-xl bg-rose-700 flex items-center justify-center shrink-0 text-xl">
+            👥
+          </div>
+          <div>
+            <p className="text-sm font-black text-white leading-tight">اكتُشف أكثر من شخص أمام الكاميرا</p>
+            <p className="text-[11px] font-bold text-rose-100 mt-0.5">يرجى وقوف شخص واحد فقط للتحقق الأمني</p>
+          </div>
+        </div>
+      )}
+
       {/* تعليمة الرمشة */}
-      {phase === 'challenge' && !challengeDone && (
+      {!hasMultipleFaces && phase === 'challenge' && !challengeDone && (
         <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-right w-full max-w-sm shadow-lg shadow-amber-400/20 animate-pulse">
           <div className="w-11 h-11 rounded-2xl bg-amber-500 border border-amber-600/40 flex items-center justify-center shrink-0 text-2xl shadow-inner">
             👁️

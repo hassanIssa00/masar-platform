@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  BookOpen, Star, Mic, Camera, FileText, CheckCircle, Award,
+  BookOpen, Star, Mic, Camera, FileText, CheckCircle, CheckCircle2, Award,
   Clock, Video, ChevronRight, Send, Loader2, X, Play, Square,
   Upload, LogOut, ScanFace, Sparkles, Home, GraduationCap,
   Calendar, BookMarked, Trophy, ChevronDown, ChevronUp, RefreshCw
@@ -36,13 +36,15 @@ import NotificationBell from '@/components/NotificationBell';
 import { recordUserPresence } from '@/lib/presence';
 import dynamic from 'next/dynamic';
 import { isFaceEnrolled as checkFaceEnrolled } from '@/lib/faceAuth';
+import { getStudentTodayAttendance, markStudentAttendanceViaFace, getLocalAttendance, AttendanceRecord } from '@/lib/attendance';
 
 const FaceEnrollModal = dynamic(() => import('@/components/FaceEnrollModal'), { ssr: false });
+const StudentFaceAttendanceModal = dynamic(() => import('@/components/StudentFaceAttendanceModal'), { ssr: false });
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
 
-type Tab = 'home' | 'homework' | 'schedule' | 'curriculum' | 'certificates';
+type Tab = 'home' | 'attendance' | 'homework' | 'schedule' | 'curriculum' | 'certificates';
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -61,6 +63,8 @@ export default function StudentDashboard() {
   const [selectedHw, setSelectedHw] = useState<HomeworkRecord | null>(null);
   const [faceEnrolled, setFaceEnrolled] = useState(false);
   const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
+  const [showFaceAttendanceModal, setShowFaceAttendanceModal] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
   const [showOneTimeFacePrompt, setShowOneTimeFacePrompt] = useState(false);
   const [faceToastMsg, setFaceToastMsg] = useState('');
   const [accountSessionId, setAccountSessionId] = useState('');
@@ -241,6 +245,26 @@ export default function StudentDashboard() {
 
       setFaceEnrolled(isEnrolled);
 
+      // Check today's attendance status & auto-record if logged in via Face ID
+      const existingAtt = getStudentTodayAttendance(resolvedId) || (session.id ? getStudentTodayAttendance(session.id) : undefined);
+      if (existingAtt) {
+        setTodayAttendance(existingAtt);
+      } else if (isLoginViaFace || sessionHasFace) {
+        // Automatically mark attendance as present via Face ID!
+        try {
+          const res = await markStudentAttendanceViaFace(resolvedId, finalName, {
+            branch: isSessionIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR',
+            confidence: 0.98,
+            isClassroom: isSessionIkhlas,
+          });
+          setTodayAttendance(res.record);
+          setFaceToastMsg('🌟 أهلاً بك يا بطل! تم تسجيل حضورك اليوم تلقائياً ببصمة الوجه.');
+          setTimeout(() => setFaceToastMsg(''), 4500);
+        } catch (e) {
+          console.warn('Auto face attendance mark error:', e);
+        }
+      }
+
       // Trigger one-time prompt ONLY if truly not enrolled AND prompt hasn't been seen/dismissed
       if (!isEnrolled) {
         const promptKey = `masar_face_prompt_seen_${resolvedId}`;
@@ -255,6 +279,15 @@ export default function StudentDashboard() {
     };
 
     void loadStudentPortal();
+
+    const onAttUpdated = () => {
+      if (currentResolvedId) {
+        const att = getStudentTodayAttendance(currentResolvedId);
+        if (att) setTodayAttendance(att);
+      }
+    };
+    window.addEventListener('masar_attendance_updated', onAttUpdated);
+
     const presenceInterval = setInterval(() => {
       if (!cancelled && currentResolvedId) {
         void recordUserPresence({ role: 'student', studentId: currentResolvedId, studentName: currentFinalName });
@@ -288,6 +321,7 @@ export default function StudentDashboard() {
       cancelled = true;
       clearInterval(presenceInterval);
       unsubscribe();
+      window.removeEventListener('masar_attendance_updated', onAttUpdated);
     };
   }, [router]);
 
@@ -481,6 +515,7 @@ export default function StudentDashboard() {
 
   const tabs: Array<{ key: Tab; label: string; icon: any }> = [
     { key: 'home',         label: 'الرئيسية',                                icon: Home },
+    { key: 'attendance',   label: 'حضوري 📸',                                icon: ScanFace },
     { key: 'homework',     label: 'الواجبات',                                icon: BookOpen },
     ...(isIkhlas ? [{ key: 'schedule' as Tab, label: 'الجدول', icon: Clock }] : []),
     { key: 'curriculum',   label: isIkhlas ? 'المناهج' : (hasApprovedTrack ? 'المسار المعتمد' : 'مسار الطالب'), icon: isIkhlas ? BookMarked : Award },
@@ -528,6 +563,183 @@ export default function StudentDashboard() {
     setTimeout(() => setFaceToastMsg(''), 6000);
   };
 
+  // ── Attendance Tab (صفحة الغياب والحضور ببصمة الوجه) ──────────────────────────
+  const renderAttendanceTab = () => {
+    const allAtt = getLocalAttendance().filter(
+      (a) => a.studentId === studentId || a.studentId === (studentRecord as any)?.id || a.studentId === accountSessionId
+    );
+    const presentDays = allAtt.filter((a) => a.status === 'present').length;
+    const faceVerifiedDays = allAtt.filter((a) => a.status === 'present' && a.verifiedVia === 'face').length;
+    const absentDays = allAtt.filter((a) => a.status === 'absent').length;
+    const totalRecorded = allAtt.length || 1;
+    const commitmentRate = Math.round((presentDays / totalRecorded) * 100) || (todayAttendance?.status === 'present' ? 100 : 0);
+
+    return (
+      <div className="space-y-5" dir="rtl">
+        {/* Main Hero Card */}
+        <div className="bg-gradient-to-br from-teal-600 via-emerald-600 to-teal-800 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="flex items-center gap-4 text-center sm:text-right">
+              <div className="w-16 h-16 rounded-3xl bg-white/20 border border-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-inner shrink-0">
+                <ScanFace size={36} />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-[11px] font-black backdrop-blur-md mb-1.5">
+                  <Sparkles size={13} className="text-amber-300" />
+                  <span>نظام الحضور البيومتري الذكي (Face ID)</span>
+                </div>
+                <h2 className="text-xl font-black">كشف الحضور والغياب اليومي</h2>
+                <p className="text-xs text-emerald-100 font-bold mt-1">
+                  سجل حضورك بلمح البصر عبر الذكاء الاصطناعي وبصمة الوجه
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowFaceAttendanceModal(true)}
+              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-sm shadow-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <Camera size={20} className="text-emerald-600" />
+              <span>تسجيل الحضور بالوجه الآن 📸</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Today's Status Banner */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black shadow-sm ${
+                todayAttendance?.status === 'present' ? 'bg-emerald-600' : 'bg-amber-500'
+              }`}>
+                {todayAttendance?.status === 'present' ? <CheckCircle2 size={22} /> : <Clock size={22} />}
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">حالة حضور اليوم</h3>
+                <p className="text-xs font-bold text-slate-500">
+                  {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+
+            <span className={`px-4 py-1.5 rounded-full text-xs font-black border ${
+              todayAttendance?.status === 'present'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
+            }`}>
+              {todayAttendance?.status === 'present' ? 'حاضر ومؤكد بالبصمة ✓' : 'في انتظار تسجيل الحضور'}
+            </span>
+          </div>
+
+          {todayAttendance?.status === 'present' ? (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                  <CheckCircle size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-emerald-950">تم توثيق حضورك بنجاح في المنصة وفصل د. إسماعيل 🎉</p>
+                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                    طريقة التحقق: {todayAttendance.verifiedVia === 'face' ? 'بصمة الوجه المباشرة 📸' : 'تسجيل تلقائي'} • الوقت: {todayAttendance.sessionTime || 'صباحاً'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFaceAttendanceModal(true)}
+                className="text-xs font-black text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition"
+              >
+                إعادة التحقق
+              </button>
+            </div>
+          ) : (
+            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
+              <div>
+                <p className="text-xs font-black text-amber-950">لم تسجل حضورك لهذا اليوم بعد يا بطل!</p>
+                <p className="text-[11px] font-bold text-amber-800 mt-0.5">
+                  اضغط على زر الكاميرا لتسجيل حضورك الفوري بالوجه وتأكيد وجودك في الفصل.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFaceAttendanceModal(true)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer shrink-0"
+              >
+                <Camera size={16} />
+                <span>افتح الكاميرا وسجل حضورك</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
+            <span className="text-2xl font-black text-emerald-600">{presentDays || (todayAttendance?.status === 'present' ? 1 : 0)}</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">أيام الحضور</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
+            <span className="text-2xl font-black text-teal-600">{faceVerifiedDays || (todayAttendance?.verifiedVia === 'face' ? 1 : 0)}</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">بالبصمة الذكية 👁️</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
+            <span className="text-2xl font-black text-rose-500">{absentDays}</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">أيام الغياب</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
+            <span className="text-2xl font-black text-indigo-600">{commitmentRate}%</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">نسبة الالتزام 🌟</p>
+          </div>
+        </div>
+
+        {/* Attendance History Table */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+          <h4 className="text-xs font-black text-slate-900 flex items-center gap-2">
+            <Calendar size={15} className="text-teal-600" />
+            <span>سجل الحضور والغياب الأخير</span>
+          </h4>
+
+          {allAtt.length === 0 && !todayAttendance ? (
+            <div className="text-center py-8 text-slate-400 text-xs font-bold">
+              لا توجد سجلات حضور سابقة مسجلة. سجل حضورك اليوم بالوجه ليبدأ تتبع التزامك!
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayAttendance && (
+                <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span className="font-black text-slate-900">اليوم ({todayAttendance.sessionDate})</span>
+                    <span className="text-[11px] text-slate-400">{todayAttendance.sessionTime}</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                    {todayAttendance.verifiedVia === 'face' ? 'بصمة الوجه ✓' : 'حاضر'}
+                  </span>
+                </div>
+              )}
+              {allAtt.map((att) => (
+                <div key={att.id} className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-2.5 h-2.5 rounded-full ${att.status === 'present' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    <span className="font-black text-slate-900">{att.sessionDate}</span>
+                    <span className="text-[11px] text-slate-400">{att.sessionTime}</span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                    att.status === 'present' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    {att.status === 'present' ? (att.verifiedVia === 'face' ? 'بصمة الوجه ✓' : 'حاضر') : 'غائب'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ── Home Tab ───────────────────────────────────────────────────────────────
   const renderHomeTab = () => (
     <div className="space-y-5">
@@ -564,6 +776,88 @@ export default function StudentDashboard() {
           }}
         />
       )}
+
+      {/* ── Smart Face Attendance Card (بطاقة الحضور والغياب الذكي ببصمة الوجه) ── */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3 relative overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200/60 shadow-xs">
+              <ScanFace size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                <span>حضور اليوم الذكي (Smart Face Attendance)</span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                  بصمة الوجه 📸
+                </span>
+              </h3>
+              <p className="text-[11px] font-bold text-slate-500">
+                تسجيل الحضور التلقائي وتأكيد تواجدك في المدرسة عبر القياسات الحيوية
+              </p>
+            </div>
+          </div>
+          {todayAttendance?.status === 'present' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <CheckCircle size={14} className="text-emerald-600" />
+              <span>حاضر ومؤكد ✓</span>
+            </span>
+          )}
+        </div>
+
+        {todayAttendance && todayAttendance.status === 'present' ? (
+          <div className="bg-gradient-to-l from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+                <CheckCircle2 size={26} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-emerald-950 flex items-center gap-2">
+                  <span>تم تسجيل حضورك اليوم بنجاح يا بطل! 🎉</span>
+                </h4>
+                <p className="text-xs font-bold text-slate-600 mt-0.5">
+                  {todayAttendance.verifiedVia === 'face' ? (
+                    <span>تم التحقق البيومتري المباشر ببصمة الوجه • الساعة {todayAttendance.sessionTime || 'صباحاً'}</span>
+                  ) : (
+                    <span>تم تسجيل الحضور اليومي • الساعة {todayAttendance.sessionTime || 'صباحاً'}</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFaceAttendanceModal(true)}
+              className="text-xs font-black text-emerald-700 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer self-end sm:self-center"
+            >
+              <RefreshCw size={13} />
+              <span>إعادة المسح والتحقق</span>
+            </button>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-l from-amber-500/10 via-orange-500/5 to-transparent border border-amber-300/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 animate-pulse">
+                <Clock size={24} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-900">
+                  لم يتم تأكيد حضورك لهذا اليوم بعد ⏳
+                </h4>
+                <p className="text-xs font-bold text-slate-500 mt-0.5">
+                  اضغط على الزر وسجّل حضورك بمسح سريع لوجهك خلال ثانيتين فقط!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFaceAttendanceModal(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer self-stretch sm:self-center justify-center"
+            >
+              <ScanFace size={16} />
+              <span>سجّل حضورك ببصمة الوجه الآن 📸</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Face ID Quick Action Banner */}
       {!faceEnrolled ? (
@@ -1120,6 +1414,7 @@ export default function StudentDashboard() {
         ) : (
           <>
             {activeTab === 'home'         && renderHomeTab()}
+            {activeTab === 'attendance'   && renderAttendanceTab()}
             {activeTab === 'homework'     && renderHomeworkTab()}
             {activeTab === 'schedule'     && isIkhlas && renderScheduleTab()}
             {activeTab === 'curriculum'   && (isIkhlas ? renderCurriculumTab() : renderApprovedTrackTab())}
@@ -1130,7 +1425,7 @@ export default function StudentDashboard() {
 
       {/* Bottom Nav */}
       <div className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto z-40 bg-white/95 backdrop-blur-xl border-2 border-emerald-500/30 shadow-2xl rounded-3xl p-1.5 ring-4 ring-emerald-500/10">
-        <div className={`grid ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} gap-0.5`}>
+        <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(t => {
             const Icon = t.icon;
             const active = activeTab === t.key;
@@ -1242,6 +1537,20 @@ export default function StudentDashboard() {
           onCancel={() => {
             setShowFaceEnrollModal(false);
             handleDismissOneTimePrompt();
+          }}
+        />
+      )}
+
+      {/* Face Attendance Verification Modal */}
+      {showFaceAttendanceModal && (
+        <StudentFaceAttendanceModal
+          studentId={studentId || (studentRecord as any)?.id || accountSessionId || ''}
+          studentName={studentName}
+          branch={isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR'}
+          onClose={() => setShowFaceAttendanceModal(false)}
+          onSuccess={(record) => {
+            setTodayAttendance(record);
+            setShowFaceAttendanceModal(false);
           }}
         />
       )}
