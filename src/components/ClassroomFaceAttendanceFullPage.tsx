@@ -221,8 +221,24 @@ export default function ClassroomFaceAttendanceFullPage({
     };
 
     for (const record of allRecords) {
-      const res = compareBiometricFaces(record.embedding, embedding);
-      if (res.isMatch && res.similarity > bestMatch.similarity) {
+      const candidates: number[][] = [];
+      if (Array.isArray(record.embeddings) && record.embeddings.length > 0) {
+        candidates.push(...record.embeddings);
+      } else if (Array.isArray(record.embedding) && record.embedding.length > 0) {
+        candidates.push(record.embedding);
+      }
+
+      let recordBestSim = 0;
+      let isRecordMatch = false;
+      for (const stored of candidates) {
+        const res = compareBiometricFaces(stored, embedding);
+        if (res.isMatch && res.similarity > recordBestSim) {
+          recordBestSim = res.similarity;
+          isRecordMatch = true;
+        }
+      }
+
+      if (isRecordMatch && recordBestSim > bestMatch.similarity) {
         // Find if this record matches any class student
         const matchedStudent = students.find(s =>
           s.id === record.userId ||
@@ -231,7 +247,7 @@ export default function ClassroomFaceAttendanceFullPage({
           s.fullName.trim() === record.userName?.trim()
         ) || null;
 
-        bestMatch = { record, student: matchedStudent, similarity: res.similarity };
+        bestMatch = { record, student: matchedStudent, similarity: recordBestSim };
       }
     }
 

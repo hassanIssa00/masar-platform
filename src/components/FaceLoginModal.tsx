@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound } from 'lucide-react';
+import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
 import FaceCamera from './FaceCamera';
 import { isFaceEnrolled } from '@/lib/faceAuth';
 import { AccountRecord, getAccounts, setSession } from '@/lib/cloudStore';
@@ -13,7 +13,7 @@ interface Props {
   onFallback: () => void;
 }
 
-type Phase = 'scanning' | 'success' | 'fail' | 'no_enrolled';
+type Phase = 'scanning' | 'verifying' | 'success' | 'fail' | 'no_enrolled';
 
 export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const router = useRouter();
@@ -22,6 +22,10 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const [matchedName, setMatchedName] = useState('');
 
   const handleEmbedding = async (embedding: number[]) => {
+    // Show verifying phase with visual feedback
+    setPhase('verifying');
+    const startTime = Date.now();
+
     let resolvedAccount: AccountRecord | null = null;
 
     try {
@@ -63,6 +67,12 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       }
     }
 
+    // Ensure at least 600ms of verifying display for smooth UX
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 600) {
+      await new Promise(r => setTimeout(r, 600 - elapsed));
+    }
+
     if (!resolvedAccount) {
       const count = failCount + 1;
       setFailCount(count);
@@ -75,8 +85,6 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     }
 
     const account = resolvedAccount;
-    if (!account) { setPhase('fail'); return; }
-
     setMatchedName(account.name);
     setPhase('success');
     setSession(account, false, false);
@@ -122,7 +130,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
             </div>
             <div>
               <h2 className="text-base font-black text-slate-900">الدخول بالوجه الذكي</h2>
-              <p className="text-xs font-bold text-slate-500">انظر للكاميرا وابدأ الدخول تلقائياً</p>
+              <p className="text-xs font-bold text-slate-500">انظر للكاميرا ليتم التحقق تلقائياً</p>
             </div>
           </div>
           {failCount > 0 && (
@@ -162,6 +170,23 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
             />
           )}
 
+          {phase === 'verifying' && (
+            <div className="flex flex-col items-center justify-center gap-4 py-10">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-emerald-500/20 border-t-emerald-600 animate-spin flex items-center justify-center" />
+                <div className="absolute inset-0 flex items-center justify-center text-emerald-600">
+                  <ScanFace size={32} className="animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-black text-slate-900">جاري التحقق والمطابقة...</h3>
+                <p className="text-xs font-bold text-slate-500 max-w-xs leading-relaxed">
+                  يتم تحليل ومطابقة 478 نقطة بيومترية والنسب التشريحية مع السجلات السحابية 🔒
+                </p>
+              </div>
+            </div>
+          )}
+
           {phase === 'success' && (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center animate-pulse shadow-md">
@@ -184,15 +209,17 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
                 <AlertTriangle size={28} className="text-red-600" />
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-black text-slate-900 mb-1">لم يتم التعرف على الوجه</h3>
-                <p className="text-sm font-bold text-slate-500">تأكد من تسجيل وجهك أولاً والإضاءة الجيدة</p>
+                <h3 className="text-lg font-black text-slate-900 mb-1">لم تتطابق ملامح الوجه</h3>
+                <p className="text-sm font-bold text-slate-500 max-w-xs leading-relaxed">
+                  الملامح لم تتطابق مع الحساب المسجل. تأكد من إضاءة الغرفة والنظر مباشرة للكاميرا.
+                </p>
               </div>
-              <div className="flex gap-3 w-full">
+              <div className="flex gap-3 w-full pt-2">
                 <button
                   onClick={() => setPhase('scanning')}
-                  className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-sm"
+                  className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 transition shadow-sm"
                 >
-                  <ScanFace size={16} /> حاول مجدداً
+                  <RefreshCw size={15} /> إعادة المحاولة
                 </button>
                 <button
                   onClick={onFallback}

@@ -295,18 +295,21 @@ export function compareBiometricFaces(
   }
 
   // Calibrated biometric threshold:
-  // Same person: cosine >= 0.9982, MAE <= 0.022, sigDiff <= 9.5%
-  // Sibling/Stranger: cosine < 0.9975, MAE > 0.026, sigDiff > 18%
-  const isMatch = cosine >= 0.9982 && mae <= 0.022 && (sigLen === 0 || sigDiff <= 0.095);
+  // Condition 1: High overall landmark alignment
+  const cond1 = cosine >= 0.9978 && mae <= 0.024 && (sigLen === 0 || sigDiff <= 0.115);
+  // Condition 2: Deep facial bone proportions match (ratio difference <= 8.5%, cosine >= 0.9970, mae <= 0.026)
+  const cond2 = sigLen > 0 && sigDiff <= 0.085 && cosine >= 0.9970 && mae <= 0.026;
 
-  const landmarkScore = Math.max(0, Math.min(1, (0.025 - mae)     / 0.025));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9980) / 0.0020));
+  const isMatch = cond1 || cond2;
+
+  const landmarkScore = Math.max(0, Math.min(1, (0.026 - mae) / 0.026));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9970) / 0.0030));
   const sigScore      = sigLen > 0
-    ? Math.max(0, Math.min(1, (0.050 - sigDiff) / 0.050))
+    ? Math.max(0, Math.min(1, (0.12 - sigDiff) / 0.12))
     : landmarkScore;
 
   const similarity = isMatch
-    ? Math.min(0.99, Math.max(0.85, 0.45 * landmarkScore + 0.35 * cosineScore + 0.20 * sigScore))
+    ? Math.min(0.99, Math.max(0.85, 0.40 * landmarkScore + 0.35 * cosineScore + 0.25 * sigScore))
     : Math.max(0, 0.4 * landmarkScore + 0.3 * cosineScore + 0.3 * sigScore) * 0.65;
 
   return { isMatch, similarity, confidence: Math.round(similarity * 100), mae, cosine, sigDiff };

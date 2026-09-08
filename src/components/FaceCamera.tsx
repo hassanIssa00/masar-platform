@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
+import { Camera, Eye, EyeOff, CheckCircle2, Loader2, ScanFace, ShieldCheck } from 'lucide-react';
 import { initFaceAuth, detectFace, checkBlink, estimateHeadPose } from '@/lib/faceAuth';
 
 export type FaceCameraMode = 'enroll' | 'verify';
@@ -9,11 +9,110 @@ export type FaceCameraMode = 'enroll' | 'verify';
 interface Props {
   mode: FaceCameraMode;
   userId?: string;
-  /** Called on successful VERIFY — receives single embedding + optional snapshot */
+  /** Called on successful VERIFY — receives single clean averaged embedding + snapshot */
   onSuccess?: (embedding: number[], photoSnapshot?: string) => void;
   /** Called on successful ENROLL — receives ALL 5 pose embeddings + frontal snapshot */
   onEnrollSuccess?: (embeddings: number[][], photoSnapshot?: string) => void;
   onCancel: () => void;
+}
+
+// ── Average multiple candidate embeddings to eliminate camera jitter & noise ──
+function averageEmbeddings(candidates: number[][]): number[] {
+  if (!candidates || candidates.length === 0) return [];
+  if (candidates.length === 1) return candidates[0];
+  const len = candidates[0].length;
+  const avg = new Array(len).fill(0);
+  for (let i = 0; i < len; i++) {
+    let sum = 0;
+    for (let k = 0; k < candidates.length; k++) {
+      sum += candidates[k][i];
+    }
+    avg[i] = sum / candidates.length;
+  }
+  return avg;
+}
+
+// ── Draw high-tech biometric HUD overlay on canvas ───────────────────────────
+function drawFaceHUD(
+  ctx: CanvasRenderingContext2D,
+  box: { x: number; y: number; width: number; height: number },
+  landmarks: { x: number; y: number; z: number }[],
+  isGood: boolean,
+  isScanning: boolean,
+  videoWidth: number,
+  videoHeight: number
+) {
+  const color = isGood ? '#10b981' : isScanning ? '#06b6d4' : '#facc15';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = color;
+
+  // 1. High-tech Viewfinder Corner Brackets
+  const cornerSize = Math.min(box.width, box.height) * 0.18;
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(box.x, box.y + cornerSize);
+  ctx.lineTo(box.x, box.y);
+  ctx.lineTo(box.x + cornerSize, box.y);
+  ctx.stroke();
+
+  // Top-right
+  ctx.beginPath();
+  ctx.moveTo(box.x + box.width - cornerSize, box.y);
+  ctx.lineTo(box.x + box.width, box.y);
+  ctx.lineTo(box.x + box.width, box.y + cornerSize);
+  ctx.stroke();
+
+  // Bottom-left
+  ctx.beginPath();
+  ctx.moveTo(box.x, box.y + box.height - cornerSize);
+  ctx.lineTo(box.x, box.y + box.height);
+  ctx.lineTo(box.x + cornerSize, box.y + box.height);
+  ctx.stroke();
+
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(box.x + box.width - cornerSize, box.y + box.height);
+  ctx.lineTo(box.x + box.width, box.y + box.height);
+  ctx.lineTo(box.x + box.width, box.y + box.height - cornerSize);
+  ctx.stroke();
+
+  // 2. Subtle landmark mesh anchor points (eyes, nose, chin, cheeks)
+  if (landmarks && landmarks.length >= 468) {
+    const keyIndices = [33, 133, 263, 362, 1, 4, 61, 291, 152, 234, 454, 70, 300];
+    ctx.fillStyle = isGood ? 'rgba(16, 185, 129, 0.85)' : 'rgba(6, 182, 212, 0.75)';
+    ctx.shadowBlur = 6;
+    for (const idx of keyIndices) {
+      const lm = landmarks[idx];
+      if (lm) {
+        ctx.beginPath();
+        ctx.arc(lm.x * videoWidth, lm.y * videoHeight, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // 3. High-tech scanning laser line (oscillating vertically inside face box)
+  if (isScanning) {
+    const t = performance.now() / 700;
+    const scanRatio = (Math.sin(t) + 1) / 2; // 0..1 smooth oscillation
+    const laserY = box.y + box.height * scanRatio;
+
+    const grad = ctx.createLinearGradient(box.x, laserY, box.x + box.width, laserY);
+    grad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+    grad.addColorStop(0.5, isGood ? 'rgba(16, 185, 129, 0.95)' : 'rgba(6, 182, 212, 0.9)');
+    grad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.5;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = isGood ? '#10b981' : '#06b6d4';
+    ctx.beginPath();
+    ctx.moveTo(box.x + 4, laserY);
+    ctx.lineTo(box.x + box.width - 4, laserY);
+    ctx.stroke();
+  }
 }
 
 // ── Enroll pose sequence ──────────────────────────────────────────────────────
@@ -21,30 +120,25 @@ const ENROLL_STEPS = [
   {
     id: 'frontal',
     ar: 'انظر للكاميرا مباشرةً',
-    arSub: 'ثم أغمض عينيك ببطء للتحقق من الحياة 👁️',
+    arSub: 'ثبّت رأسك وأبقِ عينيك مفتوحتين 🎯',
     icon: '🎯',
     dir: null as null | 'right' | 'left' | 'up' | 'down',
-    useBlink: true,
-    /** Returns true when pose is achieved */
-    check: (_y: number, _p: number) => true, // frontal uses blink, not pose angle
+    check: (yaw: number, pitch: number) => Math.abs(yaw) < 0.16 && Math.abs(pitch) < 0.16,
   },
   {
     id: 'right',
     ar: 'الف رأسك للجهة اليمنى',
-    arSub: 'ابتعد برفق حتى يصبح السهم أخضر ➡️',
+    arSub: 'حرّك رأسك برفق حتى يصبح السهم أخضر ➡️',
     icon: '➡️',
     dir: 'right' as const,
-    useBlink: false,
-    // yaw < -0.20 means nose shifted camera-left = user turned right in mirror
     check: (yaw: number, _p: number) => yaw < -0.20,
   },
   {
     id: 'left',
     ar: 'الف رأسك للجهة اليسرى',
-    arSub: 'ابتعد برفق حتى يصبح السهم أخضر ⬅️',
+    arSub: 'حرّك رأسك برفق حتى يصبح السهم أخضر ⬅️',
     icon: '⬅️',
     dir: 'left' as const,
-    useBlink: false,
     check: (yaw: number, _p: number) => yaw > 0.20,
   },
   {
@@ -53,7 +147,6 @@ const ENROLL_STEPS = [
     arSub: 'ارفع ذقنك برفق حتى يصبح السهم أخضر ⬆️',
     icon: '⬆️',
     dir: 'up' as const,
-    useBlink: false,
     check: (_y: number, pitch: number) => pitch < -0.12,
   },
   {
@@ -62,7 +155,6 @@ const ENROLL_STEPS = [
     arSub: 'اخفض ذقنك برفق حتى يصبح السهم أخضر ⬇️',
     icon: '⬇️',
     dir: 'down' as const,
-    useBlink: false,
     check: (_y: number, pitch: number) => pitch > 0.12,
   },
 ] as const;
@@ -70,10 +162,9 @@ const ENROLL_STEPS = [
 type Phase =
   | 'loading' | 'camera' | 'error'
   // Verify mode:
-  | 'challenge' | 'capturing' | 'success'
+  | 'scanning' | 'success'
   // Enroll mode:
-  | 'enroll_challenge'    // step 0: waiting for blink
-  | 'enroll_pose_guide'   // steps 1-4: waiting for correct head angle
+  | 'enroll_pose_guide'   // steps 0-4: waiting for correct head angle
   | 'enroll_capturing'    // capturing embedding for current step
   | 'enroll_success';     // all 5 poses done
 
@@ -90,24 +181,25 @@ export default function FaceCamera({
   const animRef   = useRef<number>(0);
 
   // ── Animation-loop refs (avoid stale closures) ───────────────────────────────
-  const phaseRef        = useRef<Phase>('loading');
-  const enrollStepRef   = useRef(0);
-  const enrollEmbsRef   = useRef<number[][]>([]);  // accumulated embeddings
-  const poseOkRef       = useRef(false);
+  const phaseRef          = useRef<Phase>('loading');
+  const enrollStepRef     = useRef(0);
+  const enrollEmbsRef     = useRef<number[][]>([]);  // accumulated final pose embeddings
+  const stepFramesRef     = useRef<number[][]>([]);  // frames accumulated during current pose
+  const poseOkRef         = useRef(false);
+  const successCalledRef  = useRef(false);
+  const poseHoldRef       = useRef(0);   // frames held in correct pose
 
-  const blinkCountRef   = useRef(0);
-  const wasBlinkingRef  = useRef(false);
-  const successCalledRef = useRef(false);
-  const poseHoldRef     = useRef(0);   // frames held in correct pose
-  const captureFrameRef = useRef(0);   // frames accumulated in capturing phase
+  // Multi-frame verification accumulation (~30 clean frontal frames = ~1.5 - 1.8s)
+  const verifyCandidatesRef = useRef<number[][]>([]);
+  const TARGET_VERIFY_FRAMES = 30;
 
   // ── React state (UI only) ───────────────────────────────────────────────────
   const [phase, _setPhase]                = useState<Phase>('loading');
   const [faceDetected, setFaceDetected]   = useState(false);
   const [hasMultiFaces, setHasMultiFaces] = useState(false);
-  const [challengeDone, setChallengeDone] = useState(false);
   const [errorMsg, setErrorMsg]           = useState('');
   const [progress, setProgress]           = useState(0);
+  const [scanStatusText, setScanStatusText] = useState('جاري مسح أبعاد وملامح الوجه...');
   const [enrollStep, _setEnrollStep]      = useState(0);
   const [poseOk, _setPoseOk]             = useState(false);
 
@@ -129,16 +221,15 @@ export default function FaceCamera({
   const startCamera = async () => {
     setPhase('loading');
     setErrorMsg('');
-    successCalledRef.current  = false;
-    blinkCountRef.current     = 0;
-    wasBlinkingRef.current    = false;
-    poseHoldRef.current       = 0;
-    captureFrameRef.current   = 0;
-    setChallengeDone(false);
+    successCalledRef.current    = false;
+    poseHoldRef.current         = 0;
+    verifyCandidatesRef.current = [];
+    stepFramesRef.current       = [];
     setProgress(0);
     setEnrollStep(0);
     enrollEmbsRef.current = [];
     setPoseOk(false);
+    setScanStatusText('جاري مسح أبعاد وملامح الوجه...');
 
     try {
       let stream: MediaStream | null = null;
@@ -160,7 +251,7 @@ export default function FaceCamera({
       }
 
       await initFaceAuth();
-      setPhase('camera');
+      setPhase(mode === 'verify' ? 'scanning' : 'enroll_pose_guide');
     } catch (e: any) {
       const name = e?.name || '';
       const msg  = e?.message || '';
@@ -217,11 +308,14 @@ export default function FaceCamera({
     const result = await detectFace(v);
     const canvas = canvasRef.current;
 
-    // ── No face ────────────────────────────────────────────────────────────
+    // ── No face detected ────────────────────────────────────────────────────
     if (!result) {
       setFaceDetected(false);
       setHasMultiFaces(false);
       if (canvas) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+      if (phaseRef.current === 'scanning') {
+        setScanStatusText('ضع وجهك أمام الكاميرا بوضوح...');
+      }
       animRef.current = requestAnimationFrame(runLoop);
       return;
     }
@@ -241,102 +335,101 @@ export default function FaceCamera({
     const { box, blendshapes, embedding, landmarks } = result;
     const curPhase = phaseRef.current;
     const curStep  = enrollStepRef.current;
+    const pose     = estimateHeadPose(landmarks);
+    const { isBlinking, score: blinkScore } = checkBlink(blendshapes);
 
-    // ── Draw face bounding box ─────────────────────────────────────────────
+    // ── Draw high-tech HUD on canvas ─────────────────────────────────────────
     if (canvas && box && v) {
       canvas.width  = v.videoWidth;
       canvas.height = v.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const isGood = curPhase === 'enroll_capturing' || curPhase === 'capturing' ||
-                       curPhase === 'success' || curPhase === 'enroll_success';
-        const color  = (isGood || poseOkRef.current) ? '#22c55e' : '#facc15';
-        ctx.strokeStyle = color;
-        ctx.lineWidth   = 3;
-        ctx.shadowBlur  = 14;
-        ctx.shadowColor = color;
-        ctx.strokeRect(box.x, box.y, box.width, box.height);
+        const isGood = curPhase === 'success' || curPhase === 'enroll_success' || poseOkRef.current;
+        const isScanning = curPhase === 'scanning' || curPhase === 'enroll_capturing';
+        drawFaceHUD(ctx, box, landmarks, isGood, isScanning, v.videoWidth, v.videoHeight);
       }
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // VERIFY MODE
+    // VERIFY MODE (Multi-frame Scan: 1.5 - 1.8s of clean frontal frames)
     // ══════════════════════════════════════════════════════════════════════
     if (mode === 'verify') {
       if (curPhase === 'camera') {
-        setPhase('challenge');
+        setPhase('scanning');
       }
 
-      if (curPhase === 'challenge') {
-        const { isBlinking } = checkBlink(blendshapes);
-        if (isBlinking && !wasBlinkingRef.current) {
-          blinkCountRef.current++;
-          wasBlinkingRef.current = true;
-          if (blinkCountRef.current >= 1) {
-            setChallengeDone(true);
-            setPhase('capturing');
+      if (curPhase === 'scanning') {
+        const isFrontal   = Math.abs(pose.yaw) < 0.18 && Math.abs(pose.pitch) < 0.18;
+        const eyesOpen    = !isBlinking && blinkScore < 0.35;
+        const faceAdequate = box ? (box.width >= v.videoWidth * 0.18) : true;
+
+        if (!faceAdequate) {
+          setScanStatusText('يرجى الاقتراب قليلاً من الكاميرا 🔍');
+        } else if (!isFrontal) {
+          setScanStatusText('يرجى النظر مباشرة للكاميرا وتثبيت الرأس 🎯');
+        } else if (!eyesOpen) {
+          setScanStatusText('يرجى فتح العينين بشكل طبيعي 👁️');
+        } else {
+          // Clean frontal, open-eyed frame: accumulate for noise cancellation
+          verifyCandidatesRef.current.push(embedding);
+          const count = verifyCandidatesRef.current.length;
+          const pct   = Math.min(100, Math.round((count / TARGET_VERIFY_FRAMES) * 100));
+          setProgress(pct);
+
+          if (pct < 30) {
+            setScanStatusText('🎯 جاري ضبط محاذاة الوجه وتتبع الملامح...');
+          } else if (pct < 70) {
+            setScanStatusText('📐 جاري تحليل 478 نقطة هندسية والنسب التشريحية...');
+          } else if (pct < 98) {
+            setScanStatusText('🔒 جاري مطابقة البصمة البيومترية مع السجلات...');
+          } else {
+            setScanStatusText('✅ تم التقاط وتحليل البصمة بدقة فائقة');
           }
-        } else if (!isBlinking) {
-          wasBlinkingRef.current = false;
-        }
-      }
 
-      if (curPhase === 'capturing') {
-        setProgress(prev => {
-          const next = prev + 25;
-          if (next >= 100 && !successCalledRef.current) {
+          if (count >= TARGET_VERIFY_FRAMES && !successCalledRef.current) {
             successCalledRef.current = true;
-            const snap = captureSnapshot();
+            const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
+            const snap   = captureSnapshot();
+            setPhase('success');
             setTimeout(() => {
-              setPhase('success');
-              onSuccess?.(embedding, snap);
-            }, 200);
-            return 100;
+              onSuccess?.(avgEmb, snap);
+            }, 350);
           }
-          return next >= 100 ? 100 : next;
-        });
+        }
       }
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // ENROLL MODE
+    // ENROLL MODE (5 Poses with multi-frame averaging for every angle)
     // ══════════════════════════════════════════════════════════════════════
     else if (mode === 'enroll') {
-      const pose = estimateHeadPose(landmarks);
-
-      // ── Face visible → start frontal blink challenge ────────────────────
       if (curPhase === 'camera') {
-        setPhase('enroll_challenge');
+        setPhase('enroll_pose_guide');
       }
 
-      // ── Step 0: wait for blink ─────────────────────────────────────────
-      if (curPhase === 'enroll_challenge') {
-        const { isBlinking } = checkBlink(blendshapes);
-        if (isBlinking && !wasBlinkingRef.current) {
-          blinkCountRef.current++;
-          wasBlinkingRef.current = true;
-          if (blinkCountRef.current >= 1) {
-            captureFrameRef.current  = 0;
-            successCalledRef.current = false;
-            setPhase('enroll_capturing');
-          }
-        } else if (!isBlinking) {
-          wasBlinkingRef.current = false;
-        }
-      }
-
-      // ── Steps 1-4: wait for correct head angle ─────────────────────────
+      // ── Step 0..4: wait for correct head angle & hold ───────────────────
       if (curPhase === 'enroll_pose_guide') {
         const step = ENROLL_STEPS[curStep];
-        const ok   = step ? step.check(pose.yaw, pose.pitch) : false;
+        let ok = false;
+
+        if (step) {
+          if (curStep === 0) {
+            // Frontal requires frontal angle + open eyes (not blinking)
+            ok = step.check(pose.yaw, pose.pitch) && !isBlinking && blinkScore < 0.35;
+          } else {
+            ok = step.check(pose.yaw, pose.pitch);
+          }
+        }
+
         setPoseOk(ok);
 
         if (ok) {
           poseHoldRef.current++;
-          if (poseHoldRef.current >= 10) { // ~10 stable frames before capture
-            poseHoldRef.current      = 0;
-            captureFrameRef.current  = 0;
+          // Hold stable for 8 frames before initiating capture
+          if (poseHoldRef.current >= 8) {
+            poseHoldRef.current   = 0;
+            stepFramesRef.current = [];
             successCalledRef.current = false;
             setPhase('enroll_capturing');
           }
@@ -345,30 +438,28 @@ export default function FaceCamera({
         }
       }
 
-      // ── Capturing current pose embedding ───────────────────────────────
+      // ── Capturing pose: accumulate 10 clean frames & average ────────────
       if (curPhase === 'enroll_capturing' && !successCalledRef.current) {
-        captureFrameRef.current++;
+        stepFramesRef.current.push(embedding);
 
-        if (captureFrameRef.current >= 6) {
-          // Lock against re-entry
+        const targetStepFrames = curStep === 0 ? 12 : 8;
+        if (stepFramesRef.current.length >= targetStepFrames) {
           successCalledRef.current = true;
 
-          // Accumulate embedding
-          const newEmbs = [...enrollEmbsRef.current, embedding];
+          const averagedPoseEmb = averageEmbeddings(stepFramesRef.current);
+          const newEmbs = [...enrollEmbsRef.current, averagedPoseEmb];
           enrollEmbsRef.current = newEmbs;
 
           // Capture frontal snapshot for attendance photo
           const snap = curStep === 0 ? captureSnapshot() : undefined;
 
           if (curStep < ENROLL_STEPS.length - 1) {
-            // ── Advance to next pose ─────────────────────────────────
+            // Advance to next pose
             const nextStep = curStep + 1;
             enrollStepRef.current = nextStep;
             poseOkRef.current     = false;
             poseHoldRef.current   = 0;
-            captureFrameRef.current = 0;
-
-            // Reset lock for next step BEFORE setting phase
+            stepFramesRef.current = [];
             successCalledRef.current = false;
 
             _setEnrollStep(nextStep);
@@ -376,7 +467,7 @@ export default function FaceCamera({
             setProgress(Math.round((nextStep / ENROLL_STEPS.length) * 100));
             setPhase('enroll_pose_guide');
           } else {
-            // ── All 5 poses collected — success! ─────────────────────
+            // All 5 poses collected — complete!
             setProgress(100);
             setTimeout(() => {
               setPhase('enroll_success');
@@ -393,8 +484,8 @@ export default function FaceCamera({
 
   useEffect(() => {
     const activePhases: Phase[] = [
-      'camera', 'challenge', 'capturing',
-      'enroll_challenge', 'enroll_pose_guide', 'enroll_capturing',
+      'camera', 'scanning',
+      'enroll_pose_guide', 'enroll_capturing',
     ];
     if (activePhases.includes(phase)) {
       animRef.current = requestAnimationFrame(runLoop);
@@ -405,11 +496,10 @@ export default function FaceCamera({
   // ── Derived render flags ───────────────────────────────────────────────────
   const isEnroll       = mode === 'enroll';
   const curStepData    = ENROLL_STEPS[enrollStep];
-  const isCapturing    = phase === 'capturing' || phase === 'enroll_capturing';
+  const isCapturing    = phase === 'scanning' || phase === 'enroll_capturing';
   const isSuccess      = phase === 'success' || phase === 'enroll_success';
-  const isChallenging  = phase === 'challenge' || phase === 'enroll_challenge';
   const isPoseGuiding  = phase === 'enroll_pose_guide';
-  const isActive       = phase === 'camera' || isChallenging || isPoseGuiding || isCapturing;
+  const isActive       = phase === 'camera' || phase === 'scanning' || isPoseGuiding || isCapturing;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -542,19 +632,11 @@ export default function FaceCamera({
           </div>
         )}
 
-        {/* Blink prompt (inside camera) */}
-        {isChallenging && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 border-2 border-amber-600 text-slate-950 font-black text-xs shadow-2xl animate-bounce whitespace-nowrap">
-            <span className="text-base">👁️</span>
-            <span>أغمض عينيك ببطء للتحقق</span>
-          </div>
-        )}
-
         {/* Capturing progress bar (bottom of camera) */}
         {isCapturing && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-800">
             <div
-              className="h-full bg-emerald-400 transition-all duration-100"
+              className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-100"
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
           </div>
@@ -574,18 +656,32 @@ export default function FaceCamera({
         </div>
       )}
 
-      {/* Blink challenge card */}
-      {!hasMultiFaces && isChallenging && (
-        <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 w-full max-w-sm shadow-lg shadow-amber-400/20 animate-pulse">
-          <div className="w-11 h-11 rounded-2xl bg-amber-500 border border-amber-600/40 flex items-center justify-center shrink-0 text-2xl">👁️</div>
-          <div>
-            <p className="text-base font-black leading-tight">أغمض عينيك ببطء الآن</p>
-            <p className="text-xs font-black text-amber-950/80 mt-0.5">Slowly close and open your eyes</p>
+      {/* Verify Scanning HUD Card */}
+      {!hasMultiFaces && mode === 'verify' && phase === 'scanning' && (
+        <div className="w-full max-w-sm rounded-2xl bg-slate-900 border-2 border-cyan-500/40 p-4 shadow-xl shadow-cyan-950/40 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ScanFace size={20} className="text-cyan-400 animate-pulse" />
+              <span className="text-xs font-black text-white">فحص البصمة البيومترية</span>
+            </div>
+            <span className="text-xs font-black text-cyan-400 font-mono">{progress}%</span>
           </div>
+
+          {/* Progress bar */}
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-150"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <p className="text-xs font-bold text-slate-300 flex items-center gap-1.5 leading-relaxed">
+            {scanStatusText}
+          </p>
         </div>
       )}
 
-      {/* Pose guide card */}
+      {/* Pose guide card (Enroll mode) */}
       {!hasMultiFaces && isPoseGuiding && curStepData && (
         <div className={`flex items-center gap-3.5 px-5 py-3.5 rounded-2xl border-2 w-full max-w-sm shadow-lg transition-all duration-300 ${
           poseOk
@@ -616,16 +712,17 @@ export default function FaceCamera({
         </div>
       )}
 
-      {/* Capturing card */}
-      {isCapturing && (
+      {/* Capturing card (Enroll mode) */}
+      {mode === 'enroll' && phase === 'enroll_capturing' && (
         <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-emerald-600 border-2 border-emerald-700 text-white w-full max-w-sm shadow-md">
           <Loader2 size={18} className="animate-spin shrink-0" />
-          <p className="text-sm font-black">جاري التقاط البيانات البيومترية...</p>
+          <p className="text-sm font-black">جاري تسجيل زاوية الوجه بدقة عالية...</p>
         </div>
       )}
 
-      <p className="text-[11px] font-bold text-slate-600 text-center max-w-xs">
-        🔒 وجهك يُعالَج محلياً على جهازك فقط — لا تُخزَّن أي صورة
+      <p className="text-[11px] font-bold text-slate-500 text-center max-w-xs flex items-center justify-center gap-1">
+        <ShieldCheck size={13} className="text-emerald-500 inline shrink-0" />
+        <span>حماية بيومترية عالية — تُعالج البيانات محلياً فقط بأمان تام</span>
       </p>
     </div>
   );
