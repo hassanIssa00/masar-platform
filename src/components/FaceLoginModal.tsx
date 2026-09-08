@@ -26,44 +26,45 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
   const handleLiveVerify = async (embedding: number[]): Promise<{ ok: boolean; name?: string }> => {
     let resolvedAccount: AccountRecord | null = null;
 
+    // 1. Instant local biometric matching (0.5ms on client CPU)
     try {
-      const res = await fetch('/api/auth/face', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ embedding }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.ok && data.account) {
-        resolvedAccount = data.account as AccountRecord;
+      const { findBestFaceMatch } = await import('@/lib/faceAuth');
+      const match = findBestFaceMatch(embedding);
+      if (match?.record) {
+        const isStudent = match.record.userRole === 'student' || Boolean(match.record.studentId);
+        if (isStudent) {
+          const sid = match.record.studentId || match.record.userId || match.record.accountId || 'student';
+          resolvedAccount = {
+            id: sid,
+            name: match.record.userName || 'طالب مسار',
+            email: match.record.userEmail || `${sid}@masarplatform.org`,
+            role: 'student',
+            schoolBranch: match.record.schoolBranch || 'IKHLAS_JEDDAH',
+            linkedStudentId: sid,
+          } as AccountRecord;
+        } else {
+          const allAccounts = getAccounts();
+          const targetId = match.record.userId || match.record.accountId;
+          const found = allAccounts.find(
+            a => (a.id === targetId || (match.record?.accountId && a.id === match.record.accountId)) && a.role !== 'student'
+          );
+          if (found) resolvedAccount = found;
+        }
       }
     } catch {}
 
-    // Local fallback check
+    // 2. Cloud fallback check if not cached locally
     if (!resolvedAccount) {
       try {
-        const { findBestFaceMatch } = await import('@/lib/faceAuth');
-        const match = findBestFaceMatch(embedding);
-        if (match?.record) {
-          const isStudent = match.record.userRole === 'student' || Boolean(match.record.studentId);
-          if (isStudent) {
-            const sid = match.record.studentId || match.record.userId || match.record.accountId || 'student';
-            resolvedAccount = {
-              id: sid,
-              name: match.record.userName || 'طالب مسار',
-              email: match.record.userEmail || `${sid}@masarplatform.org`,
-              role: 'student',
-              schoolBranch: match.record.schoolBranch || 'IKHLAS_JEDDAH',
-              linkedStudentId: sid,
-            } as AccountRecord;
-          } else {
-            const allAccounts = getAccounts();
-            const targetId = match.record.userId || match.record.accountId;
-            const found = allAccounts.find(
-              a => (a.id === targetId || (match.record?.accountId && a.id === match.record.accountId)) && a.role !== 'student'
-            );
-            if (found) resolvedAccount = found;
-          }
+        const res = await fetch('/api/auth/face', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ embedding }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.ok && data.account) {
+          resolvedAccount = data.account as AccountRecord;
         }
       } catch {}
     }

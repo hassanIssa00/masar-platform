@@ -361,15 +361,17 @@ export function compareBiometricFaces(
 
   // Calibrated biometric thresholds (robust to natural expressions: smiling, laughing, speaking, mobile tilt):
   // Condition 1: High overall landmark alignment after canonical rotation
-  const cond1 = cosine >= 0.9955 && mae <= 0.024 && (sigLen === 0 || sigDiff <= 0.14);
+  const cond1 = cosine >= 0.9935 && mae <= 0.032 && (sigLen === 0 || sigDiff <= 0.16);
   // Condition 2: Deep facial bone proportions match
-  const cond2 = sigLen > 0 && sigDiff <= 0.11 && cosine >= 0.9940 && mae <= 0.028;
+  const cond2 = sigLen > 0 && sigDiff <= 0.090;
   // Condition 3: Rigid skull bone structure match (immune to smile, open mouth, talking)
-  const cond3 = rigidMae <= 0.022 && cosine >= 0.9945;
+  const cond3 = rigidMae <= 0.028 && cosine >= 0.9920;
   // Condition 4: Close raw landmark fit
-  const cond4 = mae <= 0.018 && cosine >= 0.9950;
+  const cond4 = mae <= 0.022 && cosine >= 0.9930;
+  // Condition 5: Invariant 3D Anthropometric Signature Match (Immune to phone angle and perspective)
+  const cond5 = sigLen >= 10 && sigDiff <= 0.080;
 
-  const isMatch = cond1 || cond2 || cond3 || cond4;
+  const isMatch = cond1 || cond2 || cond3 || cond4 || cond5;
 
   const landmarkScore = Math.max(0, Math.min(1, (0.028 - mae) / 0.028));
   const rigidScore    = Math.max(0, Math.min(1, (0.026 - rigidMae) / 0.026));

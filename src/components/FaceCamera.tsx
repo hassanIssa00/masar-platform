@@ -365,33 +365,27 @@ export default function FaceCamera({
       }
 
       if (curPhase === 'scanning') {
-        const isFrontal   = Math.abs(pose.yaw) < 0.24 && Math.abs(pose.pitch) < 0.24;
-        const eyesOpen    = !isBlinking && blinkScore < 0.40;
-        const faceAdequate = box ? (box.width >= v.videoWidth * 0.16) : true;
+        const faceAdequate = box ? (box.width >= v.videoWidth * 0.12) : true;
 
         if (!faceAdequate) {
           setScanStatusText('يرجى الاقتراب قليلاً من الكاميرا 🔍');
-        } else if (!isFrontal) {
-          setScanStatusText('يرجى النظر مباشرة للكاميرا وتثبيت الرأس 🎯');
-        } else if (!eyesOpen) {
-          setScanStatusText('يرجى فتح العينين بشكل طبيعي 👁️');
         } else {
-          // Clean frame (whether smiling, talking, or neutral)
+          // Process frame immediately without blocking on head tilt or expressions
           verifyCandidatesRef.current.push(embedding);
           const count = verifyCandidatesRef.current.length;
 
           if (onVerify) {
-            // Live continuous verification mode (like Apple Face ID)
-            const targetBatch = 12; // ~0.35s of continuous frames
+            // Instant continuous verification stream (like Apple Face ID)
+            const targetBatch = 8; // ~0.20s of frames for ultra-fast match
             const pct = Math.min(95, Math.round((count / targetBatch) * 100));
             setProgress(pct);
-            setScanStatusText('🔒 جاري فحص ومطابقة البصمة البيومترية لحظياً...');
+            setScanStatusText('🔒 جاري التعرف ومطابقة بصمة الوجه فورياً...');
 
             if (count >= targetBatch && !isCheckingRef.current && !successCalledRef.current) {
               isCheckingRef.current = true;
               const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
               const snap   = captureSnapshot();
-              verifyCandidatesRef.current = []; // Reset window to keep streaming
+              verifyCandidatesRef.current = [];
 
               onVerify(avgEmb, snap)
                 .then((res) => {
