@@ -21,6 +21,10 @@ export interface AttendanceRecord {
   periodNumber?: number;     // 1 to 7
   periodName?: string;       // e.g. 'الحصة الأولى'
   subjectName?: string;      // e.g. 'لغتي العربية'
+  geoVerified?: boolean;     // Verified within school GPS geofence
+  geoDistanceMeters?: number;// Distance to school in meters
+  geoCoords?: { lat: number; lng: number };
+  kioskVerified?: boolean;   // Verified via central classroom kiosk device
 }
 
 export const PERIOD_NAMES: Record<number, string> = {
@@ -178,6 +182,10 @@ export async function markStudentAttendanceViaFace(
     periodNumber?: number;
     periodName?: string;
     subjectName?: string;
+    geoVerified?: boolean;
+    geoDistanceMeters?: number;
+    geoCoords?: { lat: number; lng: number };
+    kioskVerified?: boolean;
   }
 ): Promise<{ record: AttendanceRecord; isNew: boolean }> {
   const saudi = getSaudiNow();
@@ -204,6 +212,11 @@ export async function markStudentAttendanceViaFace(
 
   const confidence = options?.confidence ?? 0.98;
   const branch = options?.branch || (options?.isClassroom ? 'IKHLAS_JEDDAH' : 'MASAR');
+  const geoTag = options?.kioskVerified
+    ? '📍 كشك الفصل المركزي'
+    : options?.geoVerified
+      ? `📍 موقع جغرافي موثق (${options.geoDistanceMeters ?? 0}م)`
+      : '';
 
   let rec: AttendanceRecord;
   if (existing) {
@@ -218,7 +231,11 @@ export async function markStudentAttendanceViaFace(
       periodNumber,
       periodName,
       subjectName,
-      notes: existing.notes || `تم التحقق ببصمة الوجه (${periodName} - ${subjectName}) 📸`,
+      geoVerified: options?.geoVerified,
+      geoDistanceMeters: options?.geoDistanceMeters,
+      geoCoords: options?.geoCoords,
+      kioskVerified: options?.kioskVerified,
+      notes: existing.notes || `تم التحقق ببصمة الوجه (${periodName} - ${subjectName}) ${geoTag} 📸`,
     };
     updateAttendance(existing.id, rec);
   } else {
@@ -236,7 +253,11 @@ export async function markStudentAttendanceViaFace(
       periodNumber,
       periodName,
       subjectName,
-      notes: `حضور ${periodName} (${subjectName}) عبر بصمة الوجه 📸`,
+      geoVerified: options?.geoVerified,
+      geoDistanceMeters: options?.geoDistanceMeters,
+      geoCoords: options?.geoCoords,
+      kioskVerified: options?.kioskVerified,
+      notes: `حضور ${periodName} (${subjectName}) عبر بصمة الوجه ${geoTag} 📸`,
     });
   }
 

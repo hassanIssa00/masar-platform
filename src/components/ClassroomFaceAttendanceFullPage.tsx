@@ -5,7 +5,8 @@ import {
   ScanFace, Camera, CheckCircle2, AlertCircle, Clock, Users,
   Sparkles, RefreshCw, Volume2, VolumeX, Maximize2, Minimize2,
   Share2, Printer, Search, Filter, Phone, Check, X, ShieldCheck,
-  UserCheck, UserX, AlertTriangle, ArrowRight, BookOpen, Layers
+  UserCheck, UserX, AlertTriangle, ArrowRight, BookOpen, Layers,
+  MapPin, ExternalLink
 } from 'lucide-react';
 import {
   initFaceAuth, detectFace, getAllFaceRecords, FaceRecord, isFaceEnrolled, compareBiometricFaces
@@ -285,6 +286,7 @@ export default function ClassroomFaceAttendanceFullPage({
           capturedPhotoUrl: capturedSnapshot || photoUrl,
           periodNumber: kioskPeriodNumber,
           periodName: PERIOD_NAMES[kioskPeriodNumber] || `الحصة ${kioskPeriodNumber}`,
+          kioskVerified: true,
         });
 
         playChime();
@@ -513,11 +515,42 @@ export default function ClassroomFaceAttendanceFullPage({
         </div>
       </div>
 
-      {/* â”€â”€â”€ Live Metrics Bar â”€â”€â”€ */}
+      {/* ─── Kiosk Official Device Identity Banner ─── */}
+      <div className="bg-gradient-to-l from-emerald-50 via-teal-50/60 to-white border border-emerald-200/80 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+            🏫
+          </div>
+          <div>
+            <h4 className="text-xs font-black text-slate-900 flex items-center gap-2">
+              <span>كشك الفصل المركزي المعتمد • مدرسة الإخلاص الأهلية للبنين</span>
+              <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                جهاز الفصل الرسمي
+              </span>
+            </h4>
+            <p className="text-[11px] font-bold text-slate-600 mt-0.5">
+              يمر الطالب أمام الكاميرا لتسجيل حضوره فوراً دون الحاجة لهاتف شخصي أو فحص GPS
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="https://maps.app.goo.gl/Y1dmJMTc2V5pYMFn7"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-black text-blue-700 bg-white border border-blue-200 px-3 py-1.5 rounded-xl hover:bg-blue-50 transition shadow-2xs"
+        >
+          <MapPin size={13} className="text-blue-600" />
+          <span>موقع المدرسة المعتمد (21.54974, 39.18139)</span>
+          <ExternalLink size={12} />
+        </a>
+      </div>
+
+      {/* ─── Live Metrics Bar ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط·ظ„ط§ط¨</span>
+            <span className="text-xs font-bold text-slate-500">إجمالي الطلاب</span>
             <Users size={18} className="text-slate-400" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{stats.total}</p>

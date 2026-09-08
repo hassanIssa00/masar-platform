@@ -12,6 +12,7 @@ import {
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
   Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive, Medal, ScanFace,
+  ShieldCheck, MapPin,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -41,6 +42,11 @@ import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentBadgesManagerTab from '@/components/StudentBadgesManagerTab';
 import ClassroomFaceAttendanceFullPage from '@/components/ClassroomFaceAttendanceFullPage';
 import { getSaudiNow, formatSaudiDate } from '@/lib/saudiTime';
+import {
+  getSchoolLocation, saveSchoolLocation, SchoolLocationConfig,
+  DEFAULT_IKHLAS_LOCATION, getCurrentBrowserPosition
+} from '@/lib/schoolLocation';
+import InteractiveGeofenceMap from '@/components/InteractiveGeofenceMap';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -188,6 +194,43 @@ export default function IkhlasJeddahPage() {
   /* ── Report ── */
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSent, setReportSent] = useState(false);
+
+  /* ── Geofence & School Location ── */
+  const [schoolLocation, setSchoolLocation] = useState<SchoolLocationConfig>(() => getSchoolLocation());
+  const [showGeoSettingsModal, setShowGeoSettingsModal] = useState(false);
+  const [calibratingGPS, setCalibratingGPS] = useState(false);
+  const [geoFeedback, setGeoFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const handleCalibrateGPS = async () => {
+    setCalibratingGPS(true);
+    setGeoFeedback(null);
+    try {
+      const pos = await getCurrentBrowserPosition();
+      const updated = saveSchoolLocation({
+        lat: pos.lat,
+        lng: pos.lng,
+        calibratedBy: 'د. إسماعيل عيسى',
+      });
+      setSchoolLocation(updated);
+      setGeoFeedback({ type: 'success', msg: `تم تعيين إحداثيات الفصل بنجاح: (${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}) بدقة ±${pos.accuracy}م` });
+    } catch (e: any) {
+      setGeoFeedback({ type: 'error', msg: e?.message || 'تعذر تحديد الموقع الجغرافي للجهاز.' });
+    } finally {
+      setCalibratingGPS(false);
+    }
+  };
+
+  const handleUpdateRadius = (radius: number) => {
+    const updated = saveSchoolLocation({ radiusMeters: radius });
+    setSchoolLocation(updated);
+    setGeoFeedback({ type: 'success', msg: `تم تحديث نصف قطر محيط المدرسة إلى ${radius} متر.` });
+  };
+
+  const handleResetLocation = () => {
+    const updated = saveSchoolLocation(DEFAULT_IKHLAS_LOCATION);
+    setSchoolLocation(updated);
+    setGeoFeedback({ type: 'success', msg: 'تمت استعادة موقع مدرسة الإخلاص الرسمي الافتراضي.' });
+  };
 
   /* ── Clock ── */
   useEffect(() => {
@@ -994,6 +1037,48 @@ export default function IkhlasJeddahPage() {
               })}
             </div>
 
+            {/* ══════════════ درع الحضور الذكي: كشك الفصل + النطاق الجغرافي ══════════════ */}
+            <div className="bg-gradient-to-l from-emerald-50 via-teal-50/70 to-white border border-emerald-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <span>منظومة درع الحضور الذكي (التحضير الموثوق)</span>
+                      <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                        مفعل ومحمي 🛡️
+                      </span>
+                    </h3>
+                    <p className="text-xs font-bold text-slate-600 mt-0.5">
+                      مدرسة الإخلاص الأهلية للبنين • كشك الفصل المباشر + نطاق جغرافي GPS ({schoolLocation.radiusMeters}م) لمنع التحضير من المنزل
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('face-attendance')}
+                    className="inline-flex items-center gap-2 bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-2xl text-xs font-black shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>تشغيل كشك الفصل المركزي (جهاز المعلم) 🖥️</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowGeoSettingsModal(true)}
+                    className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-2xl text-xs font-black transition active:scale-95 shadow-2xs cursor-pointer"
+                  >
+                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    <span>إعدادات النطاق والخريطة 📍</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Today's Schedule Board (Modern Executive 1448H View) */}
             <OverviewScheduleBoard
               schedule={schedule}
@@ -1276,6 +1361,124 @@ export default function IkhlasJeddahPage() {
             homeworkCount={homeworkList.length}
             photosCount={photos.length}
           />
+        )}
+
+        {/* ════════════ نافذة إعدادات النطاق الجغرافي للمدرسة ════════════ */}
+        {showGeoSettingsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in overflow-y-auto" dir="rtl">
+            <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-l from-emerald-50 via-teal-50 to-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <MapPin size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      <span>إعدادات النطاق الجغرافي للمدرسة (GPS)</span>
+                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                        تحكم المعلم
+                      </span>
+                    </h3>
+                    <p className="text-xs font-bold text-slate-500">
+                      تحديد محيط مدرسة الإخلاص لمنع الطلاب من تسجيل الحضور خارج المدرسة
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGeoSettingsModal(false)}
+                  className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition flex items-center justify-center cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {geoFeedback && (
+                  <div className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2 animate-fade-in ${
+                    geoFeedback.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                      : 'bg-rose-50 border-rose-300 text-rose-900'
+                  }`}>
+                    {geoFeedback.type === 'success' ? '✅' : '⚠️'} {geoFeedback.msg}
+                  </div>
+                )}
+
+                {/* Interactive Map */}
+                <InteractiveGeofenceMap
+                  school={schoolLocation}
+                  compact={false}
+                />
+
+                {/* Radius Config */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800">
+                      نصف قطر النطاق المسموح به حول المدرسة:
+                    </span>
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                      {schoolLocation.radiusMeters} متر
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {[50, 100, 150, 200, 300].map((r) => {
+                      const isSel = schoolLocation.radiusMeters === r;
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => handleUpdateRadius(r)}
+                          className={`py-2 px-1 rounded-xl text-center text-xs font-black transition cursor-pointer ${
+                            isSel
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/60'
+                          }`}
+                        >
+                          {r} متر
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium pt-1">
+                    💡 يوصى باختيار 150 أو 200 متر لضمان تغطية كامل الفصول والساحات والمداخل المدرسية.
+                  </p>
+                </div>
+
+                {/* Calibration Buttons */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCalibrateGPS}
+                    disabled={calibratingGPS}
+                    className="flex-1 py-3 bg-gradient-to-l from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-black rounded-2xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {calibratingGPS ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>جاري قراءة إحداثيات جهازك الحالية...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MapPin size={16} />
+                        <span>تعيين موقع الفصل الحالي (من جهازي الآن) 📍</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetLocation}
+                    className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-2xl transition cursor-pointer"
+                  >
+                    استعادة الافتراضي 🔄
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
           </div>
