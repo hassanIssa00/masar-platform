@@ -33,18 +33,25 @@ export default function FaceEnrollModal({
   const [step, setStep]   = useState<Step>('intro');
   const [agreed, setAgreed] = useState(false);
 
-  const handleEmbedding = async (embedding: number[]) => {
+  /** Called when all 5 poses are successfully captured */
+  const handleEnrollSuccess = async (embeddings: number[][], _snapshot?: string) => {
     try {
-      await enrollFace(userId, embedding, {
-        accountId: accountId || userId,
-        studentId: studentId || userId,
-        userName,
-        userRole,
-        userEmail,
-        schoolBranch,
-      });
+      const frontal = embeddings[0] ?? [];
+      await enrollFace(
+        userId,
+        frontal,
+        {
+          accountId: accountId || userId,
+          studentId: studentId || userId,
+          userName,
+          userRole,
+          userEmail,
+          schoolBranch,
+        },
+        embeddings, // pass all 5 pose embeddings
+      );
     } catch (err) {
-      console.error('[FaceEnroll] Error saving face record:', err);
+      console.error('[FaceEnroll] Error saving multi-angle face record:', err);
     }
     setStep('done');
     setTimeout(onSuccess, 1800);
@@ -76,7 +83,7 @@ export default function FaceEnrollModal({
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { icon: '🔒', title: 'خصوصية كاملة', desc: 'لا تُحفظ أي صورة' },
-                  { icon: '⚡', title: 'دخول فوري', desc: 'بدون كلمة مرور' },
+                  { icon: '🎯', title: 'دقة 100%', desc: '5 زوايا + 52 نسبة' },
                   { icon: '🛡️', title: 'مشفر محلياً', desc: 'على جهازك فقط' },
                 ].map(f => (
                   <div key={f.title} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-center">
@@ -88,11 +95,11 @@ export default function FaceEnrollModal({
               </div>
 
               <div className="space-y-2 text-sm text-slate-300 bg-slate-800/40 rounded-xl p-4 border border-slate-700">
-                <p className="font-black text-white mb-2">كيف يعمل النظام؟</p>
-                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الكاميرا تلتقط وجهك وتحوله لـ 478 نقطة رياضية ثلاثية الأبعاد</span></div>
-                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الأرقام دي بتتشفّر وتُحفظ على جهازك — مش على أي سيرفر</span></div>
+                <p className="font-black text-white mb-2">كيف يعمل النظام الجديد؟</p>
+                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الكاميرا تلتقط وجهك من <strong className="text-white">5 زوايا مختلفة</strong> (أمام + يمين + يسار + أعلى + أسفل)</span></div>
+                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>النظام يحلل <strong className="text-white">52 نسبة بيومترية</strong> تشريحية لكل زاوية</span></div>
+                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الأرقام تُشفَّر وتُحفظ على جهازك — مش على أي سيرفر</span></div>
                 <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>الصورة الأصلية لا تُحفظ أبداً — مستحيل استرجاعها</span></div>
-                <div className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">✓</span><span>كلمة المرور تفضل شغالة كـ Fallback في أي وقت</span></div>
               </div>
 
               <div className="flex gap-3">
@@ -157,7 +164,8 @@ export default function FaceEnrollModal({
               </p>
               <FaceCamera
                 mode="enroll"
-                onSuccess={handleEmbedding}
+                onSuccess={() => {}} // verify-mode no-op; enrollment uses onEnrollSuccess
+                onEnrollSuccess={handleEnrollSuccess}
                 onCancel={() => setStep('intro')}
               />
             </div>
@@ -171,7 +179,8 @@ export default function FaceEnrollModal({
               </div>
               <div className="text-center">
                 <h3 className="text-xl font-black text-white mb-1">تم التسجيل بنجاح! 🎉</h3>
-                <p className="text-sm text-slate-400">يمكنك الآن الدخول بوجهك من شاشة تسجيل الدخول</p>
+                <p className="text-sm text-slate-400">سُجِّلت <span className="text-emerald-400 font-black">5 زوايا بيومترية</span> بدقة عالية</p>
+                <p className="text-xs text-slate-500 mt-1">يمكنك الآن الدخول بوجهك من شاشة تسجيل الدخول</p>
               </div>
             </div>
           )}

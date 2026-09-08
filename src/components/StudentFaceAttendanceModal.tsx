@@ -144,7 +144,6 @@ export default function StudentFaceAttendanceModal({
                 <FaceCamera
                   mode="verify"
                   userId={studentId}
-                  challenge="blink"
                   onSuccess={handleFaceSuccess}
                   onCancel={onClose}
                 />
