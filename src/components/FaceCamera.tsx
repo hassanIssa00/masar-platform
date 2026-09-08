@@ -262,7 +262,9 @@ export default function FaceCamera({
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        await videoRef.current.play().catch(() => {});
       }
 
       // Ensure model is ready before beginning continuous detection
@@ -593,6 +595,7 @@ export default function FaceCamera({
         <video
           ref={videoRef}
           className="w-full h-full object-cover scale-x-[-1]"
+          autoPlay
           muted
           playsInline
         />
