@@ -13,6 +13,8 @@ interface Props {
   onSuccess?: (embedding: number[], photoSnapshot?: string) => void;
   /** Live continuous verification callback for real-time unlock */
   onVerify?: (embedding: number[], photoSnapshot?: string) => Promise<{ ok: boolean; name?: string } | boolean>;
+  /** Called when verification fails after scanning without a match */
+  onFail?: () => void;
   /** Called on successful ENROLL — receives ALL 5 pose embeddings + frontal snapshot */
   onEnrollSuccess?: (embeddings: number[][], photoSnapshot?: string) => void;
   onCancel: () => void;
@@ -178,6 +180,7 @@ export default function FaceCamera({
   userId,
   onSuccess,
   onVerify,
+  onFail,
   onEnrollSuccess,
   onCancel,
 }: Props) {
@@ -409,11 +412,16 @@ export default function FaceCamera({
                       onSuccess?.(embedding, snap);
                     }, 280);
                   } else if (!successCalledRef.current) {
-                    // Smooth monotonic scanning indicator — NEVER flaps back to 0%
-                    scanFrameCountRef.current = (scanFrameCountRef.current + 1) % 120;
-                    const smoothProgress = Math.min(95, 35 + Math.round((scanFrameCountRef.current / 120) * 60));
+                    scanFrameCountRef.current++;
+                    const maxScanFrames = 80; // ~3.5 seconds of active face scanning
+                    const smoothProgress = Math.min(95, 30 + Math.round((scanFrameCountRef.current / maxScanFrames) * 65));
                     setProgress(smoothProgress);
-                    setScanStatusText('🔒 جاري التعرف ومطابقة بصمة الوجه فورياً...');
+                    setScanStatusText('🔒 جاري مطابقة بصمة الوجه مع السجلات...');
+
+                    if (scanFrameCountRef.current >= maxScanFrames) {
+                      successCalledRef.current = true;
+                      onFail?.();
+                    }
                   }
                 })
                 .catch(() => {
@@ -528,7 +536,7 @@ export default function FaceCamera({
 
     animRef.current = requestAnimationFrame(runLoop);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, onSuccess, onVerify, onEnrollSuccess]);
+  }, [mode, onSuccess, onVerify, onFail, onEnrollSuccess]);
 
   useEffect(() => {
     const activePhases: Phase[] = [

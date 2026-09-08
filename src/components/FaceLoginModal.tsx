@@ -235,6 +235,10 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
               mode="verify"
               onVerify={handleLiveVerify}
               onSuccess={handleVerifiedSuccess}
+              onFail={() => {
+                setFailCount(c => c + 1);
+                setPhase('fail');
+              }}
               onCancel={onCancel}
             />
           )}
@@ -250,7 +254,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
               <div className="text-center space-y-1">
                 <h3 className="text-base font-black text-slate-900">جاري التحقق والمطابقة...</h3>
                 <p className="text-xs font-bold text-slate-500 max-w-xs leading-relaxed">
-                  يتم تحليل ومطابقة 478 نقطة بيومترية والنسب التشريحية مع السجلات السحابية 🔒
+                  يتم تحليل ومطابقة البصمة البيومترية مع السجلات السحابية 🔒
                 </p>
               </div>
             </div>
@@ -278,9 +282,9 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
                 <AlertTriangle size={28} className="text-red-600" />
               </div>
               <div className="text-center">
-                <h3 className="text-lg font-black text-slate-900 mb-1">لم تتطابق ملامح الوجه</h3>
+                <h3 className="text-lg font-black text-slate-900 mb-1">لم نتمكن من التعرف على الوجه</h3>
                 <p className="text-sm font-bold text-slate-500 max-w-xs leading-relaxed">
-                  الملامح لم تتطابق مع الحساب المسجل. تأكد من إضاءة الغرفة والنظر مباشرة للكاميرا.
+                  لم نجد أي حساب مسجل يطابق ملامح هذا الوجه. إذا لم تكن قد سجّلت بصمة وجهك بعد، يرجى الدخول بكلمة المرور أولاً وربط بصمة وجهك من صفحة الحساب.
                 </p>
               </div>
               <div className="flex gap-3 w-full pt-2">
@@ -292,7 +296,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
                 </button>
                 <button
                   onClick={onFallback}
-                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black flex items-center justify-center gap-1.5 transition border border-slate-200"
+                  className="flex-1 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition border border-slate-900 shadow-sm"
                 >
                   <KeyRound size={16} /> كلمة المرور
                 </button>
