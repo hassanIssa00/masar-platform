@@ -12,8 +12,10 @@ import {
 } from '@/lib/faceAuth';
 import {
   getLocalAttendance, markStudentAttendanceViaFace, updateAttendance,
-  recordAttendance, AttendanceRecord
+  recordAttendance, AttendanceRecord, getStudentPeriodAttendance,
+  resolveActivePeriod, PERIOD_NAMES,
 } from '@/lib/attendance';
+import { getTodayPeriods, getCurrentPeriod, getSavedSchedule } from '@/data/ikhlasSchedule';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 
@@ -56,6 +58,7 @@ export default function ClassroomFaceAttendanceFullPage({
   const [currentFaceBox, setCurrentFaceBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [recentArrivals, setRecentArrivals] = useState<RecognizedEvent[]>([]);
   const [activePopup, setActivePopup] = useState<RecognizedEvent | null>(null);
+  const [kioskPeriodNumber, setKioskPeriodNumber] = useState<number>(() => resolveActivePeriod().periodNumber);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const todayArabicDate = useMemo(() => {
@@ -243,10 +246,9 @@ export default function ClassroomFaceAttendanceFullPage({
       if (now - lastTime < 15000) return;
       lastRecognizedRef.current[studentId] = now;
 
-      // Check if student was already marked present today
-      const todayList = getLocalAttendance();
-      const existingToday = todayList.find(r => (r.studentId === studentId || r.studentName === studentName) && r.sessionDate === todayStr);
-      const isAlreadyPresent = existingToday?.status === 'present';
+      // Check if student was already marked present for this specific period
+      const existingPeriodAtt = getStudentPeriodAttendance(studentId, kioskPeriodNumber, todayStr);
+      const isAlreadyPresent = existingPeriodAtt?.status === 'present';
 
       const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -274,12 +276,14 @@ export default function ClassroomFaceAttendanceFullPage({
       }
 
       if (!isAlreadyPresent) {
-        // Record attendance via Face ID
+        // Record attendance via Face ID for this period
         await markStudentAttendanceViaFace(studentId, studentName, {
           branch: 'IKHLAS_JEDDAH',
           confidence: bestMatch.similarity,
           isClassroom: true,
           capturedPhotoUrl: capturedSnapshot || photoUrl,
+          periodNumber: kioskPeriodNumber,
+          periodName: PERIOD_NAMES[kioskPeriodNumber] || `الحصة ${kioskPeriodNumber}`,
         });
 
         playChime();
@@ -560,7 +564,38 @@ export default function ClassroomFaceAttendanceFullPage({
           VIEW 1: KIOSK LIVE SCANNER
       â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */}
       {activeView === 'kiosk' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-4">
+          {/* Period Selector Bar for Kiosk */}
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+              <Clock size={16} className="text-emerald-600" />
+              <span>الحصة المفعّلة لتسجيل كشك الحضور الآن:</span>
+              <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-xs">
+                {PERIOD_NAMES[kioskPeriodNumber] || `الحصة ${kioskPeriodNumber}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[1, 2, 3, 4, 5, 6, 7].map((pNum) => {
+                const isSel = kioskPeriodNumber === pNum;
+                return (
+                  <button
+                    key={pNum}
+                    type="button"
+                    onClick={() => setKioskPeriodNumber(pNum)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                      isSel
+                        ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/40'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    حـ{pNum} ({PERIOD_NAMES[pNum]?.replace('الحصة ', '')})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main Video Camera Station */}
           <div className="lg:col-span-8 bg-slate-950 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl relative flex flex-col items-center justify-center min-h-[460px] md:min-h-[560px]">
             {cameraError ? (
@@ -741,6 +776,7 @@ export default function ClassroomFaceAttendanceFullPage({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ

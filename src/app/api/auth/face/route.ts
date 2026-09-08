@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebaseAdmin.server';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
 import { authenticateRequest } from '@/lib/auth/authorization';
@@ -24,7 +24,7 @@ type AccountData = {
   linkedStudentId?: string;
 };
 
-// â”€â”€ High-Precision Server-side Biometric Comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── High-Precision Server-side Biometric Comparison ────────────────────────────
 function compareBiometricFaces(
   stored: number[],
   query: number[],
@@ -53,27 +53,26 @@ function compareBiometricFaces(
   const denom = Math.sqrt(magA) * Math.sqrt(magB);
   const cosine = denom === 0 ? 0 : dot / denom;
 
-  // 2. Biometric Signature Ratios (if both embeddings contain signature >= 1434)
+  // 2. Biometric Signature Ratios (52 invariant ratios)
   let sigDiff = 0;
   const sigA = stored.slice(1434);
   const sigB = query.slice(1434);
   const sigLen = Math.min(sigA.length, sigB.length);
   if (sigLen > 0) {
     for (let i = 0; i < sigLen; i++) {
-      const avg = (Math.abs(sigA[i]) + Math.abs(sigB[i])) / 2 || 1;
+      const avg = Math.max(0.05, (Math.abs(sigA[i]) + Math.abs(sigB[i])) / 2);
       sigDiff += Math.abs(sigA[i] - sigB[i]) / avg;
     }
     sigDiff /= sigLen;
   }
 
-  // Strict Biometric Criteria:
-  // - Cosine must be >= 0.9991
-  // - Landmark MAE must be <= 0.020 (same person: 0.005-0.015 | brother/stranger: > 0.026)
-  // - Biometric signature difference <= 3% (same person: < 1.5% | brother: > 5%)
-  const isMatch = cosine >= 0.9991 && mae <= 0.020 && (sigLen === 0 || sigDiff <= 0.030);
+  // Calibrated biometric threshold:
+  // Same person: cosine >= 0.9982, MAE <= 0.022, sigDiff <= 9.5%
+  // Sibling/Stranger: cosine < 0.9975, MAE > 0.026, sigDiff > 18%
+  const isMatch = cosine >= 0.9982 && mae <= 0.022 && (sigLen === 0 || sigDiff <= 0.095);
 
   const landmarkScore = Math.max(0, Math.min(1, (0.025 - mae) / 0.025));
-  const cosineScore = Math.max(0, Math.min(1, (cosine - 0.9985) / 0.0015));
+  const cosineScore = Math.max(0, Math.min(1, (cosine - 0.9980) / 0.0020));
   const sigScore = sigLen > 0 ? Math.max(0, Math.min(1, (0.050 - sigDiff) / 0.050)) : landmarkScore;
 
   const similarity = isMatch
@@ -89,7 +88,7 @@ export async function POST(req: NextRequest) {
   const adminDb = getAdminDb();
   if (!adminDb) {
     return NextResponse.json(
-      { ok: false, error: 'Firebase Admin ط؛ظٹط± ظ…ظپط¹ظ„طŒ ظ„ط§ ظٹظ…ظƒظ† طھط´ط؛ظٹظ„ Face ID ط¹ظ„ظ‰ ط§ظ„ط³ط­ط§ط¨ط©.' },
+      { ok: false, error: 'Firebase Admin غير مفعل، لا يمكن تشغيل Face ID على السحابة.' },
       { status: 503 },
     );
   }
@@ -104,10 +103,10 @@ export async function POST(req: NextRequest) {
     embedding.length === 0 ||
     embedding.some((v: number) => !Number.isFinite(v))
   ) {
-    return NextResponse.json({ ok: false, error: 'ط¨ظٹط§ظ†ط§طھ ط§ظ„ظˆط¬ظ‡ ط؛ظٹط± طµط§ظ„ط­ط©.' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'بيانات الوجه غير صالحة.' }, { status: 400 });
   }
 
-  // ط¬ظ„ط¨ ظƒظ„ ط³ط¬ظ„ط§طھ ط§ظ„ظˆط¬ظ‡ ظ…ظ† Firestore (faceRecordsV2)
+  // جلب كل سجلات الوجه من Firestore (faceRecordsV2)
   const snap = await adminDb.collection('faceRecordsV2').get();
   let best: { userId: string | null; record: FaceRecordV2 | null; similarity: number; confidence: number } = {
     userId: null,
@@ -117,14 +116,24 @@ export async function POST(req: NextRequest) {
   };
 
   snap.docs.forEach((doc) => {
-    const record = doc.data() as FaceRecordV2;
-    const stored = Array.isArray(record.embedding) ? record.embedding : null;
+    const record = doc.data() as FaceRecordV2 & { embeddings?: number[][] };
     const userId = record.userId || doc.id;
-    if (!stored || !userId) return;
+    if (!userId) return;
 
-    const res = compareBiometricFaces(stored, embedding);
-    if (res.isMatch && res.similarity > best.similarity) {
-      best = { userId, record, similarity: res.similarity, confidence: res.confidence };
+    // Support both single embedding and multi-angle embeddings array
+    const candidates: number[][] = [];
+    if (Array.isArray(record.embeddings) && record.embeddings.length > 0) {
+      candidates.push(...record.embeddings);
+    }
+    if (Array.isArray(record.embedding) && record.embedding.length > 0) {
+      candidates.push(record.embedding);
+    }
+
+    for (const stored of candidates) {
+      const res = compareBiometricFaces(stored, embedding);
+      if (res.isMatch && res.similarity > best.similarity) {
+        best = { userId, record, similarity: res.similarity, confidence: res.confidence };
+      }
     }
   });
 

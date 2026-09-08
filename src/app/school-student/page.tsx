@@ -10,7 +10,7 @@ import {
   Upload, LogOut, ScanFace, Sparkles, Home, GraduationCap,
   Calendar, BookMarked, Trophy, ChevronDown, ChevronUp, RefreshCw
 } from 'lucide-react';
-import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { DAY_NAMES, SUBJECT_COLORS, getTodayPeriods, getCurrentPeriod, getSavedSchedule, Period } from '@/data/ikhlasSchedule';
 import { curriculaList } from '@/data/curriculaData';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
@@ -36,7 +36,14 @@ import NotificationBell from '@/components/NotificationBell';
 import { recordUserPresence } from '@/lib/presence';
 import dynamic from 'next/dynamic';
 import { isFaceEnrolled as checkFaceEnrolled } from '@/lib/faceAuth';
-import { getStudentTodayAttendance, markStudentAttendanceViaFace, getLocalAttendance, AttendanceRecord } from '@/lib/attendance';
+import {
+  getStudentTodayAttendance,
+  markStudentAttendanceViaFace,
+  getLocalAttendance,
+  getStudentTodayPeriodsAttendance,
+  AttendanceRecord,
+  PERIOD_NAMES,
+} from '@/lib/attendance';
 
 const FaceEnrollModal = dynamic(() => import('@/components/FaceEnrollModal'), { ssr: false });
 const StudentFaceAttendanceModal = dynamic(() => import('@/components/StudentFaceAttendanceModal'), { ssr: false });
@@ -65,6 +72,9 @@ export default function StudentDashboard() {
   const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
   const [showFaceAttendanceModal, setShowFaceAttendanceModal] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [todayPeriodsAttendance, setTodayPeriodsAttendance] = useState<Record<number, AttendanceRecord>>({});
+  const [targetPeriodForModal, setTargetPeriodForModal] = useState<{ periodNumber: number; subjectName: string } | null>(null);
+  const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<{ photoUrl: string; title: string; time: string } | null>(null);
   const [showOneTimeFacePrompt, setShowOneTimeFacePrompt] = useState(false);
   const [faceToastMsg, setFaceToastMsg] = useState('');
   const [accountSessionId, setAccountSessionId] = useState('');
@@ -245,25 +255,10 @@ export default function StudentDashboard() {
 
       setFaceEnrolled(isEnrolled);
 
-      // Check today's attendance status & auto-record if logged in via Face ID
+      // Check today's attendance status (READ ONLY — NEVER auto-record attendance on page load!)
       const existingAtt = getStudentTodayAttendance(resolvedId) || (session.id ? getStudentTodayAttendance(session.id) : undefined);
-      if (existingAtt) {
-        setTodayAttendance(existingAtt);
-      } else if (isLoginViaFace || sessionHasFace) {
-        // Automatically mark attendance as present via Face ID!
-        try {
-          const res = await markStudentAttendanceViaFace(resolvedId, finalName, {
-            branch: isSessionIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR',
-            confidence: 0.98,
-            isClassroom: isSessionIkhlas,
-          });
-          setTodayAttendance(res.record);
-          setFaceToastMsg('🌟 أهلاً بك يا بطل! تم تسجيل حضورك اليوم تلقائياً ببصمة الوجه.');
-          setTimeout(() => setFaceToastMsg(''), 4500);
-        } catch (e) {
-          console.warn('Auto face attendance mark error:', e);
-        }
-      }
+      setTodayAttendance(existingAtt || null);
+      setTodayPeriodsAttendance(getStudentTodayPeriodsAttendance(resolvedId));
 
       // Trigger one-time prompt ONLY if truly not enrolled AND prompt hasn't been seen/dismissed
       if (!isEnrolled) {
@@ -284,6 +279,7 @@ export default function StudentDashboard() {
       if (currentResolvedId) {
         const att = getStudentTodayAttendance(currentResolvedId);
         if (att) setTodayAttendance(att);
+        setTodayPeriodsAttendance(getStudentTodayPeriodsAttendance(currentResolvedId));
       }
     };
     window.addEventListener('masar_attendance_updated', onAttUpdated);
@@ -563,21 +559,33 @@ export default function StudentDashboard() {
     setTimeout(() => setFaceToastMsg(''), 6000);
   };
 
-  // ── Attendance Tab (صفحة الغياب والحضور ببصمة الوجه) ──────────────────────────
+  // ── Attendance Tab (كشف حضور حصص اليوم بالبصمة الذكية) ──────────────────────
   const renderAttendanceTab = () => {
     const allAtt = getLocalAttendance().filter(
       (a) => a.studentId === studentId || a.studentId === (studentRecord as any)?.id || a.studentId === accountSessionId
     );
-    const presentDays = allAtt.filter((a) => a.status === 'present').length;
-    const faceVerifiedDays = allAtt.filter((a) => a.status === 'present' && a.verifiedVia === 'face').length;
-    const absentDays = allAtt.filter((a) => a.status === 'absent').length;
-    const totalRecorded = allAtt.length || 1;
-    const commitmentRate = Math.round((presentDays / totalRecorded) * 100) || (todayAttendance?.status === 'present' ? 100 : 0);
+    const todayPeriods = getTodayPeriods(getSavedSchedule());
+    const curActivePeriod = getCurrentPeriod(getSavedSchedule());
+
+    // Standard 7 periods for today
+    const periodsToDisplay = todayPeriods.length > 0 ? todayPeriods : [
+      { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي العربية', startTime: '07:00', endTime: '07:45' },
+      { dayOfWeek: 0, periodNumber: 2, subjectName: 'الرياضيات', startTime: '07:45', endTime: '08:30' },
+      { dayOfWeek: 0, periodNumber: 3, subjectName: 'التربية الإسلامية', startTime: '08:30', endTime: '09:15' },
+      { dayOfWeek: 0, periodNumber: 4, subjectName: 'القرآن الكريم', startTime: '09:30', endTime: '10:15' },
+      { dayOfWeek: 0, periodNumber: 5, subjectName: 'العلوم', startTime: '10:15', endTime: '11:00' },
+      { dayOfWeek: 0, periodNumber: 6, subjectName: 'التربية الفنية', startTime: '11:00', endTime: '11:45' },
+      { dayOfWeek: 0, periodNumber: 7, subjectName: 'نشاط صفي', startTime: '11:45', endTime: '12:30' },
+    ];
+
+    const attendedTodayCount = periodsToDisplay.filter(p => todayPeriodsAttendance[p.periodNumber]?.status === 'present').length;
+    const totalPeriodsCount = periodsToDisplay.length;
+    const faceVerifiedCount = periodsToDisplay.filter(p => todayPeriodsAttendance[p.periodNumber]?.verifiedVia === 'face').length;
 
     return (
       <div className="space-y-5" dir="rtl">
-        {/* Main Hero Card */}
-        <div className="bg-gradient-to-br from-teal-600 via-emerald-600 to-teal-800 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+        {/* Main Hero Banner */}
+        <div className="bg-gradient-to-br from-teal-700 via-emerald-600 to-teal-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
           <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-5">
             <div className="flex items-center gap-4 text-center sm:text-right">
@@ -587,110 +595,181 @@ export default function StudentDashboard() {
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-[11px] font-black backdrop-blur-md mb-1.5">
                   <Sparkles size={13} className="text-amber-300" />
-                  <span>نظام الحضور البيومتري الذكي (Face ID)</span>
+                  <span>نظام حضور الحصص البيومتري (Face ID)</span>
                 </div>
-                <h2 className="text-xl font-black">كشف الحضور والغياب اليومي</h2>
+                <h2 className="text-xl font-black">كشف حضور الحصص المدرسية</h2>
                 <p className="text-xs text-emerald-100 font-bold mt-1">
-                  سجل حضورك بلمح البصر عبر الذكاء الاصطناعي وبصمة الوجه
+                  تسجيل وتوثيق حضور كل حصة دراسية مباشرة عبر بصمة الوجه الذكية
                 </p>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() => setShowFaceAttendanceModal(true)}
+              onClick={() => {
+                if (curActivePeriod) {
+                  setTargetPeriodForModal({ periodNumber: curActivePeriod.periodNumber, subjectName: curActivePeriod.subjectName });
+                } else {
+                  setTargetPeriodForModal(null);
+                }
+                setShowFaceAttendanceModal(true);
+              }}
               className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-sm shadow-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <Camera size={20} className="text-emerald-600" />
-              <span>تسجيل الحضور بالوجه الآن 📸</span>
+              <span>
+                {curActivePeriod ? `تسجيل حضور (${PERIOD_NAMES[curActivePeriod.periodNumber] || `الحصة ${curActivePeriod.periodNumber}`}) 📸` : 'سجّل حضور الحصة بالوجه 📸'}
+              </span>
             </button>
           </div>
         </div>
 
-        {/* Today's Status Banner */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black shadow-sm ${
-                todayAttendance?.status === 'present' ? 'bg-emerald-600' : 'bg-amber-500'
-              }`}>
-                {todayAttendance?.status === 'present' ? <CheckCircle2 size={22} /> : <Clock size={22} />}
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900">حالة حضور اليوم</h3>
-                <p className="text-xs font-bold text-slate-500">
-                  {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-            </div>
-
-            <span className={`px-4 py-1.5 rounded-full text-xs font-black border ${
-              todayAttendance?.status === 'present'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}>
-              {todayAttendance?.status === 'present' ? 'حاضر ومؤكد بالبصمة ✓' : 'في انتظار تسجيل الحضور'}
-            </span>
-          </div>
-
-          {todayAttendance?.status === 'present' ? (
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
-                  <CheckCircle size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-emerald-950">تم توثيق حضورك بنجاح في المنصة وفصل د. إسماعيل 🎉</p>
-                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">
-                    طريقة التحقق: {todayAttendance.verifiedVia === 'face' ? 'بصمة الوجه المباشرة 📸' : 'تسجيل تلقائي'} • الوقت: {todayAttendance.sessionTime || 'صباحاً'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowFaceAttendanceModal(true)}
-                className="text-xs font-black text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition"
-              >
-                إعادة التحقق
-              </button>
-            </div>
-          ) : (
-            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
-              <div>
-                <p className="text-xs font-black text-amber-950">لم تسجل حضورك لهذا اليوم بعد يا بطل!</p>
-                <p className="text-[11px] font-bold text-amber-800 mt-0.5">
-                  اضغط على زر الكاميرا لتسجيل حضورك الفوري بالوجه وتأكيد وجودك في الفصل.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowFaceAttendanceModal(true)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer shrink-0"
-              >
-                <Camera size={16} />
-                <span>افتح الكاميرا وسجل حضورك</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Stats Grid */}
+        {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
-            <span className="text-2xl font-black text-emerald-600">{presentDays || (todayAttendance?.status === 'present' ? 1 : 0)}</span>
-            <p className="text-xs font-bold text-slate-500 mt-1">أيام الحضور</p>
+            <span className="text-2xl font-black text-emerald-600">{attendedTodayCount} / {totalPeriodsCount}</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">حصص حضرتها اليوم 📚</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
-            <span className="text-2xl font-black text-teal-600">{faceVerifiedDays || (todayAttendance?.verifiedVia === 'face' ? 1 : 0)}</span>
+            <span className="text-2xl font-black text-teal-600">{faceVerifiedCount}</span>
             <p className="text-xs font-bold text-slate-500 mt-1">بالبصمة الذكية 👁️</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
-            <span className="text-2xl font-black text-rose-500">{absentDays}</span>
-            <p className="text-xs font-bold text-slate-500 mt-1">أيام الغياب</p>
+            <span className="text-2xl font-black text-amber-500">{Math.max(0, totalPeriodsCount - attendedTodayCount)}</span>
+            <p className="text-xs font-bold text-slate-500 mt-1">حصص متبقية ⏳</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center shadow-xs">
-            <span className="text-2xl font-black text-indigo-600">{commitmentRate}%</span>
-            <p className="text-xs font-bold text-slate-500 mt-1">نسبة الالتزام 🌟</p>
+            <span className="text-2xl font-black text-indigo-600">
+              {totalPeriodsCount > 0 ? Math.round((attendedTodayCount / totalPeriodsCount) * 100) : 0}%
+            </span>
+            <p className="text-xs font-bold text-slate-500 mt-1">نسبة حضور اليوم 🌟</p>
+          </div>
+        </div>
+
+        {/* ── Today's 7 Periods Matrix ── */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>جدول حصص اليوم وحالة الحضور</span>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 font-bold mt-0.5">
+                اضغط على أي حصة لتسجيل حضورها فورياً ببصمة الوجه
+              </p>
+            </div>
+            {curActivePeriod && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-300 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>الحصة الجارية: {curActivePeriod.subjectName}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            {periodsToDisplay.map((p) => {
+              const rec = todayPeriodsAttendance[p.periodNumber];
+              const isPresent = rec?.status === 'present';
+              const isCurrent = curActivePeriod?.periodNumber === p.periodNumber;
+              const periodTitle = PERIOD_NAMES[p.periodNumber] || `الحصة ${p.periodNumber}`;
+
+              return (
+                <div
+                  key={p.periodNumber}
+                  className={`rounded-2xl border-2 p-4 transition-all flex flex-col justify-between gap-3 relative ${
+                    isPresent
+                      ? 'bg-emerald-50/50 border-emerald-300 shadow-xs'
+                      : isCurrent
+                      ? 'bg-amber-50/70 border-amber-400 shadow-md ring-2 ring-amber-400/40'
+                      : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {/* Top: Period num + status badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] font-black text-slate-500 block">{periodTitle}</span>
+                      <h4 className="text-sm font-black text-slate-900 mt-0.5">{p.subjectName}</h4>
+                      <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Clock size={11} className="text-slate-400" />
+                        <span>{p.startTime} – {p.endTime}</span>
+                      </p>
+                    </div>
+
+                    {/* Status Badge */}
+                    {isPresent ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                        <CheckCircle2 size={12} className="text-emerald-600" />
+                        <span>حاضر ✓</span>
+                      </span>
+                    ) : isCurrent ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                        <span>جارية الآن</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200/80 text-slate-600 shrink-0">
+                        <span>قادمة</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Middle: Live Photo snapshot if present */}
+                  {isPresent && rec?.capturedPhotoUrl && (
+                    <div className="flex items-center gap-2.5 bg-white p-2 rounded-xl border border-emerald-200">
+                      <img
+                        src={rec.capturedPhotoUrl}
+                        alt="لقطة التحقق"
+                        className="w-10 h-10 rounded-lg object-cover border border-emerald-300 shrink-0 cursor-pointer"
+                        onClick={() => setSelectedPhotoPreview({
+                          photoUrl: rec.capturedPhotoUrl!,
+                          title: `${periodTitle} - ${p.subjectName}`,
+                          time: rec.sessionTime || 'صباحاً',
+                        })}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-emerald-900">موثق بالبصمة 📸</p>
+                        <p className="text-[10px] text-slate-500 font-bold truncate">الساعة: {rec.sessionTime}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <div>
+                    {isPresent ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetPeriodForModal({ periodNumber: p.periodNumber, subjectName: p.subjectName });
+                          setShowFaceAttendanceModal(true);
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-white hover:bg-emerald-100/60 border border-emerald-200 text-emerald-800 text-[11px] font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RefreshCw size={12} />
+                        <span>إعادة التحقق</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetPeriodForModal({ periodNumber: p.periodNumber, subjectName: p.subjectName });
+                          setShowFaceAttendanceModal(true);
+                        }}
+                        className={`w-full py-2 px-3 rounded-xl text-white text-[11px] font-black transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
+                          isCurrent
+                            ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/40'
+                            : 'bg-slate-800 hover:bg-slate-900'
+                        }`}
+                      >
+                        <ScanFace size={13} />
+                        <span>سجّل حضور الحصة</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -698,33 +777,38 @@ export default function StudentDashboard() {
         <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
           <h4 className="text-xs font-black text-slate-900 flex items-center gap-2">
             <Calendar size={15} className="text-teal-600" />
-            <span>سجل الحضور والغياب الأخير</span>
+            <span>سجل توثيق الحضور والغياب</span>
           </h4>
 
-          {allAtt.length === 0 && !todayAttendance ? (
+          {allAtt.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-xs font-bold">
-              لا توجد سجلات حضور سابقة مسجلة. سجل حضورك اليوم بالوجه ليبدأ تتبع التزامك!
+              لا توجد سجلات حضور مسجلة بعد. اختر أي حصة وسجل حضورك بالوجه لتظهر هنا!
             </div>
           ) : (
             <div className="space-y-2">
-              {todayAttendance && (
-                <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs font-bold">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span className="font-black text-slate-900">اليوم ({todayAttendance.sessionDate})</span>
-                    <span className="text-[11px] text-slate-400">{todayAttendance.sessionTime}</span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
-                    {todayAttendance.verifiedVia === 'face' ? 'بصمة الوجه ✓' : 'حاضر'}
-                  </span>
-                </div>
-              )}
-              {allAtt.map((att) => (
+              {allAtt.slice(0, 10).map((att) => (
                 <div key={att.id} className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs font-bold">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`w-2.5 h-2.5 rounded-full ${att.status === 'present' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                    <span className="font-black text-slate-900">{att.sessionDate}</span>
-                    <span className="text-[11px] text-slate-400">{att.sessionTime}</span>
+                  <div className="flex items-center gap-3">
+                    {att.capturedPhotoUrl ? (
+                      <img
+                        src={att.capturedPhotoUrl}
+                        alt="لقطة الحضور"
+                        className="w-8 h-8 rounded-lg object-cover border border-emerald-300 cursor-pointer"
+                        onClick={() => setSelectedPhotoPreview({
+                          photoUrl: att.capturedPhotoUrl!,
+                          title: att.periodName ? `${att.periodName} - ${att.subjectName || ''}` : 'حضور مدرسي',
+                          time: att.sessionTime,
+                        })}
+                      />
+                    ) : (
+                      <span className={`w-2.5 h-2.5 rounded-full ${att.status === 'present' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    )}
+                    <div>
+                      <span className="font-black text-slate-900">
+                        {att.periodName ? `${att.periodName} (${att.subjectName || 'حصة'})` : `حضور يومي`}
+                      </span>
+                      <span className="text-[11px] text-slate-400 mr-2">{att.sessionDate} • {att.sessionTime}</span>
+                    </div>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                     att.status === 'present' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
@@ -777,8 +861,8 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* ── Smart Face Attendance Card (بطاقة الحضور والغياب الذكي ببصمة الوجه) ── */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3 relative overflow-hidden">
+      {/* ── Smart Period Face Attendance Card (بطاقة حضور الحصص بالبصمة الذكية) ── */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4 relative overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200/60 shadow-xs">
@@ -786,77 +870,184 @@ export default function StudentDashboard() {
             </div>
             <div>
               <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
-                <span>حضور اليوم الذكي (Smart Face Attendance)</span>
+                <span>حضور الحصص بالبصمة الذكية (Face ID)</span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  بصمة الوجه 📸
+                  بالحصة الدراسية 📚
                 </span>
               </h3>
               <p className="text-[11px] font-bold text-slate-500">
-                تسجيل الحضور التلقائي وتأكيد تواجدك في المدرسة عبر القياسات الحيوية
+                توثيق حضور كل حصة مباشرة بالوجه مع د. إسماعيل عيسى
               </p>
             </div>
           </div>
-          {todayAttendance?.status === 'present' && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-              <CheckCircle size={14} className="text-emerald-600" />
-              <span>حاضر ومؤكد ✓</span>
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('attendance')}
+            className="text-xs font-black text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+          >
+            <span>كشف الحصص الشامل</span>
+            <ChevronRight size={13} className="rotate-180" />
+          </button>
         </div>
 
-        {todayAttendance && todayAttendance.status === 'present' ? (
-          <div className="bg-gradient-to-l from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
-                <CheckCircle2 size={26} />
+        {/* Current Active Period Banner */}
+        {(() => {
+          const cur = getCurrentPeriod(getSavedSchedule());
+          if (!cur) {
+            return (
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-black">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">خارج وقت الحصص المدرسية الحالية</h4>
+                    <p className="text-[11px] text-slate-500 font-bold">يمكنك تسجيل حضور أي حصة من جدول الحصص أدناه</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetPeriodForModal(null);
+                    setShowFaceAttendanceModal(true);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Camera size={14} />
+                  <span>تسجيل حضور حصة</span>
+                </button>
               </div>
-              <div>
-                <h4 className="text-sm font-black text-emerald-950 flex items-center gap-2">
-                  <span>تم تسجيل حضورك اليوم بنجاح يا بطل! 🎉</span>
-                </h4>
-                <p className="text-xs font-bold text-slate-600 mt-0.5">
-                  {todayAttendance.verifiedVia === 'face' ? (
-                    <span>تم التحقق البيومتري المباشر ببصمة الوجه • الساعة {todayAttendance.sessionTime || 'صباحاً'}</span>
-                  ) : (
-                    <span>تم تسجيل الحضور اليومي • الساعة {todayAttendance.sessionTime || 'صباحاً'}</span>
-                  )}
-                </p>
+            );
+          }
+
+          const curRec = todayPeriodsAttendance[cur.periodNumber];
+          const isAttended = curRec?.status === 'present';
+          const pTitle = PERIOD_NAMES[cur.periodNumber] || `الحصة ${cur.periodNumber}`;
+
+          if (isAttended) {
+            return (
+              <div className="bg-gradient-to-l from-emerald-500/15 via-teal-500/5 to-transparent border border-emerald-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                        {pTitle}
+                      </span>
+                      <h4 className="text-sm font-black text-slate-900">
+                        حاضر في {cur.subjectName} ({cur.startTime} – {cur.endTime}) ✓
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-600 font-bold mt-0.5">
+                      تم التوثيق ببصمة الوجه الذكية • الساعة {curRec.sessionTime || 'صباحاً'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetPeriodForModal({ periodNumber: cur.periodNumber, subjectName: cur.subjectName });
+                    setShowFaceAttendanceModal(true);
+                  }}
+                  className="text-xs font-black text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer self-end sm:self-center"
+                >
+                  <RefreshCw size={13} />
+                  <span>إعادة المسح</span>
+                </button>
               </div>
+            );
+          }
+
+          return (
+            <div className="bg-gradient-to-l from-amber-500/15 via-orange-500/10 to-transparent border-2 border-amber-400 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm ring-2 ring-amber-400/30">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 animate-pulse">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full animate-pulse">
+                      الحصة جارية الآن 🔴
+                    </span>
+                    <h4 className="text-sm font-black text-slate-900">
+                      {pTitle}: {cur.subjectName} ({cur.startTime} – {cur.endTime})
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-600 font-bold mt-0.5">
+                    لم توثّق حضورك في هذه الحصة بعد! اضغط لتسجيل الحضور بلمح البصر.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetPeriodForModal({ periodNumber: cur.periodNumber, subjectName: cur.subjectName });
+                  setShowFaceAttendanceModal(true);
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer self-stretch sm:self-center justify-center"
+              >
+                <ScanFace size={16} />
+                <span>سجّل حضور {pTitle} الآن 📸</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowFaceAttendanceModal(true)}
-              className="text-xs font-black text-emerald-700 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer self-end sm:self-center"
-            >
-              <RefreshCw size={13} />
-              <span>إعادة المسح والتحقق</span>
-            </button>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-l from-amber-500/10 via-orange-500/5 to-transparent border border-amber-300/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 animate-pulse">
-                <Clock size={24} />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">
-                  لم يتم تأكيد حضورك لهذا اليوم بعد ⏳
-                </h4>
-                <p className="text-xs font-bold text-slate-500 mt-0.5">
-                  اضغط على الزر وسجّل حضورك بمسح سريع لوجهك خلال ثانيتين فقط!
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowFaceAttendanceModal(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer self-stretch sm:self-center justify-center"
-            >
-              <ScanFace size={16} />
-              <span>سجّل حضورك ببصمة الوجه الآن 📸</span>
-            </button>
-          </div>
-        )}
+          );
+        })()}
+
+        {/* 7 Periods Quick Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+          {(() => {
+            const todays = getTodayPeriods(getSavedSchedule());
+            const list = todays.length > 0 ? todays : [
+              { dayOfWeek: 0, periodNumber: 1, subjectName: 'لغتي', startTime: '07:00', endTime: '07:45' },
+              { dayOfWeek: 0, periodNumber: 2, subjectName: 'رياضيات', startTime: '07:45', endTime: '08:30' },
+              { dayOfWeek: 0, periodNumber: 3, subjectName: 'إسلامية', startTime: '08:30', endTime: '09:15' },
+              { dayOfWeek: 0, periodNumber: 4, subjectName: 'قرآن', startTime: '09:30', endTime: '10:15' },
+              { dayOfWeek: 0, periodNumber: 5, subjectName: 'علوم', startTime: '10:15', endTime: '11:00' },
+              { dayOfWeek: 0, periodNumber: 6, subjectName: 'فنية', startTime: '11:00', endTime: '11:45' },
+              { dayOfWeek: 0, periodNumber: 7, subjectName: 'نشاط', startTime: '11:45', endTime: '12:30' },
+            ];
+            const curP = getCurrentPeriod(getSavedSchedule());
+
+            return list.map(p => {
+              const rec = todayPeriodsAttendance[p.periodNumber];
+              const isPres = rec?.status === 'present';
+              const isCur = curP?.periodNumber === p.periodNumber;
+
+              return (
+                <button
+                  key={p.periodNumber}
+                  type="button"
+                  onClick={() => {
+                    setTargetPeriodForModal({ periodNumber: p.periodNumber, subjectName: p.subjectName });
+                    setShowFaceAttendanceModal(true);
+                  }}
+                  className={`p-2.5 rounded-2xl border text-right transition flex flex-col justify-between gap-1 cursor-pointer ${
+                    isPres
+                      ? 'bg-emerald-50 border-emerald-300 hover:bg-emerald-100/60'
+                      : isCur
+                      ? 'bg-amber-50 border-amber-400 hover:bg-amber-100/60 ring-2 ring-amber-400/40'
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-500">حـ{p.periodNumber}</span>
+                    {isPres ? (
+                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full">حاضر ✓</span>
+                    ) : isCur ? (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    ) : (
+                      <span className="text-[9px] text-slate-400 font-bold">قادمة</span>
+                    )}
+                  </div>
+                  <p className="text-xs font-black text-slate-900 truncate mt-0.5">{p.subjectName}</p>
+                  <p className="text-[10px] text-slate-500 font-bold">{p.startTime}</p>
+                </button>
+              );
+            });
+          })()}
+        </div>
       </div>
 
       {/* Face ID Quick Action Banner */}
@@ -1547,12 +1738,55 @@ export default function StudentDashboard() {
           studentId={studentId || (studentRecord as any)?.id || accountSessionId || ''}
           studentName={studentName}
           branch={isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR'}
-          onClose={() => setShowFaceAttendanceModal(false)}
+          targetPeriodNumber={targetPeriodForModal?.periodNumber}
+          targetSubjectName={targetPeriodForModal?.subjectName}
+          onClose={() => {
+            setShowFaceAttendanceModal(false);
+            setTargetPeriodForModal(null);
+          }}
           onSuccess={(record) => {
             setTodayAttendance(record);
+            const resolvedId = studentId || (studentRecord as any)?.id || accountSessionId || '';
+            if (resolvedId) {
+              setTodayPeriodsAttendance(getStudentTodayPeriodsAttendance(resolvedId));
+            }
             setShowFaceAttendanceModal(false);
+            setTargetPeriodForModal(null);
           }}
         />
+      )}
+
+      {/* Snapshot Photo Preview Lightbox */}
+      {selectedPhotoPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={() => setSelectedPhotoPreview(null)}
+          dir="rtl"
+        >
+          <div
+            className="bg-white rounded-3xl p-5 max-w-sm w-full text-center space-y-3 shadow-2xl border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-black text-slate-800">{selectedPhotoPreview.title}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedPhotoPreview(null)}
+                className="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <img
+              src={selectedPhotoPreview.photoUrl}
+              alt={selectedPhotoPreview.title}
+              className="w-56 h-56 mx-auto rounded-2xl object-cover border-4 border-emerald-500 shadow-xl"
+            />
+            <div className="bg-slate-50 rounded-xl p-2 text-xs font-bold text-slate-600">
+              <span>توقيت التحقق المباشر: {selectedPhotoPreview.time}</span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

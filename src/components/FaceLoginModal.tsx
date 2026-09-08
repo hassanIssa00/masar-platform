@@ -32,11 +32,38 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         body: JSON.stringify({ embedding }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok || !data.account) {
-        throw new Error(data?.error || 'لم يتم التعرف على الوجه');
+      if (res.ok && data?.ok && data.account) {
+        resolvedAccount = data.account as AccountRecord;
       }
-      resolvedAccount = data.account as AccountRecord;
-    } catch {
+    } catch (apiErr) {
+      console.warn('[FaceLoginModal] Cloud face auth error, attempting local match:', apiErr);
+    }
+
+    // Client-side fallback: check locally registered faces if server didn't resolve
+    if (!resolvedAccount) {
+      try {
+        const { findBestFaceMatch } = await import('@/lib/faceAuth');
+        const match = findBestFaceMatch(embedding);
+        if (match?.record) {
+          const allAccounts = getAccounts();
+          const targetId = match.record.userId || match.record.accountId || match.record.studentId;
+          const found = allAccounts.find(
+            a => a.id === targetId ||
+                 a.linkedStudentId === targetId ||
+                 (match.record?.accountId && a.id === match.record.accountId) ||
+                 (match.record?.studentId && a.linkedStudentId === match.record.studentId) ||
+                 (match.record?.userName && a.name.trim().toLowerCase() === match.record.userName.trim().toLowerCase())
+          );
+          if (found) {
+            resolvedAccount = found;
+          }
+        }
+      } catch (localErr) {
+        console.warn('[FaceLoginModal] Local match fallback error:', localErr);
+      }
+    }
+
+    if (!resolvedAccount) {
       const count = failCount + 1;
       setFailCount(count);
       if (count >= 3) {

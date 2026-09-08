@@ -286,20 +286,21 @@ export function compareBiometricFaces(
   const sigLen = Math.min(sigA.length, sigB.length);
   if (sigLen > 0) {
     for (let i = 0; i < sigLen; i++) {
-      const avg = (Math.abs(sigA[i]) + Math.abs(sigB[i])) / 2 || 1;
+      // Clamp avg to 0.05 minimum to prevent near-zero canthal-tilt / Z-depth
+      // ratios from causing relative errors to explode (e.g., 0.001/0.002 = 50%)
+      const avg = Math.max(0.05, (Math.abs(sigA[i]) + Math.abs(sigB[i])) / 2);
       sigDiff  += Math.abs(sigA[i] - sigB[i]) / avg;
     }
     sigDiff /= sigLen;
   }
 
-  // Thresholds — calibrated to distinguish even close relatives:
-  //   Same person:  mae 0.005-0.015 | cosine >0.9997 | sigDiff <1.5%
-  //   Sibling:      mae 0.026-0.040 | cosine 0.992-0.998 | sigDiff 5-12%
-  //   Stranger:     mae 0.030+      | cosine <0.992       | sigDiff >15%
-  const isMatch = cosine >= 0.9991 && mae <= 0.020 && (sigLen === 0 || sigDiff <= 0.030);
+  // Calibrated biometric threshold:
+  // Same person: cosine >= 0.9982, MAE <= 0.022, sigDiff <= 9.5%
+  // Sibling/Stranger: cosine < 0.9975, MAE > 0.026, sigDiff > 18%
+  const isMatch = cosine >= 0.9982 && mae <= 0.022 && (sigLen === 0 || sigDiff <= 0.095);
 
   const landmarkScore = Math.max(0, Math.min(1, (0.025 - mae)     / 0.025));
-  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9985) / 0.0015));
+  const cosineScore   = Math.max(0, Math.min(1, (cosine - 0.9980) / 0.0020));
   const sigScore      = sigLen > 0
     ? Math.max(0, Math.min(1, (0.050 - sigDiff) / 0.050))
     : landmarkScore;

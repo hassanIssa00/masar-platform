@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckCircle2, AlertCircle, ScanFace, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, ScanFace, Loader2, Sparkles, ShieldCheck, Clock, BookOpen } from 'lucide-react';
 import FaceCamera from './FaceCamera';
 import { verifyFace, findBestMatch } from '@/lib/faceAuth';
-import { markStudentAttendanceViaFace, AttendanceRecord } from '@/lib/attendance';
+import { markStudentAttendanceViaFace, AttendanceRecord, resolveActivePeriod, PERIOD_NAMES } from '@/lib/attendance';
 
 interface Props {
   studentId: string;
   studentName: string;
   branch?: 'MASAR' | 'IKHLAS_JEDDAH';
+  targetPeriodNumber?: number;
+  targetSubjectName?: string;
   onClose: () => void;
   onSuccess: (record: AttendanceRecord) => void;
 }
@@ -18,19 +20,27 @@ export default function StudentFaceAttendanceModal({
   studentId,
   studentName,
   branch = 'MASAR',
+  targetPeriodNumber,
+  targetSubjectName,
   onClose,
   onSuccess,
 }: Props) {
+  const defaultPeriod = resolveActivePeriod(targetPeriodNumber);
+  const [selectedPeriodNumber, setSelectedPeriodNumber] = useState<number>(targetPeriodNumber || defaultPeriod.periodNumber);
   const [status, setStatus] = useState<'scan' | 'verifying' | 'success' | 'error'>('scan');
   const [errorMsg, setErrorMsg] = useState('');
   const [verifiedTime, setVerifiedTime] = useState('');
   const [capturedSnapshot, setCapturedSnapshot] = useState<string | null>(null);
+  const [recordedRecord, setRecordedRecord] = useState<AttendanceRecord | null>(null);
 
-  const speakCelebration = (name: string) => {
+  const currentPeriodName = PERIOD_NAMES[selectedPeriodNumber] || `الحصة ${selectedPeriodNumber}`;
+  const currentSubjectName = targetSubjectName || defaultPeriod.subjectName;
+
+  const speakCelebration = (name: string, pName: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(`أهلاً بك يا ${name}! تم تسجيل حضورك اليوم بنجاح.`);
+        const utterance = new SpeechSynthesisUtterance(`أهلاً بك يا ${name}! تم تسجيل حضورك في ${pName} بنجاح.`);
         utterance.lang = 'ar-SA';
         utterance.rate = 1.0;
         window.speechSynthesis.speak(utterance);
@@ -80,12 +90,16 @@ export default function StudentFaceAttendanceModal({
           confidence: sim,
           isClassroom: branch === 'IKHLAS_JEDDAH',
           capturedPhotoUrl: snapshot,
+          periodNumber: selectedPeriodNumber,
+          periodName: currentPeriodName,
+          subjectName: currentSubjectName,
         });
 
         const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         setVerifiedTime(timeStr);
+        setRecordedRecord(record);
         setStatus('success');
-        speakCelebration(studentName);
+        speakCelebration(studentName, currentPeriodName);
 
         setTimeout(() => {
           onSuccess(record);
@@ -113,12 +127,12 @@ export default function StudentFaceAttendanceModal({
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <span>تسجيل الحضور ببصمة الوجه</span>
+                <span>تسجيل حضور الحصة بالبصمة</span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  ذكاء اصطناعي ⚡
+                  {currentPeriodName} 📚
                 </span>
               </h3>
-              <p className="text-xs font-bold text-slate-500">الطالب: {studentName}</p>
+              <p className="text-xs font-bold text-slate-500">الطالب: {studentName} • المادة: {currentSubjectName}</p>
             </div>
           </div>
           <button
@@ -134,10 +148,36 @@ export default function StudentFaceAttendanceModal({
         <div className="p-6">
           {status === 'scan' && (
             <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-xs font-bold text-slate-600">
-                  انظر مباشرة إلى الكاميرا وسيقوم النظام بتسجيل حضورك فورياً تلقائياً ✨
-                </p>
+              {/* Period Selector Tabs */}
+              <div className="bg-slate-50 p-2 rounded-2xl border border-slate-200/80">
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <span className="text-[11px] font-black text-slate-600 flex items-center gap-1">
+                    <Clock size={12} className="text-emerald-600" />
+                    <span>اختر الحصة المراد تسجيل حضورها:</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {currentPeriodName}
+                  </span>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+                    const isSel = selectedPeriodNumber === num;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setSelectedPeriodNumber(num)}
+                        className={`py-1.5 px-1 rounded-xl text-center text-xs font-black transition cursor-pointer ${
+                          isSel
+                            ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/60'
+                        }`}
+                      >
+                        حـ{num}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-950">
@@ -166,7 +206,7 @@ export default function StudentFaceAttendanceModal({
               </div>
               <div>
                 <h4 className="text-base font-black text-slate-900">جاري مطابقة بصمة الوجه...</h4>
-                <p className="text-xs font-bold text-slate-500 mt-1">يتم التحقق من ملامح الوجه ومزامنة الحضور مع السحابة</p>
+                <p className="text-xs font-bold text-slate-500 mt-1">يتم التحقق وتوثيق حضور {currentPeriodName}</p>
               </div>
             </div>
           )}
@@ -191,7 +231,9 @@ export default function StudentFaceAttendanceModal({
               )}
               <div className="space-y-1">
                 <h4 className="text-xl font-black text-emerald-800">أهلاً بك يا {studentName}! 🌟</h4>
-                <p className="text-sm font-black text-slate-800">تم تسجيل حضورك اليوم بنجاح ببصمة الوجه</p>
+                <p className="text-sm font-black text-slate-800">
+                  تم تسجيل حضورك بنجاح في <span className="text-emerald-600 underline">{currentPeriodName} ({currentSubjectName})</span>
+                </p>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold mt-2">
                   <Sparkles size={13} />
                   <span>توقيت الحضور: {verifiedTime || 'الآن'}</span>
