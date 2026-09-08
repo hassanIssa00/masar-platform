@@ -20,7 +20,7 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Permissions-Policy", "value": "microphone=(self), camera=(self), geolocation=()" }
+        { "key": "Permissions-Policy", "value": "microphone=(self), camera=(self), geolocation=(self)" }
       ]
     }
   ]

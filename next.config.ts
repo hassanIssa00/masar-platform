@@ -174,10 +174,10 @@ const nextConfig: NextConfig = {
           // ── Permissions Policy ─────────────────────────────────────────────
           // camera=(self)        — Face ID requires camera on same-origin pages only
           // microphone=(self)    — Student oral assessments require recording audio
-          // geolocation=()   — Not used by the application
-          // payment=()       — No payment APIs used
-          // usb=()           — Not used
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()' },
+          // geolocation=(self)   — Student classroom GPS geofencing
+          // payment=()           — No payment APIs used
+          // usb=()               — Not used
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()' },
         ],
       },
       {
