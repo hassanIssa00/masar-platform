@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
+import { getSaudiNow, formatSaudiDate } from './saudiTime';
 
 export interface AttendanceEntry {
   studentId: string;
@@ -97,9 +98,9 @@ export function autoSaveAttendanceSnapshot(
 ): DailyAttendanceSnapshot {
   if (typeof window === 'undefined') throw new Error('client only');
 
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const dayName = DAY_NAMES_AR[today.getDay()] ?? 'يوم دراسي';
+  const saudi = getSaudiNow();
+  const dateStr = saudi.dateStr;
+  const dayName = saudi.dayArabicName;
 
   const totalPresent = entries.filter(e => e.status === 'present').length;
   const totalAbsent  = entries.filter(e => e.status === 'absent').length;
@@ -121,8 +122,8 @@ export function autoSaveAttendanceSnapshot(
     totalLate,
     presentRate,
     savedBy: options?.savedBy ?? 'د. إسماعيل عيسى',
-    createdAt: existing?.createdAt ?? today.toISOString(),
-    updatedAt: today.toISOString(),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   const all = readCloudCache<DailyAttendanceSnapshot>(ATT_ARCHIVE_KEY).filter(s => s.id !== id);
@@ -175,10 +176,12 @@ export function saveQuizSnapshot(
 
 export function formatArabicDate(dateStr: string): string {
   try {
-    const d = new Date(dateStr + 'T00:00:00');
-    const dayName = DAY_NAMES_AR[d.getDay()] ?? '';
-    const formatted = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
-    return `${dayName} ${formatted}`;
+    return formatSaudiDate(dateStr + 'T12:00:00', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   } catch { return dateStr; }
 }
 

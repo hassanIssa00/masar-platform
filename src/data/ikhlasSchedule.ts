@@ -1,3 +1,5 @@
+import { getSaudiNow } from '@/lib/saudiTime';
+
 // جدول الحصص الأسبوعي — فصل د. إسماعيل عيسى
 // يُستخدَم من الـ Frontend كمصدر الجدول الرسمي المعتمد.
 
@@ -170,31 +172,30 @@ export function getSavedSchedule(): Period[] {
 }
 
 export function getTodayPeriods(schedule: Period[], targetDay?: number): Period[] {
-  const jsDay = targetDay !== undefined ? targetDay : new Date().getDay(); // 0=Sun…6=Sat
+  const jsDay = targetDay !== undefined ? targetDay : getSaudiNow().dayOfWeek;
   if (jsDay === 5 || jsDay === 6) return []; // جمعة وسبت إجازة
   return schedule.filter((p) => p.dayOfWeek === jsDay).sort((a, b) => a.periodNumber - b.periodNumber);
 }
 
 export function getCurrentPeriod(schedule: Period[]): Period | null {
-  const now = new Date();
-  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const todays = getTodayPeriods(schedule);
-  return todays.find((p) => hhmm >= p.startTime && hhmm < p.endTime) ?? null;
+  const saudi = getSaudiNow();
+  const todays = getTodayPeriods(schedule, saudi.dayOfWeek);
+  return todays.find((p) => saudi.hhmm >= p.startTime && saudi.hhmm < p.endTime) ?? null;
 }
 
 export function getMinutesUntilDismissal(schedule: Period[]): number {
-  const jsDay = new Date().getDay();
+  const saudi = getSaudiNow();
+  const jsDay = saudi.dayOfWeek;
   if (jsDay === 5 || jsDay === 6) return -1; // إجازة
   
-  // موعد الانصراف الرسمي لعام 1448هـ:
+  // موعد الانصراف الرسمي لعام 1448هـ (بتوقيت مكة المكرمة):
   // الأربعاء والخميس: 11:45 ص
   // الأحد، الاثنين، الثلاثاء: 12:40 م (بعد صلاة الظهر)
   const isEarlyDay = jsDay === 3 || jsDay === 4; // الأربعاء والخميس
   const dismissalHour = isEarlyDay ? 11 : 12;
   const dismissalMin = isEarlyDay ? 45 : 40;
 
-  const now = new Date();
-  const dismissal = new Date(now);
-  dismissal.setHours(dismissalHour, dismissalMin, 0, 0);
-  return Math.floor((dismissal.getTime() - now.getTime()) / 60000);
+  const dismissalMinutes = dismissalHour * 60 + dismissalMin;
+  const currentMinutes = saudi.hours * 60 + saudi.minutes;
+  return dismissalMinutes - currentMinutes;
 }

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { saveMessage, saveReport, saveActivity } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
+import { formatSaudiDate } from '@/lib/saudiTime';
 
 interface Student {
   id: string;
@@ -234,7 +235,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   const handlePrintStudentReport = (student: Student) => {
     const metrics = getStudentMetrics(student.id);
     const refNum = stableReportNumber(student.id);
-    const issuedDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+    const issuedDate = formatSaudiDate(new Date(), { year: 'numeric', month: 'long', day: 'numeric' });
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const studentPhoto = student.photoUrl?.trim();
     const studentGrade = student.grade || 'الصف الأول / الفصل 1';
@@ -814,7 +815,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
                   {p.type === 'ANNOUNCEMENT' ? '📢 إعلان رقمي' : '💬 منشور عام'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
-                  {new Date(p.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {formatSaudiDate(p.createdAt, { year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
               <p className="text-xs font-bold text-slate-900 leading-relaxed pt-1">{p.body}</p>

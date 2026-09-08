@@ -18,6 +18,7 @@ import {
 import { getTodayPeriods, getCurrentPeriod, getSavedSchedule } from '@/data/ikhlasSchedule';
 import { getClassStudents, ClassStudentRecord } from '@/lib/classDb';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { getSaudiNow, formatSaudiDate } from '@/lib/saudiTime';
 
 
 
@@ -60,9 +61,9 @@ export default function ClassroomFaceAttendanceFullPage({
   const [activePopup, setActivePopup] = useState<RecognizedEvent | null>(null);
   const [kioskPeriodNumber, setKioskPeriodNumber] = useState<number>(() => resolveActivePeriod().periodNumber);
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getSaudiNow().dateStr, []);
   const todayArabicDate = useMemo(() => {
-    return new Date().toLocaleDateString('ar-SA', {
+    return formatSaudiDate(new Date(), {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -250,7 +251,7 @@ export default function ClassroomFaceAttendanceFullPage({
       const existingPeriodAtt = getStudentPeriodAttendance(studentId, kioskPeriodNumber, todayStr);
       const isAlreadyPresent = existingPeriodAtt?.status === 'present';
 
-      const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const timeStr = getSaudiNow().timeStr;
 
       // Capture live snapshot photo from kiosk camera
       let capturedSnapshot: string | undefined;
@@ -365,7 +366,7 @@ export default function ClassroomFaceAttendanceFullPage({
 
   // Quick manual status change
   const handleQuickStatusChange = async (student: ClassStudentRecord, newStatus: 'present' | 'absent' | 'late') => {
-    const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = getSaudiNow().timeShortStr;
     const existing = stats.map.get(student.id);
 
     if (existing) {

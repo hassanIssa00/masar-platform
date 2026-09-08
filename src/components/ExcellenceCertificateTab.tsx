@@ -8,6 +8,7 @@ import { saveMessage, getStudents } from '@/lib/cloudStore';
 import { readCloudCache } from '@/lib/firestoreSync';
 import { createNotification } from '@/lib/notifications';
 import { normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
+import { formatSaudiDate } from '@/lib/saudiTime';
 
 /* ── Suggested Achievement Presets (User can pick or type custom) ── */
 const SUGGESTED_ACHIEVEMENTS = [
@@ -87,7 +88,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     achievement: 'التقدم الملحوظ في مهارات التعلم الحديث',
     score: 100,
     ratingText: 'ممتاز مع مرتبة الشرف 🌟',
-    date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+    date: formatSaudiDate(new Date(), { year: 'numeric', month: 'long', day: 'numeric' }),
     note: 'طالب متميز ومتفوق أظهر التزاماً استثنائياً ومهارات عالية.',
     certNumber: `NSR-CERT-2026-${stableExcellenceCertSuffix('default-excellence-certificate')}`,
   });

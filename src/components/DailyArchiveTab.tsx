@@ -23,6 +23,7 @@ import { getClassStudents, getStudentHomeworkLogs, type ClassStudentRecord } fro
 import { getSubmissions, type StudentQuizSubmission } from '@/lib/curriculumDb';
 import { isStudentNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 import { readCloudCache } from '@/lib/firestoreSync';
+import { getSaudiNow } from '@/lib/saudiTime';
 
 type ViewMode = 'dossiers' | 'daily_archive';
 type ArchiveSection = 'attendance' | 'homework' | 'quizzes';
@@ -167,7 +168,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
   const isDateInSelectedDuration = (dateStr?: string): boolean => {
     if (!dateStr) return true;
     const dOnly = dateStr.split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
+    const today = getSaudiNow().dateStr;
 
     if (durationPreset === 'all') return true;
     if (durationPreset === 'today') return dOnly === today;
@@ -192,7 +193,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
   };
 
   const currentDurationLabel = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getSaudiNow().dateStr;
     if (durationPreset === 'all') return 'كامل السجل الدراسي';
     if (durationPreset === 'today') return `اليوم (${formatArabicDate(today)})`;
     if (durationPreset === 'week') return 'آخر 7 أيام (هذا الأسبوع)';
@@ -231,7 +232,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
 
     // Check today's matrix if not already recorded in snapshot
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getSaudiNow().dateStr;
       if (!seenDates.has(todayStr)) {
         const cached = readCloudCache<{ id: string; matrix: Record<string, Record<number, any>> }>('masar_period_attendance_v2_');
         const todayItem = cached.find(item => item.id.includes(todayStr));
@@ -354,7 +355,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
           const qInfo = quizMap.get(s.quizId);
           const title = qInfo?.title || 'اختبار تفاعلي قصير';
           const subject = qInfo?.subjectName || 'المنهج الدراسي';
-          const date = (s.submittedAt || '').split('T')[0] || new Date().toISOString().split('T')[0];
+          const date = (s.submittedAt || '').split('T')[0] || getSaudiNow().dateStr;
           const key = `${title}_${date}`;
           if (!seen.has(key)) {
             seen.add(key);

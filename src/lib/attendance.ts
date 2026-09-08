@@ -2,6 +2,7 @@
 
 import { readCloudCache, syncDocToCloud, writeCloudCache } from './firestoreSync';
 import { getCurrentPeriod, getTodayPeriods, getSavedSchedule, Period } from '@/data/ikhlasSchedule';
+import { getSaudiNow, SAUDI_TIMEZONE } from './saudiTime';
 
 export interface AttendanceRecord {
   id: string;
@@ -46,8 +47,11 @@ export function saveLocalAttendance(items: AttendanceRecord[]) {
 }
 
 export async function recordAttendance(data: Omit<AttendanceRecord, 'id' | 'createdAt'>): Promise<AttendanceRecord> {
+  const saudi = getSaudiNow();
   const item: AttendanceRecord = {
     ...data,
+    sessionDate: data.sessionDate || saudi.dateStr,
+    sessionTime: data.sessionTime || saudi.timeStr,
     id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
   };
@@ -79,7 +83,7 @@ export function getStudentPeriodAttendance(
   periodNumber: number,
   dateStr?: string,
 ): AttendanceRecord | undefined {
-  const today = dateStr || new Date().toISOString().split('T')[0];
+  const today = dateStr || getSaudiNow().dateStr;
   const list = getLocalAttendance();
   return list.find(
     r => (r.studentId === studentId || r.studentName === studentId) &&
@@ -95,7 +99,7 @@ export function getStudentTodayPeriodsAttendance(
   studentId: string,
   dateStr?: string,
 ): Record<number, AttendanceRecord> {
-  const today = dateStr || new Date().toISOString().split('T')[0];
+  const today = dateStr || getSaudiNow().dateStr;
   const list = getLocalAttendance();
   const map: Record<number, AttendanceRecord> = {};
   list
@@ -114,7 +118,7 @@ export function getStudentTodayPeriodsAttendance(
  * Returns the student's latest attendance record for today (any period), or undefined.
  */
 export function getStudentTodayAttendance(studentId: string, dateStr?: string): AttendanceRecord | undefined {
-  const today = dateStr || new Date().toISOString().split('T')[0];
+  const today = dateStr || getSaudiNow().dateStr;
   const list = getLocalAttendance();
   const records = list.filter(r => (r.studentId === studentId || r.studentName === studentId) && r.sessionDate === today);
   if (records.length === 0) return undefined;
@@ -176,9 +180,9 @@ export async function markStudentAttendanceViaFace(
     subjectName?: string;
   }
 ): Promise<{ record: AttendanceRecord; isNew: boolean }> {
-  const todayStr = options?.sessionDate || new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const saudi = getSaudiNow();
+  const todayStr = options?.sessionDate || saudi.dateStr;
+  const timeStr = saudi.timeStr;
 
   // Resolve target period
   const resolvedPeriod = resolveActivePeriod(options?.periodNumber);
@@ -259,7 +263,7 @@ export async function markStudentAttendanceViaFace(
       const updatedRecord = {
         id: storageKey,
         date: todayStr,
-        updatedAt: now.toISOString(),
+        updatedAt: saudi.date.toISOString(),
         matrix,
       };
 

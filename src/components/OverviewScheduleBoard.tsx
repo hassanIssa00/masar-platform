@@ -7,6 +7,7 @@ import {
   Layers, AlertTriangle, ExternalLink, ShieldCheck, Check
 } from 'lucide-react';
 import { Period, DAY_NAMES, getSavedSchedule, getTodayPeriods, getCurrentPeriod, getMinutesUntilDismissal } from '@/data/ikhlasSchedule';
+import { getSaudiNow } from '@/lib/saudiTime';
 
 interface Props {
   schedule?: Period[];
@@ -116,7 +117,7 @@ export default function OverviewScheduleBoard({
   schoolBranch,
 }: Props) {
   const schedule = useMemo(() => passedSchedule || getSavedSchedule(), [passedSchedule]);
-  const jsDay = passedJsDay !== undefined ? passedJsDay : new Date().getDay();
+  const jsDay = passedJsDay !== undefined ? passedJsDay : getSaudiNow().dayOfWeek;
   const todayPeriods = useMemo(() => passedTodayPeriods || getTodayPeriods(schedule, jsDay), [passedTodayPeriods, schedule, jsDay]);
   const currentPeriod = passedCurrentPeriod !== undefined ? passedCurrentPeriod : getCurrentPeriod(schedule);
   const minsUntilDismissal = passedMins !== undefined ? passedMins : getMinutesUntilDismissal(schedule);
@@ -132,8 +133,7 @@ export default function OverviewScheduleBoard({
 
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      setCurrentTimeStr(now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+      setCurrentTimeStr(getSaudiNow().timeShortStr);
     };
     updateTime();
     const timer = setInterval(updateTime, 10000);

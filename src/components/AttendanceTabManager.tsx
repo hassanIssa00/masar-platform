@@ -12,6 +12,7 @@ import { Period, DAY_NAMES, getTodayPeriods } from '@/data/ikhlasSchedule';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
 import { autoSaveAttendanceSnapshot } from '@/lib/dailyArchive';
 import { getLocalAttendance, AttendanceRecord } from '@/lib/attendance';
+import { getSaudiNow, formatSaudiDate } from '@/lib/saudiTime';
 
 export interface Student {
   id: string;
@@ -45,13 +46,13 @@ export default function AttendanceTabManager({
   currentPeriod = null,
   onSaveAttendance,
 }: Props) {
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getSaudiNow().dateStr, []);
   const storageKey = `${STORAGE_KEY_PREFIX}${todayStr}`;
 
   // 1. Get today's periods from schedule
   const todayPeriodsList = useMemo(() => {
-    const jsDay = new Date().getDay();
-    const periods = schedule.filter(p => p.dayOfWeek === (jsDay >= 0 && jsDay <= 4 ? jsDay : 0));
+    const ksaDay = getSaudiNow().dayOfWeek;
+    const periods = schedule.filter(p => p.dayOfWeek === (ksaDay >= 0 && ksaDay <= 4 ? ksaDay : 0));
     const sorted = periods.sort((a, b) => a.periodNumber - b.periodNumber);
     if (sorted.length > 0) return sorted;
     // Fallback standard periods (1448H timetable)
@@ -137,8 +138,8 @@ export default function AttendanceTabManager({
           exitTime: rec.exitLogged,
         };
       });
-      const jsDay = new Date().getDay();
-      const isEarlyDay = jsDay === 3 || jsDay === 4;
+      const ksaDay = getSaudiNow().dayOfWeek;
+      const isEarlyDay = ksaDay === 3 || ksaDay === 4;
       autoSaveAttendanceSnapshot(entries, {
         sessionStart: todayPeriodsList[0]?.startTime || '07:00',
         sessionEnd: todayPeriodsList[todayPeriodsList.length - 1]?.endTime || (isEarlyDay ? '11:45' : '12:30'),
@@ -298,7 +299,7 @@ export default function AttendanceTabManager({
 
   // ── Log exit time ──
   const handleLogExit = (studentId: string, periodNum: number, name: string) => {
-    const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = getSaudiNow().timeShortStr;
     setAttendanceMatrix(prev => {
       const studentRecs = prev[studentId] || {};
       const currentRec = studentRecs[periodNum] || { status: 'present', score: 95 };

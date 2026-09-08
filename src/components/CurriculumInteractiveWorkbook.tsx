@@ -28,6 +28,7 @@ import { getAccounts, getSession, getStudents, saveMessage, saveReport, type Stu
 import { getClassStudents, saveStudentHomeworkLog } from '@/lib/classDb';
 import { createHomework } from '@/lib/homework';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
+import { getSaudiNow } from '@/lib/saudiTime';
 import { recordStudentLearningActivity } from '@/lib/learningProgress';
 import { broadcastHomeworkToParents } from '@/lib/broadcastService';
 import { createNotification } from '@/lib/notifications';
@@ -682,7 +683,7 @@ export default function CurriculumInteractiveWorkbook({
       grade: student.grade || curriculum.grade,
       program: `منهج ${curriculum.title}`,
       programColor: curriculum.color,
-      date: new Date().toISOString().split('T')[0],
+      date: getSaudiNow().dateStr,
       score: 100,
       status: 'completed',
       type: 'student-assessment-analysis',

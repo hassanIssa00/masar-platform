@@ -6,6 +6,7 @@ import {
   Image as ImageIcon, Upload, Trash2, Tag, Layers, Share2,
   CheckCircle2, Heart, Trophy, Sun, Compass
 } from 'lucide-react';
+import { getSaudiNow } from '@/lib/saudiTime';
 
 export interface ClassEventItem {
   id: string;
@@ -117,7 +118,7 @@ export default function ClassEventsArchiveTab({ eventsList, onCreateEvent }: Pro
   const [category, setCategory] = useState<ClassEventItem['category']>('party');
   const [driveUrl, setDriveUrl] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => getSaudiNow().dateStr);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 

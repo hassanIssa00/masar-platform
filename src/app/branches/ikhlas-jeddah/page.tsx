@@ -40,6 +40,7 @@ import DailyArchiveTab from '@/components/DailyArchiveTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
 import StudentBadgesManagerTab from '@/components/StudentBadgesManagerTab';
 import ClassroomFaceAttendanceFullPage from '@/components/ClassroomFaceAttendanceFullPage';
+import { getSaudiNow, formatSaudiDate } from '@/lib/saudiTime';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -316,9 +317,9 @@ export default function IkhlasJeddahPage() {
 
   /* ── Attendance Actions ── */
   const logExit = async (studentId: string, studentName: string) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-    const today = now.toISOString().slice(0, 10);
+    const saudi = getSaudiNow();
+    const timeStr = saudi.timeShortStr;
+    const today = saudi.dateStr;
     setExitLogged(prev => ({ ...prev, [studentId]: timeStr }));
     const att = attendance[studentId] ?? { status: 'present', score: 90 };
     try {
@@ -342,7 +343,7 @@ export default function IkhlasJeddahPage() {
         method: 'POST', headers: authHeaders(),
         body: JSON.stringify({
           branch: BRANCH, studentName, studentId,
-          date: new Date().toISOString().slice(0, 10),
+          date: getSaudiNow().dateStr,
           attendance: 'present', lateAlertSent: true,
           exitTime, parentNotified: true,
         }),
@@ -657,8 +658,9 @@ export default function IkhlasJeddahPage() {
     },
   ];
 
-  const jsDay = new Date().getDay();
-  const isSchoolDay = jsDay >= 0 && jsDay <= 4;
+  const ksaDay = getSaudiNow().dayOfWeek;
+  const jsDay = ksaDay;
+  const isSchoolDay = ksaDay >= 0 && ksaDay <= 4;
   const presentCount = Object.values(attendance).filter(a => a.status === 'present').length;
   const absentCount  = Object.values(attendance).filter(a => a.status === 'absent').length;
 
@@ -1096,7 +1098,7 @@ export default function IkhlasJeddahPage() {
                     headers: authHeaders(),
                     body: JSON.stringify({
                       branch: BRANCH,
-                      date: new Date().toISOString().split('T')[0],
+                      date: getSaudiNow().dateStr,
                       records: Object.entries(attMap).flatMap(([sid, periods]) =>
                         Object.entries(periods as Record<number, any>).map(([pNum, rec]) => ({
                           studentId: sid,
