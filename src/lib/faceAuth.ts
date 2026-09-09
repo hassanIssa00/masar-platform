@@ -342,7 +342,23 @@ function bestMatchForRecord(
   const candidates: number[][] = [];
   if (Array.isArray(record.embeddings) && record.embeddings.length > 0) {
     candidates.push(...record.embeddings);
-  } else if (Array.isArray(record.embedding) && record.embedding.length > 0) {
+  }
+  if (record.poses && typeof record.poses === 'object') {
+    Object.values(record.poses).forEach((p: any) => {
+      if (Array.isArray(p) && p.length > 0) candidates.push(p);
+    });
+  }
+  if (record.embeddingsJson && typeof record.embeddingsJson === 'string') {
+    try {
+      const parsed = JSON.parse(record.embeddingsJson);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((p: any) => {
+          if (Array.isArray(p) && p.length > 0) candidates.push(p);
+        });
+      }
+    } catch {}
+  }
+  if (Array.isArray(record.embedding) && record.embedding.length > 0) {
     candidates.push(record.embedding);
   }
   if (candidates.length === 0) return { isMatch: false, similarity: 0 };
@@ -367,6 +383,8 @@ export interface FaceRecord {
   schoolBranch?: string;
   embedding:     number[];
   embeddings?:   number[][];
+  poses?:        Record<string, number[]>;
+  embeddingsJson?: string;
   enrolledAt?:   string;
 }
 

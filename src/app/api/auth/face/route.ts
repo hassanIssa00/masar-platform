@@ -186,6 +186,34 @@ function compareBiometricFaces(
   return { isMatch, similarity, confidence, mae, cosine, sigDiff, rigidSigDiff };
 }
 
+function extractRecordCandidates(record: any): number[][] {
+  const candidates: number[][] = [];
+  if (Array.isArray(record.embedding) && record.embedding.length > 0) {
+    candidates.push(record.embedding);
+  }
+  if (record.poses && typeof record.poses === 'object') {
+    Object.values(record.poses).forEach((p: any) => {
+      if (Array.isArray(p) && p.length > 0) candidates.push(p);
+    });
+  }
+  if (record.embeddingsJson && typeof record.embeddingsJson === 'string') {
+    try {
+      const parsed = JSON.parse(record.embeddingsJson);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((p: any) => {
+          if (Array.isArray(p) && p.length > 0) candidates.push(p);
+        });
+      }
+    } catch {}
+  }
+  if (Array.isArray(record.embeddings) && record.embeddings.length > 0) {
+    record.embeddings.forEach((p: any) => {
+      if (Array.isArray(p) && p.length > 0) candidates.push(p);
+    });
+  }
+  return candidates;
+}
+
 export async function POST(req: NextRequest) {
   const adminDb = getAdminDb();
   if (!adminDb) {
@@ -208,6 +236,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'بيانات التسجيل البيومتري غير صالحة.' }, { status: 400 });
     }
 
+    const poses: Record<string, number[]> = {};
+    multiEmbs.forEach((pose: any, i: number) => {
+      if (Array.isArray(pose) && pose.length > 0) {
+        poses[`pose_${i}`] = pose;
+      }
+    });
+
     const newRecord = {
       userId,
       accountId:    meta.accountId || userId,
@@ -218,22 +253,28 @@ export async function POST(req: NextRequest) {
       parentName:   meta.parentName || null,
       schoolBranch: meta.schoolBranch || 'MASAR',
       embedding:    emb,
-      embeddings:   multiEmbs,
+      poses,
+      embeddingsJson: JSON.stringify(multiEmbs),
       enrolledAt:   new Date().toISOString(),
       updatedAt:    new Date().toISOString(),
     };
 
-    const writes = [adminDb.collection('faceRecordsV2').doc(userId).set(newRecord, { merge: true })];
-    if (meta.accountId && meta.accountId !== userId) {
-      writes.push(adminDb.collection('faceRecordsV2').doc(meta.accountId).set({ ...newRecord, userId: meta.accountId }, { merge: true }));
-    }
-    if (meta.studentId && meta.studentId !== userId) {
-      writes.push(adminDb.collection('faceRecordsV2').doc(meta.studentId).set({ ...newRecord, userId: meta.studentId }, { merge: true }));
-    }
-    await Promise.all(writes);
+    try {
+      const writes = [adminDb.collection('faceRecordsV2').doc(userId).set(newRecord, { merge: true })];
+      if (meta.accountId && meta.accountId !== userId) {
+        writes.push(adminDb.collection('faceRecordsV2').doc(meta.accountId).set({ ...newRecord, userId: meta.accountId }, { merge: true }));
+      }
+      if (meta.studentId && meta.studentId !== userId) {
+        writes.push(adminDb.collection('faceRecordsV2').doc(meta.studentId).set({ ...newRecord, userId: meta.studentId }, { merge: true }));
+      }
+      await Promise.all(writes);
 
-    console.log(`[FaceID] Cloud enrolled successfully for ${userId} (${meta.userName}) with ${multiEmbs.length} template(s)`);
-    return NextResponse.json({ ok: true, message: 'تم حفظ بصمة الوجه سحابياً بنجاح.' });
+      console.log(`[FaceID] Cloud enrolled successfully for ${userId} (${meta.userName}) with ${multiEmbs.length} template(s)`);
+      return NextResponse.json({ ok: true, message: 'تم حفظ بصمة الوجه سحابياً بنجاح.' });
+    } catch (err: any) {
+      console.error('[FaceID] Enroll error:', err);
+      return NextResponse.json({ ok: false, error: err?.message || 'خطأ في الحفظ السحابي' }, { status: 500 });
+    }
   }
 
   const embedding: number[] = Array.isArray(body.embedding)
@@ -261,9 +302,7 @@ export async function POST(req: NextRequest) {
     const directDoc = await adminDb.collection('faceRecordsV2').doc(verifiedUserId).get();
     if (directDoc.exists) {
       const record = directDoc.data() as FaceRecordV2 & { embeddings?: number[][] };
-      const candidates: number[][] = [];
-      if (Array.isArray(record.embeddings) && record.embeddings.length > 0) candidates.push(...record.embeddings);
-      if (Array.isArray(record.embedding) && record.embedding.length > 0) candidates.push(record.embedding);
+      const candidates = extractRecordCandidates(record);
       for (const stored of candidates) {
         const res = compareBiometricFaces(stored, embedding);
         if (res.isMatch && res.similarity > best.similarity) {
@@ -281,10 +320,7 @@ export async function POST(req: NextRequest) {
       const userId = record.userId || doc.id;
       if (!userId) return;
 
-      const candidates: number[][] = [];
-      if (Array.isArray(record.embeddings) && record.embeddings.length > 0) candidates.push(...record.embeddings);
-      if (Array.isArray(record.embedding) && record.embedding.length > 0) candidates.push(record.embedding);
-
+      const candidates = extractRecordCandidates(record);
       for (const stored of candidates) {
         const res = compareBiometricFaces(stored, embedding);
         if (res.isMatch && res.similarity > best.similarity) {
@@ -412,6 +448,7 @@ export async function GET(req: NextRequest) {
       const snap = await adminDb.collection('faceRecordsV2').get();
       const templates = snap.docs.map((doc) => {
         const data = doc.data();
+        const candidateEmbeddings = extractRecordCandidates(data);
         return {
           userId: data.userId || doc.id,
           accountId: data.accountId,
@@ -421,8 +458,8 @@ export async function GET(req: NextRequest) {
           userRole: data.userRole,
           schoolBranch: data.schoolBranch,
           parentName: data.parentName,
-          embedding: data.embedding,
-          embeddings: data.embeddings,
+          embedding: data.embedding || (candidateEmbeddings.length > 0 ? candidateEmbeddings[0] : null),
+          embeddings: candidateEmbeddings,
         };
       });
       return NextResponse.json(
