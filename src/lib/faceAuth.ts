@@ -515,16 +515,63 @@ export function getAllFaceRecords(): FaceRecord[] {
   return readStore();
 }
 
-export function findBestFaceMatch(embedding: number[]): {
+export function findBestFaceMatch(
+  embedding: number[],
+  roleFilter?: 'student' | 'parent' | 'all'
+): {
   record: FaceRecord | null;
   similarity: number;
 } {
+  let records = readStore();
+  if (roleFilter && roleFilter !== 'all') {
+    records = records.filter(r => r.userRole === roleFilter);
+  }
   let best = { record: null as FaceRecord | null, similarity: 0 };
-  for (const r of readStore()) {
+  for (const r of records) {
     const { isMatch, similarity } = bestMatchForRecord(r, embedding);
     if (isMatch && similarity > best.similarity) best = { record: r, similarity };
   }
   return best;
+}
+
+export interface FaceMatchResult {
+  record: FaceRecord;
+  similarity: number;
+  confidence: number;
+}
+
+export function findAllFaceMatches(
+  embedding: number[],
+  threshold = 0.48,
+  roleFilter?: 'student' | 'parent' | 'all'
+): FaceMatchResult[] {
+  let records = readStore();
+  if (roleFilter && roleFilter !== 'all') {
+    records = records.filter(r => r.userRole === roleFilter);
+  }
+  const matches: FaceMatchResult[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const r of records) {
+    const canonicalId = r.studentId || r.accountId || r.userId || '';
+    const roleKey = r.userRole || 'user';
+    const key = `${roleKey}_${canonicalId}`;
+    if (seenKeys.has(key)) continue;
+
+    const { isMatch, similarity } = bestMatchForRecord(r, embedding);
+    if (isMatch && similarity >= threshold) {
+      seenKeys.add(key);
+      matches.push({
+        record: r,
+        similarity,
+        confidence: Math.round(similarity * 100),
+      });
+    }
+  }
+
+  // Sort descending by similarity
+  matches.sort((a, b) => b.similarity - a.similarity);
+  return matches;
 }
 
 export function matchFaceAgainstList(

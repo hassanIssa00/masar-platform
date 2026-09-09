@@ -74,6 +74,7 @@ export default function LoginPage() {
   const [loginMessage, setLoginMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [faceLoginOpen, setFaceLoginOpen] = useState(false);
+  const [faceLoginRole, setFaceLoginRole] = useState<'all' | 'student' | 'parent'>('all');
   const [rememberMe, setRememberMe] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -574,19 +575,49 @@ export default function LoginPage() {
           </div>
 
           {/* Face ID Login Button */}
-          <button
-            type="button"
-            onClick={() => setFaceLoginOpen(true)}
-            className="w-full mt-3 flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-sm transition-all shadow-sm border border-emerald-300 group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition">
-              <ScanFace size={18} />
+          <div className="mt-3 space-y-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setFaceLoginRole('all');
+                setFaceLoginOpen(true);
+              }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-sm transition-all shadow-sm border border-emerald-300 group cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+                <ScanFace size={18} />
+              </div>
+              <span>الدخول بالوجه — Face ID</span>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                🔒 آمن 100%
+              </span>
+            </button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setFaceLoginRole('student');
+                  setFaceLoginOpen(true);
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-xs font-black transition cursor-pointer active:scale-98"
+              >
+                <span>🎓</span>
+                <span>دخول طالب بالوجه</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFaceLoginRole('parent');
+                  setFaceLoginOpen(true);
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-black transition cursor-pointer active:scale-98"
+              >
+                <span>👨‍👧</span>
+                <span>دخول ولي أمر بالوجه</span>
+              </button>
             </div>
-            <span>الدخول بالوجه — Face ID</span>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full border border-emerald-300">
-              🔒 آمن 100%
-            </span>
-          </button>
+          </div>
 
           <div className="relative my-5 text-center">
             <div className="absolute inset-0 flex items-center">
@@ -716,6 +747,7 @@ export default function LoginPage() {
       {/* ── Face ID Login Modal ── */}
       {faceLoginOpen && (
         <FaceLoginModal
+          initialRole={faceLoginRole}
           onCancel={() => setFaceLoginOpen(false)}
           onFallback={() => setFaceLoginOpen(false)}
         />

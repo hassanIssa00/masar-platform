@@ -337,6 +337,7 @@ export async function POST(req: NextRequest) {
   }
 
   const verifiedUserId = typeof body.verifiedUserId === 'string' && body.verifiedUserId.trim() ? body.verifiedUserId.trim() : null;
+  const targetRole = typeof body.targetRole === 'string' && body.targetRole.trim() ? body.targetRole.trim() : null;
 
   let best: { userId: string | null; record: FaceRecordV2 | null; similarity: number; confidence: number } = {
     userId: null,
@@ -367,6 +368,7 @@ export async function POST(req: NextRequest) {
       const record = doc.data() as FaceRecordV2 & { embeddings?: number[][] };
       const userId = record.userId || doc.id;
       if (!userId) return;
+      if (targetRole && record.userRole && record.userRole !== targetRole) return;
 
       const candidates = extractRecordCandidates(record);
       for (const stored of candidates) {

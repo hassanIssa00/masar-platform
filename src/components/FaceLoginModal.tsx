@@ -1,27 +1,45 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
+import { ScanFace, Shield, Loader2, AlertTriangle, KeyRound, RefreshCw, CheckCircle2, ChevronLeft } from 'lucide-react';
 import FaceCamera from './FaceCamera';
-import { isFaceEnrolled } from '@/lib/faceAuth';
 import { AccountRecord, getAccounts, setSession } from '@/lib/cloudStore';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analyticsTracker';
+import type { FaceRecord } from '@/lib/faceAuth';
 
 interface Props {
   onCancel: () => void;
   onFallback: () => void;
+  initialRole?: 'all' | 'student' | 'parent';
 }
 
-type Phase = 'scanning' | 'verifying' | 'success' | 'fail' | 'no_enrolled';
+export interface MatchedCandidate {
+  account: AccountRecord;
+  targetId: string;
+  role: 'student' | 'parent';
+  name: string;
+  roleLabel: string;
+  branch: 'MASAR' | 'IKHLAS_JEDDAH';
+  targetUrl: string;
+  similarity: number;
+}
 
-export default function FaceLoginModal({ onCancel, onFallback }: Props) {
+type Phase = 'scanning' | 'verifying' | 'select_account' | 'success' | 'fail' | 'no_enrolled';
+
+export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'all' }: Props) {
   const router = useRouter();
+  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'parent'>(initialRole);
   const [phase, setPhase] = useState<Phase>('scanning');
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
   const [activeAccount, setActiveAccount] = useState<AccountRecord | null>(null);
+  const [targetRedirectUrl, setTargetRedirectUrl] = useState<string>('');
+  const [multipleCandidates, setMultipleCandidates] = useState<MatchedCandidate[]>([]);
+  
   const activeAccountRef = useRef<AccountRecord | null>(null);
+  const targetRedirectUrlRef = useRef<string>('');
+  const lastEmbeddingRef = useRef<number[]>([]);
   const cloudCheckingRef = useRef(false);
 
   // ── Pre-warm local biometric template cache & AI models immediately on modal open ──────────
@@ -50,103 +68,164 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     };
   }, []);
 
+  /** Helper to construct a normalized Candidate Account from any FaceRecord */
+  const buildCandidate = async (
+    record: FaceRecord,
+    similarity: number,
+    allAccounts: AccountRecord[],
+    allStudents: any[],
+    classStudents: any[]
+  ): Promise<MatchedCandidate> => {
+    const isParentRecord = record.userRole === 'parent';
+    const isStudentRecord = record.userRole === 'student';
+
+    const targetId = isParentRecord
+      ? (record.accountId || record.userId)
+      : (record.studentId || record.userId || record.accountId);
+
+    const foundAcc = allAccounts.find(
+      a => (targetId && a.id === targetId) ||
+           (record.userEmail && a.email?.toLowerCase() === record.userEmail.toLowerCase())
+    );
+
+    const isStudent = isStudentRecord || (!isParentRecord && foundAcc?.role === 'student');
+
+    const sid = record.studentId || foundAcc?.linkedStudentId || undefined;
+    const matchedClassStudent = classStudents.find(cs => sid && (cs.id === sid || cs.studentAccountId === sid));
+    const matchedGeneralStudent = allStudents.find(s => sid && (s.id === sid || s.studentAccountId === sid));
+
+    let branch: 'MASAR' | 'IKHLAS_JEDDAH' = 'MASAR';
+    if (
+      record.schoolBranch === 'IKHLAS_JEDDAH' ||
+      foundAcc?.schoolBranch === 'IKHLAS_JEDDAH' ||
+      Boolean(matchedClassStudent)
+    ) {
+      branch = 'IKHLAS_JEDDAH';
+    } else {
+      branch = 'MASAR';
+    }
+
+    if (isStudent) {
+      const studentId = sid || targetId || 'student';
+      const studentName = record.userName || matchedClassStudent?.fullName || matchedGeneralStudent?.fullName || foundAcc?.name || (branch === 'IKHLAS_JEDDAH' ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
+      const account = {
+        id: studentId,
+        name: studentName,
+        email: foundAcc?.email || record.userEmail || `${studentId}@masarplatform.org`,
+        role: 'student',
+        schoolBranch: branch,
+        linkedStudentId: studentId,
+      } as AccountRecord;
+      const targetUrl = `/school-student?student=${encodeURIComponent(studentId)}`;
+      const roleLabel = branch === 'IKHLAS_JEDDAH' ? 'طالب (فصل د. إسماعيل — جدة)' : 'طالب (مسار التأهيل)';
+      return {
+        account,
+        targetId: studentId,
+        role: 'student',
+        name: studentName,
+        roleLabel,
+        branch,
+        targetUrl,
+        similarity,
+      };
+    } else {
+      const pId = record.accountId || record.userId || foundAcc?.id || 'user';
+      const pName = record.userName || foundAcc?.name || 'ولي أمر';
+      const pEmail = foundAcc?.email || record.userEmail || `${pId}@masarplatform.org`;
+      const pLinkedSid = sid || foundAcc?.linkedStudentId || undefined;
+      const account = {
+        id: pId,
+        name: pName,
+        email: pEmail,
+        role: 'parent',
+        schoolBranch: branch,
+        linkedStudentId: pLinkedSid,
+        phone: foundAcc?.phone,
+      } as AccountRecord;
+      const sParam = pLinkedSid ? `?student=${encodeURIComponent(pLinkedSid)}` : '';
+      const targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
+      const roleLabel = branch === 'IKHLAS_JEDDAH' ? 'ولي أمر (فصل د. إسماعيل — جدة)' : 'ولي أمر (مسار التأهيل)';
+      return {
+        account,
+        targetId: pId,
+        role: 'parent',
+        name: pName,
+        roleLabel,
+        branch,
+        targetUrl,
+        similarity,
+      };
+    }
+  };
+
   /** Continuous background matching function - runs while live camera streams */
   const handleLiveVerify = async (embedding: number[]): Promise<{ ok: boolean; name?: string }> => {
-    let resolvedAccount: AccountRecord | null = null;
-    let matchedUserId: string | null = null;
+    lastEmbeddingRef.current = embedding;
 
-    // 1. Instant local biometric matching (0.005ms on client CPU)
+    // 1. Instant local biometric matching
     try {
-      const { findBestFaceMatch } = await import('@/lib/faceAuth');
-      const match = findBestFaceMatch(embedding);
-      if (match?.record) {
-        matchedUserId = match.record.userId || match.record.accountId || match.record.studentId || null;
+      const { findAllFaceMatches } = await import('@/lib/faceAuth');
+      const matches = findAllFaceMatches(embedding, 0.48, roleFilter);
 
+      if (matches.length > 0) {
         const allAccounts = getAccounts();
         const allStudents = (await import('@/lib/cloudStore')).getStudents();
         const classStudents = (await import('@/lib/classDb')).getClassStudents();
 
-        const isParentRecord = match.record.userRole === 'parent';
-        const isStudentRecord = match.record.userRole === 'student';
-
-        // Target account ID
-        const targetId = isParentRecord
-          ? (match.record.accountId || match.record.userId)
-          : (match.record.studentId || match.record.userId || match.record.accountId);
-
-        const foundAcc = allAccounts.find(
-          a => (targetId && a.id === targetId) ||
-               (match.record?.userEmail && a.email?.toLowerCase() === match.record.userEmail.toLowerCase())
+        const candidatePromises = matches.map(m =>
+          buildCandidate(m.record, m.similarity, allAccounts, allStudents, classStudents)
         );
+        const resolvedCandidates = await Promise.all(candidatePromises);
 
-        // Explicit Role Decision:
-        const isStudent = isStudentRecord || (!isParentRecord && foundAcc?.role === 'student');
+        // Deduplicate candidates by unique target ID + role
+        const uniqueMap = new Map<string, MatchedCandidate>();
+        resolvedCandidates.forEach(c => {
+          const key = `${c.role}_${c.account.id}`;
+          if (!uniqueMap.has(key)) uniqueMap.set(key, c);
+        });
+        const candidates = Array.from(uniqueMap.values());
 
-        const sid = match.record.studentId || foundAcc?.linkedStudentId || undefined;
-        const matchedClassStudent = classStudents.find(cs => sid && (cs.id === sid || cs.studentAccountId === sid));
-        const matchedGeneralStudent = allStudents.find(s => sid && (s.id === sid || s.studentAccountId === sid));
+        // Check if roleFilter specifically narrows it down
+        const filtered = roleFilter === 'all'
+          ? candidates
+          : candidates.filter(c => c.role === roleFilter);
 
-        // Accurate branch determination:
-        let branch: 'MASAR' | 'IKHLAS_JEDDAH' = 'MASAR';
-        if (
-          match.record.schoolBranch === 'IKHLAS_JEDDAH' ||
-          foundAcc?.schoolBranch === 'IKHLAS_JEDDAH' ||
-          Boolean(matchedClassStudent)
-        ) {
-          branch = 'IKHLAS_JEDDAH';
-        } else {
-          branch = 'MASAR';
+        // Case A: Exactly 1 candidate account
+        if (filtered.length === 1) {
+          const chosen = filtered[0];
+          activeAccountRef.current = chosen.account;
+          targetRedirectUrlRef.current = chosen.targetUrl;
+          setActiveAccount(chosen.account);
+          setTargetRedirectUrl(chosen.targetUrl);
+          setMatchedName(chosen.name);
+
+          // Asynchronously issue session token on server
+          fetch('/api/auth/face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              embedding,
+              verifiedUserId: chosen.targetId,
+              targetRole: chosen.role,
+            }),
+          }).catch(() => {});
+
+          return { ok: true, name: chosen.name };
         }
 
-        if (isStudent) {
-          const studentId = sid || targetId || 'student';
-          const studentName = match.record.userName || matchedClassStudent?.fullName || matchedGeneralStudent?.fullName || foundAcc?.name || (branch === 'IKHLAS_JEDDAH' ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
-          resolvedAccount = {
-            id: studentId,
-            name: studentName,
-            email: foundAcc?.email || match.record.userEmail || `${studentId}@masarplatform.org`,
-            role: 'student',
-            schoolBranch: branch,
-            linkedStudentId: studentId,
-          } as AccountRecord;
-        } else {
-          // Parent account:
-          const pId = match.record.accountId || match.record.userId || foundAcc?.id || 'user';
-          const pName = match.record.userName || foundAcc?.name || 'ولي أمر';
-          const pEmail = foundAcc?.email || match.record.userEmail || `${pId}@masarplatform.org`;
-          const pLinkedSid = sid || foundAcc?.linkedStudentId || undefined;
-
-          resolvedAccount = {
-            id: pId,
-            name: pName,
-            email: pEmail,
-            role: 'parent',
-            schoolBranch: branch,
-            linkedStudentId: pLinkedSid,
-            phone: foundAcc?.phone,
-          } as AccountRecord;
+        // Case B: Multiple candidate accounts with different roles (e.g. Student AND Parent)
+        if (filtered.length > 1) {
+          setMultipleCandidates(filtered);
+          setPhase('select_account');
+          return { ok: false };
         }
       }
-    } catch {}
-
-    // 2. If locally matched, immediately register session in background and return ok!
-    if (resolvedAccount) {
-      activeAccountRef.current = resolvedAccount;
-      setActiveAccount(resolvedAccount);
-      setMatchedName(resolvedAccount.name);
-
-      // Issue server session token asynchronously
-      fetch('/api/auth/face', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ embedding, verifiedUserId: matchedUserId }),
-      }).catch(() => {});
-
-      return { ok: true, name: resolvedAccount.name };
+    } catch (e) {
+      console.warn('Face local verification error:', e);
     }
 
-    // 3. Cloud fallback check if local cache was empty or still downloading
+    // 2. Cloud fallback check if local cache was empty or still downloading
     if (!cloudCheckingRef.current) {
       cloudCheckingRef.current = true;
       try {
@@ -154,16 +233,34 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ embedding }),
+          body: JSON.stringify({
+            embedding,
+            targetRole: roleFilter !== 'all' ? roleFilter : undefined,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.ok && data.account) {
-          resolvedAccount = data.account as AccountRecord;
-          activeAccountRef.current = resolvedAccount;
-          setActiveAccount(resolvedAccount);
-          setMatchedName(resolvedAccount.name);
+          const acc = data.account as AccountRecord;
+          activeAccountRef.current = acc;
+          setActiveAccount(acc);
+          setMatchedName(acc.name);
+
+          const role = acc.role;
+          const branch = (acc as any).schoolBranch || 'MASAR';
+          let target = '/dashboard';
+          if (role === 'student') {
+            const studentId = acc.linkedStudentId || acc.id;
+            target = `/school-student?student=${encodeURIComponent(studentId)}`;
+          } else if (role === 'parent') {
+            const sid = acc.linkedStudentId;
+            const sParam = sid ? `?student=${encodeURIComponent(sid)}` : '';
+            target = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
+          }
+          targetRedirectUrlRef.current = target;
+          setTargetRedirectUrl(target);
+
           cloudCheckingRef.current = false;
-          return { ok: true, name: resolvedAccount.name };
+          return { ok: true, name: acc.name };
         }
       } catch {}
       cloudCheckingRef.current = false;
@@ -172,14 +269,38 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
     return { ok: false };
   };
 
-  /** Triggered once FaceCamera confirms success on the live video feed */
-  const handleVerifiedSuccess = () => {
-    const account = activeAccountRef.current || activeAccount;
+  /** User chooses an account when face matches multiple profiles */
+  const handleSelectCandidate = (cand: MatchedCandidate) => {
+    activeAccountRef.current = cand.account;
+    targetRedirectUrlRef.current = cand.targetUrl;
+    setActiveAccount(cand.account);
+    setTargetRedirectUrl(cand.targetUrl);
+    setMatchedName(cand.name);
+
+    // Issue server session token asynchronously
+    fetch('/api/auth/face', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        embedding: lastEmbeddingRef.current || [],
+        verifiedUserId: cand.targetId,
+        targetRole: cand.role,
+      }),
+    }).catch(() => {});
+
+    handleVerifiedSuccess(cand.account, cand.targetUrl);
+  };
+
+  /** Triggered once FaceCamera confirms success on the live video feed or user selects account */
+  const handleVerifiedSuccess = (accountArg?: AccountRecord, targetUrlArg?: string) => {
+    const account = accountArg || activeAccountRef.current || activeAccount;
+    const explicitTarget = targetUrlArg || targetRedirectUrlRef.current || targetRedirectUrl;
     setPhase('success');
 
     if (account) {
       setSession(account, false, false);
-      trackEvent('login', { userId: account.id, userName: account.name });
+      trackEvent('login', { userId: account.id, userName: account.name, userRole: account.role });
 
       if (typeof window !== 'undefined') {
         try {
@@ -195,19 +316,21 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
       }
 
       setTimeout(() => {
-        const role = account.role;
-        const branch = (account as any).schoolBranch || 'MASAR';
-        let target = '/dashboard';
-        if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
-          target = '/dashboard';
-        } else if (role === 'student') {
-          const studentId = account.linkedStudentId || account.id;
-          const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
-          target = `/school-student${sParam}`;
-        } else {
-          const studentId = account.linkedStudentId;
-          const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
-          target = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
+        let target = explicitTarget;
+        if (!target) {
+          const role = account.role;
+          const branch = (account as any).schoolBranch || 'MASAR';
+          if (role === 'doctor' || role === 'specialist' || role === 'teacher') {
+            target = '/dashboard';
+          } else if (role === 'student') {
+            const studentId = account.linkedStudentId || account.id;
+            const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+            target = `/school-student${sParam}`;
+          } else {
+            const studentId = account.linkedStudentId;
+            const sParam = studentId ? `?student=${encodeURIComponent(studentId)}` : '';
+            target = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
+          }
         }
 
         router.push(target);
@@ -216,11 +339,11 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
             window.location.href = target;
           }
         }, 300);
-      }, 80);
+      }, 100);
     } else {
       setTimeout(() => {
         router.push('/dashboard');
-      }, 80);
+      }, 100);
     }
   };
 
@@ -231,7 +354,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-xs">
               <ScanFace size={22} className="text-emerald-600" />
             </div>
             <div>
@@ -244,6 +367,48 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
               {failCount}/3 محاولة
             </span>
           )}
+        </div>
+
+        {/* Role Filter Tabs */}
+        <div className="px-6 pt-3">
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => { setRoleFilter('all'); if (phase === 'select_account') setPhase('scanning'); }}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                roleFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>🌟</span>
+              <span>تلقائي (الكل)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRoleFilter('student'); if (phase === 'select_account') setPhase('scanning'); }}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                roleFilter === 'student'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>🎓</span>
+              <span>طالب مسار</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRoleFilter('parent'); if (phase === 'select_account') setPhase('scanning'); }}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                roleFilter === 'parent'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>👨‍👧</span>
+              <span>ولي أمر</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-4">
@@ -261,7 +426,7 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
               </div>
               <button
                 onClick={onFallback}
-                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-sm"
+                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-xs"
               >
                 <KeyRound size={16} /> الدخول بكلمة المرور
               </button>
@@ -272,13 +437,73 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
             <FaceCamera
               mode="verify"
               onVerify={handleLiveVerify}
-              onSuccess={handleVerifiedSuccess}
+              onSuccess={() => handleVerifiedSuccess()}
               onFail={() => {
                 setFailCount(c => c + 1);
                 setPhase('fail');
               }}
               onCancel={onCancel}
             />
+          )}
+
+          {/* ── Multi-Account Selection View ── */}
+          {phase === 'select_account' && (
+            <div className="flex flex-col items-center gap-3 py-2 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center shadow-xs">
+                <Shield className="w-7 h-7 text-emerald-600" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-black text-slate-900">تم التحقق من بصمة وجهك بنجاح!</h3>
+                <p className="text-xs font-bold text-slate-500 leading-relaxed max-w-xs">
+                  تم العثور على حسابين مرتبطين بهذه البصمة، اختر الحساب الذي ترغب في الدخول إليه:
+                </p>
+              </div>
+
+              <div className="w-full space-y-2.5 pt-2">
+                {multipleCandidates.map((cand) => (
+                  <button
+                    key={`${cand.role}_${cand.account.id}`}
+                    type="button"
+                    onClick={() => handleSelectCandidate(cand)}
+                    className="w-full text-right p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between group hover:border-emerald-500 hover:bg-emerald-50/60 bg-slate-50 border-slate-200 shadow-xs cursor-pointer active:scale-98"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xl shadow-2xs group-hover:scale-105 transition">
+                        {cand.role === 'student' ? '🎓' : '👨‍👧'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-slate-900 group-hover:text-emerald-950">
+                            {cand.name}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            cand.role === 'student'
+                              ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                              : 'bg-slate-200 text-slate-800'
+                          }`}>
+                            {cand.role === 'student' ? 'طالب' : 'ولي أمر'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-500 mt-0.5">{cand.roleLabel}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-black text-emerald-700 group-hover:translate-x-[-3px] transition">
+                      <span>دخول</span>
+                      <ChevronLeft size={16} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPhase('scanning')}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 mt-2 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <RefreshCw size={13} />
+                <span>إعادة المسح بالكاميرا</span>
+              </button>
+            </div>
           )}
 
           {phase === 'verifying' && (
@@ -328,13 +553,13 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
               <div className="flex gap-3 w-full pt-2">
                 <button
                   onClick={() => setPhase('scanning')}
-                  className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 transition shadow-sm"
+                  className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
                 >
                   <RefreshCw size={15} /> إعادة المحاولة
                 </button>
                 <button
                   onClick={onFallback}
-                  className="flex-1 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition border border-slate-900 shadow-sm"
+                  className="flex-1 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center justify-center gap-1.5 transition border border-slate-900 shadow-xs cursor-pointer"
                 >
                   <KeyRound size={16} /> كلمة المرور
                 </button>
@@ -345,10 +570,10 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         </div>
 
         <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
-          <button onClick={onCancel} className="font-bold text-slate-500 hover:text-slate-800 transition">
+          <button onClick={onCancel} className="font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer">
             إلغاء الدخول
           </button>
-          <button onClick={onFallback} className="font-bold text-emerald-700 hover:underline">
+          <button onClick={onFallback} className="font-bold text-emerald-700 hover:underline cursor-pointer">
             استخدام كلمة المرور
           </button>
         </div>
