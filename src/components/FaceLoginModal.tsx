@@ -208,12 +208,12 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
           if (typeof window !== 'undefined' && window.location.pathname !== target.split('?')[0]) {
             window.location.href = target;
           }
-        }, 400);
-      }, 700);
+        }, 300);
+      }, 80);
     } else {
       setTimeout(() => {
         router.push('/dashboard');
-      }, 700);
+      }, 80);
     }
   };
 

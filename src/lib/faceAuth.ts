@@ -432,6 +432,34 @@ export async function enrollFace(
       if (meta?.accountId) mark(meta.accountId);
       if (meta?.studentId) mark(meta.studentId);
     } catch {}
+
+    // Direct cloud save to Firestore through /api/data/doc
+    try {
+      await fetch('/api/data/doc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          collectionName: 'faceRecordsV2',
+          docId: userId,
+          data: newRecord,
+        }),
+      });
+      if (meta?.accountId && meta.accountId !== userId) {
+        await fetch('/api/data/doc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            collectionName: 'faceRecordsV2',
+            docId: meta.accountId,
+            data: { ...newRecord, userId: meta.accountId },
+          }),
+        });
+      }
+    } catch (err) {
+      console.error('[FaceAuth] Cloud write error:', err);
+    }
   }
 
   const writes = [syncDocToCloud('faceRecordsV2', userId, newRecord)];

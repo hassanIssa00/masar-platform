@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
 
   const auth = await requireRole(req, ['doctor', 'specialist', 'teacher', 'parent', 'student']);
   
-  // Public collections allowed for guest / unregistered student assessments and surveys
+  // Public collections allowed for guest / unregistered student assessments and surveys + biometric enrollment
   const PUBLIC_SUBMISSION_COLLECTIONS = new Set([
     'students',
     'reports',
@@ -158,6 +158,8 @@ export async function POST(req: NextRequest) {
     'quiz_submissions',
     'curriculum_drawings',
     'simple_spelling_drawings',
+    'faceRecords',
+    'faceRecordsV2',
   ]);
 
   const isPublicAllowed = !auth.authorized && PUBLIC_SUBMISSION_COLLECTIONS.has(collectionName);

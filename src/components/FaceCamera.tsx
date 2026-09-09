@@ -423,7 +423,7 @@ export default function FaceCamera({
                   setPhase('success');
                   setTimeout(() => {
                     onSuccess?.(embedding, snap);
-                  }, 280);
+                  }, 60);
                 } else if (!successCalledRef.current) {
                   scanFrameCountRef.current++;
                   const maxScanFrames = 8; // ~2 seconds of active face scanning (8 cloud/local checks)
@@ -781,28 +781,18 @@ export default function FaceCamera({
         </div>
       )}
 
-      {/* Verify Scanning HUD Card */}
+      {/* Verify Scanning HUD Card - Clean & Instant (No counter, no progress bar) */}
       {!hasMultiFaces && mode === 'verify' && phase === 'scanning' && (
-        <div className="w-full max-w-sm rounded-2xl bg-slate-900 border-2 border-cyan-500/40 p-4 shadow-xl shadow-cyan-950/40 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ScanFace size={20} className="text-cyan-400 animate-pulse" />
-              <span className="text-xs font-black text-white">فحص البصمة البيومترية</span>
-            </div>
-            <span className="text-xs font-black text-cyan-400 font-mono">{progress}%</span>
+        <div className="w-full max-w-sm rounded-2xl bg-slate-900 border-2 border-cyan-500/40 p-4 shadow-xl shadow-cyan-950/40 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center shrink-0">
+            <ScanFace size={24} className="text-cyan-400 animate-pulse" />
           </div>
-
-          {/* Progress bar */}
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-150"
-              style={{ width: `${progress}%` }}
-            />
+          <div>
+            <p className="text-sm font-black text-white leading-tight">التحقق البيومتري الفوري</p>
+            <p className="text-xs font-bold text-cyan-300 mt-1 flex items-center gap-1.5">
+              <span>{scanStatusText}</span>
+            </p>
           </div>
-
-          <p className="text-xs font-bold text-slate-300 flex items-center gap-1.5 leading-relaxed">
-            {scanStatusText}
-          </p>
         </div>
       )}
 
