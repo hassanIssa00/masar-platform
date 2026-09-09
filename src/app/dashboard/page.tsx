@@ -87,11 +87,11 @@ export default function Dashboard() {
 
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
-                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-lg shrink-0 bg-[#f1eff3]">
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-lg shrink-0 bg-[#f1f0f4]">
                   <img
                     src="/dr-ismail.jpg"
                     alt="د. إسماعيل عيسى"
-                    className="w-full h-full object-cover bg-[#f1eff3]"
+                    className="w-full h-full object-contain bg-[#f1f0f4]"
                   />
                 </div>
                 <div>
