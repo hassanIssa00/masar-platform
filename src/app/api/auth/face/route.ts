@@ -68,21 +68,29 @@ function compareBiometricFaces(
     return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1, rigidSigDiff: 1 };
   }
 
-  // ── Modern embedding comparison (128-D or 512-D from @vladmandic/human or face-api) ──
+  // ── Modern embedding comparison (128-D, 512-D, or 1024-D from @vladmandic/human) ──
   if (rawStored.length >= 64 && rawQuery.length >= 64 && Math.abs(rawStored.length - rawQuery.length) < 100) {
     const len = Math.min(rawStored.length, rawQuery.length);
-    let sumSq = 0;
+    let dot = 0, normA = 0, normB = 0, sumSq = 0, absSum = 0;
     for (let i = 0; i < len; i++) {
-      const d = (rawStored[i] ?? 0) - (rawQuery[i] ?? 0);
+      const a = rawStored[i] ?? 0;
+      const b = rawQuery[i] ?? 0;
+      dot += a * b;
+      normA += a * a;
+      normB += b * b;
+      const d = a - b;
       sumSq += d * d;
+      absSum += Math.abs(d);
     }
-    const euclidean = Math.sqrt(sumSq);
-    // Convert to similarity: 1 = identical, 0 = totally different
-    const similarity = Math.max(0, Math.min(1, 1 - euclidean / 2));
-    // Server threshold: 0.40 (same as client)
-    const isMatch = similarity >= 0.40;
+    const denom = Math.sqrt(normA) * Math.sqrt(normB);
+    const cosine = denom > 0 ? Math.max(0, Math.min(1, dot / denom)) : 0;
+    const dist = Math.round(100 * 25 * sumSq) / 100;
+    const root = Math.sqrt(dist);
+    const humanNorm = Math.max(0, Math.min(1, (1 - (root / 100) - 0.2) / (0.8 - 0.2)));
+    const similarity = Math.max(cosine, humanNorm);
+    const isMatch = similarity >= 0.48;
     const confidence = Math.round(similarity * 100);
-    return { isMatch, similarity, confidence, mae: euclidean, cosine: 0, sigDiff: 1 - similarity };
+    return { isMatch, similarity, confidence, mae: absSum / len, cosine, sigDiff: 1 - similarity };
   }
 
   // De-rotate both to canonical eye horizontal baseline

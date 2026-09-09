@@ -284,8 +284,8 @@ export function estimateHeadPose(
 
 // ── compareBiometricFaces ─────────────────────────────────────────────────────
 /**
- * يقارن بين وجهين باستخدام Human.match.similarity
- * Human similarity: 0→1 (أعلى = أشبه) — threshold: 0.40
+ * يقارن بين وجهين باستخدام Cosine Similarity وخوارزمية @vladmandic/human
+ * Cosine similarity: 0→1 (أعلى = أشبه) — threshold: 0.48
  */
 export function compareBiometricFaces(
   stored: number[],
@@ -295,39 +295,42 @@ export function compareBiometricFaces(
     return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
   }
 
-  // Euclidean distance بين متجهَين (Human embedding)
   const minLen = Math.min(stored.length, live.length);
-  let sumSq = 0;
+  if (minLen < 32) {
+    return { isMatch: false, similarity: 0, confidence: 0, mae: 1, cosine: 0, sigDiff: 1 };
+  }
+
+  let dotProduct = 0, normA = 0, normB = 0, sumSq = 0, absSum = 0;
   for (let i = 0; i < minLen; i++) {
-    const d = (stored[i] ?? 0) - (live[i] ?? 0);
+    const a = stored[i] ?? 0;
+    const b = live[i] ?? 0;
+    dotProduct += a * b;
+    normA += a * a;
+    normB += b * b;
+    const d = a - b;
     sumSq += d * d;
+    absSum += Math.abs(d);
   }
-  const euclidean = Math.sqrt(sumSq);
 
-  // Human uses 0→1 similarity where 1 = identical
-  // نحوّل الـ euclidean distance لـ similarity
-  const similarity = Math.max(0, 1 - euclidean / 2);
+  // 1. Cosine similarity (المعيار الذهبي لمتجهات الوجوه ArcFace / MobileFaceNet / Human)
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  const cosine = denom > 0 ? Math.max(0, Math.min(1, dotProduct / denom)) : 0;
 
-  const isMatch = similarity >= SIMILARITY_THRESHOLD;
+  // 2. Human native normalized distance
+  const dist = Math.round(100 * 25 * sumSq) / 100;
+  const root = Math.sqrt(dist);
+  const humanNorm = Math.max(0, Math.min(1, (1 - (root / 100) - 0.2) / (0.8 - 0.2)));
 
-  // Cosine similarity للمرجعية
-  let dotProduct = 0, normA = 0, normB = 0;
-  for (let i = 0; i < minLen; i++) {
-    dotProduct += (stored[i] ?? 0) * (live[i] ?? 0);
-    normA += (stored[i] ?? 0) ** 2;
-    normB += (live[i] ?? 0) ** 2;
-  }
-  const cosine = normA > 0 && normB > 0 ? dotProduct / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
-
-  // MAE للمرجعية
-  let absSum = 0;
-  for (let i = 0; i < minLen; i++) absSum += Math.abs((stored[i] ?? 0) - (live[i] ?? 0));
+  // Combine both: highest similarity wins
+  const similarity = Math.max(cosine, humanNorm);
+  const isMatch = similarity >= 0.48;
+  const confidence = Math.round(similarity * 100);
   const mae = absSum / minLen;
 
   return {
     isMatch,
     similarity,
-    confidence: similarity,
+    confidence,
     mae,
     cosine,
     sigDiff: 1 - similarity,

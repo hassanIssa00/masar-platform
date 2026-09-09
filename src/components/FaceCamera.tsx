@@ -426,7 +426,7 @@ export default function FaceCamera({
                   }, 60);
                 } else if (!successCalledRef.current) {
                   scanFrameCountRef.current++;
-                  const maxScanFrames = 8; // ~2 seconds of active face scanning (8 cloud/local checks)
+                  const maxScanFrames = 15; // ~3 seconds of active face scanning
                   const smoothProgress = Math.min(95, 30 + Math.round((scanFrameCountRef.current / maxScanFrames) * 65));
                   setProgress(smoothProgress);
                   setScanStatusText('🔒 جاري مطابقة بصمة الوجه مع السجلات...');
