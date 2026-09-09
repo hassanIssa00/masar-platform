@@ -143,6 +143,11 @@ export interface DetectFaceResult {
   multipleFaces?: boolean;
   liveness?: number;   // 0→1 (1 = definitely live)
   antispoof?: number;  // 0→1 (1 = definitely real person)
+  rotation?: {
+    angle?: { roll?: number; yaw?: number; pitch?: number };
+    matrix?: number[];
+    gaze?: { bearing?: number; strength?: number };
+  } | null;
 }
 
 export async function detectFace(video: HTMLVideoElement): Promise<DetectFaceResult | null> {
@@ -173,6 +178,7 @@ export async function detectFace(video: HTMLVideoElement): Promise<DetectFaceRes
 
     const liveness: number = typeof face.liveness === 'number' ? face.liveness : 1;
     const antispoof: number = typeof face.antispoof === 'number' ? face.antispoof : 1;
+    const rotation = face.rotation ?? null;
 
     return {
       embedding,
@@ -182,6 +188,7 @@ export async function detectFace(video: HTMLVideoElement): Promise<DetectFaceRes
       multipleFaces,
       liveness,
       antispoof,
+      rotation,
     };
   } catch {
     return null;
@@ -218,11 +225,45 @@ export function checkBlink(
 
 // ── Head pose estimation ──────────────────────────────────────────────────────
 export function estimateHeadPose(
-  _landmarks: { x: number; y: number; z: number }[]
+  landmarks: { x: number; y: number; z: number }[],
+  rotation?: { angle?: { roll?: number; yaw?: number; pitch?: number } } | null
 ): { yaw: number; pitch: number } {
-  // Human بيوفّر rotation مباشرة في result.face[0].rotation
-  // هنا fallback بسيط لو الـ landmarks موجودة
-  return { yaw: 0, pitch: 0 };
+  let yaw = 0;
+  let pitch = 0;
+
+  // 1. استخدام زاوبة الدوران المباشرة من Human إذا كانت متوفرة
+  if (rotation?.angle) {
+    let y = rotation.angle.yaw ?? 0;
+    let p = rotation.angle.pitch ?? 0;
+    // لو بالدرجات (> π)، نحولها لـ radians
+    if (Math.abs(y) > Math.PI) y = (y * Math.PI) / 180;
+    if (Math.abs(p) > Math.PI) p = (p * Math.PI) / 180;
+    yaw = y;
+    pitch = p;
+  }
+
+  // 2. إذا لم يكن rotation متاحاً أو = 0، نحسب من الـ 3D / 2D Landmarks هندسياً
+  if (Math.abs(yaw) < 0.001 && Math.abs(pitch) < 0.001 && landmarks && landmarks.length >= 30) {
+    const is468 = landmarks.length >= 400;
+    const nose = is468 ? landmarks[1] : landmarks[30];
+    const leftEye = is468 ? landmarks[33] : landmarks[36];
+    const rightEye = is468 ? landmarks[263] : landmarks[45];
+    const top = is468 ? landmarks[10] : (landmarks[27] || landmarks[19]);
+    const bottom = is468 ? landmarks[152] : landmarks[8];
+
+    if (nose && leftEye && rightEye) {
+      const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y) || 1;
+      const eyeMidX = (leftEye.x + rightEye.x) / 2;
+      yaw = (nose.x - eyeMidX) / eyeDist;
+    }
+    if (nose && top && bottom) {
+      const faceH = Math.abs(bottom.y - top.y) || 1;
+      const faceMidY = (top.y + bottom.y) / 2;
+      pitch = (nose.y - faceMidY) / faceH;
+    }
+  }
+
+  return { yaw, pitch };
 }
 
 // ── compareBiometricFaces ─────────────────────────────────────────────────────

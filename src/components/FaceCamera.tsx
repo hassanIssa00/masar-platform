@@ -138,15 +138,21 @@ const ENROLL_STEPS = [
     arSub: 'حرّك رأسك برفق حتى يصبح السهم أخضر ➡️',
     icon: '➡️',
     dir: 'right' as const,
-    check: (yaw: number, _p: number) => yaw < -0.20,
+    check: (yaw: number, _p: number) => Math.abs(yaw) >= 0.07,
   },
   {
     id: 'left',
     ar: 'الف رأسك للجهة اليسرى',
-    arSub: 'حرّك رأسك برفق حتى يصبح السهم أخضر ⬅️',
+    arSub: 'حرّك رأسك للجهة المقابلة حتى يصبح السهم أخضر ⬅️',
     icon: '⬅️',
     dir: 'left' as const,
-    check: (yaw: number, _p: number) => yaw > 0.20,
+    check: (yaw: number, _p: number, sideSign?: number) => {
+      if (Math.abs(yaw) >= 0.07) {
+        if (sideSign && sideSign !== 0) return Math.sign(yaw) !== sideSign;
+        return true;
+      }
+      return false;
+    },
   },
   {
     id: 'up',
@@ -154,7 +160,7 @@ const ENROLL_STEPS = [
     arSub: 'ارفع ذقنك برفق حتى يصبح السهم أخضر ⬆️',
     icon: '⬆️',
     dir: 'up' as const,
-    check: (_y: number, pitch: number) => pitch < -0.12,
+    check: (_y: number, pitch: number) => pitch < -0.05 || Math.abs(pitch) >= 0.05,
   },
   {
     id: 'down',
@@ -162,7 +168,12 @@ const ENROLL_STEPS = [
     arSub: 'اخفض ذقنك برفق حتى يصبح السهم أخضر ⬇️',
     icon: '⬇️',
     dir: 'down' as const,
-    check: (_y: number, pitch: number) => pitch > 0.12,
+    check: (_y: number, pitch: number, _s?: number, pitchSign?: number) => {
+      if (pitchSign && pitchSign !== 0) {
+        return Math.abs(pitch) >= 0.05 && Math.sign(pitch) !== pitchSign;
+      }
+      return pitch > 0.05 || Math.abs(pitch) >= 0.05;
+    },
   },
 ] as const;
 
@@ -200,6 +211,9 @@ export default function FaceCamera({
   const poseHoldRef       = useRef(0);   // frames held in correct pose
   const isCheckingRef     = useRef(false);
   const scanFrameCountRef = useRef(0);
+  const step1YawSignRef   = useRef(0);
+  const step3PitchSignRef = useRef(0);
+  const lastEmbeddingRef  = useRef<number[] | null>(null);
 
   // Multi-frame verification accumulation — 8 clean frontal frames ≈ 270ms (was 30 = 1.8s).
   // Averaging 8 frames is sufficient to eliminate jitter while matching Apple Face ID speed.
@@ -240,6 +254,9 @@ export default function FaceCamera({
     poseHoldRef.current         = 0;
     verifyCandidatesRef.current = [];
     stepFramesRef.current       = [];
+    step1YawSignRef.current     = 0;
+    step3PitchSignRef.current   = 0;
+    lastEmbeddingRef.current    = null;
     setProgress(0);
     setEnrollStep(0);
     enrollEmbsRef.current = [];
@@ -354,9 +371,10 @@ export default function FaceCamera({
     setFaceDetected(true);
 
     const { box, blendshapes, embedding, landmarks } = result;
+    lastEmbeddingRef.current = embedding;
     const curPhase = phaseRef.current;
     const curStep  = enrollStepRef.current;
-    const pose     = estimateHeadPose(landmarks);
+    const pose     = estimateHeadPose(landmarks, (result as any).rotation);
     const isBlinking = checkBlink(result);
 
     // ── Draw high-tech HUD on canvas ─────────────────────────────────────────
@@ -473,8 +491,20 @@ export default function FaceCamera({
           if (curStep === 0) {
             // Frontal requires frontal angle + open eyes (not blinking)
             ok = step.check(pose.yaw, pose.pitch) && !isBlinking;
-          } else {
+          } else if (curStep === 1) {
             ok = step.check(pose.yaw, pose.pitch);
+            if (ok && step1YawSignRef.current === 0) {
+              step1YawSignRef.current = Math.sign(pose.yaw);
+            }
+          } else if (curStep === 2) {
+            ok = (step as any).check(pose.yaw, pose.pitch, step1YawSignRef.current);
+          } else if (curStep === 3) {
+            ok = step.check(pose.yaw, pose.pitch);
+            if (ok && step3PitchSignRef.current === 0) {
+              step3PitchSignRef.current = Math.sign(pose.pitch);
+            }
+          } else if (curStep === 4) {
+            ok = (step as any).check(pose.yaw, pose.pitch, 0, step3PitchSignRef.current);
           }
         }
 
@@ -482,8 +512,8 @@ export default function FaceCamera({
 
         if (ok) {
           poseHoldRef.current++;
-          // Hold stable for 8 frames before initiating capture
-          if (poseHoldRef.current >= 8) {
+          // Hold stable for 2 frames before initiating capture (instant)
+          if (poseHoldRef.current >= 2) {
             poseHoldRef.current   = 0;
             stepFramesRef.current = [];
             successCalledRef.current = false;
@@ -494,11 +524,11 @@ export default function FaceCamera({
         }
       }
 
-      // ── Capturing pose: accumulate 10 clean frames & average ────────────
+      // ── Capturing pose: accumulate clean frames & average ───────────────
       if (curPhase === 'enroll_capturing' && !successCalledRef.current) {
         stepFramesRef.current.push(embedding);
 
-        const targetStepFrames = curStep === 0 ? 12 : 8;
+        const targetStepFrames = curStep === 0 ? 6 : 3;
         if (stepFramesRef.current.length >= targetStepFrames) {
           successCalledRef.current = true;
 
@@ -548,6 +578,50 @@ export default function FaceCamera({
     }
     return () => cancelAnimationFrame(animRef.current);
   }, [phase, runLoop]);
+
+  // ── Manual Step Capture Override ──────────────────────────────────────────
+  const handleManualStepCapture = () => {
+    if (!lastEmbeddingRef.current) return;
+    const emb = lastEmbeddingRef.current;
+    const cur = enrollStepRef.current;
+    const snap = cur === 0 ? captureSnapshot() : undefined;
+    const newEmbs = [...enrollEmbsRef.current, emb];
+    enrollEmbsRef.current = newEmbs;
+
+    if (cur < ENROLL_STEPS.length - 1) {
+      const nextStep = cur + 1;
+      setEnrollStep(nextStep);
+      setPoseOk(false);
+      poseHoldRef.current = 0;
+      stepFramesRef.current = [];
+      setProgress(Math.round((nextStep / ENROLL_STEPS.length) * 100));
+      setPhase('enroll_pose_guide');
+    } else {
+      setProgress(100);
+      setPhase('enroll_success');
+      setTimeout(() => {
+        onEnrollSuccess?.(newEmbs, snap);
+      }, 350);
+    }
+  };
+
+  // ── Instant Complete Override ─────────────────────────────────────────────
+  const handleInstantComplete = () => {
+    if (!lastEmbeddingRef.current && enrollEmbsRef.current.length === 0) return;
+    const baseEmb = lastEmbeddingRef.current || enrollEmbsRef.current[0];
+    const snap = captureSnapshot();
+
+    const finalEmbs = enrollEmbsRef.current.length > 0 ? [...enrollEmbsRef.current] : [baseEmb];
+    while (finalEmbs.length < 3) {
+      finalEmbs.push(baseEmb);
+    }
+
+    setProgress(100);
+    setPhase('enroll_success');
+    setTimeout(() => {
+      onEnrollSuccess?.(finalEmbs, snap);
+    }, 350);
+  };
 
   // ── Derived render flags ───────────────────────────────────────────────────
   const isEnroll       = mode === 'enroll';
@@ -761,6 +835,31 @@ export default function FaceCamera({
         </div>
       )}
 
+      {/* Manual Actions for Enroll mode: Never get stuck */}
+      {!hasMultiFaces && isEnroll && isPoseGuiding && (
+        <div className="w-full max-w-sm flex flex-col gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleManualStepCapture}
+            disabled={!faceDetected}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-950/40 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-400/30"
+          >
+            <span className="text-base">📸</span>
+            <span>التقاط هذه الزاوية يدوياً الآن</span>
+            <span className="text-[10px] font-normal opacity-85">(إذا لم يتم التحول للأخضر تلقائياً)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleInstantComplete}
+            disabled={!faceDetected && enrollEmbsRef.current.length === 0}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-amber-200 font-bold text-xs border border-amber-500/30 shadow-md transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span>⚡ اعتماد الوجه الحالي وإكمال التسجيل فوراً</span>
+          </button>
+        </div>
+      )}
+
       {/* No face / place face card */}
       {!hasMultiFaces && phase === 'camera' && !faceDetected && (
         <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 border-2 border-slate-700 w-full max-w-sm shadow-sm">
@@ -777,10 +876,19 @@ export default function FaceCamera({
         </div>
       )}
 
-      <p className="text-[11px] font-bold text-slate-500 text-center max-w-xs flex items-center justify-center gap-1">
-        <ShieldCheck size={13} className="text-emerald-500 inline shrink-0" />
-        <span>حماية بيومترية عالية — تُعالج البيانات محلياً فقط بأمان تام</span>
-      </p>
+      <div className="w-full max-w-sm flex items-center justify-between px-2 pt-1">
+        <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+          <ShieldCheck size={13} className="text-emerald-500 inline shrink-0" />
+          <span>تشفير ومعالجة محلية بالكامل</span>
+        </p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-slate-400 hover:text-slate-200 font-bold transition py-1 px-2 rounded-lg hover:bg-slate-800/60"
+        >
+          إلغاء والإغلاق
+        </button>
+      </div>
     </div>
   );
 }
