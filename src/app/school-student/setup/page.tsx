@@ -250,7 +250,7 @@ export default function StudentSetupPage() {
     setSuccess(true);
 
     setTimeout(() => {
-      router.push('/school-student');
+      router.push(`/assessment?student=${encodeURIComponent(savedRec.id)}&flow=student&firstLogin=1`);
     }, 800);
   };
 
@@ -291,7 +291,7 @@ export default function StudentSetupPage() {
           {success && (
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs font-black text-emerald-800 text-center flex items-center justify-center gap-2">
               <CheckCircle2 size={18} className="text-emerald-600" />
-              <span>تم حفظ وتحديث بيانات الطالب بنجاح! جاري التوجيه للوحة التحكم...</span>
+              <span>تم حفظ وتحديث بيانات الطالب بنجاح! جاري الانتقال لاختبار تحديد المستوى الذكي...</span>
             </div>
           )}
 

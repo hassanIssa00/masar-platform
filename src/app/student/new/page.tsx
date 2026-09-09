@@ -140,8 +140,10 @@ export default function NewStudentPage() {
         found = allStudents.find(s => isParentChildNameMatch(s.fullName, session.name));
       }
 
-      // If still not found in parent flow, connect to the primary real student
-      if (!found && (session?.role === 'parent' || flow === 'parent')) {
+      const isFirstLogin = params.get('firstLogin') === '1';
+
+      // If still not found in parent flow, connect to the primary real student ONLY if not a fresh registration
+      if (!found && (session?.role === 'parent' || flow === 'parent') && !isFirstLogin) {
         if (realStudents.length === 1) {
           found = realStudents[0];
         } else if (classStudents.length === 1 && classStudents[0].fullName && !classStudents[0].fullName.includes('جديد')) {
@@ -152,7 +154,7 @@ export default function NewStudentPage() {
       }
 
       if (session?.role === 'parent' || flow === 'parent') {
-        const effectiveStudent = (found && !found.fullName?.includes('جديد')) ? found : (realStudents.length > 0 ? realStudents[0] : null);
+        const effectiveStudent = (found && !found.fullName?.includes('جديد')) ? found : (!isFirstLogin && realStudents.length > 0 ? realStudents[0] : null);
         const resolvedChildName = effectiveStudent?.fullName || (session as any)?.linkedStudentName || (session as any)?.childName || '';
         const resolvedGrade = effectiveStudent?.grade || (session as any)?.grade || 'الصف الأول الابتدائي';
 
@@ -453,11 +455,14 @@ export default function NewStudentPage() {
     }
 
     if (nextFlow === 'student-test') {
-      router.push(`/assessment?student=${savedStudent.id}&flow=student`);
+      router.push(`/assessment?student=${savedStudent.id}&flow=student&firstLogin=1`);
     } else {
-      // Check if the survey was already completed before redirecting
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const isFirstLogin = params?.get('firstLogin') === '1';
+
+      // Check if the survey was already completed before redirecting (skip check if fresh firstLogin)
       const allSurveys = getSurveys();
-      const surveyAlreadyDone = allSurveys.some(
+      const surveyAlreadyDone = !isFirstLogin && allSurveys.some(
         (s) =>
           s.studentId === savedStudent.id ||
           (session?.email && s.parentEmail?.toLowerCase() === session.email.toLowerCase()) ||
@@ -472,7 +477,7 @@ export default function NewStudentPage() {
             : `/parent?student=${savedStudent.id}`
         );
       } else {
-        router.push(`/survey?student=${savedStudent.id}&flow=parent`);
+        router.push(`/survey?student=${savedStudent.id}&flow=parent&firstLogin=1`);
       }
     }
   };

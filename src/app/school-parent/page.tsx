@@ -232,8 +232,14 @@ export default function SchoolParentPage() {
         }
       }
 
-      // 10. Fallback: If class students exist, select the primary real student
-      if (!linked && pool.length > 0) {
+      const isFirstLogin = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('firstLogin') === '1';
+      if (!linked && isFirstLogin) {
+        router.replace('/student/new?flow=parent&firstLogin=1');
+        return;
+      }
+
+      // 10. Fallback: If class students exist and not a fresh new registration, select the primary real student
+      if (!linked && pool.length > 0 && !isFirstLogin) {
         linked = pool[0];
       }
 

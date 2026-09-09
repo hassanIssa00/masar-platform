@@ -154,13 +154,28 @@ export default function StudentDashboard() {
       else if (linked?.fullName && !isSyntheticOrGeneric(linked.fullName)) finalName = linked.fullName;
       else finalName = linked?.fullName || session.name || 'طالب';
 
-      if (isSyntheticOrGeneric(finalName)) {
-        const sId = linked?.id || linkedStudentId || session.id;
-        const sBranch = (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR';
+      const isFirstLogin = urlParams?.get('firstLogin') === '1';
+      const sId = linked?.id || linkedStudentId || session.id;
+      const sBranch = (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR';
+
+      if (isSyntheticOrGeneric(finalName) || (isFirstLogin && (!linked || !linked.dateOfBirth || !linked.nationalId))) {
         router.replace(sBranch === 'IKHLAS_JEDDAH'
-          ? `/school-student/setup${sId ? `?student=${encodeURIComponent(sId)}` : ''}`
-          : `/student/new?flow=student${sId ? `&student=${encodeURIComponent(sId)}` : ''}`);
+          ? `/school-student/setup${sId ? `?student=${encodeURIComponent(sId)}` : ''}&firstLogin=1`
+          : `/student/new?flow=student${sId ? `&student=${encodeURIComponent(sId)}` : ''}&firstLogin=1`);
         return;
+      }
+
+      if (isFirstLogin) {
+        const allReports = getReports();
+        const targetSid = sId || '';
+        const hasAssessment = allReports.some(
+          (r) => (r.studentId && targetSid && (r.studentId === targetSid || r.studentId.includes(targetSid))) ||
+                 (r.studentName && finalName && normalizeArabicText(r.studentName) === normalizeArabicText(finalName))
+        );
+        if (!hasAssessment) {
+          router.replace(`/assessment?student=${encodeURIComponent(targetSid)}&flow=student&firstLogin=1`);
+          return;
+        }
       }
 
       let photoUrl = linked?.photoUrl || (session as any)?.photoUrl
