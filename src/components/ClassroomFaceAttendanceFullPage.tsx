@@ -150,7 +150,7 @@ export default function ClassroomFaceAttendanceFullPage({
       startScanningLoop();
     } catch (err: any) {
       console.error('Kiosk camera start error:', err);
-      setCameraError('طھط¹ط°ط± ظپطھط­ ط§ظ„ظƒط§ظ…ظٹط±ط§. ظٹط±ط¬ظ‰ ط§ظ„طھط£ظƒط¯ ظ…ظ† طھظˆطµظٹظ„ ط§ظ„ظƒط§ظ…ظٹط±ط§ ظˆظ…ظ†ط­ ط§ظ„ط¥ط°ظ† ظ„ظ„ظ…ظˆظ‚ط¹.');
+      setCameraError('تعذر فتح الكاميرا. يرجى التأكد من توصيل الكاميرا ومنح الإذن للموقع.');
       setCameraActive(false);
     }
   };
@@ -411,7 +411,7 @@ export default function ClassroomFaceAttendanceFullPage({
       updateAttendance(existing.id, {
         status: newStatus,
         verifiedVia: newStatus === 'present' ? (existing.verifiedVia || 'manual') : undefined,
-        notes: newStatus === 'present' ? 'طھظ… ط§ظ„طھط¹ط¯ظٹظ„ ظٹط¯ظˆظٹط§ظ‹ ظ…ظ† ظƒط´ظپ ط§ظ„ظپطµظ„' : 'ط؛ظٹط§ط¨ ظ…ط³ط¬ظ„',
+        notes: newStatus === 'present' ? 'تم التعديل يدوياً من كشف الفصل' : 'غياب مسجل',
       });
     } else {
       await recordAttendance({
@@ -423,7 +423,7 @@ export default function ClassroomFaceAttendanceFullPage({
         parentNotified: false,
         verifiedVia: 'manual',
         branch: 'IKHLAS_JEDDAH',
-        notes: 'طھط­ط¶ظٹط± ظٹط¯ظˆظٹ ظ…ظ† ظƒط´ظپ ط§ظ„ظپطµظ„',
+        notes: 'تحضير يدوي من كشف الفصل',
       });
     }
     refreshData();
@@ -432,12 +432,12 @@ export default function ClassroomFaceAttendanceFullPage({
   // WhatsApp Alert for Absent Students
   const sendWhatsAppAlert = (student: ClassStudentRecord) => {
     if (!student.parentPhone) {
-      alert('ظ„ط§ ظٹظˆط¬ط¯ ط±ظ‚ظ… ظ‡ط§طھظپ ظ…ط³ط¬ظ„ ظ„ظˆظ„ظٹ ط£ظ…ط± ظ‡ط°ط§ ط§ظ„ط·ط§ظ„ط¨.');
+      alert('لا يوجد رقم هاتف مسجل لولي أمر هذا الطالب.');
       return;
     }
     const phone = student.parentPhone.replace(/\D/g, '');
     const msg = encodeURIComponent(
-      `ط§ظ„ط³ظ„ط§ظ… ط¹ظ„ظٹظƒظ… ظˆط±ط­ظ…ط© ط§ظ„ظ„ظ‡ ظˆط¨ط±ظƒط§طھظ‡طŒ\nط§ظ„ط³ظٹط¯ ظˆظ„ظٹ ط£ظ…ط± ط§ظ„ط·ط§ظ„ط¨ (${student.fullName}) ط§ظ„ظ…ط­طھط±ظ…طŒ\nظ†ظپظٹط¯ظƒظ… ط¨ط£ظ†ظ‡ ظ„ظ… ظٹطھظ… طھط³ط¬ظٹظ„ ط­ط¶ظˆط± ط§ظ„ط·ط§ظ„ط¨ ط§ظ„ظٹظˆظ… (${todayArabicDate}) ظپظٹ ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰.\nظ†ط±ط¬ظˆ ط§ظ„ط§ط·ظ…ط¦ظ†ط§ظ† ط¹ظ„ظٹظ‡ ظˆظ…ظˆط§ظپط§طھظ†ط§ ظپظٹ ط­ط§ظ„ ظˆط¬ظˆط¯ ط£ظٹ ط¹ط°ط±. ط¯ظ…طھظ… ط¨ط®ظٹط±.`
+      `السلام عليكم ورحمة الله وبركاته،\nالسيد ولي أمر الطالب (${student.fullName}) المحترم،\nنفيدكم بأنه لم يتم تسجيل حضور الطالب اليوم (${todayArabicDate}) في فصل د. إسماعيل عيسى.\nنرجو الاطمئنان عليه وموافاتنا في حال وجود أي عذر. دمتم بخير.`
     );
     window.open(`https://wa.me/${phone.startsWith('966') ? phone : `966${phone.replace(/^0/, '')}`}?text=${msg}`, '_blank');
   };
@@ -449,10 +449,10 @@ export default function ClassroomFaceAttendanceFullPage({
       return !rec || rec.status === 'absent';
     });
     if (absentees.length === 0) {
-      alert('ظ…ط§ ط´ط§ط، ط§ظ„ظ„ظ‡! ط¬ظ…ظٹط¹ ط§ظ„ط·ظ„ط§ط¨ ط­ط§ط¶ط±ظˆظ† ط§ظ„ظٹظˆظ… ظˆظ„ط§ ظٹظˆط¬ط¯ ط£ظٹ ط؛ط§ط¦ط¨ ًںژ‰');
+      alert('ما شاء الله! جميع الطلاب حاضرون اليوم ولا يوجد أي غائب 🎉');
       return;
     }
-    if (confirm(`ظٹظˆط¬ط¯ ${absentees.length} ط·ط§ظ„ط¨ ط؛ط§ط¦ط¨ ط§ظ„ظٹظˆظ…. ظ‡ظ„ طھط±ظٹط¯ ظپطھط­ ط±ط³ط§ط¦ظ„ ظˆط§طھط³ط§ط¨ ظ„طھظ†ط¨ظٹظ‡ ط£ظˆظ„ظٹط§ط، ط£ظ…ظˆط±ظ‡ظ…طں`)) {
+    if (confirm(`يوجد ${absentees.length} طالب غائب اليوم. هل تريد فتح رسائل واتساب لتنبيه أولياء أمورهم؟`)) {
       absentees.forEach((s, idx) => {
         setTimeout(() => sendWhatsAppAlert(s), idx * 600);
       });
@@ -461,14 +461,14 @@ export default function ClassroomFaceAttendanceFullPage({
 
   return (
     <div className="space-y-6 animate-fade-in" dir="rtl">
-      {/* â”€â”€â”€ Main Top Bar â”€â”€â”€ */}
+      {/* --- Main Top Bar --- */}
       <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           {onBack && (
             <button
               onClick={onBack}
               className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
-              title="ط§ظ„ط¹ظˆط¯ط©"
+              title="العودة"
             >
               <ArrowRight size={20} />
             </button>
@@ -479,14 +479,14 @@ export default function ClassroomFaceAttendanceFullPage({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg md:text-xl font-black text-slate-900">
-                ط¨ظˆط§ط¨ط© ط§ظ„ط­ط¶ظˆط± ط§ظ„ط¨ظٹظˆظ…طھط±ظٹ ط§ظ„ط°ظƒظٹ (Face ID Hub)
+                بوابة الحضور البيومتري الذكي (Face ID Hub)
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300 animate-pulse">
-                ظ…ط¨ط§ط´ط± âڑ،
+                مباشر ⚡
               </span>
             </div>
             <p className="text-xs font-bold text-slate-500 mt-0.5">
-              ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ â€¢ {todayArabicDate}
+              فصل د. إسماعيل عيسى • {todayArabicDate}
             </p>
           </div>
         </div>
@@ -503,7 +503,7 @@ export default function ClassroomFaceAttendanceFullPage({
               }`}
             >
               <Camera size={15} />
-              <span>ط§ظ„ظƒط´ظƒ ط§ظ„ظ…ط¨ط§ط´ط± ًں“¸</span>
+              <span>الكشك المباشر 📸</span>
             </button>
             <button
               onClick={() => setActiveView('matrix')}
@@ -514,7 +514,7 @@ export default function ClassroomFaceAttendanceFullPage({
               }`}
             >
               <Users size={15} />
-              <span>ظƒط´ظپ ظˆظ…طھط§ط¨ط¹ط© ط§ظ„ط·ظ„ط§ط¨ ({students.length})</span>
+              <span>كشف ومتابعة الطلاب ({students.length})</span>
             </button>
             <button
               onClick={() => setActiveView('print')}
@@ -525,7 +525,7 @@ export default function ClassroomFaceAttendanceFullPage({
               }`}
             >
               <Printer size={15} />
-              <span>ط·ط¨ط§ط¹ط© ط§ظ„ظƒط´ظپ ًں“„</span>
+              <span>طباعة الكشف 📄</span>
             </button>
           </div>
 
@@ -536,7 +536,7 @@ export default function ClassroomFaceAttendanceFullPage({
                 ? 'bg-rose-50 text-rose-600 border-rose-200'
                 : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}
-            title={isMuted ? 'ط§ظ„طµظˆطھ ظ…ظƒطھظˆظ…' : 'ط§ظ„طھط±ط­ظٹط¨ ط§ظ„طµظˆطھظٹ ظ…ظپط¹ظ‘ظ„'}
+            title={isMuted ? 'الصوت مكتوم' : 'الترحيب الصوتي مفعّل'}
           >
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -544,7 +544,7 @@ export default function ClassroomFaceAttendanceFullPage({
           <button
             onClick={toggleFullscreen}
             className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition cursor-pointer"
-            title="ظ…ظ„ط، ط§ظ„ط´ط§ط´ط©"
+            title="ملء الشاشة"
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
@@ -590,49 +590,49 @@ export default function ClassroomFaceAttendanceFullPage({
             <Users size={18} className="text-slate-400" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{stats.total}</p>
-          <span className="text-[10px] font-bold text-slate-400">ط·ط§ظ„ط¨ ظ…ط³ط¬ظ„ ط¨ط§ظ„ظپطµظ„</span>
+          <span className="text-[10px] font-bold text-slate-400">طالب مسجل بالفصل</span>
         </div>
 
         <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-emerald-900">ط­ط§ط¶ط± ط¨ط§ظ„ط¨طµظ…ط© ًں“¸</span>
+            <span className="text-xs font-black text-emerald-900">حاضر بالبصمة 📸</span>
             <ScanFace size={18} className="text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-emerald-800 mt-2">{stats.faceVerifiedCount}</p>
-          <span className="text-[10px] font-bold text-emerald-700">طھط­ظ‚ظ‚ ط¨ظٹظˆظ…طھط±ظٹ ط¢ظ„ظٹ</span>
+          <span className="text-[10px] font-bold text-emerald-700">تحقق بيومتري آلي</span>
         </div>
 
         <div className="bg-teal-50/70 p-4 rounded-2xl border border-teal-200 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-teal-900">ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط­ط¶ظˆط±</span>
+            <span className="text-xs font-black text-teal-900">إجمالي الحضور</span>
             <CheckCircle2 size={18} className="text-teal-600" />
           </div>
           <p className="text-2xl font-black text-teal-800 mt-2">{stats.presentCount}</p>
-          <span className="text-[10px] font-bold text-teal-700">ظ†ط³ط¨ط© {stats.rate}% ظ…ظ† ط§ظ„ظپطµظ„</span>
+          <span className="text-[10px] font-bold text-teal-700">نسبة {stats.rate}% من الفصل</span>
         </div>
 
         <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-rose-900">ط§ظ„ط؛ظٹط§ط¨ ط§ظ„ظٹظˆظ…</span>
+            <span className="text-xs font-black text-rose-900">الغياب اليوم</span>
             <UserX size={18} className="text-rose-600" />
           </div>
           <p className="text-2xl font-black text-rose-800 mt-2">{stats.absentCount}</p>
-          <span className="text-[10px] font-bold text-rose-700">ظ„ظ… ظٹط³ط¬ظ„ظˆط§ ط¨ط¹ط¯</span>
+          <span className="text-[10px] font-bold text-rose-700">لم يسجلوا بعد</span>
         </div>
 
         <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 shadow-2xs col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-amber-900">ط§ظ„ظ…طھط£ط®ط±ظˆظ†</span>
+            <span className="text-xs font-black text-amber-900">المتأخرون</span>
             <Clock size={18} className="text-amber-600" />
           </div>
           <p className="text-2xl font-black text-amber-800 mt-2">{stats.lateCount}</p>
-          <span className="text-[10px] font-bold text-amber-700">ظˆطµظˆظ„ ط¨ط¹ط¯ ط§ظ„ظ…ظˆط¹ط¯</span>
+          <span className="text-[10px] font-bold text-amber-700">وصول بعد الموعد</span>
         </div>
       </div>
 
-      {/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
+      {/* ============================================================
           VIEW 1: KIOSK LIVE SCANNER
-      â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */}
+      ============================================================ */}
       {activeView === 'kiosk' && (
         <div className="space-y-4">
           {/* Period Selector Bar for Kiosk */}
@@ -673,13 +673,13 @@ export default function ClassroomFaceAttendanceFullPage({
                 <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
                   <AlertCircle size={32} />
                 </div>
-                <h3 className="text-base font-black">طھط¹ط°ط± طھط´ط؛ظٹظ„ ط§ظ„ظƒط§ظ…ظٹط±ط§</h3>
+                <h3 className="text-base font-black">تعذر تشغيل الكاميرا</h3>
                 <p className="text-xs font-bold text-slate-400">{cameraError}</p>
                 <button
                   onClick={startCamera}
                   className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition cursor-pointer"
                 >
-                  ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ط­ط§ظˆظ„ط© ًں”„
+                  إعادة المحاولة 🔄
                 </button>
               </div>
             ) : (
@@ -699,10 +699,10 @@ export default function ClassroomFaceAttendanceFullPage({
                   <div className="flex items-center justify-between text-white drop-shadow-md">
                     <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                      <span className="text-xs font-black tracking-wider">LIVE SCANNER â€¢ 60 FPS</span>
+                      <span className="text-xs font-black tracking-wider">LIVE SCANNER • 60 FPS</span>
                     </div>
                     <div className="bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold border border-white/10">
-                      <span>ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ظ…ط³ط¬ظ„ظˆظ†: {enrolledFaces.length} ط¨طµظ…ط©</span>
+                      <span>الطلاب المسجلون: {enrolledFaces.length} بصمة</span>
                     </div>
                   </div>
 
@@ -721,10 +721,10 @@ export default function ClassroomFaceAttendanceFullPage({
                       <div className="text-center px-4">
                         <ScanFace size={48} className="mx-auto text-emerald-400/40 mb-2" />
                         <p className="text-xs font-black text-emerald-300 drop-shadow-md">
-                          ظ‚ظپ ط£ظ…ط§ظ… ط§ظ„ظƒط§ظ…ظٹط±ط§ ظ„ظ„ظ…ط³ط­ ط§ظ„طھظ„ظ‚ط§ط¦ظٹ
+                          قف أمام الكاميرا للمسح التلقائي
                         </p>
                         <p className="text-[10px] font-bold text-white/70 mt-1">
-                          ط³ظٹطھظ… طھط³ط¬ظٹظ„ ط­ط¶ظˆط±ظƒ ظˆط¥ط¹ظ„ط§ظ† ط§ط³ظ…ظƒ ظپظˆط±ظٹط§ظ‹
+                          سيتم تسجيل حضورك وإعلان اسمك فورياً
                         </p>
                       </div>
                     </div>
@@ -733,7 +733,7 @@ export default function ClassroomFaceAttendanceFullPage({
                   {/* Bottom Guide */}
                   <div className="text-center">
                     <div className="inline-block bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl text-xs font-bold text-white/90 border border-white/10">
-                      ًںŒں ط£ظ‡ظ„ط§ظ‹ ط¨ط£ط¨ط·ط§ظ„ ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ â€¢ ظ†ط¸ط§ظ… ط§ظ„طھط­ط¶ظٹط± ط§ظ„ط¢ظ„ظٹ
+                      🌟 أهلاً بأبطال فصل د. إسماعيل عيسى • نظام التحضير الآلي
                     </div>
                   </div>
                 </div>
@@ -757,13 +757,13 @@ export default function ClassroomFaceAttendanceFullPage({
                         <div className="flex items-center gap-2">
                           <h4 className="font-black text-base truncate">{activePopup.studentName}</h4>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20">
-                            {activePopup.similarity}% طھط·ط§ط¨ظ‚
+                            {activePopup.similarity}% تطابق
                           </span>
                         </div>
                         <p className="text-xs font-bold opacity-90 mt-0.5">
                           {activePopup.isDuplicate
-                            ? `ظ…ط³ط¬ظ„ ظ…ط³ط¨ظ‚ط§ظ‹ ظ„ظ‡ط°ط§ ط§ظ„ظٹظˆظ… ظپظٹ ط§ظ„ط³ط§ط¹ط© ${activePopup.time}`
-                            : `طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط­ط¶ظˆط± ط¨ظ†ط¬ط§ط­ â€¢ ط§ظ„ط³ط§ط¹ط© ${activePopup.time} ًںŒں`}
+                            ? `مسجل مسبقاً لهذا اليوم في الساعة ${activePopup.time}`
+                            : `تم تسجيل الحضور بنجاح • الساعة ${activePopup.time} 🌟`}
                         </p>
                       </div>
                     </div>
@@ -782,12 +782,12 @@ export default function ClassroomFaceAttendanceFullPage({
                     <Sparkles size={16} />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-slate-900">ط³ط¬ظ„ ط§ظ„ظˆطµظˆظ„ ط§ظ„ظ„ط­ط¸ظٹ</h3>
-                    <p className="text-[10px] font-bold text-slate-400">ط¢ط®ط± ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط°ظٹظ† طھظ… ط§ظ„طھط¹ط±ظپ ط¹ظ„ظٹظ‡ظ…</p>
+                    <h3 className="font-black text-sm text-slate-900">سجل الوصول اللحظي</h3>
+                    <p className="text-[10px] font-bold text-slate-400">آخر الطلاب الذين تم التعرف عليهم</p>
                   </div>
                 </div>
                 <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  {recentArrivals.length} ط­ط±ظƒط©
+                  {recentArrivals.length} حركة
                 </span>
               </div>
 
@@ -796,8 +796,8 @@ export default function ClassroomFaceAttendanceFullPage({
                 {recentArrivals.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 space-y-2">
                     <Clock size={32} className="mx-auto text-slate-300" />
-                    <p className="text-xs font-bold">ظپظٹ ط§ظ†طھط¸ط§ط± ظ…ط±ظˆط± ط§ظ„ط·ظ„ط§ط¨ ط£ظ…ط§ظ… ط§ظ„ظƒط§ظ…ظٹط±ط§...</p>
-                    <p className="text-[11px]">ط³ظٹط¸ظ‡ط± ظƒظ„ ط·ط§ظ„ط¨ ظ‡ظ†ط§ ظپظˆط±ظٹط§ظ‹ ط¹ظ†ط¯ ظˆطµظˆظ„ظ‡</p>
+                    <p className="text-xs font-bold">في انتظار مرور الطلاب أمام الكاميرا...</p>
+                    <p className="text-[11px]">سيظهر كل طالب هنا فورياً عند وصوله</p>
                   </div>
                 ) : (
                   recentArrivals.map((ev) => (
@@ -819,7 +819,7 @@ export default function ClassroomFaceAttendanceFullPage({
                         </div>
                       </div>
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
-                        {ev.similarity}% طھط·ط§ط¨ظ‚
+                        {ev.similarity}% تطابق
                       </span>
                     </div>
                   ))
@@ -831,17 +831,17 @@ export default function ClassroomFaceAttendanceFullPage({
             <div className="bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 rounded-3xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-rose-600" />
-                <h4 className="font-black text-xs text-rose-950">ط¥ط´ط¹ط§ط± ط£ظˆظ„ظٹط§ط، ط£ظ…ظˆط± ط§ظ„ط؛ط§ط¦ط¨ظٹظ†</h4>
+                <h4 className="font-black text-xs text-rose-950">إشعار أولياء أمور الغائبين</h4>
               </div>
               <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-                ظٹظˆط¬ط¯ ط­ط§ظ„ظٹط§ظ‹ <strong className="text-rose-700">{stats.absentCount} ط·ط§ظ„ط¨</strong> ظ„ظ… ظٹطھظ… ط±طµط¯ ط­ط¶ظˆط±ظ‡ظ… ط¨ط¹ط¯.
+                يوجد حالياً <strong className="text-rose-700">{stats.absentCount} طالب</strong> لم يتم رصد حضورهم بعد.
               </p>
               <button
                 onClick={handleBroadcastAbsentees}
                 className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Phone size={14} />
-                <span>ط¥ط±ط³ط§ظ„ طھظ†ط¨ظٹظ‡ط§طھ ظˆط§طھط³ط§ط¨ ظ„ظ„ط؛ط§ط¦ط¨ظٹظ† ط§ظ„ط¢ظ† ًں“²</span>
+                <span>إرسال تنبيهات واتساب للغائبين الآن 📱</span>
               </button>
             </div>
           </div>
@@ -849,9 +849,9 @@ export default function ClassroomFaceAttendanceFullPage({
       </div>
       )}
 
-      {/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
+      {/* ============================================================
           VIEW 2: ATTENDANCE MATRIX & STUDENT LIST
-      â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */}
+      ============================================================ */}
       {activeView === 'matrix' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
           {/* Filter Bar */}
@@ -862,7 +862,7 @@ export default function ClassroomFaceAttendanceFullPage({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ط§ط¨ط­ط« ط¹ظ† ط·ط§ظ„ط¨ ط¨ط§ظ„ط§ط³ظ…..."
+                placeholder="ابحث عن طالب بالاسم..."
                 className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-emerald-500"
               />
             </div>
@@ -876,7 +876,7 @@ export default function ClassroomFaceAttendanceFullPage({
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                ط§ظ„ظƒظ„ ({students.length})
+                الكل ({students.length})
               </button>
               <button
                 onClick={() => setFilterStatus('present')}
@@ -886,7 +886,7 @@ export default function ClassroomFaceAttendanceFullPage({
                     : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                 }`}
               >
-                ط­ط§ط¶ط± ({stats.presentCount})
+                حاضر ({stats.presentCount})
               </button>
               <button
                 onClick={() => setFilterStatus('absent')}
@@ -896,7 +896,7 @@ export default function ClassroomFaceAttendanceFullPage({
                     : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
                 }`}
               >
-                ط؛ط§ط¦ط¨ ({stats.absentCount})
+                غائب ({stats.absentCount})
               </button>
               <button
                 onClick={() => setFilterStatus('late')}
@@ -906,7 +906,7 @@ export default function ClassroomFaceAttendanceFullPage({
                     : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
                 }`}
               >
-                ظ…طھط£ط®ط± ({stats.lateCount})
+                متأخر ({stats.lateCount})
               </button>
             </div>
           </div>
@@ -917,12 +917,12 @@ export default function ClassroomFaceAttendanceFullPage({
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 font-bold">
                   <th className="py-3 px-3">#</th>
-                  <th className="py-3 px-3">ط§ظ„ط·ط§ظ„ط¨</th>
-                  <th className="py-3 px-3">ط­ط§ظ„ط© ط§ظ„ط¨طµظ…ط©</th>
-                  <th className="py-3 px-3">ط­ط¶ظˆط± ط§ظ„ظٹظˆظ…</th>
-                  <th className="py-3 px-3">ظˆظ‚طھ ط§ظ„ط±طµط¯</th>
-                  <th className="py-3 px-3 text-center">طھط¹ط¯ظٹظ„ ط§ظ„ط­ط§ظ„ط© ط§ظ„ط³ط±ظٹط¹</th>
-                  <th className="py-3 px-3 text-left">ظˆظ„ظٹ ط§ظ„ط£ظ…ط±</th>
+                  <th className="py-3 px-3">الطالب</th>
+                  <th className="py-3 px-3">حالة البصمة</th>
+                  <th className="py-3 px-3">حضور اليوم</th>
+                  <th className="py-3 px-3">وقت الرصد</th>
+                  <th className="py-3 px-3 text-center">تعديل الحالة السريع</th>
+                  <th className="py-3 px-3 text-left">ولي الأمر</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -955,11 +955,11 @@ export default function ClassroomFaceAttendanceFullPage({
                         {hasFace ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
                             <ShieldCheck size={12} className="text-emerald-600" />
-                            <span>ط¨طµظ…ط© ظ…ط³ط¬ظ„ط© ًں”’</span>
+                            <span>بصمة مسجلة 🔒</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                            <span>ط؛ظٹط± ظ…ط³ط¬ظ„ط©</span>
+                            <span>غير مسجلة</span>
                           </span>
                         )}
                       </td>
@@ -969,26 +969,26 @@ export default function ClassroomFaceAttendanceFullPage({
                         {status === 'present' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
                             <CheckCircle2 size={13} className="text-emerald-600" />
-                            <span>ط­ط§ط¶ط± {rec?.verifiedVia === 'face' ? '(ط¨ط§ظ„ط¨طµظ…ط© ًں“¸)' : ''}</span>
+                            <span>حاضر {rec?.verifiedVia === 'face' ? '(بالبصمة 📸)' : ''}</span>
                           </span>
                         )}
                         {status === 'absent' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 border border-rose-200">
                             <UserX size={13} className="text-rose-600" />
-                            <span>ط؛ط§ط¦ط¨ âœ—</span>
+                            <span>غائب ✗</span>
                           </span>
                         )}
                         {status === 'late' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 border border-amber-200">
                             <Clock size={13} className="text-amber-600" />
-                            <span>ظ…طھط£ط®ط±</span>
+                            <span>متأخر</span>
                           </span>
                         )}
                       </td>
 
                       {/* Log Time */}
                       <td className="py-3.5 px-3 font-bold text-slate-600 text-[11px]">
-                        {rec?.sessionTime || 'â€”'}
+                        {rec?.sessionTime || '—'}
                       </td>
 
                       {/* Quick Status Buttons */}
@@ -996,7 +996,7 @@ export default function ClassroomFaceAttendanceFullPage({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleQuickStatusChange(st, 'present')}
-                            title="طھط­ط¶ظٹط±"
+                            title="تحضير"
                             className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                               status === 'present'
                                 ? 'bg-emerald-600 text-white'
@@ -1007,7 +1007,7 @@ export default function ClassroomFaceAttendanceFullPage({
                           </button>
                           <button
                             onClick={() => handleQuickStatusChange(st, 'late')}
-                            title="ظ…طھط£ط®ط±"
+                            title="متأخر"
                             className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                               status === 'late'
                                 ? 'bg-amber-500 text-white'
@@ -1018,7 +1018,7 @@ export default function ClassroomFaceAttendanceFullPage({
                           </button>
                           <button
                             onClick={() => handleQuickStatusChange(st, 'absent')}
-                            title="ط؛ظٹط§ط¨"
+                            title="غياب"
                             className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                               status === 'absent'
                                 ? 'bg-rose-600 text-white'
@@ -1036,13 +1036,13 @@ export default function ClassroomFaceAttendanceFullPage({
                           <button
                             onClick={() => sendWhatsAppAlert(st)}
                             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-black transition cursor-pointer"
-                            title={`ظ…ط±ط§ط³ظ„ط© ظˆظ„ظٹ ط§ظ„ط£ظ…ط±: ${st.parentPhone}`}
+                            title={`مراسلة ولي الأمر: ${st.parentPhone}`}
                           >
                             <Phone size={12} />
-                            <span>ظˆط§طھط³ط§ط¨</span>
+                            <span>واتساب</span>
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-bold">ظ„ط§ ظٹظˆط¬ط¯ ظ‡ط§طھظپ</span>
+                          <span className="text-[10px] text-slate-400 font-bold">لا يوجد هاتف</span>
                         )}
                       </td>
                     </tr>
@@ -1054,42 +1054,42 @@ export default function ClassroomFaceAttendanceFullPage({
         </div>
       )}
 
-      {/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
+      {/* ============================================================
           VIEW 3: PRINTABLE OFFICIAL SHEET
-      â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */}
+      ============================================================ */}
       {activeView === 'print' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xs space-y-6">
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
             <div>
-              <h2 className="text-xl font-black text-slate-900">ط§ظ„ظ…ظ…ظ„ظƒط© ط§ظ„ط¹ط±ط¨ظٹط© ط§ظ„ط³ط¹ظˆط¯ظٹط© â€” ظˆط²ط§ط±ط© ط§ظ„طھط¹ظ„ظٹظ…</h2>
-              <h3 className="text-base font-bold text-slate-700">ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ظˆط§ظ„ط؛ظٹط§ط¨ ط§ظ„ظٹظˆظ…ظٹ ط§ظ„ط±ط³ظ…ظٹ â€¢ ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰</h3>
-              <p className="text-xs text-slate-500 mt-1">ط§ظ„طھط§ط±ظٹط®: {todayArabicDate} ({todayStr})</p>
+              <h2 className="text-xl font-black text-slate-900">المملكة العربية السعودية — وزارة التعليم</h2>
+              <h3 className="text-base font-bold text-slate-700">كشف الحضور والغياب اليومي الرسمي • فصل د. إسماعيل عيسى</h3>
+              <p className="text-xs text-slate-500 mt-1">التاريخ: {todayArabicDate} ({todayStr})</p>
             </div>
             <button
               onClick={() => window.print()}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
             >
               <Printer size={15} />
-              <span>ط·ط¨ط§ط¹ط© ط§ظ„ظ…ط³طھظ†ط¯ ط§ظ„ط¢ظ†</span>
+              <span>طباعة المستند الآن</span>
             </button>
           </div>
 
           <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center text-xs">
-            <div><strong>ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط·ظ„ط§ط¨:</strong> {stats.total}</div>
-            <div><strong>ط§ظ„ط­ط§ط¶ط±ظˆظ† ط¨ط§ظ„ط¨طµظ…ط©:</strong> {stats.faceVerifiedCount}</div>
-            <div><strong>ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط­ط¶ظˆط±:</strong> {stats.presentCount} ({stats.rate}%)</div>
-            <div><strong>ط§ظ„ط؛ظٹط§ط¨:</strong> {stats.absentCount}</div>
+            <div><strong>إجمالي الطلاب:</strong> {stats.total}</div>
+            <div><strong>الحاضرون بالبصمة:</strong> {stats.faceVerifiedCount}</div>
+            <div><strong>إجمالي الحضور:</strong> {stats.presentCount} ({stats.rate}%)</div>
+            <div><strong>الغياب:</strong> {stats.absentCount}</div>
           </div>
 
           <table className="w-full text-right text-xs border border-slate-300">
             <thead>
               <tr className="bg-slate-100 border-b border-slate-300 font-black">
                 <th className="p-2 border-l border-slate-300">#</th>
-                <th className="p-2 border-l border-slate-300">ط§ط³ظ… ط§ظ„ط·ط§ظ„ط¨</th>
-                <th className="p-2 border-l border-slate-300">ط§ظ„ط­ط§ظ„ط© ط§ظ„ظٹظˆظ…ظٹط©</th>
-                <th className="p-2 border-l border-slate-300">ط·ط±ظٹظ‚ط© ط§ظ„طھط­ظ‚ظ‚</th>
-                <th className="p-2 border-l border-slate-300">ظˆظ‚طھ ط§ظ„ط±طµط¯</th>
-                <th className="p-2">طھظˆظ‚ظٹط¹ ط§ظ„ظ…ط¹ظ„ظ…</th>
+                <th className="p-2 border-l border-slate-300">اسم الطالب</th>
+                <th className="p-2 border-l border-slate-300">الحالة اليومية</th>
+                <th className="p-2 border-l border-slate-300">طريقة التحقق</th>
+                <th className="p-2 border-l border-slate-300">وقت الرصد</th>
+                <th className="p-2">توقيع المعلم</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -1101,13 +1101,13 @@ export default function ClassroomFaceAttendanceFullPage({
                     <td className="p-2 border-l border-slate-300">{i + 1}</td>
                     <td className="p-2 border-l border-slate-300 font-black">{st.fullName}</td>
                     <td className="p-2 border-l border-slate-300 font-bold">
-                      {status === 'present' ? 'ط­ط§ط¶ط± âœ“' : status === 'late' ? 'ظ…طھط£ط®ط± âڈ±ï¸ڈ' : 'ط؛ط§ط¦ط¨ âœ—'}
+                      {status === 'present' ? 'حاضر ✓' : status === 'late' ? 'متأخر ⏱️' : 'غائب ✗'}
                     </td>
                     <td className="p-2 border-l border-slate-300">
-                      {rec?.verifiedVia === 'face' ? 'ط¨طµظ…ط© ط§ظ„ظˆط¬ظ‡ (MediaPipe)' : 'ظٹط¯ظˆظٹ'}
+                      {rec?.verifiedVia === 'face' ? 'بصمة الوجه (MediaPipe)' : 'يدوي'}
                     </td>
-                    <td className="p-2 border-l border-slate-300">{rec?.sessionTime || 'â€”'}</td>
-                    <td className="p-2 font-handwriting text-slate-400">ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰</td>
+                    <td className="p-2 border-l border-slate-300">{rec?.sessionTime || '—'}</td>
+                    <td className="p-2 font-handwriting text-slate-400">د. إسماعيل عيسى</td>
                   </tr>
                 );
               })}
@@ -1115,8 +1115,8 @@ export default function ClassroomFaceAttendanceFullPage({
           </table>
 
           <div className="pt-6 flex items-center justify-between border-t border-slate-200 text-xs font-bold text-slate-600">
-            <div>ط§ظ„ظ…ط¹ظ„ظ… ط§ظ„ظ…ط´ط±ظپ: ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ âœچï¸ڈ</div>
-            <div>ظ…ظ†طµط© ظ…ط³ط§ط± ط§ظ„طھط¹ظ„ظٹظ…ظٹط© ط§ظ„ط°ظƒظٹط© â€¢ MasarPlatform.org</div>
+            <div>المعلم المشرف: د. إسماعيل عيسى ✍️</div>
+            <div>منصة مسار التعليمية الذكية • MasarPlatform.org</div>
           </div>
         </div>
       )}

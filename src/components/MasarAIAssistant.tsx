@@ -47,12 +47,12 @@ const CLOUD_COLLECTION = 'ai_threads';
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
 const QUICK_ACTIONS = [
-  { label: 'ًں“ٹ ظ…ظٹظ† ط؛ط§ط¨ ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡طں', prompt: 'ظ…ظٹظ† ط؛ط§ط¨ ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡طں ط§ط¹ط±ط¶ ظ„ظٹ ظƒط´ظپ ط§ظ„ط؛ظٹط§ط¨ ظˆط§ظ„ط­ط¶ظˆط± ط§ظ„ظ„ط­ط¸ظٹ ظ„ظ„ظپطµظ„' },
-  { label: 'ًںژ¯ ط¥ظ†ط´ط§ط، ظƒظˆظٹط² ط³ط±ظٹط¹', prompt: 'ط£ظ†ط´ط¦ ظƒظˆظٹط² ط³ط±ظٹط¹ ظ…ظ† 5 ط£ط³ط¦ظ„ط© ظ…ط¹ ط§ظ„ط®ظٹط§ط±ط§طھ ظˆط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط© ظپظٹ ط§ظ„ظˆط¹ظٹ ط§ظ„طµظˆطھظٹ ظˆط­ط±ظˆظپ ط§ظ„ظ…ط¯' },
-  { label: 'ًں“ڑ طھط­ط¶ظٹط± ط¯ط±ط³ طھظپط§ط¹ظ„ظٹ', prompt: 'ط­ط¶ط±ظ„ظٹ ط¯ط±ط³ طھظپط§ط¹ظ„ظٹ ظ…طھظƒط§ظ…ظ„ ظ…ط¹ ط§ظ„ط£ظ‡ط¯ط§ظپ ط§ظ„ط³ظ„ظˆظƒظٹط© ظˆط§ط³طھط±ط§طھظٹط¬ظٹط§طھ طµط¹ظˆط¨ط§طھ ط§ظ„طھط¹ظ„ظ…' },
-  { label: 'ًں“² ط±ط³ط§ظ„ط© ظ„ط£ظ‡ظ„ ط§ظ„ط؛ط§ط¦ط¨ظٹظ†', prompt: 'ط§ظƒطھط¨ ط±ط³ط§ظ„ط© ظˆط§طھط³ط§ط¨ طھط±ط¨ظˆظٹط© ظˆظ„ط·ظٹظپط© ظ„ط£ظˆظ„ظٹط§ط، ط£ظ…ظˆط± ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط؛ط§ط¦ط¨ظٹظ† ط§ظ„ظٹظˆظ…' },
-  { label: 'ًں“‹ ط®ط·ط© ظپط±ط¯ظٹط© IEP', prompt: 'ط¬ظ‡ط² ظ…ط³ظˆط¯ط© ط®ط·ط© طھط±ط¨ظˆظٹط© ظپط±ط¯ظٹط© IEP ظ„ط·ط§ظ„ط¨ ظٹط­طھط§ط¬ طھظ‚ظˆظٹط© ظپظٹ ط§ظ„طھظ‡ط¬ظٹ ظˆط§ظ„ظ‚ط±ط§ط،ط©' },
-  { label: 'ًں“… طھط§ط±ظٹط® ظˆظˆظ‚طھ ط§ظ„ظٹظˆظ…', prompt: 'ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡ ظٹظˆظ… ط§ظٹظ‡طں ظˆظ…ط§ ظ‡ظˆ ط§ظ„طھط§ط±ظٹط® ظˆط§ظ„ظˆظ‚طھ ط§ظ„ط¢ظ†طں' },
+  { label: '📊 مين غاب النهارده؟', prompt: 'مين غاب النهارده؟ اعرض لي كشف الغياب والحضور اللحظي للفصل' },
+  { label: '🎯 إنشاء كويز سريع', prompt: 'أنشئ كويز سريع من 5 أسئلة مع الخيارات والإجابة الصحيحة في الوعي الصوتي وحروف المد' },
+  { label: '📚 تحضير درس تفاعلي', prompt: 'حضرلي درس تفاعلي متكامل مع الأهداف السلوكية واستراتيجيات صعوبات التعلم' },
+  { label: '📱 رسالة لأهل الغائبين', prompt: 'اكتب رسالة واتساب تربوية ولطيفة لأولياء أمور الطلاب الغائبين اليوم' },
+  { label: '📋 خطة فردية IEP', prompt: 'جهز مسودة خطة تربوية فردية IEP لطالب يحتاج تقوية في التهجي والقراءة' },
+  { label: '📅 تاريخ ووقت اليوم', prompt: 'النهارده يوم ايه؟ وما هو التاريخ والوقت الآن؟' },
 ];
 
 function loadLocalThreads(): Record<string, ChatThread> {
@@ -107,7 +107,7 @@ export default function MasarAIAssistant({
       const defaultId = `thread_${Date.now()}`;
       const defaultThread: ChatThread = {
         id: defaultId,
-        title: 'ظ…ط­ط§ط¯ط«ط© ط§ظ„ظ…ط³ط§ط¹ط¯ ط§ظ„ط°ظƒظٹ',
+        title: 'محادثة المساعد الذكي',
         messages: [],
         lastUpdated: new Date().toISOString(),
       };
@@ -152,7 +152,7 @@ export default function MasarAIAssistant({
     const newId = `thread_${Date.now()}`;
     const newThread: ChatThread = {
       id: newId,
-      title: `ظ…ط­ط§ط¯ط«ط© ط¬ط¯ظٹط¯ط© ${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`,
+      title: `محادثة جديدة ${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`,
       messages: [],
       lastUpdated: new Date().toISOString(),
     };
@@ -186,7 +186,7 @@ export default function MasarAIAssistant({
           const freshId = `thread_${Date.now()}`;
           const freshThread: ChatThread = {
             id: freshId,
-            title: 'ظ…ط­ط§ط¯ط«ط© ط¬ط¯ظٹط¯ط©',
+            title: 'محادثة جديدة',
             messages: [],
             lastUpdated: new Date().toISOString(),
           };
@@ -260,7 +260,7 @@ export default function MasarAIAssistant({
     const userMsg: ChatMessage = {
       id: `u_${Date.now()}`,
       role: 'user',
-      text: text || 'ظٹط±ط¬ظ‰ طھط­ظ„ظٹظ„ ظ‡ط°ظ‡ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط±ظپظ‚ط©',
+      text: text || 'يرجى تحليل هذه الصورة المرفقة',
       imageBase64: imageBase64 ?? undefined,
       imageMime: imageMime,
       timestamp: timeLabel,
@@ -268,7 +268,7 @@ export default function MasarAIAssistant({
 
     const currentTh = threads[activeThreadId] ?? {
       id: activeThreadId,
-      title: text.slice(0, 32) || 'ظ…ط­ط§ط¯ط«ط© ط¬ط¯ظٹط¯ط©',
+      title: text.slice(0, 32) || 'محادثة جديدة',
       messages: [],
       lastUpdated: '',
     };
@@ -302,7 +302,7 @@ export default function MasarAIAssistant({
 
     try {
       const body: Record<string, unknown> = {
-        prompt: text || 'طھط­ظ„ظٹظ„ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط±ظپظ‚ط© ظˆط§ط³طھط®ط±ط§ط¬ طھظˆط¬ظٹظ‡ط§طھ طھط¹ظ„ظٹظ…ظٹط© ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰',
+        prompt: text || 'تحليل الصورة المرفقة واستخراج توجيهات تعليمية لد. إسماعيل عيسى',
         branch,
         history,
       };
@@ -325,10 +325,10 @@ export default function MasarAIAssistant({
         gateway = data.gateway || '';
       } else {
         const err = await res.json().catch(() => ({}));
-        replyText = err?.error || 'طھط¹ط°ط± ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„ظ…ط³ط§ط¹ط¯ ط§ظ„ط°ظƒظٹ ط§ظ„ط¢ظ†. ظٹط±ط¬ظ‰ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„ط¥ظ†طھط±ظ†طھ.';
+        replyText = err?.error || 'تعذر الاتصال بالمساعد الذكي الآن. يرجى التحقق من الاتصال بالإنترنت.';
       }
     } catch {
-      replyText = 'ط­ط¯ط« ط®ط·ط£ ظپظٹ ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„ط®ط§ط¯ظ…. ظٹط±ط¬ظ‰ ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ط­ط§ظˆظ„ط© ط¨ط¹ط¯ ط«ظˆط§ظ†ظچ.';
+      replyText = 'حدث خطأ في الاتصال بالخادم. يرجى إعادة المحاولة بعد ثوانٍ.';
     }
 
     const assistantMsg: ChatMessage = {
@@ -370,13 +370,13 @@ export default function MasarAIAssistant({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-slate-900">ط§ظ„ظ…ط³ط§ط¹ط¯ ط§ظ„ط°ظƒظٹ ط§ظ„طھظ†ظپظٹط°ظٹ</h2>
+              <h2 className="text-base font-black text-slate-900">المساعد الذكي التنفيذي</h2>
               <span className="bg-teal-50 border border-teal-200 text-teal-800 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Sparkles size={11} className="text-teal-600" /> ظ…ط®طµطµ ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰
+                <Sparkles size={11} className="text-teal-600" /> مخصص لد. إسماعيل عيسى
               </span>
             </div>
             <p className="text-xs font-bold text-slate-500 mt-0.5">
-              ظ…ط±ط¨ظˆط· ظ„ط­ط¸ظٹط§ظ‹ ط¨ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ط§ظ„ط¨ظٹظˆظ…طھط±ظٹطŒ ط¨ظ†ظƒ ط§ظ„ط§ط®طھط¨ط§ط±ط§طھطŒ ظˆط§ظ„ط®ط·ط· ط§ظ„ظپط±ط¯ظٹط© IEP.
+              مربوط لحظياً بكشف الحضور البيومتري، بنك الاختبارات، والخطط الفردية IEP.
             </p>
           </div>
         </div>
@@ -384,14 +384,14 @@ export default function MasarAIAssistant({
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-xl">
             <CheckCircle2 size={14} className="text-emerald-600" />
-            <span>ظ…طھطµظ„ ط¨ط¨ظٹط§ظ†ط§طھ ط§ظ„ظپطµظ„ ط§ظ„ط­ظٹط©</span>
+            <span>متصل ببيانات الفصل الحية</span>
           </div>
           <button
             onClick={handleCreateNewThread}
             className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black px-3.5 py-2 rounded-xl transition shadow-xs"
           >
             <Plus size={15} />
-            <span>ظ…ط­ط§ط¯ط«ط© ط¬ط¯ظٹط¯ط©</span>
+            <span>محادثة جديدة</span>
           </button>
         </div>
       </div>
@@ -401,7 +401,7 @@ export default function MasarAIAssistant({
         {/* Sidebar History (Desktop) */}
         <aside className="w-64 border-l border-slate-200 bg-slate-50/50 p-3 flex flex-col shrink-0 hidden md:flex">
           <div className="text-[11px] font-black text-slate-400 px-2 mb-2 flex items-center justify-between">
-            <span>ط³ط¬ظ„ ط§ظ„ظ…ط­ط§ط¯ط«ط§طھ ({sortedThreads.length})</span>
+            <span>سجل المحادثات ({sortedThreads.length})</span>
             <Clock size={13} />
           </div>
 
@@ -420,12 +420,12 @@ export default function MasarAIAssistant({
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <MessageSquare size={14} className={isActive ? 'text-teal-600 shrink-0' : 'text-slate-400 shrink-0'} />
-                    <span className="text-xs truncate">{t.title || 'ظ…ط­ط§ط¯ط«ط©'}</span>
+                    <span className="text-xs truncate">{t.title || 'محادثة'}</span>
                   </div>
                   <button
                     onClick={(e) => handleDeleteThread(t.id, e)}
                     className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 rounded-md transition"
-                    title="ط­ط°ظپ"
+                    title="حذف"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -436,7 +436,7 @@ export default function MasarAIAssistant({
 
           <div className="pt-2 border-t border-slate-200 text-[10px] font-bold text-slate-400 text-center flex items-center justify-center gap-1">
             <ShieldCheck size={12} className="text-emerald-600" />
-            <span>ظ…ط­ط§ط¯ط«ط§طھظƒ ظ…ط­ظپظˆط¸ط© ظˆظ…ط´ظپط±ط©</span>
+            <span>محادثاتك محفوظة ومشفرة</span>
           </div>
         </aside>
 
@@ -445,7 +445,7 @@ export default function MasarAIAssistant({
           {/* Quick Prompts Shelf */}
           <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
             <span className="text-[11px] font-black text-slate-500 shrink-0 flex items-center gap-1">
-              <Sparkles size={12} className="text-amber-500" /> ط£ظˆط§ظ…ط± ط³ط±ظٹط¹ط©:
+              <Sparkles size={12} className="text-amber-500" /> أوامر سريعة:
             </span>
             {QUICK_ACTIONS.map((action, idx) => (
               <button
@@ -467,9 +467,9 @@ export default function MasarAIAssistant({
                   <Bot size={34} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-800">ظ…ط±ط­ط¨ط§ظ‹ ط¨ظƒ ظٹط§ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰</h3>
+                  <h3 className="text-sm font-black text-slate-800">مرحباً بك يا د. إسماعيل عيسى</h3>
                   <p className="text-xs font-bold text-slate-500 max-w-md mt-1 leading-relaxed">
-                    ط§ط³ط£ظ„ظ†ظٹ ط¹ظ† ط­ط¶ظˆط± ظˆط؛ظٹط§ط¨ ط·ظ„ط§ط¨ظƒ ط§ظ„ظٹظˆظ…طŒ ط£ظˆ ط§ط·ظ„ط¨ ظƒظˆظٹط² ط³ط±ظٹط¹طŒ طھط­ط¶ظٹط± ط¯ط±ط³طŒ ط£ظˆ طµظٹط§ط؛ط© ط±ط³ط§ط¦ظ„ ظ„ط£ظˆظ„ظٹط§ط، ط§ظ„ط£ظ…ظˆط±.
+                    اسألني عن حضور وغياب طلابك اليوم، أو اطلب كويز سريع، تحضير درس، أو صياغة رسائل لأولياء الأمور.
                   </p>
                 </div>
               </div>
@@ -483,7 +483,7 @@ export default function MasarAIAssistant({
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-black text-xs shadow-2xs ${
                   msg.role === 'user' ? 'bg-slate-900 text-white' : 'bg-teal-600 text-white'
                 }`}>
-                  {msg.role === 'user' ? 'ط¯.ط¥' : <Bot size={17} />}
+                  {msg.role === 'user' ? 'د.إ' : <Bot size={17} />}
                 </div>
 
                 <div className={`max-w-[85%] md:max-w-[78%] rounded-2xl p-4 text-xs font-bold leading-relaxed shadow-2xs space-y-2.5 ${
@@ -495,7 +495,7 @@ export default function MasarAIAssistant({
                     <div className="rounded-xl overflow-hidden border border-slate-200 max-w-xs">
                       <Image
                         src={`data:${msg.imageMime};base64,${msg.imageBase64}`}
-                        alt="طµظˆط±ط© ظ…ط±ظپظ‚ط©"
+                        alt="صورة مرفقة"
                         width={300}
                         height={200}
                         unoptimized
@@ -537,14 +537,14 @@ export default function MasarAIAssistant({
                         <button
                           onClick={() => speakText(msg.text)}
                           className="text-slate-400 hover:text-teal-700 transition"
-                          title="ظ‚ط±ط§ط،ط© طµظˆطھظٹط©"
+                          title="قراءة صوتية"
                         >
                           <Volume2 size={13} />
                         </button>
                         <button
                           onClick={() => copyText(msg.id, msg.text)}
                           className="flex items-center gap-0.5 text-slate-400 hover:text-teal-700 transition"
-                          title="ظ†ط³ط® ط§ظ„ظ†طµ"
+                          title="نسخ النص"
                         >
                           {copiedId === msg.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                         </button>
@@ -562,7 +562,7 @@ export default function MasarAIAssistant({
                 </div>
                 <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-3.5 shadow-2xs flex items-center gap-2.5 text-xs font-bold text-teal-900">
                   <Loader2 size={16} className="animate-spin text-teal-600" />
-                  <span>ط§ظ„ظ…ط³ط§ط¹ط¯ ط§ظ„ط°ظƒظٹ ظٹظپط­طµ ط¨ظٹط§ظ†ط§طھ ط§ظ„ظپطµظ„ ظˆظٹط¬ظ‡ط² ط§ظ„ط±ط¯...</span>
+                  <span>المساعد الذكي يفحص بيانات الفصل ويجهز الرد...</span>
                 </div>
               </div>
             )}
@@ -575,13 +575,13 @@ export default function MasarAIAssistant({
               <div className="flex items-center gap-3">
                 <Image
                   src={imagePreview}
-                  alt="ظ…ط¹ط§ظٹظ†ط©"
+                  alt="معاينة"
                   width={40}
                   height={40}
                   unoptimized
                   className="w-10 h-10 rounded-lg object-cover border border-slate-300"
                 />
-                <span className="text-xs font-bold text-slate-700">طµظˆط±ط© ظ…ط±ظپظ‚ط© ظ„ظ„طھط­ظ„ظٹظ„</span>
+                <span className="text-xs font-bold text-slate-700">صورة مرفقة للتحليل</span>
               </div>
               <button onClick={clearImage} className="text-rose-500 hover:text-rose-700 p-1">
                 <X size={16} />
@@ -596,7 +596,7 @@ export default function MasarAIAssistant({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-3 rounded-2xl border border-slate-200 text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition shrink-0"
-              title="ط¥ط±ظپط§ظ‚ طµظˆط±ط© ط¯ط±ط³ ط£ظˆ ط¬ط¯ظˆظ„"
+              title="إرفاق صورة درس أو جدول"
             >
               <ImageIcon size={18} />
             </button>
@@ -611,7 +611,7 @@ export default function MasarAIAssistant({
                 }
               }}
               rows={1}
-              placeholder="ط§ط·ظ„ط¨ ظƒط´ظپ ط§ظ„ط؛ظٹط§ط¨طŒ ظƒظˆظٹط² ط³ط±ظٹط¹طŒ طھط­ط¶ظٹط± ط¯ط±ط³طŒ ط£ظˆ ط§ط±ظپط¹ طµظˆط±ط©..."
+              placeholder="اطلب كشف الغياب، كويز سريع، تحضير درس، أو ارفع صورة..."
               className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-xs md:text-sm font-bold text-slate-900 placeholder-slate-400 focus:border-teal-600 focus:outline-none resize-none max-h-24 scrollbar-none"
             />
 

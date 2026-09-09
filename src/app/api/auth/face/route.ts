@@ -461,7 +461,7 @@ export async function POST(req: NextRequest) {
 
   const token = await createSessionToken(account);
   if (!token) {
-    return NextResponse.json({ ok: false, error: 'طھط¹ط°ط± ط¥ظ†ط´ط§ط، ط¬ظ„ط³ط© ط¢ظ…ظ†ط©.' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'تعذر إنشاء جلسة آمنة.' }, { status: 500 });
   }
 
   const response = NextResponse.json({

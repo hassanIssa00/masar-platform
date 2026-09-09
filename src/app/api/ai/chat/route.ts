@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiApi, type GeminiMessage } from '@/lib/gemini';
 import { authenticateRequest } from '@/lib/auth/authorization';
 import { checkRateLimit, getClientIdentifier, getIpIdentifier } from '@/lib/rateLimit';
@@ -33,20 +33,20 @@ interface AttendanceSummary {
   attendanceRate: number;
 }
 
-// â”€â”€ Arabic Text Normalization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Arabic Text Normalization ──────────────────────────────────────────────
 function normalizeArabic(text: string): string {
   return (text || '')
     .toLowerCase()
-    .replace(/[ظ‹ظŒظچظژظڈظگظ‘ظ’ظ€]/g, '')
-    .replace(/[ط¥ط£ط¢ط§]/g, 'ط§')
-    .replace(/ظ‰/g, 'ظٹ')
-    .replace(/ط©/g, 'ظ‡')
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-// â”€â”€ Date Helpers (Saudi Arabia / Egypt) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Date Helpers (Saudi Arabia / Egypt) ────────────────────────────────────
 function getTodayInfo() {
   const now = new Date();
   const timeZone = 'Asia/Riyadh';
@@ -58,7 +58,7 @@ function getTodayInfo() {
   return { isoDate, dayName, dateArabic, timeArabic };
 }
 
-// â”€â”€ Parse Multimodal Image â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Parse Multimodal Image ─────────────────────────────────────────────────
 function parseImage(image: unknown): { mimeType: string; data: string } | undefined {
   if (!image) return undefined;
   if (typeof image === 'object' && image !== null && 'data' in image) {
@@ -74,7 +74,7 @@ function parseImage(image: unknown): { mimeType: string; data: string } | undefi
   return undefined;
 }
 
-// â”€â”€ Fetch Live Classroom Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fetch Live Classroom Context ───────────────────────────────────────────
 async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<{
   students: StudentRecord[];
   attendance: AttendanceSummary;
@@ -83,11 +83,11 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
   const adminDb = getAdminDb();
 
   const fallbackStudents: StudentRecord[] = [
-    { id: 'st-1', fullName: 'ط£ط­ظ…ط¯ ط¥ط¨ط±ط§ظ‡ظٹظ… ط±ط¨ظٹط¹', grade: 'ط§ظ„ط£ظˆظ„ ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹ', schoolBranch: 'IKHLAS_JEDDAH' },
-    { id: 'st-2', fullName: 'ظپط§ط±ط³ ط¹ط¨ط¯ ط§ظ„ظ„ظ‡ ط§ظ„ط´ظ‡ط±ظٹ', grade: 'ط§ظ„ط£ظˆظ„ ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹ', schoolBranch: 'IKHLAS_JEDDAH' },
-    { id: 'st-3', fullName: 'ط³ظ„ظ…ط§ظ† ظپظ‡ط¯ ط§ظ„ط­ط±ط¨ظٹ', grade: 'ط§ظ„ط«ط§ظ†ظٹ ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹ', schoolBranch: 'IKHLAS_JEDDAH' },
-    { id: 'st-4', fullName: 'ظٹظˆط³ظپ ط¹ظ…ط± ط§ظ„ط¹طھظٹط¨ظٹ', grade: 'ط§ظ„ط£ظˆظ„ ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹ', schoolBranch: 'IKHLAS_JEDDAH' },
-    { id: 'st-5', fullName: 'ط±ظٹط§ظ† ط®ط§ظ„ط¯ ط§ظ„ط²ظ‡ط±ط§ظ†ظٹ', grade: 'ط§ظ„ط«ط§ظ†ظٹ ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹ', schoolBranch: 'IKHLAS_JEDDAH' },
+    { id: 'st-1', fullName: 'أحمد إبراهيم ربيع', grade: 'الأول الابتدائي', schoolBranch: 'IKHLAS_JEDDAH' },
+    { id: 'st-2', fullName: 'فارس عبد الله الشهري', grade: 'الأول الابتدائي', schoolBranch: 'IKHLAS_JEDDAH' },
+    { id: 'st-3', fullName: 'سلمان فهد الحربي', grade: 'الثاني الابتدائي', schoolBranch: 'IKHLAS_JEDDAH' },
+    { id: 'st-4', fullName: 'يوسف عمر العتيبي', grade: 'الأول الابتدائي', schoolBranch: 'IKHLAS_JEDDAH' },
+    { id: 'st-5', fullName: 'ريان خالد الزهراني', grade: 'الثاني الابتدائي', schoolBranch: 'IKHLAS_JEDDAH' },
   ];
 
   if (!adminDb) {
@@ -116,8 +116,8 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
       const data = doc.data();
       students.push({
         id: doc.id,
-        fullName: data.fullName || data.name || 'ط·ط§ظ„ط¨',
-        grade: data.grade || 'ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„',
+        fullName: data.fullName || data.name || 'طالب',
+        grade: data.grade || 'فصل د. إسماعيل',
         parentName: data.parentName,
         parentPhone: data.parentPhone,
         schoolBranch: data.schoolBranch || data.branch || 'IKHLAS_JEDDAH',
@@ -131,8 +131,8 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
         if (branch === 'ALL' || data.schoolBranch === branch || data.branch === branch || data.source === 'ikhlas-jeddah') {
           students.push({
             id: doc.id,
-            fullName: data.fullName || data.name || 'ط·ط§ظ„ط¨',
-            grade: data.grade || 'ط§ظ„ظ…ط³طھظˆظ‰ ط§ظ„طھط£ط³ظٹط³ظٹ',
+            fullName: data.fullName || data.name || 'طالب',
+            grade: data.grade || 'المستوى التأسيسي',
             parentName: data.parentName,
             parentPhone: data.parentPhone,
             schoolBranch: data.schoolBranch || data.branch || 'IKHLAS_JEDDAH',
@@ -164,7 +164,7 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
         );
         if (isPresent) {
           const isFace = Object.values(periods || {}).some((s) => s === 'present_face');
-          presentMap.set(studentId, { via: isFace ? 'ط¨طµظ…ط© ط§ظ„ظˆط¬ظ‡' : 'طھط³ط¬ظٹظ„ ظٹط¯ظˆظٹ' });
+          presentMap.set(studentId, { via: isFace ? 'بصمة الوجه' : 'تسجيل يدوي' });
         }
       });
     }
@@ -178,7 +178,7 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
     attSnap.docs.forEach((doc) => {
       const d = doc.data();
       if (d.status === 'present') {
-        const via = d.verifiedVia === 'face' ? 'ط¨طµظ…ط© ط§ظ„ظˆط¬ظ‡' : 'طھط³ط¬ظٹظ„ ظٹط¯ظˆظٹ';
+        const via = d.verifiedVia === 'face' ? 'بصمة الوجه' : 'تسجيل يدوي';
         presentMap.set(d.studentId, { via, time: d.time });
       }
     });
@@ -193,7 +193,7 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
   students.forEach((st) => {
     const att = presentMap.get(st.id);
     if (att) {
-      if (att.via.includes('ظˆط¬ظ‡') || att.via.includes('face')) faceCount++;
+      if (att.via.includes('وجه') || att.via.includes('face')) faceCount++;
       presentStudents.push({ name: st.fullName, via: att.via, time: att.time });
     } else {
       absentStudents.push({ name: st.fullName, parentPhone: st.parentPhone });
@@ -222,106 +222,106 @@ async function fetchClassroomContext(branch: string = 'IKHLAS_JEDDAH'): Promise<
   };
 }
 
-// â”€â”€ Smart Intent Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Smart Intent Handlers ──────────────────────────────────────────────────
 
 function handleDateTimeQuery(): { reply: string; actions: AiAction[] } {
   const { dayName, dateArabic, timeArabic } = getTodayInfo();
   return {
-    reply: `ًں“… **ط§ظ„ظٹظˆظ…:** ${dayName}طŒ ${dateArabic}\nâڈ° **ط§ظ„ظˆظ‚طھ ط§ظ„ط­ط§ظ„ظٹ:** ${timeArabic} (طھظˆظ‚ظٹطھ ظ…ظƒط© ط§ظ„ظ…ظƒط±ظ…ط©/ط¬ط¯ط©).`,
+    reply: `📅 **اليوم:** ${dayName}، ${dateArabic}\n⏰ **الوقت الحالي:** ${timeArabic} (توقيت مكة المكرمة/جدة).`,
     actions: [
-      { type: 'navigate', label: 'ظپطھط­ ط§ظ„ط¬ط¯ظˆظ„ ط§ظ„ط¯ط±ط§ط³ظٹ', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'فتح الجدول الدراسي', target: '/branches/ikhlas-jeddah' },
     ],
   };
 }
 
 function handleAttendanceQuery(att: AttendanceSummary): { reply: string; actions: AiAction[] } {
   const lines: string[] = [
-    `ًں“ٹ **طھظ‚ط±ظٹط± ط§ظ„ط­ط¶ظˆط± ظˆط§ظ„ط؛ظٹط§ط¨ ط§ظ„ظٹظˆظ…ظٹ â€” ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰**`,
-    `ًں“… **ط§ظ„طھط§ط±ظٹط®:** ${att.dayName}طŒ ${att.dateArabic}`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `â€¢ **ط¥ط¬ظ…ط§ظ„ظٹ ط·ظ„ط§ط¨ ط§ظ„ظپطµظ„:** ${att.totalStudents} ط·ط§ظ„ط¨ط§ظ‹`,
-    `â€¢ **ط§ظ„ط­ط§ط¶ط±ظˆظ†:** ${att.presentCount} ط·ط§ظ„ط¨ط§ظ‹ (${att.attendanceRate}%)`,
-    `â€¢ **ط­ط¶ط±ظˆط§ ط¨ط¨طµظ…ط© ط§ظ„ظˆط¬ظ‡:** ${att.faceAttendanceCount} ط·ط§ظ„ط¨ط§ظ‹ ًں‘پï¸ڈ`,
-    `â€¢ **ط§ظ„ط؛ط§ط¦ط¨ظˆظ† ط§ظ„ظٹظˆظ…:** ${att.absentCount} ط·ط§ظ„ط¨ط§ظ‹`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
+    `📊 **تقرير الحضور والغياب اليومي — فصل د. إسماعيل عيسى**`,
+    `📅 **التاريخ:** ${att.dayName}، ${att.dateArabic}`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `• **إجمالي طلاب الفصل:** ${att.totalStudents} طالباً`,
+    `• **الحاضرون:** ${att.presentCount} طالباً (${att.attendanceRate}%)`,
+    `• **حضروا ببصمة الوجه:** ${att.faceAttendanceCount} طالباً 👁️`,
+    `• **الغائبون اليوم:** ${att.absentCount} طالباً`,
+    `━━━━━━━━━━━━━━━━━━━━`,
   ];
 
   if (att.absentCount > 0) {
-    lines.push(`â‌Œ **ظ‚ط§ط¦ظ…ط© ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط؛ط§ط¦ط¨ظٹظ† (${att.absentCount}):**`);
+    lines.push(`❌ **قائمة الطلاب الغائبين (${att.absentCount}):**`);
     att.absentStudents.forEach((st, idx) => {
       lines.push(`${idx + 1}. ${st.name}`);
     });
     lines.push('');
   } else {
-    lines.push('ًںژ‰ **ظ…ط§ ط´ط§ط، ط§ظ„ظ„ظ‡! ط¬ظ…ظٹط¹ ط·ظ„ط§ط¨ ط§ظ„ظپطµظ„ ط­ط§ط¶ط±ظˆظ† ط§ظ„ظٹظˆظ… ط¨ظ†ط³ط¨ط© 100%.**\n');
+    lines.push('🎉 **ما شاء الله! جميع طلاب الفصل حاضرون اليوم بنسبة 100%.**\n');
   }
 
   if (att.presentCount > 0) {
-    lines.push(`âœ… **ظ‚ط§ط¦ظ…ط© ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط­ط§ط¶ط±ظٹظ† (${att.presentCount}):**`);
+    lines.push(`✅ **قائمة الطلاب الحاضرين (${att.presentCount}):**`);
     att.presentStudents.slice(0, 10).forEach((st, idx) => {
-      lines.push(`${idx + 1}. ${st.name} â€” [${st.via}]`);
+      lines.push(`${idx + 1}. ${st.name} — [${st.via}]`);
     });
     if (att.presentStudents.length > 10) {
-      lines.push(`... ظˆط؛ظٹط±ظ‡ظ… ظ…ظ† ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط­ط§ط¶ط±ظٹظ†.`);
+      lines.push(`... وغيرهم من الطلاب الحاضرين.`);
     }
   }
 
   return {
     reply: lines.join('\n'),
     actions: [
-      { type: 'navigate', label: 'ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ط§ظ„ط¨ظٹظˆظ…طھط±ظٹ ط§ظ„ط°ظƒظٹ', target: '/branches/ikhlas-jeddah/face-attendance' },
-      { type: 'navigate', label: 'ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ظˆط§ظ„ط¬ط¯ظˆظ„ ط¨ط§ظ„ظپطµظ„', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'كشف الحضور البيومتري الذكي', target: '/branches/ikhlas-jeddah/face-attendance' },
+      { type: 'navigate', label: 'كشف الحضور والجدول بالفصل', target: '/branches/ikhlas-jeddah' },
     ],
   };
 }
 
 function handleQuizGeneration(prompt: string, isJsonRequest: boolean): { reply: string; actions: AiAction[] } {
   const norm = normalizeArabic(prompt);
-  let topic = 'ط§ظ„ظˆط¹ظٹ ط§ظ„طµظˆطھظٹ ظˆط§ظ„ظ‚ط±ط§ط،ط© ط§ظ„طھط£ط³ظٹط³ظٹط©';
-  if (norm.includes('ط±ظٹط§ط¶ظٹط§طھ') || norm.includes('ط­ط³ط§ط¨') || norm.includes('ط§ط±ظ‚ط§ظ…')) {
-    topic = 'ط§ظ„ط±ظٹط§ط¶ظٹط§طھ ظˆظ…ظپط§ظ‡ظٹظ… ط§ظ„ط£ط¹ط¯ط§ط¯';
-  } else if (norm.includes('ط§ظ…ظ„ط§ط،') || norm.includes('طھظ‡ط¬ظٹ') || norm.includes('ط­ط±ظˆظپ')) {
-    topic = 'ط§ظ„طھظ‡ط¬ظٹ ظˆط­ط±ظˆظپ ط§ظ„ظ‡ط¬ط§ط، ظˆط§ظ„ظ…ط¯ظˆط¯';
-  } else if (norm.includes('ط¹ظ„ظˆظ…')) {
-    topic = 'ط§ظ„ط¹ظ„ظˆظ… ظˆط§ظ„ط­ظˆط§ط³ ط§ظ„ط®ظ…ط³';
+  let topic = 'الوعي الصوتي والقراءة التأسيسية';
+  if (norm.includes('رياضيات') || norm.includes('حساب') || norm.includes('ارقام')) {
+    topic = 'الرياضيات ومفاهيم الأعداد';
+  } else if (norm.includes('املاء') || norm.includes('تهجي') || norm.includes('حروف')) {
+    topic = 'التهجي وحروف الهجاء والمدود';
+  } else if (norm.includes('علوم')) {
+    topic = 'العلوم والحواس الخمس';
   }
 
   if (isJsonRequest) {
     const jsonOutput = {
-      title: `ظƒظˆظٹط² طھظپط§ط¹ظ„ظٹ ظپظٹ ${topic}`,
+      title: `كويز تفاعلي في ${topic}`,
       questions: [
         {
-          questionText: `ط£ظٹ ظ…ظ† ط§ظ„ظƒظ„ظ…ط§طھ ط§ظ„طھط§ظ„ظٹط© طھط¨ط¯ط£ ط¨طµظˆطھ ط­ط±ظپ (ط¨)طں`,
+          questionText: `أي من الكلمات التالية تبدأ بصوت حرف (ب)؟`,
           type: 'multiple-choice',
-          options: ['ط¨ظژط§ط¨', 'طھظژظ…ظ’ط±', 'ظ‚ظژظ„ظژظ…', 'ظƒظگطھظژط§ط¨'],
+          options: ['بَاب', 'تَمْر', 'قَلَم', 'كِتَاب'],
           correctAnswer: 0,
           points: 5,
         },
         {
-          questionText: `ظ…ط§ ظ‡ظˆ ط§ظ„ط­ط±ظپ ط§ظ„ظ…ظ…ط¯ظˆط¯ ظپظٹ ظƒظ„ظ…ط© (ط³ظژظ€ظ…ظگظ€ظٹظ€ط¹)طں`,
+          questionText: `ما هو الحرف الممدود في كلمة (سَمِيع)؟`,
           type: 'multiple-choice',
-          options: ['ط§ظ„ظ…ظٹظ…', 'ط§ظ„ط³ظٹظ†', 'ط§ظ„ط¹ظٹظ†', 'ط§ظ„ظٹط§ط،'],
+          options: ['الميم', 'السين', 'العين', 'الياء'],
           correctAnswer: 0,
           points: 5,
         },
         {
-          questionText: `ظƒظ… ظ…ظ‚ط·ط¹ط§ظ‹ طµظˆطھظٹط§ظ‹ ظپظٹ ظƒظ„ظ…ط© (ظ…ظژط¯ظ’ط±ظژط³ظژط©)طں`,
+          questionText: `كم مقطعاً صوتياً في كلمة (مَدْرَسَة)؟`,
           type: 'multiple-choice',
-          options: ['ظ…ظ‚ط·ط¹ط§ظ†', 'ط«ظ„ط§ط«ط© ظ…ظ‚ط§ط·ط¹', 'ط£ط±ط¨ط¹ط© ظ…ظ‚ط§ط·ط¹', 'ط®ظ…ط³ط© ظ…ظ‚ط§ط·ط¹'],
+          options: ['مقطعان', 'ثلاثة مقاطع', 'أربعة مقاطع', 'خمسة مقاطع'],
           correctAnswer: 2,
           points: 5,
         },
         {
-          questionText: `ط§ظ„ظƒظ„ظ…ط© ط§ظ„طھظٹ طھط­طھظˆظٹ ط¹ظ„ظ‰ (ظ…ط¯ ط¨ط§ظ„ط£ظ„ظپ) ظ‡ظٹ:`,
+          questionText: `الكلمة التي تحتوي على (مد بالألف) هي:`,
           type: 'multiple-choice',
-          options: ['ظ†ظڈظˆط±', 'ط³ظژظ…ظژط§ط،', 'طھظگظٹظ†', 'ظپظگظٹظ„'],
+          options: ['نُور', 'سَمَاء', 'تِين', 'فِيل'],
           correctAnswer: 1,
           points: 5,
         },
         {
-          questionText: `ظ…ط§ ظ‡ظˆ ط§ظ„ط­ط±ظپ ط§ظ„ظ†ط§ظ‚طµ ظپظٹ ظƒظ„ظ…ط© (ط´ظ€...ظ€ط³) ظ„طھطµط¨ط­ ظƒظ„ظ…ط© طµط­ظٹط­ط©طں`,
+          questionText: `ما هو الحرف الناقص في كلمة (شـ...ـس) لتصبح كلمة صحيحة؟`,
           type: 'multiple-choice',
-          options: ['ظ…', 'ظ„', 'ط±', 'ط¯'],
+          options: ['م', 'ل', 'ر', 'د'],
           correctAnswer: 0,
           points: 5,
         },
@@ -329,188 +329,188 @@ function handleQuizGeneration(prompt: string, isJsonRequest: boolean): { reply: 
     };
     return {
       reply: JSON.stringify(jsonOutput),
-      actions: [{ type: 'navigate', label: 'ظپطھط­ ط¨ظ†ظƒ ط§ظ„ظƒظˆظٹط²ط§طھ', target: '/branches/ikhlas-jeddah' }],
+      actions: [{ type: 'navigate', label: 'فتح بنك الكويزات', target: '/branches/ikhlas-jeddah' }],
     };
   }
 
   const reply = [
-    `ًںژ¯ **ظƒظˆظٹط² طھظپط§ط¹ظ„ظٹ ظ…ظ‚طھط±ط­ â€” ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰**`,
-    `ًں“Œ **ط§ظ„ظ…ظˆط¶ظˆط¹:** ${topic}`,
-    `âڈ³ **ط§ظ„ظ…ط¯ط© ط§ظ„طھظ‚ط¯ظٹط±ظٹط©:** 10 ط¯ظ‚ط§ط¦ظ‚ | **ط§ظ„ط¯ط±ط¬ط©:** 25 ظ†ظ‚ط·ط©`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `**ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ط£ظˆظ„ (5 ط¯ط±ط¬ط§طھ):**`,
-    `ط£ظٹ ظ…ظ† ط§ظ„ظƒظ„ظ…ط§طھ ط§ظ„طھط§ظ„ظٹط© طھط¨ط¯ط£ ط¨طµظˆطھ ط­ط±ظپ (ط¨) ظ…ظپطھظˆط­ط§ظ‹طں`,
-    `[ ] 1. طھظژظ…ظ’ط±`,
-    `[x] 2. ط¨ظژط§ط¨ (ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©)`,
-    `[ ] 3. ظ‚ظژظ„ظژظ…`,
-    `[ ] 4. ظƒظگطھظژط§ط¨`,
+    `🎯 **كويز تفاعلي مقترح — فصل د. إسماعيل عيسى**`,
+    `📌 **الموضوع:** ${topic}`,
+    `⏳ **المدة التقديرية:** 10 دقائق | **الدرجة:** 25 نقطة`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `**السؤال الأول (5 درجات):**`,
+    `أي من الكلمات التالية تبدأ بصوت حرف (ب) مفتوحاً؟`,
+    `[ ] 1. تَمْر`,
+    `[x] 2. بَاب (الإجابة الصحيحة)`,
+    `[ ] 3. قَلَم`,
+    `[ ] 4. كِتَاب`,
     ``,
-    `**ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ط«ط§ظ†ظٹ (5 ط¯ط±ط¬ط§طھ):**`,
-    `ظ…ط§ ظ‡ظˆ ط­ط±ظپ ط§ظ„ظ…ط¯ ظپظٹ ظƒظ„ظ…ط© (ط³ظژظ…ظگظٹط¹)طں`,
-    `[ ] 1. ط§ظ„ظˆط§ظˆ`,
-    `[ ] 2. ط§ظ„ط£ظ„ظپ`,
-    `[x] 3. ط§ظ„ظٹط§ط، (ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©)`,
-    `[ ] 4. ط§ظ„ظ†ظˆظ†`,
+    `**السؤال الثاني (5 درجات):**`,
+    `ما هو حرف المد في كلمة (سَمِيع)؟`,
+    `[ ] 1. الواو`,
+    `[ ] 2. الألف`,
+    `[x] 3. الياء (الإجابة الصحيحة)`,
+    `[ ] 4. النون`,
     ``,
-    `**ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ط«ط§ظ„ط« (5 ط¯ط±ط¬ط§طھ):**`,
-    `ط§ظ„طھط­ظ„ظٹظ„ ط§ظ„طµظˆطھظٹ ظ„ظƒظ„ظ…ط© (ط¨ظژط§ط¨ظڈ) ظ‡ظˆ:`,
-    `[x] 1. [ ط¨ظژط§ / ط¨ظڈ ] (ظ…ظ‚ط·ط¹ ظ…ط¯ ظˆظ…ظ‚ط·ط¹ ظ‚طµظٹط±) (ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©)`,
-    `[ ] 2. [ ط¨ / ط§ / ط¨ ]`,
-    `[ ] 3. [ ط¨ط§ط¨ / ظˆ ]`,
+    `**السؤال الثالث (5 درجات):**`,
+    `التحليل الصوتي لكلمة (بَابُ) هو:`,
+    `[x] 1. [ بَا / بُ ] (مقطع مد ومقطع قصير) (الإجابة الصحيحة)`,
+    `[ ] 2. [ ب / ا / ب ]`,
+    `[ ] 3. [ باب / و ]`,
     ``,
-    `**ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ط±ط§ط¨ط¹ (5 ط¯ط±ط¬ط§طھ):**`,
-    `ط§ظ„ظƒظ„ظ…ط© ط§ظ„طھظٹ طھط­طھظˆظٹ ط¹ظ„ظ‰ طµظˆطھ (ط§ظ„طھط§ط، ط§ظ„ظ…ط±ط¨ظˆط·ط©) ط¹ظ†ط¯ ط§ظ„ظˆظ‚ظپ ظ‡ظٹ:`,
-    `[x] 1. ظ…ظژط¯ظ’ط±ظژط³ظژط© (ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©)`,
-    `[ ] 2. ط¨ظژظٹظ’طھ`,
-    `[ ] 3. ط¨ظگظ†ظ’طھ`,
-    `[ ] 4. ظƒظژطھظژط¨ظژطھ`,
+    `**السؤال الرابع (5 درجات):**`,
+    `الكلمة التي تحتوي على صوت (التاء المربوطة) عند الوقف هي:`,
+    `[x] 1. مَدْرَسَة (الإجابة الصحيحة)`,
+    `[ ] 2. بَيْت`,
+    `[ ] 3. بِنْت`,
+    `[ ] 4. كَتَبَت`,
     ``,
-    `**ط§ظ„ط³ط¤ط§ظ„ ط§ظ„ط®ط§ظ…ط³ (5 ط¯ط±ط¬ط§طھ):**`,
-    `ط§ط®طھط± ط§ظ„ظƒظ„ظ…ط© ط§ظ„طھظٹ طھط·ط§ط¨ظ‚ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط¹ط±ظˆط¶ط© (ظƒطھط§ط¨):`,
-    `[ ] 1. ط¯ظژظپظ’طھظژط±`,
-    `[x] 2. ظƒظگطھظژط§ط¨ (ط§ظ„ط¥ط¬ط§ط¨ط© ط§ظ„طµط­ظٹط­ط©)`,
-    `[ ] 3. ط­ظژظ‚ظگظٹط¨ظژط©`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `ًں’، **طھظˆط¬ظٹظ‡ ظ„ظ„ظ…ط¹ظ„ظ… ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„:** ط§ظ„ط£ط³ط¦ظ„ط© ظ…طµظ…ظ…ط© ظ„طھظ‚ظ„ظٹظ„ ط§ظ„طھط´طھطھ ط§ظ„ط¨طµط±ظٹ ظˆط¯ط¹ظ… ط§ظ„ط·ظ„ط§ط¨ ط°ظˆظٹ طµط¹ظˆط¨ط§طھ ط§ظ„ظ‚ط±ط§ط،ط©.`,
+    `**السؤال الخامس (5 درجات):**`,
+    `اختر الكلمة التي تطابق الصورة المعروضة (كتاب):`,
+    `[ ] 1. دَفْتَر`,
+    `[x] 2. كِتَاب (الإجابة الصحيحة)`,
+    `[ ] 3. حَقِيبَة`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `💡 **توجيه للمعلم د. إسماعيل:** الأسئلة مصممة لتقليل التشتت البصري ودعم الطلاب ذوي صعوبات القراءة.`,
   ].join('\n');
 
   return {
     reply,
     actions: [
-      { type: 'navigate', label: 'ط¥ط¶ط§ظپط© ظ‡ط°ط§ ط§ظ„ظƒظˆظٹط² ظ„ط¨ظ†ظƒ ط§ظ„ط§ط®طھط¨ط§ط±ط§طھ', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'إضافة هذا الكويز لبنك الاختبارات', target: '/branches/ikhlas-jeddah' },
     ],
   };
 }
 
 function handleLessonPrep(prompt: string): { reply: string; actions: AiAction[] } {
-  const topic = prompt.replace(/(ط­ط¶ط±|طھط­ط¶ظٹط±|ط¯ط±ط³|ط®ط·ط©|ط¹ظ…ظ„|ط§ظƒطھط¨)/gi, '').trim() || 'ط§ظ„ظˆط¹ظٹ ط§ظ„طµظˆطھظٹ ظˆط­ط±ظˆظپ ط§ظ„ظ…ط¯';
+  const topic = prompt.replace(/(حضر|تحضير|درس|خطة|عمل|اكتب)/gi, '').trim() || 'الوعي الصوتي وحروف المد';
   const reply = [
-    `ًں“ڑ **ط®ط·ط© طھط­ط¶ظٹط± ط¯ط±ط³ طھظپط§ط¹ظ„ظٹ ظ…طھظƒط§ظ…ظ„**`,
-    `ًں‘¨â€چًںڈ« **ط§ظ„ظ…ط¹ظ„ظ…:** ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ | **ط§ظ„ظ…ظˆط¶ظˆط¹:** ${topic}`,
-    `ًںڈ« **ط§ظ„ظپطµظ„:** ظپطµظ„ ط§ظ„ط¥ط®ظ„ط§طµ â€” ط§ظ„ظ…ط±ط­ظ„ط© ط§ظ„ط§ط¨طھط¯ط§ط¦ظٹط© ظˆط§ظ„طھط±ط¨ظٹط© ط§ظ„ط®ط§طµط©`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `ًںژ¯ **1. ط§ظ„ط£ظ‡ط¯ط§ظپ ط§ظ„ط³ظ„ظˆظƒظٹط© ظ„ظ„ط¯ط±ط³:**`,
-    `â€¢ **ظ‡ط¯ظپ ظ…ط¹ط±ظپظٹ:** ط£ظ† ظٹظ…ظٹط² ط§ظ„ط·ط§ظ„ط¨ ط§ظ„ظ…ظپظ‡ظˆظ… ط§ظ„ظ…ط³طھظ‡ط¯ظپ ط¨ظ†ط³ط¨ط© ط¥طھظ‚ط§ظ† ظ„ط§ طھظ‚ظ„ ط¹ظ† 85%.`,
-    `â€¢ **ظ‡ط¯ظپ ظ…ظ‡ط§ط±ظٹ/ط­ط±ظƒظٹ:** ط£ظ† ظٹط´ط§ط±ظƒ ط§ظ„ط·ط§ظ„ط¨ ظپظٹ ط¨ط·ط§ظ‚ط§طھ ط§ظ„ظ†ط´ط§ط· ط§ظ„ط­ط±ظƒظٹ ظˆط§ظ„طھظپط§ط¹ظ„ظٹ ط¯ط§ط®ظ„ ط§ظ„ظپطµظ„.`,
-    `â€¢ **ظ‡ط¯ظپ ظˆط¬ط¯ط§ظ†ظٹ:** ط£ظ† ظٹظƒطھط³ط¨ ط§ظ„ط·ط§ظ„ط¨ ط§ظ„ط«ظ‚ط© ط¨ط§ظ„ظ†ظپط³ ظˆط§ظ„ظ…ط¨ط§ط¯ط±ط© ط£ط«ظ†ط§ط، ط§ظ„ظ‚ط±ط§ط،ط© ط£ظ…ط§ظ… ط²ظ…ظ„ط§ط¦ظ‡.`,
+    `📚 **خطة تحضير درس تفاعلي متكامل**`,
+    `👨‍🏫 **المعلم:** د. إسماعيل عيسى | **الموضوع:** ${topic}`,
+    `🏫 **الفصل:** فصل الإخلاص — المرحلة الابتدائية والتربية الخاصة`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `🎯 **1. الأهداف السلوكية للدرس:**`,
+    `• **هدف معرفي:** أن يميز الطالب المفهوم المستهدف بنسبة إتقان لا تقل عن 85%.`,
+    `• **هدف مهاري/حركي:** أن يشارك الطالب في بطاقات النشاط الحركي والتفاعلي داخل الفصل.`,
+    `• **هدف وجداني:** أن يكتسب الطالب الثقة بالنفس والمبادرة أثناء القراءة أمام زملائه.`,
     ``,
-    `âڑ، **2. ط§ظ„طھظ‡ظٹط¦ط© ط§ظ„ط­ط§ظپط²ط© (5 ط¯ظ‚ط§ط¦ظ‚):**`,
-    `ط¹ط±ط¶ طµظ†ط¯ظˆظ‚ ط§ظ„ظ…ظپط§ط¬ط¢طھ ط£ظˆ ط¨ط·ط§ظ‚ط© ظ…ظ„ظˆظ†ط© طھط´ظˆظٹظ‚ظٹط© ظ„ط³ط¤ط§ظ„ ط§ظ„ط·ظ„ط§ط¨: "ظ…ط§ط°ط§ ظٹط®طھط¨ط¦ ط¯ط§ط®ظ„ ظ‡ط°ط§ ط§ظ„ط­ط±ظپطں" ظ„ط¥ط«ط§ط±ط© ط§ظ„ظپط¶ظˆظ„.`,
+    `⚡ **2. التهيئة الحافزة (5 دقائق):**`,
+    `عرض صندوق المفاجآت أو بطاقة ملونة تشويقية لسؤال الطلاب: "ماذا يختبئ داخل هذا الحرف؟" لإثارة الفضول.`,
     ``,
-    `ًں› ï¸ڈ **3. ط§ظ„ط§ط³طھط±ط§طھظٹط¬ظٹط§طھ ط§ظ„طھط¹ظ„ظٹظ…ظٹط© ط§ظ„ظ…ط¹طھظ…ط¯ط©:**`,
-    `â€¢ ط§ظ„طھط¹ظ„ظ… ظ…طھط¹ط¯ط¯ ط§ظ„ط­ظˆط§ط³ (VARK): ط±ط¤ظٹط© ط§ظ„ط­ط±ظپطŒ ط³ظ…ط§ط¹ طµظˆطھظ‡طŒ ظˆطھط´ظƒظٹظ„ظ‡ ط¨ط§ظ„طµظ„طµط§ظ„ ط£ظˆ ط§ظ„ط±ظ…ظ„.`,
-    `â€¢ ط§ظ„ظ†ظ…ط°ط¬ط© ط§ظ„ط¥ظٹط¬ط§ط¨ظٹط©: "ط£ظ†ط§ ط£ط¹ظ…ظ„ ط£ظˆظ„ط§ظ‹طŒ ط«ظ… ظ†ط¹ظ…ظ„ ظ…ط¹ط§ظ‹طŒ ط«ظ… طھط¹ظ…ظ„ ظˆط­ط¯ظƒ".`,
-    `â€¢ ط§ظ„طھط¹ط²ظٹط² ط§ظ„ظپظˆط±ظٹ: ظ†ظ‚ط§ط· ط§ظ„ظ…ظ†طµط© ظˆط§ظ„ط´ط§ط±ط§طھ ط§ظ„ط°ظƒظٹط©.`,
+    `🛠️ **3. الاستراتيجيات التعليمية المعتمدة:**`,
+    `• التعلم متعدد الحواس (VARK): رؤية الحرف، سماع صوته، وتشكيله بالصلصال أو الرمل.`,
+    `• النمذجة الإيجابية: "أنا أعمل أولاً، ثم نعمل معاً، ثم تعمل وحدك".`,
+    `• التعزيز الفوري: نقاط المنصة والشارات الذكية.`,
     ``,
-    `ًں“‌ **4. ط®ط·ظˆط§طھ ط³ظٹط± ط§ظ„ط¯ط±ط³ (25 ط¯ظ‚ظٹظ‚ط©):**`,
-    `1. ط¹ط±ط¶ ط§ظ„ظ†ظ…ظˆط°ط¬ ط§ظ„ط£ط³ط§ط³ظٹ ط¨طµظˆطھ ظˆط§ط¶ط­ ظˆظ…ط®ط§ط±ط¬ ط­ط±ظˆظپ ظ…ظ†ط¶ط¨ط·ط©.`,
-    `2. طھط¯ط±ظٹط¨ ط¬ظ…ط§ط¹ظٹ ظ…ط¹ طھط±ط¯ظٹط¯ ط¥ظٹظ‚ط§ط¹ظٹ ظ…ظ†ط¸ظ….`,
-    `3. ظ†ط´ط§ط· ظپط±ط¯ظٹ ط³ط±ظٹط¹ ط¹ظ„ظ‰ ظƒط±ط§ط³ط© ط§ظ„ط·ط§ظ„ط¨ ط£ظˆ ط§ظ„ط¬ظ‡ط§ط² ط§ظ„ظ„ظˆط­ظٹ.`,
+    `📝 **4. خطوات سير الدرس (25 دقيقة):**`,
+    `1. عرض النموذج الأساسي بصوت واضح ومخارج حروف منضبطة.`,
+    `2. تدريب جماعي مع ترديد إيقاعي منظم.`,
+    `3. نشاط فردي سريع على كراسة الطالب أو الجهاز اللوحي.`,
     ``,
-    `ًںڈپ **5. ط§ظ„ط؛ظ„ظ‚ ظˆط§ظ„طھظ‚ظٹظٹظ… ط§ظ„طھظƒظˆظٹظ†ظٹ (10 ط¯ظ‚ط§ط¦ظ‚):**`,
-    `ظ„ط¹ط¨ط© "طھط­ط¯ظٹ ط§ظ„ظ†ط¬ظˆظ…" ط§ظ„ط³ط±ظٹط¹ط© (3 ط£ط³ط¦ظ„ط© ط´ظپظ‡ظٹط© ط³ط±ظٹط¹ط© ظ„ظƒظ„ ط·ط§ظ„ط¨ ظ„ظ„طھط£ظƒط¯ ظ…ظ† ظˆطµظˆظ„ ط§ظ„ظ‡ط¯ظپ ط¯ظˆظ† ط¥ط­ط¨ط§ط·).`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
+    `🏁 **5. الغلق والتقييم التكويني (10 دقائق):**`,
+    `لعبة "تحدي النجوم" السريعة (3 أسئلة شفهية سريعة لكل طالب للتأكد من وصول الهدف دون إحباط).`,
+    `━━━━━━━━━━━━━━━━━━━━`,
   ].join('\n');
 
   return {
     reply,
     actions: [
-      { type: 'navigate', label: 'ظپطھط­ ظƒط±ط§ط³ط© ط§ظ„ظ…ظ†ط§ظ‡ط¬ ظˆط§ظ„ط¯ط±ظˆط³', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'فتح كراسة المناهج والدروس', target: '/branches/ikhlas-jeddah' },
     ],
   };
 }
 
 function handleParentMessage(prompt: string, att: AttendanceSummary): { reply: string; actions: AiAction[] } {
-  const isAbsenceMsg = prompt.includes('ط؛ظٹط§ط¨') || prompt.includes('ط؛ط§ط¨') || prompt.includes('ط؛ط§ط¦ط¨');
-  const studentMatch = prompt.match(/(?:ط§ظ„ط·ط§ظ„ط¨|ط·ط§ظ„ط¨)\s+([^\sطŒ,.]+)/);
-  const studentName = studentMatch?.[1] || (att.absentStudents[0]?.name ?? 'ط§ط¨ظ†ظƒظ… ط§ظ„ط¹ط²ظٹط²');
+  const isAbsenceMsg = prompt.includes('غياب') || prompt.includes('غاب') || prompt.includes('غائب');
+  const studentMatch = prompt.match(/(?:الطالب|طالب)\s+([^\s،,.]+)/);
+  const studentName = studentMatch?.[1] || (att.absentStudents[0]?.name ?? 'ابنكم العزيز');
 
   if (isAbsenceMsg) {
     const text = [
-      `ًں“² **ظ†ظ…ظˆط°ط¬ ط±ط³ط§ظ„ط© ظˆط§طھط³ط§ط¨ ظ„ط£ظˆظ„ظٹط§ط، ط£ظ…ظˆط± ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط؛ط§ط¦ط¨ظٹظ† ط§ظ„ظٹظˆظ…:**`,
-      `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-      `ط§ظ„ط³ظ„ط§ظ… ط¹ظ„ظٹظƒظ… ظˆط±ط­ظ…ط© ط§ظ„ظ„ظ‡ ظˆط¨ط±ظƒط§طھظ‡ ًںŒ¸`,
-      `ط§ظ„ظ…ظƒط±ظ… ظˆظ„ظٹ ط£ظ…ط± ط§ظ„ط·ط§ظ„ط¨/ط©: *${studentName}* ط­ظپط¸ظƒظ… ط§ظ„ظ„ظ‡طŒ`,
+      `📲 **نموذج رسالة واتساب لأولياء أمور الطلاب الغائبين اليوم:**`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `السلام عليكم ورحمة الله وبركاته 🌸`,
+      `المكرم ولي أمر الطالب/ة: *${studentName}* حفظكم الله،`,
       ``,
-      `ظ†ط­ظٹط·ظƒظ… ط¹ظ„ظ…ط§ظ‹ ط¨ط£ظ† ط§ظ„ط·ط§ظ„ط¨ طھط؛ظٹط¨ ط§ظ„ظٹظˆظ… ط¹ظ† ط­طµطµ ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ (${att.dayName} ${att.dateArabic}).`,
-      `ظ†ط£ظ…ظ„ ط£ظ† ظٹظƒظˆظ† ط§ظ„ظ…ط§ظ†ط¹ ط®ظٹط±ط§ظ‹ ظˆطµط­ط© ظˆط¹ط§ظپظٹط©طŒ ظˆظ†ط±ط¬ظˆ ط¥ط¨ظ„ط§ط؛ظ†ط§ ط¨ط³ط¨ط¨ ط§ظ„ط؛ظٹط§ط¨ ظ„ظ…طھط§ط¨ط¹ط© ظˆط§ط¬ط¨ط§طھ ظˆط¯ط±ظˆط³ ط§ظ„ظٹظˆظ… ظ„ط¶ظ…ط§ظ† ط¹ط¯ظ… طھط£ط®ط±ظ‡ ط¹ظ† ط²ظ…ظ„ط§ط¦ظ‡.`,
+      `نحيطكم علماً بأن الطالب تغيب اليوم عن حصص فصل د. إسماعيل عيسى (${att.dayName} ${att.dateArabic}).`,
+      `نأمل أن يكون المانع خيراً وصحة وعافية، ونرجو إبلاغنا بسب الغياب لمتابعة واجبات ودروس اليوم لضمان عدم تأخره عن زملائه.`,
       ``,
-      `ط´ط§ظƒط±ظٹظ† ظˆظ…ظ‚ط¯ط±ظٹظ† ظƒط±ظٹظ… طھط¹ط§ظˆظ†ظƒظ… ظˆط­ط±طµظƒظ… ط§ظ„ط¯ط§ط¦ظ….`,
-      `*ط¥ط¯ط§ط±ط© ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ â€” ظ…ط¯ط±ط³ط© ط§ظ„ط¥ط®ظ„ط§طµ ط§ظ„ط£ظ‡ظ„ظٹط©*`,
-      `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
+      `شاكرين ومقدرين كريم تعاونكم وحرصكم الدائم.`,
+      `*إدارة فصل د. إسماعيل عيسى — مدرسة الإخلاص الأهلية*`,
+      `━━━━━━━━━━━━━━━━━━━━`,
     ].join('\n');
 
     return {
       reply: text,
       actions: [
-        { type: 'navigate', label: 'ظپطھط­ ط³ط¬ظ„ ط§ظ„ط؛ظٹط§ط¨ ظˆط§ظ„ط±ط³ط§ط¦ظ„', target: '/branches/ikhlas-jeddah' },
+        { type: 'navigate', label: 'فتح سجل الغياب والرسائل', target: '/branches/ikhlas-jeddah' },
       ],
     };
   }
 
   const generalText = [
-    `ًں“² **ظ†ظ…ظˆط°ط¬ ط±ط³ط§ظ„ط© ظ…طھط§ط¨ط¹ط© ط¯ظˆط±ظٹط© ظ„ظˆظ„ظٹ ط§ظ„ط£ظ…ط±:**`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `ط§ظ„ط³ظ„ط§ظ… ط¹ظ„ظٹظƒظ… ظˆط±ط­ظ…ط© ط§ظ„ظ„ظ‡ ظˆط¨ط±ظƒط§طھظ‡طŒ ط§ظ„ظ…ظƒط±ظ… ظˆظ„ظٹ ط£ظ…ط± ط§ظ„ط·ط§ظ„ط¨/ط©: *${studentName}*طŒ`,
+    `📲 **نموذج رسالة متابعة دورية لولي الأمر:**`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `السلام عليكم ورحمة الله وبركاته، المكرم ولي أمر الطالب/ة: *${studentName}*،`,
     ``,
-    `ظٹط³ط¹ط¯ظ†ط§ ط¥ط¨ظ„ط§ط؛ظƒظ… ط¨طھظ…ظٹط² ط§ظ„ط·ط§ظ„ط¨ ظˆط¬ظ‡ظˆط¯ظ‡ ط§ظ„ط·ظٹط¨ط© ظپظٹ ط§ظ„ظپطµظ„ ط§ظ„ظٹظˆظ… ظ…ط¹ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„. طھظ… طھط³ط¬ظٹظ„ طھظ‚ط¯ظ… ظ…ظ„ط­ظˆط¸ ظپظٹ ط§ظ„طھظپط§ط¹ظ„ ظˆط§ظ„ط§ط³طھط¬ط§ط¨ط© ظ„ظ„ظ…ظ‡ط§ظ… ط§ظ„طھط¹ظ„ظٹظ…ظٹط©.`,
-    `ظ†ط±ط¬ظˆ ظ…ظ†ظƒظ… طھط®طµظٹطµ 10 ط¯ظ‚ط§ط¦ظ‚ ظپظ‚ط· ظ…ط³ط§ط، ط§ظ„ظٹظˆظ… ظ„ظ…ط±ط§ط¬ط¹ط© ط§ظ„ظˆط§ط¬ط¨ ط§ظ„ظ‚طµظٹط± ط§ظ„ظ…طھط§ط­ ط¹ط¨ط± ظ…ظ†طµط© ظ…ط³ط§ط± ظ„طھط¹ط²ظٹط² ط§ظ„ظ…ظ‡ط§ط±ط©.`,
+    `يسعدنا إبلاغكم بتميز الطالب وجهوده الطيبة في الفصل اليوم مع د. إسماعيل. تم تسجيل تقدم ملحوظ في التفاعل والاستجابة للمهام التعليمية.`,
+    `نرجو منكم تخصيص 10 دقائق فقط مساء اليوم لمراجعة الواجب القصير المتاح عبر منصة مسار لتعزيز المهارة.`,
     ``,
-    `ط¯ظ…طھظ… ظˆط¯ط§ظ… ط£ط¨ظ†ط§ط¤ظƒظ… ظپظٹ طھظپظˆظ‚ ظˆظ†ط¬ط§ط­ ظ…ط³طھظ…ط±.`,
-    `*ظ…ظ†طµط© ظ…ط³ط§ط± â€” ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰*`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
+    `دمتم ودام أبناؤكم في تفوق ونجاح مستمر.`,
+    `*منصة مسار — فصل د. إسماعيل عيسى*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
   ].join('\n');
 
   return {
     reply: generalText,
     actions: [
-      { type: 'navigate', label: 'ط¥ط±ط³ط§ظ„ ط±ط³ط§ط¦ظ„ ظ„ط£ظˆظ„ظٹط§ط، ط§ظ„ط£ظ…ظˆط±', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'إرسال رسائل لأولياء الأمور', target: '/branches/ikhlas-jeddah' },
     ],
   };
 }
 
 function handleIepPlan(prompt: string): { reply: string; actions: AiAction[] } {
-  const studentMatch = prompt.match(/(?:ط§ظ„ط·ط§ظ„ط¨|ط·ط§ظ„ط¨)\s+([^\sطŒ,.]+)/);
-  const studentName = studentMatch?.[1] || 'ط§ظ„ط·ط§ظ„ط¨';
+  const studentMatch = prompt.match(/(?:الطالب|طالب)\s+([^\s،,.]+)/);
+  const studentName = studentMatch?.[1] || 'الطالب';
 
   const reply = [
-    `ًں“‹ **ظ…ط³ظˆط¯ط© ط®ط·ط© طھط±ط¨ظˆظٹط© ظپط±ط¯ظٹط© ظ…طھط®طµطµط© (IEP) â€” ظ…ظ†طµط© ظ…ط³ط§ط±**`,
-    `ًں‘¤ **ط§ط³ظ… ط§ظ„ط·ط§ظ„ط¨:** ${studentName}`,
-    `ًں‘¨â€چًںڈ« **ط§ظ„ظ…ط´ط±ظپ ط§ظ„ط¹ط§ظ…:** ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `ًںژ¯ **1. ظ…ط³طھظˆظ‰ ط§ظ„ط£ط¯ط§ط، ط§ظ„ط­ط§ظ„ظٹ (Present Level):**`,
-    `â€¢ ظٹظڈط¸ظ‡ط± ط§ظ„ط·ط§ظ„ط¨ ظ‚ط§ط¨ظ„ظٹط© ط¹ط§ظ„ظٹط© ظ„ظ„طھط¹ظ„ظ… ط¹ظ†ط¯ ط§ط³طھط®ط¯ط§ظ… ط§ظ„ظ…ط¹ط²ط²ط§طھ ط§ظ„ط¨طµط±ظٹط© ظˆط§ظ„ط­ط³ظٹط©.`,
-    `â€¢ ظٹط­طھط§ط¬ ط¥ظ„ظ‰ ط¯ط¹ظ… ط¥ط¶ط§ظپظٹ ظپظٹ ط§ظ„طھظ‡ط¬ظٹ ظˆظ…ط·ط§ط¨ظ‚ط© ط§ظ„ط­ط±ظˆظپ ط§ظ„ظ…طھط´ط§ط¨ظ‡ط© طµظˆطھط§ظ‹ (ط³/طµ - طھ/ط·).`,
+    `📋 **مسودة خطة تربوية فردية متخصصة (IEP) — منصة مسار**`,
+    `👤 **اسم الطالب:** ${studentName}`,
+    `👨‍🏫 **المشرف العام:** د. إسماعيل عيسى`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `🎯 **1. مستوى الأداء الحالي (Present Level):**`,
+    `• يُظهر الطالب قابلية عالية للتعلم عند استخدام المعززات البصرية والحسية.`,
+    `• يحتاج إلى دعم إضافي في التهجي ومطابقة الحروف المتشابهة صوتاً (س/ص - ت/ط).`,
     ``,
-    `ًںڈ† **2. ط§ظ„ظ‡ط¯ظپ ط·ظˆظٹظ„ ط§ظ„ظ…ط¯ظ‰ (ط®ظ„ط§ظ„ ط§ظ„ظپطµظ„ ط§ظ„ط¯ط±ط§ط³ظٹ):**`,
-    `ط£ظ† ظٹظ‚ط±ط£ ط§ظ„ط·ط§ظ„ط¨ ظˆظٹظƒطھط¨ ظƒظ„ظ…ط§طھ ط«ظ„ط§ط«ظٹط© ظ…ط¶ط¨ظˆط·ط© ط¨ط§ظ„ط­ط±ظƒط§طھ ط¨ط¯ظ‚ط© 85% ط¨طµظˆط±ط© ظ…ط³طھظ‚ظ„ط©.`,
+    `🏆 **2. الهدف طويل المدى (خلال الفصل الدراسي):**`,
+    `أن يقرأ الطالب ويكتب كلمات ثلاثية مضبوطة بالحركات بدقة 85% بصورة مستقلة.`,
     ``,
-    `â­گ **3. ط§ظ„ط£ظ‡ط¯ط§ظپ ط§ظ„طھط¹ظ„ظٹظ…ظٹط© ظ‚طµظٹط±ط© ط§ظ„ظ…ط¯ظ‰ (SMART):**`,
-    `1. ط£ظ† ظٹظڈظ…ظٹط² ط£طµظˆط§طھ ط§ظ„ط­ط±ظˆظپ ظ…ط¹ ط§ظ„ظ…ط¯ظˆط¯ ط§ظ„ظ‚طµظٹط±ط© ظˆط§ظ„ط·ظˆظٹظ„ط© ظپظٹ 8 ظ…ظ† ظƒظ„ 10 ظ…ط­ط§ظˆظ„ط§طھ.`,
-    `2. ط£ظ† ظٹط­ظ„ظ„ ط§ظ„ظƒظ„ظ…ط© ط¥ظ„ظ‰ ظ…ظ‚ط§ط·ط¹ طµظˆطھظٹط© ط¨ط´ظƒظ„ طµط­ظٹط­ ط¨ط§ط³طھط®ط¯ط§ظ… ط¨ط·ط§ظ‚ط§طھ ط§ظ„طھظ‚ط·ظٹط¹.`,
-    `3. ط£ظ† ظٹظ†ط¬ط² ظˆط±ظ‚ط© ط¹ظ…ظ„ ظ‚طµظٹط±ط© ظ…ظƒظˆظ†ط© ظ…ظ† 3 ط£ط³ط¦ظ„ط© ظپظٹ ط²ظ…ظ† ط£ظ‚طµط§ظ‡ 12 ط¯ظ‚ظٹظ‚ط©.`,
+    `⭐ **3. الأهداف التعليمية قصيرة المدى (SMART):**`,
+    `1. أن يُميز أصوات الحروف مع المدود القصيرة والطويلة في 8 من كل 10 محاولات.`,
+    `2. أن يحلل الكلمة إلى مقاطع صوتية بشكل صحيح باستخدام بطاقات التقطيع.`,
+    `3. أن ينجز ورقة عمل قصيرة مكونة من 3 أسئلة في زمن أقصاه 12 دقيقة.`,
     ``,
-    `ًں§© **4. ط§ط³طھط±ط§طھظٹط¬ظٹط§طھ ط§ظ„طھط¯ط®ظ„ ظˆط§ظ„ط¯ط¹ظ…:**`,
-    `â€¢ طھظ‚ظ„ظٹظ„ ط§ظ„ظ…ط´طھطھط§طھ ط§ظ„ط¨طµط±ظٹط© ظپظٹ ط£ظˆط±ط§ظ‚ ط§ظ„ط¹ظ…ظ„.`,
-    `â€¢ ط§ط³طھط®ط¯ط§ظ… ط£ط³ظ„ظˆط¨ ط§ظ„طھظƒط±ط§ط± ط§ظ„ظ…طھط¨ط§ط¹ط¯ ظˆط§ظ„طھط؛ط°ظٹط© ط§ظ„ط±ط§ط¬ط¹ط© ط§ظ„ظپظˆط±ظٹط© ط§ظ„ط¥ظٹط¬ط§ط¨ظٹط©.`,
-    `â€¢ ط¥ط´ط±ط§ظƒ ظˆظ„ظٹ ط§ظ„ط£ظ…ط± ظپظٹ ظ†ط´ط§ط· ظ…ظ†ط²ظ„ظٹ طھظپط§ط¹ظ„ظٹ ظ„ط§ ظٹطھط¬ط§ظˆط² 10 ط¯ظ‚ط§ط¦ظ‚ ظٹظˆظ…ظٹط§ظ‹.`,
-    `â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ`,
-    `ًں’، *ظ…ظ„ط§ط­ط¸ط©: ظٹظ…ظƒظ†ظƒ ط§ط¹طھظ…ط§ط¯ ط§ظ„ط®ط·ط© ط£ظˆ ط§ظ„طھط¹ط¯ظٹظ„ ط¹ظ„ظٹظ‡ط§ ظ…ط¨ط§ط´ط±ط© ظ…ظ† طھط¨ظˆظٹط¨ ط§ظ„ط®ط·ط· ط§ظ„ظپط±ط¯ظٹط©.*`,
+    `🧩 **4. استراتيجيات التدخل والدعم:**`,
+    `• تقليل المشتتات البصرية في أوراق العمل.`,
+    `• استخدام أسلوب التكرار المتباعد والتغذية الراجعة الفورية الإيجابية.`,
+    `• إشراك ولي الأمر في نشاط منزلي تفاعلي لا يتجاوز 10 دقائق يومياً.`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `💡 *ملاحظة: يمكنك اعتماد الخطة أو التعديل عليها مباشرة من تبويب الخطط الفردية.*`,
   ].join('\n');
 
   return {
     reply,
     actions: [
-      { type: 'navigate', label: 'ظپطھط­ ط³ط¬ظ„ ط®ط·ط· IEP ط¨ط§ظ„ظ…ظ†طµط©', target: '/iep' },
+      { type: 'navigate', label: 'فتح سجل خطط IEP بالمنصة', target: '/iep' },
     ],
   };
 }
 
-// â”€â”€ POST Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST Handler ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const authResult = await authenticateRequest(req);
   if (!authResult.authorized || !authResult.user) {
-    return NextResponse.json({ success: false, error: 'ط¬ظ„ط³ط© ط§ظ„ط¯ط®ظˆظ„ ط؛ظٹط± طµط§ظ„ط­ط©. ظٹط±ط¬ظ‰ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„.' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'جلسة الدخول غير صالحة. يرجى تسجيل الدخول.' }, { status: 401 });
   }
 
   const rateLimit = await checkRateLimit(
@@ -521,7 +521,7 @@ export async function POST(req: NextRequest) {
   );
 
   if (!rateLimit.allowed) {
-    return NextResponse.json({ success: false, error: 'ط·ظ„ط¨ط§طھ ظƒط«ظٹط±ط© ظ…طھطھط§ظ„ظٹط©. ط§ظ†طھط¸ط± ط¨ط¶ط¹ ط«ظˆط§ظ†ظچ.' }, { status: 429 });
+    return NextResponse.json({ success: false, error: 'طلبات كثيرة متتالية. انتظر بضع ثوانٍ.' }, { status: 429 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -529,10 +529,10 @@ export async function POST(req: NextRequest) {
   const branch = typeof body.branch === 'string' ? body.branch : 'IKHLAS_JEDDAH';
   const image = parseImage(body.image);
   const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
-  const isJsonRequest = Boolean(body.prompt?.includes('ط£ط±ط¬ط¹ JSON ظپظ‚ط·') || body.format === 'json');
+  const isJsonRequest = Boolean(body.prompt?.includes('أرجع JSON فقط') || body.format === 'json');
 
   if (!rawPrompt && !image) {
-    return NextResponse.json({ success: false, error: 'ظٹط±ط¬ظ‰ ظƒطھط§ط¨ط© ط³ط¤ط§ظ„ظƒ ط£ظˆ ط¥ط±ظپط§ظ‚ طµظˆط±ط© ظ„ظ„طھط­ظ„ظٹظ„.' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'يرجى كتابة سؤالك أو إرفاق صورة للتحليل.' }, { status: 400 });
   }
 
   const normalized = normalizeArabic(rawPrompt);
@@ -544,72 +544,72 @@ export async function POST(req: NextRequest) {
   // 2. Check for Immediate Rule-Based Handlers
   if (!image) {
     // Date & Time
-    if (/^(ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡|ط§ظ„ظ†ظ‡ط§ط±ط¯ط©|ط§ظ„ظٹظˆظ…)\s+(ظٹظˆظ…\s*)?(ط§ظٹظ‡|ط§ظٹ|ط¥ظٹظ‡|ط¥ظٹ)$/.test(normalized) || normalized.includes('طھط§ط±ظٹط® ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡') || normalized.includes('ط§ظ„ط³ط§ط¹ظ‡ ظƒط§ظ…')) {
+    if (/^(النهاردة|النهارده|اليوم)\s+(يوم\s*)?(ايه|اي|إيه|إي)$/.test(normalized) || normalized.includes('تاريخ النهاردة') || normalized.includes('الساعه كام')) {
       const res = handleDateTimeQuery();
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ†ط¸ط§ظ… ظ…ط³ط§ط± ط§ظ„ط°ظƒظٹ', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'نظام مسار الذكي', actions: res.actions });
     }
 
     // Attendance & Absence
     if (
-      normalized.includes('ظ…ظٹظ† ط؛ط§ط¨') ||
-      normalized.includes('ظ…ظٹظ† ط­ط¶ط±') ||
-      normalized.includes('ظƒط´ظپ ط§ظ„ط؛ظٹط§ط¨') ||
-      normalized.includes('ظƒط´ظپ ط§ظ„ط­ط¶ظˆط±') ||
-      normalized.includes('ظ†ط³ط¨ظ‡ ط§ظ„ط­ط¶ظˆط±') ||
-      normalized.includes('ط§ظ„ط؛ظٹط§ط¨ ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡') ||
-      normalized.includes('ط§ظ„ط­ط¶ظˆط± ظˆط§ظ„ط؛ظٹط§ط¨') ||
-      normalized === 'ط§ظ„ط؛ظٹط§ط¨' ||
-      normalized === 'ط§ظ„ط­ط¶ظˆط±'
+      normalized.includes('مين غاب') ||
+      normalized.includes('مين حضر') ||
+      normalized.includes('كشف الغياب') ||
+      normalized.includes('كشف الحضور') ||
+      normalized.includes('نسبه الحضور') ||
+      normalized.includes('الغياب النهاردة') ||
+      normalized.includes('الحضور والغياب') ||
+      normalized === 'الغياب' ||
+      normalized === 'الحضور'
     ) {
       const res = handleAttendanceQuery(attendance);
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ†ط¸ط§ظ… ط§ظ„ط­ط¶ظˆط± ط§ظ„ط¨ظٹظˆظ…طھط±ظٹ ط§ظ„ط°ظƒظٹ', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'نظام الحضور البيومتري الذكي', actions: res.actions });
     }
 
     // Quiz Generation (especially JSON format requests for Quiz Builder)
-    if (isJsonRequest || normalized.includes('ط§ظ†ط´ط¦ ظƒظˆظٹط²') || normalized.includes('ط§ط¹ظ…ظ„ ظƒظˆظٹط²') || normalized.includes('ظƒظˆظٹط² ط³ط±ظٹط¹') || normalized.includes('ط§ط®طھط¨ط§ط± ط³ط±ظٹط¹')) {
+    if (isJsonRequest || normalized.includes('انشئ كويز') || normalized.includes('اعمل كويز') || normalized.includes('كويز سريع') || normalized.includes('اختبار سريع')) {
       const res = handleQuizGeneration(rawPrompt, isJsonRequest);
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ…ط­ط±ظƒ ط§ظ„ط§ط®طھط¨ط§ط±ط§طھ ط§ظ„ط°ظƒظٹ', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'محرك الاختبارات الذكي', actions: res.actions });
     }
 
     // Parent Message Draft
-    if (normalized.includes('ط±ط³ط§ظ„ظ‡ ظ„ظˆظ„ظٹ') || normalized.includes('ط±ط³ط§ظ„ط© ظ„ظˆظ„ظٹ') || normalized.includes('ظˆط§طھط³ط§ط¨ ظ„ط§ظ‡ظ„') || normalized.includes('ط±ط³ط§ظ„ظ‡ ط؛ظٹط§ط¨')) {
+    if (normalized.includes('رساله لولي') || normalized.includes('رسالة لولي') || normalized.includes('واتساب لاهل') || normalized.includes('رساله غياب')) {
       const res = handleParentMessage(rawPrompt, attendance);
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ…ظ†ط´ط¦ ط§ظ„ط±ط³ط§ط¦ظ„ ط§ظ„طھط±ط¨ظˆظٹط©', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'منشئ الرسائل التربوية', actions: res.actions });
     }
 
     // Lesson Preparation
-    if (normalized.includes('طھط­ط¶ظٹط± ط¯ط±ط³') || normalized.includes('ط­ط¶ط± ط¯ط±ط³') || normalized.includes('طھط­ط¶ظٹط± طھظپط§ط¹ظ„ظٹ') || normalized.includes('ط®ط·ظ‡ ط¯ط±ط³')) {
+    if (normalized.includes('تحضير درس') || normalized.includes('حضر درس') || normalized.includes('تحضير تفاعلي') || normalized.includes('خطه درس')) {
       const res = handleLessonPrep(rawPrompt);
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ…ط³ط§ط¹ط¯ ط§ظ„طھط­ط¶ظٹط± ط§ظ„طھط±ط¨ظˆظٹ', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'مساعد التحضير التربوي', actions: res.actions });
     }
 
     // IEP Individual Plan
-    if (normalized.includes('ط®ط·ط© iep') || normalized.includes('ط®ط·ظ‡ iep') || normalized.includes('ط®ط·ط© ط¹ظ„ط§ط¬ظٹط©') || normalized.includes('ط®ط·ظ‡ ظپط±ط¯ظٹظ‡')) {
+    if (normalized.includes('خطة iep') || normalized.includes('خطه iep') || normalized.includes('خطة علاجية') || normalized.includes('خطه فرديه')) {
       const res = handleIepPlan(rawPrompt);
-      return NextResponse.json({ success: true, reply: res.reply, gateway: 'ظ…ظˆظ„ط¯ ط§ظ„ط®ط·ط· ط§ظ„ظپط±ط¯ظٹط© IEP', actions: res.actions });
+      return NextResponse.json({ success: true, reply: res.reply, gateway: 'مولد الخطط الفردية IEP', actions: res.actions });
     }
   }
 
   // 3. Fallback to / Enhance with Gemini AI Engine
   const systemPrompt = `
-ط£ظ†طھ ط§ظ„ظ…ط³ط§ط¹ط¯ ط§ظ„ط°ظƒظٹ ط§ظ„ط´ط®طµظٹ ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ ظپظٹ ظ…ظ†طµط© ظ…ط³ط§ط± ط§ظ„طھط¹ظ„ظٹظ…ظٹط© ظˆظپطµظ„ ظ…ط¯ط±ط³ط© ط§ظ„ط¥ط®ظ„ط§طµ ط¨ط¬ط¯ط©.
-ط£ظ†طھ ط®ط¨ظٹط± طھط±ط¨ظˆظٹ ظˆطھظ‚ظ†ظٹ ظ…طھط®طµطµ ظپظٹ طµط¹ظˆط¨ط§طھ ط§ظ„طھط¹ظ„ظ…طŒ ط§ظ„طھط±ط¨ظٹط© ط§ظ„ط®ط§طµط©طŒ ظˆط§ظ„طھط£ط³ظٹط³ ط§ظ„ط£ظƒط§ط¯ظٹظ…ظٹ.
+أنت المساعد الذكي الشخصي لد. إسماعيل عيسى في منصة مسار التعليمية وفصل مدرسة الإخلاص بجدة.
+أنت خبير تربوي وتقني متخصص في صعوبات التعلم، التربية الخاصة، والتأسيس الأكاديمي.
 
-ًں“… ط³ظٹط§ظ‚ ط§ظ„ظٹظˆظ… ط§ظ„ظپط¹ظ„ظٹ ظپظٹ ط§ظ„ظ…ظ†طµط©:
-- ط§ظ„ظٹظˆظ…: ${dayName}طŒ ${dateArabic} (${isoDate}).
-- ط§ظ„ظپطµظ„: ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ (ظپط±ط¹ ط§ظ„ط¥ط®ظ„ط§طµ ط§ظ„ط£ظ‡ظ„ظٹط© ط¨ط¬ط¯ط©).
-- ط¥ط¬ظ…ط§ظ„ظٹ ط·ظ„ط§ط¨ ط§ظ„ظپطµظ„ ط§ظ„ظ…ط³ط¬ظ„ظٹظ†: ${attendance.totalStudents} ط·ط§ظ„ط¨ط§ظ‹.
-- ط¹ط¯ط¯ ط§ظ„ط·ظ„ط§ط¨ ط§ظ„ط­ط§ط¶ط±ظٹظ† ط§ظ„ظٹظˆظ…: ${attendance.presentCount} ط·ط§ظ„ط¨ط§ظ‹ (${attendance.attendanceRate}%).
-- ط­ط¶ظˆط± ط¨طµظ…ط© ط§ظ„ظˆط¬ظ‡ ط§ظ„ط°ظƒظٹط©: ${attendance.faceAttendanceCount} ط·ط§ظ„ط¨ط§ظ‹.
-- ط¹ط¯ط¯ ط§ظ„ط؛ط§ط¦ط¨ظٹظ†: ${attendance.absentCount} ط·ط§ظ„ط¨ط§ظ‹.
-- ط£ط³ظ…ط§ط، ط¨ط¹ط¶ ط·ظ„ط§ط¨ ط§ظ„ظپطµظ„: ${students.slice(0, 10).map((s) => s.fullName).join('طŒ ')}.
+📅 سياق اليوم الفعلي في المنصة:
+- اليوم: ${dayName}، ${dateArabic} (${isoDate}).
+- الفصل: فصل د. إسماعيل عيسى (فرع الإخلاص الأهلية بجدة).
+- إجمالي طلاب الفصل المسجلين: ${attendance.totalStudents} طالباً.
+- عدد الطلاب الحاضرين اليوم: ${attendance.presentCount} طالباً (${attendance.attendanceRate}%).
+- حضور بصمة الوجه الذكية: ${attendance.faceAttendanceCount} طالباً.
+- عدد الغائبين: ${attendance.absentCount} طالباً.
+- أسماء بعض طلاب الفصل: ${students.slice(0, 10).map((s) => s.fullName).join('، ')}.
 
-ط¥ط±ط´ط§ط¯ط§طھظƒ ط§ظ„طµط§ط±ظ…ط©:
-1. ط£ظ†طھ طھطھط­ط¯ط« ظ…ط¨ط§ط´ط±ط© ط¥ظ„ظ‰ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰ (ط£ظˆ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±/ط§ظ„ظ…ط®طھطµ ط­ط³ط¨ ط§ظ„ط³ظٹط§ظ‚).
-2. ط£ط¬ط¨ ط¯ط§ط¦ظ…ط§ظ‹ ط¨ط§ظ„ط¹ط±ط¨ظٹط© ط§ظ„ظپطµط­ظ‰ ط§ظ„ط³ظ„ط³ط© ظˆط§ظ„ظ…ط­طھط±ظپط© ظˆط¨ط£ط³ظ„ظˆط¨ ط¹ظ…ظ„ظٹ ظˆظ…ط¨ط§ط´ط±.
-3. ظ„ط§ طھط¹طھط°ط± ظˆظ„ط§ طھط³طھط®ط¯ظ… ط¹ط¨ط§ط±ط§طھ ط±ظˆطھظٹظ†ظٹط© ظپط§ط±ط؛ط© ظ…ط«ظ„ "ط¨طµظپطھظٹ ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ" ط£ظˆ "ظٹظ…ظƒظ†ظ†ط§ ط§ظ„ظ…طھط§ط¨ط¹ط©". ط§ط¯ط®ظ„ ظپظٹ طµظ„ط¨ ط§ظ„ظ…ظˆط¶ظˆط¹ ظپظˆط±ط§ظ‹.
-4. ط¹ظ†ط¯ظ…ط§ ظٹط±ظپط¹ ط§ظ„ط¯ظƒطھظˆط± طµظˆط±ط© (ط¬ط¯ظˆظ„طŒ ظˆط±ظ‚ط© ط¹ظ…ظ„طŒ ظƒطھط§ط¨طŒ طھظ…ط±ظٹظ†)طŒ ط§ظ‚ط±ط£ ظ†طµظ‡ط§ ط¨ط¯ظ‚ط© ظˆط­ظ„ظ„ظ‡ط§ ظˆط§ظ‚طھط±ط­ ط·ط±ظٹظ‚ط© طھط¯ط±ظٹط³ظ‡ط§ ظˆطھط·ظˆظٹط±ظ‡ط§.
-5. ظ‚ط¯ظ… ط¯ط§ط¦ظ…ط§ظ‹ ظ…ط®ط±ط¬ط§طھ ط¬ط§ظ‡ط²ط© ظ„ظ„ظ†ط³ط® ظˆط§ظ„ط§ط³طھط®ط¯ط§ظ…: ظ†طµظˆطµ ط±ط³ط§ط¦ظ„طŒ ط£ط³ط¦ظ„ط© ظƒظˆظٹط²طŒ ط®ط·ظˆط§طھ طھط­ط¶ظٹط±طŒ ط£ظ‡ط¯ط§ظپ IEP.
+إرشاداتك الصارمة:
+1. أنت تتحدث مباشرة إلى د. إسماعيل عيسى (أو ولي الأمر/المختص حسب السياق).
+2. أجب دائماً بالعربية الفصحى السلسة والمحترفة وبأسلوب عملي ومباشر.
+3. لا تعتذر ولا تستخدم عبارات روتينية فارغة مثل "بصفتي ذكاء اصطناعي" أو "يمكننا المتابعة". ادخل في صلب الموضوع فوراً.
+4. عندما يرفع الدكتور صورة (جدول، ورقة عمل، كتاب، تمرين)، اقرأ نصها بدقة وحللها واقترح طريقة تدريسها وتطويرها.
+5. قدم دائماً مخرجات جاهزة للنسخ والاستخدام: نصوص رسائل، أسئلة كويز، خطوات تحضير، أهداف IEP.
 `.trim();
 
   const messages: GeminiMessage[] = [];
@@ -624,7 +624,7 @@ export async function POST(req: NextRequest) {
 
   messages.push({
     role: 'user',
-    content: rawPrompt || 'ظٹط±ط¬ظ‰ طھط­ظ„ظٹظ„ ظ‡ط°ظ‡ ط§ظ„طµظˆط±ط© ظˆطھظ‚ط¯ظٹظ… ظ…ظ„ط®طµ ظˆطھظˆط¬ظٹظ‡ط§طھ ط¹ظ…ظ„ظٹط© ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„.',
+    content: rawPrompt || 'يرجى تحليل هذه الصورة وتقديم ملخص وتوجيهات عملية لد. إسماعيل.',
     image,
   });
 
@@ -642,8 +642,8 @@ export async function POST(req: NextRequest) {
       reply: geminiResult.text.trim(),
       gateway: `Gemini AI (${geminiResult.model})`,
       actions: [
-        { type: 'navigate', label: 'ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ظˆط§ظ„ط¬ط¯ظˆظ„', target: '/branches/ikhlas-jeddah' },
-        { type: 'navigate', label: 'ط¥ط¯ط§ط±ط© ط§ظ„ط·ظ„ط§ط¨ ط¨ط§ظ„ظ…ظ†طµط©', target: '/students' },
+        { type: 'navigate', label: 'كشف الحضور والجدول', target: '/branches/ikhlas-jeddah' },
+        { type: 'navigate', label: 'إدارة الطلاب بالمنصة', target: '/students' },
       ],
     });
   }
@@ -652,37 +652,37 @@ export async function POST(req: NextRequest) {
   let fallbackReply = '';
   if (image) {
     fallbackReply = [
-      `ًں“¸ **طھط­ظ„ظٹظ„ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط±ظپظ‚ط© ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰:**`,
-      `ط§ط³طھظ„ظ…طھ ط§ظ„طµظˆط±ط© ط§ظ„ظ…ط±ظپظ‚ط© ط¨ظ†ط¬ط§ط­. ظٹطھظ… ط§ظ„ط¢ظ† ظپط­طµ ط¹ظ†ط§طµط±ظ‡ط§ ط§ظ„طھط¹ظ„ظٹظ…ظٹط©.`,
-      `ط¥ط°ط§ ظƒط§ظ†طھ ظˆط±ظ‚ط© ط¹ظ…ظ„ ط£ظˆ ط¬ط¯ظˆظ„ط§ظ‹ ظ…ط¯ط±ط³ظٹط§ظ‹طŒ ظٹظ…ظƒظ†ظƒ ط§ط³طھط®ط¯ط§ظ… ظ…ط­ط±ط± ط§ظ„ط§ط®طھط¨ط§ط±ط§طھ ط£ظˆ ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ظ„طھط·ط¨ظٹظ‚ظ‡ط§ ظ…ط¨ط§ط´ط±ط© ط¯ط§ط®ظ„ ط§ظ„ظپطµظ„.`,
-      `ًں“Œ ظ†طµظٹط­ط©: ظٹظ…ظƒظ†ظƒ ط£ظٹط¶ط§ظ‹ ط·ظ„ط¨ طµظٹط§ط؛ط© ظƒظˆظٹط² طھظپط§ط¹ظ„ظٹ ط£ظˆ طھط­ط¶ظٹط± ط¯ط±ط³ ظ…ط³طھظˆط­ظ‰ ظ…ظ† ظ‡ط°ظ‡ ط§ظ„طµظˆط±ط© ط¹ط¨ط± ظƒطھط§ط¨ط© ظ…ظˆط¶ظˆط¹ظ‡ط§ ظپظٹ ط§ظ„ط±ط³ط§ظ„ط©.`,
+      `📸 **تحليل الصورة المرفقة لد. إسماعيل عيسى:**`,
+      `استلمت الصورة المرفقة بنجاح. يتم الآن فحص عناصرها التعليمية.`,
+      `إذا كانت ورقة عمل أو جدولاً مدرسياً، يمكنك استخدام محرر الاختبارات أو كشف الحضور لتطبيقها مباشرة داخل الفصل.`,
+      `📌 نصيحة: يمكنك أيضاً طلب صياغة كويز تفاعلي أو تحضير درس مستوحى من هذه الصورة عبر كتابة موضوعها في الرسالة.`,
     ].join('\n');
-  } else if (normalized.includes('ط¨ط­ط«') || normalized.includes('ط¯ط±ط§ط³ط©') || normalized.includes('ط§ط³طھط±ط§طھظٹط¬ظٹط©')) {
+  } else if (normalized.includes('بحث') || normalized.includes('دراسة') || normalized.includes('استراتيجية')) {
     fallbackReply = [
-      `ًں“– **ظ…ظ„ط®طµ ط¹ظ„ظ…ظٹ ظˆطھط±ط¨ظˆظٹ ظ…طھط®طµطµ ظ„ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„:**`,
-      `â€¢ **ط§ظ„ظپظƒط±ط©:** ط¯ظ…ط¬ ط£ط³ط§ظ„ظٹط¨ ط§ظ„طھط¹ظ„ظ… ظ…طھط¹ط¯ط¯ ط§ظ„ط­ظˆط§ط³ (Multisensory Learning) ظ…ط¹ ط§ظ„طھط؛ط°ظٹط© ط§ظ„ط±ط§ط¬ط¹ط© ظˆط§ظ„طھط¹ط²ظٹط² ط§ظ„ظپظˆط±ظٹ ظٹط±ظپط¹ ط¯ط§ظپط¹ظٹط© ط·ظ„ط§ط¨ طµط¹ظˆط¨ط§طھ ط§ظ„طھط¹ظ„ظ… ط¨ظ†ط³ط¨ط© طھطھط¬ط§ظˆط² 40%.`,
-      `â€¢ **ط§ظ„طھط·ط¨ظٹظ‚ ط§ظ„ط¹ظ…ظ„ظٹ ط¯ط§ط®ظ„ ط§ظ„ظ…ظ†طµط©:**`,
-      `1. ط§ظ„ط§ط¹طھظ…ط§ط¯ ط¹ظ„ظ‰ ط§ظ„ط¨ط·ط§ظ‚ط§طھ ط§ظ„طھظپط§ط¹ظ„ظٹط© ط§ظ„ظ‚طµظٹط±ط© (Micro-tasks).`,
-      `2. طھط¹ط²ظٹط² ط§ظ„ط·ط§ظ„ط¨ ط¨ظ†ظ‚ط§ط· ظˆط´ط§ط±ط§طھ ظپظˆط±ظٹط© ط¹ظ†ط¯ ط¥طھظ…ط§ظ… ط§ظ„طھط¯ط±ظٹط¨.`,
-      `3. ط¥ط´ط±ط§ظƒ ط§ظ„ط£ط³ط±ط© ط¹ط¨ط± طھظ‚ط§ط±ظٹط± طھظ‚ط¯ظ… ظˆط§ط¶ط­ط© ظˆط¨ط¯ظˆظ† ظ…طµط·ظ„ط­ط§طھ طھط´ط®ظٹطµظٹط© ظ…ط­ط¨ط·ط©.`,
+      `📖 **ملخص علمي وتربوي متخصص لد. إسماعيل:**`,
+      `• **الفكرة:** دمج أساليب التعلم متعدد الحواس (Multisensory Learning) مع التغذية الراجعة والتعزيز الفوري يرفع دافعية طلاب صعوبات التعلم بنسبة تتجاوز 40%.`,
+      `• **التطبيق العملي داخل المنصة:**`,
+      `1. الاعتماد على البطاقات التفاعلية القصيرة (Micro-tasks).`,
+      `2. تعزيز الطالب بنقاط وشارات فورية عند إتمام التدريب.`,
+      `3. إشراك الأسرة عبر تقارير تقدم واضحة وبدون مصطلحات تشخيصية محبطة.`,
     ].join('\n');
   } else {
     fallbackReply = [
-      `ط£ظ‡ظ„ط§ظ‹ ط¨ظƒ ظٹط§ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„ ط¹ظٹط³ظ‰. ظ…ط³ط§ط¹ط¯ظƒ ط§ظ„ط°ظƒظٹ ط¬ط§ظ‡ط² ظ„ظ…ط³ط§ط¹ط¯طھظƒ ظپظٹ ظƒظ„ ظ…ط§ ظٹط®طµ ط§ظ„ظپطµظ„:`,
-      `â€¢ ط§ط³ط£ظ„: *"ظ…ظٹظ† ط؛ط§ط¨ ط§ظ„ظ†ظ‡ط§ط±ط¯ظ‡طں"* ظ„ط¹ط±ط¶ ظƒط´ظپ ط§ظ„ط؛ظٹط§ط¨ ط§ظ„ظ„ط­ط¸ظٹ.`,
-      `â€¢ ط§ط·ظ„ط¨: *"ط£ظ†ط´ط¦ ظƒظˆظٹط² ط³ط±ظٹط¹"* ظ„طھظˆظ„ظٹط¯ 5 ط£ط³ط¦ظ„ط© ظ…ط¹ ط§ظ„ط¥ط¬ط§ط¨ط§طھ ط§ظ„ظ†ظ…ظˆط°ط¬ظٹط©.`,
-      `â€¢ ط§ط·ظ„ط¨: *"ط­ط¶ط±ظ„ظٹ ط¯ط±ط³ ظپظٹ [ط§ظ„ظ…ظˆط¶ظˆط¹]"* ظ„ط¥ط¹ط¯ط§ط¯ ط®ط·ط© طھط¯ط±ظٹط³ ظƒط§ظ…ظ„ط©.`,
-      `â€¢ ط§ط·ظ„ط¨: *"ط±ط³ط§ظ„ط© ظ„ظˆظ„ظٹ ط£ظ…ط± ط§ظ„ط؛ط§ط¦ط¨ظٹظ†"* ظ„طھط¬ظ‡ظٹط² ظ†طµ ظˆط§طھط³ط§ط¨ ط¬ط§ظ‡ط² ظ„ظ„ط¥ط±ط³ط§ظ„.`,
+      `أهلاً بك يا د. إسماعيل عيسى. مساعدك الذكي جاهز لمساعدتك في كل ما يخص الفصل:`,
+      `• اسأل: *"مين غاب النهاردة؟"* لعرض كشف الغياب اللحظي.`,
+      `• اطلب: *"أنشئ كويز سريع"* لتوليد 5 أسئلة مع الإجابات النموذجية.`,
+      `• اطلب: *"حضرلي درس في [الموضوع]"* لإعداد خطة تدريس كاملة.`,
+      `• اطلب: *"رسالة لولي أمر الغائبين"* لتجهيز نص واتساب جاهز للإرسال.`,
     ].join('\n');
   }
 
   return NextResponse.json({
     success: true,
     reply: fallbackReply,
-    gateway: 'ظ…ط­ط±ظƒ ظ…ط³ط§ط± ط§ظ„طھط±ط¨ظˆظٹ ط§ظ„ط°ظƒظٹ',
+    gateway: 'محرك مسار التربوي الذكي',
     actions: [
-      { type: 'navigate', label: 'ظپطھط­ ظپطµظ„ ط¯. ط¥ط³ظ…ط§ط¹ظٹظ„', target: '/branches/ikhlas-jeddah' },
-      { type: 'navigate', label: 'ظƒط´ظپ ط§ظ„ط­ط¶ظˆط± ط§ظ„ط¨ظٹظˆظ…طھط±ظٹ', target: '/branches/ikhlas-jeddah/face-attendance' },
+      { type: 'navigate', label: 'فتح فصل د. إسماعيل', target: '/branches/ikhlas-jeddah' },
+      { type: 'navigate', label: 'كشف الحضور البيومتري', target: '/branches/ikhlas-jeddah/face-attendance' },
     ],
   });
 }

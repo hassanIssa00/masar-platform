@@ -101,6 +101,21 @@ export default function LoginPage() {
     // Pre-warm Face ID neural models silently in background so when user taps Face Login, it's instant!
     import('@/lib/faceAuth').then(({ initFaceAuth }) => initFaceAuth().catch(() => {}));
 
+    // Load remembered credentials from this device
+    try {
+      const saved = localStorage.getItem('masar_remembered_credentials');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.email === 'string') {
+          setEmail(parsed.email);
+          if (parsed.password) {
+            setPassword(parsed.password);
+          }
+          setRememberMe(true);
+        }
+      }
+    } catch {}
+
     // Check if coming back from Google redirect
     handleGoogleRedirectResult('parent').then(async (result) => {
       if (result && result.ok) {
@@ -333,8 +348,22 @@ export default function LoginPage() {
 
       const data = res ? await res.json().catch(() => ({})) : {};
 
+      const syncRememberedCredentials = (shouldRemember: boolean, targetEmail: string, targetPass: string) => {
+        try {
+          if (shouldRemember && targetEmail) {
+            localStorage.setItem(
+              'masar_remembered_credentials',
+              JSON.stringify({ email: targetEmail, password: targetPass })
+            );
+          } else {
+            localStorage.removeItem('masar_remembered_credentials');
+          }
+        } catch {}
+      };
+
       if (res && res.ok && data.ok && data.account) {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
+        syncRememberedCredentials(rememberMe, cleanEmail, cleanPassword);
         setSession(data.account, rememberMe, false);
         await redirectAfterLogin(data.account);
         return;
@@ -350,6 +379,7 @@ export default function LoginPage() {
 
       if (localMatched) {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
+        syncRememberedCredentials(rememberMe, cleanEmail, cleanPassword);
         setSession(localMatched, rememberMe, false);
         await redirectAfterLogin(localMatched);
         return;
@@ -374,6 +404,16 @@ export default function LoginPage() {
 
       if (localMatched) {
         setLoginMessage('تم تسجيل دخولك بنجاح! جاري التوجيه إلى حسابك...');
+        try {
+          if (rememberMe) {
+            localStorage.setItem(
+              'masar_remembered_credentials',
+              JSON.stringify({ email: cleanEmail, password: cleanPassword })
+            );
+          } else {
+            localStorage.removeItem('masar_remembered_credentials');
+          }
+        } catch {}
         setSession(localMatched, rememberMe, false);
         await redirectAfterLogin(localMatched);
         return;
@@ -571,13 +611,15 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4 text-right">
+          <form onSubmit={handleLogin} autoComplete="on" className="space-y-4 text-right">
             <label className="block">
               <span className="mb-2 block text-xs sm:text-sm font-black text-slate-700">
                 البريد الإلكتروني أو رقم الهاتف
               </span>
               <input
                 id="input-login-email"
+                name="username"
+                autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 type="text"
@@ -592,6 +634,8 @@ export default function LoginPage() {
               <span className="flex rounded-xl border border-slate-200 bg-slate-50 focus-within:border-teal-600 focus-within:bg-white transition">
                 <input
                   id="input-login-password"
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   type={showPassword ? 'text' : 'password'}
@@ -613,8 +657,18 @@ export default function LoginPage() {
               <label className="flex items-center gap-2 font-bold text-slate-600 cursor-pointer">
                 <input
                   type="checkbox"
+                  id="checkbox-remember-me"
+                  name="rememberMe"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setRememberMe(checked);
+                    if (!checked) {
+                      try {
+                        localStorage.removeItem('masar_remembered_credentials');
+                      } catch {}
+                    }
+                  }}
                   className="accent-teal-600 rounded w-4 h-4 cursor-pointer"
                 />
                 تذكرني على هذا الجهاز
