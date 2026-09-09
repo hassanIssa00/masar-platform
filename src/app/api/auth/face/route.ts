@@ -197,6 +197,45 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
 
+  // ── ENROLL ACTION: Direct Cloud Biometric Registration ────────────────────
+  if (body.action === 'enroll') {
+    const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
+    const emb = Array.isArray(body.embedding) ? body.embedding.map(Number) : [];
+    const multiEmbs = Array.isArray(body.embeddings) ? body.embeddings : (emb.length > 0 ? [emb] : []);
+    const meta = body.meta && typeof body.meta === 'object' ? body.meta : {};
+
+    if (!userId || emb.length === 0) {
+      return NextResponse.json({ ok: false, error: 'بيانات التسجيل البيومتري غير صالحة.' }, { status: 400 });
+    }
+
+    const newRecord = {
+      userId,
+      accountId:    meta.accountId || userId,
+      studentId:    meta.studentId || userId,
+      userName:     meta.userName || 'مستخدم',
+      userRole:     meta.userRole || 'parent',
+      userEmail:    meta.userEmail || `${userId}@masarplatform.org`,
+      parentName:   meta.parentName || null,
+      schoolBranch: meta.schoolBranch || 'MASAR',
+      embedding:    emb,
+      embeddings:   multiEmbs,
+      enrolledAt:   new Date().toISOString(),
+      updatedAt:    new Date().toISOString(),
+    };
+
+    const writes = [adminDb.collection('faceRecordsV2').doc(userId).set(newRecord, { merge: true })];
+    if (meta.accountId && meta.accountId !== userId) {
+      writes.push(adminDb.collection('faceRecordsV2').doc(meta.accountId).set({ ...newRecord, userId: meta.accountId }, { merge: true }));
+    }
+    if (meta.studentId && meta.studentId !== userId) {
+      writes.push(adminDb.collection('faceRecordsV2').doc(meta.studentId).set({ ...newRecord, userId: meta.studentId }, { merge: true }));
+    }
+    await Promise.all(writes);
+
+    console.log(`[FaceID] Cloud enrolled successfully for ${userId} (${meta.userName}) with ${multiEmbs.length} template(s)`);
+    return NextResponse.json({ ok: true, message: 'تم حفظ بصمة الوجه سحابياً بنجاح.' });
+  }
+
   const embedding: number[] = Array.isArray(body.embedding)
     ? body.embedding.map((v: unknown) => Number(v))
     : [];

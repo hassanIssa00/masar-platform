@@ -151,6 +151,7 @@ const PUBLIC_API_PATHS = [
   '/api/auth/face',
   '/api/accounts/generate',
   '/api/cleanup/fake-students',
+  '/api/data/doc',
 ];
 
 const LOGIN_URL = '/auth/login';

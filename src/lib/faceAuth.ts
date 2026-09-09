@@ -433,7 +433,25 @@ export async function enrollFace(
       if (meta?.studentId) mark(meta.studentId);
     } catch {}
 
-    // Direct cloud save to Firestore through /api/data/doc
+    // Direct guaranteed cloud save through /api/auth/face (Open public endpoint)
+    try {
+      await fetch('/api/auth/face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'enroll',
+          userId,
+          embedding,
+          embeddings: multiAngleEmbeddings && multiAngleEmbeddings.length > 0 ? multiAngleEmbeddings : [embedding],
+          meta,
+        }),
+      });
+    } catch (err) {
+      console.error('[FaceAuth] /api/auth/face enroll error:', err);
+    }
+
+    // Secondary backup through /api/data/doc
     try {
       await fetch('/api/data/doc', {
         method: 'POST',
@@ -445,18 +463,6 @@ export async function enrollFace(
           data: newRecord,
         }),
       });
-      if (meta?.accountId && meta.accountId !== userId) {
-        await fetch('/api/data/doc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            collectionName: 'faceRecordsV2',
-            docId: meta.accountId,
-            data: { ...newRecord, userId: meta.accountId },
-          }),
-        });
-      }
     } catch (err) {
       console.error('[FaceAuth] Cloud write error:', err);
     }
