@@ -455,7 +455,27 @@ export function removeFaceEnrollment(userId: string): void {
   writeStore(readStore().filter(
     r => r.userId !== userId && r.accountId !== userId && r.studentId !== userId
   ));
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(`masar_face_enrolled_${userId}`);
+      localStorage.removeItem(`masar_face_prompt_seen_${userId}`);
+    } catch {}
+  }
   deleteDocFromCloud('faceRecordsV2', userId);
+}
+
+export function removeAllFaceEnrollments(): void {
+  writeStore([]);
+  if (typeof window !== 'undefined') {
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('masar_face_enrolled_') || key.startsWith('masar_face_prompt_seen_'))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {}
+  }
 }
 
 export const unenrollFace = removeFaceEnrollment;

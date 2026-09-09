@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "system": {
+    "name": "Masar Biometric Face ID & Attendance Suite",
+    "version": "8.0.0",
+    "targetBranch": "IKHLAS_JEDDAH",
+    "scope": "Classroom & Student Biometric Face Verification, Geofencing, Period Scheduling",
+    "engine": {
+      "library": "@vladmandic/face-api",
+      "version": "4.0",
+      "backend": "WebGL (GPU Shaders)",
+      "wasmRequired": false,
+      "totalModelSizeMB": 6.5,
+      "averageInitTimeSec": 1.2
+    }
+  },
+  "models": [
+    {
+      "name": "tiny_face_detector_model",
+      "type": "Single Shot Multibox Detector (SSD MobileNetV1)",
+      "sizeKB": 193.3,
+      "path": "/face-models/tiny_face_detector_model.bin",
+      "manifest": "/face-models/tiny_face_detector_model-weights_manifest.json",
+      "config": {
+        "inputSize": 320,
+        "scoreThreshold": 0.30
+      }
+    },
+    {
+      "name": "face_landmark_68_model",
+      "type": "Facial 68 Landmark Detector",
+      "sizeKB": 356.8,
+      "path": "/face-models/face_landmark_68_model.bin",
+      "manifest": "/face-models/face_landmark_68_model-weights_manifest.json",
+      "output": "68 2D landmark coordinates (dlib convention)"
+    },
+    {
+      "name": "face_recognition_model",
+      "type": "Deep ResNet-34 Feature Extractor",
+      "sizeMB": 6.44,
+      "path": "/face-models/face_recognition_model.bin",
+      "manifest": "/face-models/face_recognition_model-weights_manifest.json",
+      "output": "128-dimensional L2-normalized float vector"
+    }
+  ],
+  "algorithms": {
+    "vectorComparison": {
+      "metric": "Euclidean Distance",
+      "formula": "sqrt(sum((A[i] - B[i])^2))",
+      "dimensions": 128,
+      "thresholdClient": 0.62,
+      "thresholdServer": 0.60,
+      "similarityFormula": "max(0, min(0.99, 1 - distance / 0.95))",
+      "confidenceFormula": "round(similarity * 100)"
+    },
+    "livenessBlink": {
+      "metric": "Eye Aspect Ratio (EAR)",
+      "formula": "(||p1 - p5|| + ||p2 - p4||) / (2 * ||p0 - p3||)",
+      "eyeLandmarks": {
+        "right": [36, 37, 38, 39, 40, 41],
+        "left": [42, 43, 44, 45, 46, 47]
+      },
+      "openEyeBaseline": "0.28 - 0.35",
+      "blinkThreshold": "< 0.20",
+      "simulatedBlendshapes": ["eyeBlinkLeft", "eyeBlinkRight"]
+    },
+    "headPoseEstimation": {
+      "inputs": ["IOD = hypot(L45 - R36)", "EyeCenter = (R36 + L45) / 2"],
+      "yawFormula": "(NoseTip30.x - EyeCenter.x) / IOD",
+      "pitchFormula": "(NoseTip30.y - EyeCenter.y) / (Chin8.y - EyeCenter.y) - 0.42",
+      "enrollmentPoses": [
+        { "id": "frontal", "yawCheck": "|yaw| < 0.16", "pitchCheck": "|pitch| < 0.16", "blinkCheck": "eyesOpen" },
+        { "id": "right", "yawCheck": "yaw < -0.20" },
+        { "id": "left", "yawCheck": "yaw > 0.20" },
+        { "id": "up", "pitchCheck": "pitch < -0.12" },
+        { "id": "down", "pitchCheck": "pitch > 0.12" }
+      ]
+    },
+    "vectorAveraging": {
+      "purpose": "Eliminate camera sensor jitter & lighting noise",
+      "formula": "mean(vectors, axis=0)",
+      "framesPerPose": {
+        "frontal": 12,
+        "angled": 8,
+        "verificationBatch": 8
+      }
+    },
+    "geofencing": {
+      "schoolName": "Al-Ikhlas Private Boys Schools",
+      "latitude": 21.54974,
+      "longitude": 39.1813937,
+      "allowedRadiusMeters": 200,
+      "formula": "Haversine distance (WGS84 Earth Radius = 6,371,000m)",
+      "enforcement": "Hard block with distance text and satellite interactive map"
+    }
+  },
+  "storageAndSync": {
+    "localStorageKey": "masar.face.v2",
+    "cloudCollection": "faceRecordsV2",
+    "attendanceKey": "masar.attendance.v1",
+    "periodMatrixPrefix": "masar_period_attendance_v2_",
+    "periodMatrixCloudCollection": "period_attendance"
+  }
+}
