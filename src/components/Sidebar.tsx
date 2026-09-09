@@ -400,7 +400,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
             <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 border border-slate-200 p-2.5">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative shrink-0">
-                  <div className="h-9 w-9 rounded-xl overflow-hidden border border-sky-200 bg-white shadow-xs">
+                  <div className="h-9 w-9 rounded-xl overflow-hidden border border-sky-200 bg-[#f1eff3] shadow-xs">
                     <img
                       src="/dr-ismail.jpg"
                       alt={userName || 'د. إسماعيل عيسى'}
@@ -431,7 +431,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
           ) : (
             <div className="flex flex-col items-center gap-2">
               <div className="relative">
-                <div className="h-9 w-9 rounded-xl overflow-hidden border border-sky-200 bg-white shadow-xs">
+                <div className="h-9 w-9 rounded-xl overflow-hidden border border-sky-200 bg-[#f1eff3] shadow-xs">
                   <img
                     src="/dr-ismail.jpg"
                     alt={userName || 'د. إسماعيل عيسى'}
