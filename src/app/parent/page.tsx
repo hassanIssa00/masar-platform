@@ -27,6 +27,7 @@ import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { findStudentsForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { recordUserPresence } from '@/lib/presence';
 import { isFaceEnrolled } from '@/lib/faceAuth';
+import FaceIdAccountWidget from '@/components/FaceIdAccountWidget';
 
 function isGeneratedAlias(email?: string | null) {
   if (!email) return true;
@@ -48,6 +49,7 @@ export default function ParentDashboard() {
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [sessionEmail, setSessionEmail] = useState('');
+  const [parentAccountId, setParentAccountId] = useState('');
   // Prevents "no student linked" flash before cloud data loads
   const [isLoading, setIsLoading] = useState(true);
   const [isStudentFaceEnrolled, setIsStudentFaceEnrolled] = useState(false);
@@ -70,6 +72,8 @@ export default function ParentDashboard() {
       // Get session (local cache first, server fallback)
       const session = getSession() ?? await hydrateSessionFromServer();
       if (session?.email) setSessionEmail(session.email);
+      if (session?.id) setParentAccountId(session.id);
+      if (session?.name) setParentName(session.name);
       if (cancelled) return;
 
       if (!session) { router.replace('/login'); return; }
@@ -729,6 +733,19 @@ export default function ParentDashboard() {
                 </p>
               </div>
             </header>
+
+            {/* Parent Face ID Account Widget */}
+            {parentAccountId && (
+              <FaceIdAccountWidget
+                userId={parentAccountId}
+                accountId={parentAccountId}
+                userName={parentName || 'ولي الأمر'}
+                userRole="parent"
+                schoolBranch="MASAR"
+                userEmail={sessionEmail}
+                studentId={selectedStudent?.id}
+              />
+            )}
 
             {/* Prominent Hero Student Profile Card (Only displayed on Home tab) */}
             {selectedStudent && (

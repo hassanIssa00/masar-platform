@@ -37,6 +37,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { recordUserPresence } from '@/lib/presence';
 import dynamic from 'next/dynamic';
 import { isFaceEnrolled as checkFaceEnrolled } from '@/lib/faceAuth';
+import FaceIdAccountWidget from '@/components/FaceIdAccountWidget';
 import {
   getStudentTodayAttendance,
   markStudentAttendanceViaFace,
@@ -885,8 +886,8 @@ export default function StudentDashboard() {
           variant="student"
           showParent={true}
           allowPhotoUpload={true}
-          isFaceEnrolled={isIkhlas ? faceEnrolled : undefined}
-          onEnrollFaceRequested={isIkhlas ? () => setShowFaceEnrollModal(true) : undefined}
+          isFaceEnrolled={faceEnrolled}
+          onEnrollFaceRequested={() => setShowFaceEnrollModal(true)}
           onPhotoUpdated={(newPhoto) => {
             setStudentPhoto(newPhoto);
             if (studentRecord) {
@@ -895,6 +896,17 @@ export default function StudentDashboard() {
           }}
         />
       )}
+
+      {/* ── Student Face ID Account Widget (Available for both Masar and Ikhlas Students) ── */}
+      <FaceIdAccountWidget
+        userId={accountSessionId || studentId || (studentRecord as any)?.id || ''}
+        accountId={accountSessionId}
+        studentId={studentId || (studentRecord as any)?.id || ''}
+        userName={studentName}
+        userRole="student"
+        schoolBranch={isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR'}
+        userEmail={studentRecord?.linkedStudentEmail || (studentRecord as any)?.email}
+      />
 
       {/* ── Smart Period Face Attendance & Biometrics (حصرياً لفصل د. إسماعيل عيسى) ── */}
       {isIkhlas && (
@@ -1087,42 +1099,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Face ID Quick Action Banner */}
-      {!faceEnrolled ? (
-        <div className="bg-gradient-to-l from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-300/80 rounded-3xl p-4 flex items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <ScanFace size={22} />
-            </div>
-            <div className="text-right">
-              <h4 className="text-xs sm:text-sm font-black text-slate-900">سجّل بصمة وجهك للدخول السريع 📸</h4>
-              <p className="text-[11px] font-bold text-slate-500">سجّل ملامحك لمرة واحدة لتسجيل الدخول بلمح البصر دون الحاجة لكتابة كلمة المرور.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowFaceEnrollModal(true)}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 active:scale-95 cursor-pointer"
-          >
-            <Camera size={14} />
-            <span>سجّل الآن</span>
-          </button>
-        </div>
-      ) : (
-        <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle size={16} className="text-emerald-600 shrink-0" />
-            <span className="text-xs font-black text-emerald-900">بصمة الوجه مفعلة لحسابك للدخول السريع 🔒</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowFaceEnrollModal(true)}
-            className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline transition cursor-pointer"
-          >
-            إعادة التسجيل 🔄
-          </button>
-        </div>
-      )}
         </>
       )}
 
@@ -1760,7 +1736,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Face Enroll Modal */}
-      {showFaceEnrollModal && isIkhlas && (
+      {showFaceEnrollModal && (
         <FaceEnrollModal
           userId={accountSessionId || studentId || (studentRecord as any)?.id || ''}
           accountId={accountSessionId}

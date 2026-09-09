@@ -25,6 +25,7 @@ import ParentHomeworkPagesViewerModal from '@/components/ParentHomeworkPagesView
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { recordUserPresence } from '@/lib/presence';
 import { isFaceEnrolled } from '@/lib/faceAuth';
+import FaceIdAccountWidget from '@/components/FaceIdAccountWidget';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -60,6 +61,7 @@ export default function SchoolParentPage() {
   const [replySending, setReplySending] = useState(false);
   const [replySent, setReplySent] = useState(false);
   const [parentFaceEnrolled, setParentFaceEnrolled] = useState(false);
+  const [parentAccountId, setParentAccountId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +108,7 @@ export default function SchoolParentPage() {
 
       // Set parent name from session directly
       setParentName(session.name || 'ولي الأمر');
+      if (session.id) setParentAccountId(session.id);
       if (session.email) setSessionEmail(session.email);
       // Check if parent has enrolled Face ID
       const isLoginViaFace = typeof window !== 'undefined' && localStorage.getItem('masar_last_login_provider') === 'face';
@@ -758,52 +761,18 @@ export default function SchoolParentPage() {
               </div>
             )}
 
-            {/* Face Biometric Status/Enrollment Banner for Parent */}
-            <div className={`rounded-3xl p-5 text-white shadow-xl relative overflow-hidden flex items-center justify-between gap-4 border ${
-              parentFaceEnrolled
-                ? 'bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 border-emerald-500/40'
-                : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 border-emerald-700/50'
-            }`}>
-              <div className="flex items-center gap-3.5 relative z-10">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
-                  parentFaceEnrolled
-                    ? 'bg-emerald-500/30 border border-emerald-400/50 text-emerald-300'
-                    : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300'
-                }`}>
-                  <ScanFace size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm text-white">
-                      {parentFaceEnrolled ? 'بصمة الوجه مفعلة ومسجلة 🔒' : 'تسجيل الوجه البيومتري 📷'}
-                    </h3>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
-                      parentFaceEnrolled
-                        ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
-                        : 'bg-amber-400/20 text-amber-300 border-amber-400/30'
-                    }`}>
-                      {parentFaceEnrolled ? 'مفعل ✓' : 'دخول سريع'}
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-teal-100 opacity-90 mt-0.5">
-                    {parentFaceEnrolled
-                      ? 'تم تسجيل بصمة وجهك بنجاح. يمكنك الدخول للمنصة مباشرة عبر الكاميرا بدون كلمة مرور.'
-                      : 'سجّل ملامح وجهك الآن لتبدأ الدخول المباشر للمنصة بمجرد النظر للكاميرا بدون كلمة مرور'}
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/face-enroll"
-                className={`shrink-0 text-white font-black text-xs px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer ${
-                  parentFaceEnrolled
-                    ? 'bg-white/10 hover:bg-white/20 border border-white/20'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'
-                }`}
-              >
-                <span>{parentFaceEnrolled ? 'تحديث البصمة' : 'سجّل وجهك'}</span>
-                <ChevronLeft size={14} />
-              </Link>
-            </div>
+            {/* Parent Face ID Account Widget for Dr. Ismail's Class */}
+            {parentAccountId && (
+              <FaceIdAccountWidget
+                userId={parentAccountId}
+                accountId={parentAccountId}
+                userName={parentName || 'ولي الأمر'}
+                userRole="parent"
+                schoolBranch="IKHLAS_JEDDAH"
+                userEmail={sessionEmail}
+                studentId={studentRecord?.id}
+              />
+            )}
 
             {/* Child Profile Card */}
             <StudentProfileCard
