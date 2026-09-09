@@ -264,66 +264,68 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // جلب بيانات الحساب مع التمييز الدقيق بين الطالب وولي الأمر
+  // جلب بيانات الحساب مع التمييز الدقيق بين الطالب وولي الأمر والفرع (مسار vs إخلاص جدة)
   let account: any = null;
   const isStudentRecord = best.record?.userRole === 'student' || Boolean(best.record?.studentId);
 
   if (isStudentRecord) {
     const studentId = best.record?.studentId || best.userId;
-    // التحقق من وجود حساب طالب مباشر
+    // فحص الحساب المباشر
     const studentAccountDoc = await adminDb.collection('accounts').doc(studentId).get();
-    if (studentAccountDoc.exists && studentAccountDoc.data()?.role === 'student') {
-      const data = studentAccountDoc.data() as AccountData;
-      account = {
-        id:           data.id || studentAccountDoc.id,
-        name:         data.name || best.record?.userName || 'طالب مسار',
-        email:        String(data.email || best.record?.userEmail || `${studentId}@masarplatform.org`).trim().toLowerCase(),
-        role:         'student',
-        schoolBranch: data.schoolBranch || best.record?.schoolBranch || 'IKHLAS_JEDDAH',
-        phone:        data.phone,
-        linkedStudentId: studentId,
-      };
-    } else {
-      // جلب بيانات الطالب من جدول students أو class_students
-      const studentDoc = await adminDb.collection('students').doc(studentId).get();
-      const sData = studentDoc.exists ? (studentDoc.data() as any) : null;
-      account = {
-        id:           studentId,
-        name:         sData?.name || best.record?.userName || 'طالب مسار',
-        email:        best.record?.userEmail || `${studentId}@masarplatform.org`,
-        role:         'student',
-        schoolBranch: best.record?.schoolBranch || sData?.schoolBranch || 'IKHLAS_JEDDAH',
-        phone:        sData?.phone,
-        linkedStudentId: studentId,
-      };
-    }
+    const accData = studentAccountDoc.exists ? (studentAccountDoc.data() as AccountData) : null;
+
+    // فحص class_students لمعرفة هل هو طالب فصل د. إسماعيل بجدة
+    const classStudentDoc = await adminDb.collection('class_students').doc(studentId).get();
+    const studentDoc = !classStudentDoc.exists ? await adminDb.collection('students').doc(studentId).get() : null;
+    const sData = studentDoc?.exists ? (studentDoc.data() as any) : null;
+    const csData = classStudentDoc.exists ? (classStudentDoc.data() as any) : null;
+
+    const isIkhlas = classStudentDoc.exists ||
+      best.record?.schoolBranch === 'IKHLAS_JEDDAH' ||
+      accData?.schoolBranch === 'IKHLAS_JEDDAH' ||
+      sData?.schoolBranch === 'IKHLAS_JEDDAH';
+
+    const branch = isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR';
+    const studentName = csData?.fullName || csData?.name || sData?.fullName || sData?.name || accData?.name || best.record?.userName || (isIkhlas ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
+
+    account = {
+      id:           studentId,
+      name:         studentName,
+      email:        String(accData?.email || best.record?.userEmail || `${studentId}@masarplatform.org`).trim().toLowerCase(),
+      role:         'student',
+      schoolBranch: branch,
+      phone:        accData?.phone || sData?.parentPhone || csData?.parentPhone,
+      linkedStudentId: studentId,
+    };
   } else {
     // حسابات الكادر أو أولياء الأمور
     let accountDoc = await adminDb.collection('accounts').doc(best.userId).get();
     if (!accountDoc.exists && best.record?.accountId) {
       accountDoc = await adminDb.collection('accounts').doc(best.record.accountId).get();
     }
+    const accData = accountDoc.exists ? (accountDoc.data() as AccountData) : null;
+    const linkedStudentId = accData?.linkedStudentId || best.record?.studentId;
 
-    if (accountDoc.exists) {
-      const data = accountDoc.data() as AccountData;
-      account = {
-        id:           data.id || accountDoc.id,
-        name:         data.name || best.record?.userName || 'مستخدم مسار',
-        email:        String(data.email || best.record?.userEmail || `${best.userId}@masarplatform.org`).trim().toLowerCase(),
-        role:         data.role || best.record?.userRole || 'parent',
-        schoolBranch: data.schoolBranch || best.record?.schoolBranch || 'MASAR',
-        phone:        data.phone,
-        linkedStudentId: data.linkedStudentId,
-      };
-    } else if (best.record?.userName || best.record?.userRole) {
-      account = {
-        id:           best.userId,
-        name:         best.record.userName || 'ولي أمر',
-        email:        best.record.userEmail || `${best.userId}@masarplatform.org`,
-        role:         best.record.userRole || 'parent',
-        schoolBranch: best.record.schoolBranch || 'MASAR',
-      };
+    let isIkhlasParent = false;
+    if (best.record?.schoolBranch === 'IKHLAS_JEDDAH' || accData?.schoolBranch === 'IKHLAS_JEDDAH') {
+      isIkhlasParent = true;
+    } else if (linkedStudentId) {
+      const csDoc = await adminDb.collection('class_students').doc(linkedStudentId).get();
+      if (csDoc.exists) isIkhlasParent = true;
     }
+
+    const branch = isIkhlasParent ? 'IKHLAS_JEDDAH' : 'MASAR';
+    const role = accData?.role || best.record?.userRole || 'parent';
+
+    account = {
+      id:           best.userId,
+      name:         accData?.name || best.record?.userName || (role === 'parent' ? 'ولي أمر' : 'مستخدم مسار'),
+      email:        String(accData?.email || best.record?.userEmail || `${best.userId}@masarplatform.org`).trim().toLowerCase(),
+      role:         role,
+      schoolBranch: branch,
+      phone:        accData?.phone,
+      linkedStudentId: linkedStudentId,
+    };
   }
 
   if (!account) {

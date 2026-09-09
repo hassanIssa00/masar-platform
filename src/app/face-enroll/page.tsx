@@ -26,6 +26,9 @@ export default function FaceEnrollPage() {
   const [userId, setUserId]       = useState('');
   const [userName, setUserName]   = useState('');
   const [userRole, setUserRole]   = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [schoolBranch, setSchoolBranch] = useState<'MASAR' | 'IKHLAS_JEDDAH'>('MASAR');
+  const [linkedStudentId, setLinkedStudentId] = useState('');
   const [faceDetected, setFaceDetected] = useState(false);
   const [blinkDone, setBlinkDone] = useState(false);
   const [progress, setProgress]   = useState(0);
@@ -44,6 +47,9 @@ export default function FaceEnrollPage() {
       setUserId(session.id);
       setUserName(session.name);
       setUserRole(session.role);
+      setUserEmail(session.email || '');
+      setSchoolBranch((session as any).schoolBranch || 'MASAR');
+      setLinkedStudentId((session as any).linkedStudentId || '');
       if (isFaceEnrolled(session.id)) setPhase('already_enrolled');
     };
     void loadSession();
@@ -145,7 +151,14 @@ export default function FaceEnrollPage() {
           setProgress(p);
           if (p >= 100) {
             clearInterval(interval);
-            enrollFace(userId, capturedEmbRef.current, { userName, userRole });
+            enrollFace(userId, capturedEmbRef.current, {
+              userName,
+              userRole,
+              userEmail: userEmail || `${userId}@masarplatform.org`,
+              schoolBranch: schoolBranch || 'MASAR',
+              accountId: userId,
+              studentId: userRole === 'student' ? userId : (linkedStudentId || undefined),
+            });
             stopCamera();
             setPhase('success');
           }
@@ -170,7 +183,11 @@ export default function FaceEnrollPage() {
   }
 
   const roleLabel    = userRole === 'parent' ? 'ولي الأمر' : userRole === 'student' ? 'الطالب' : 'المستخدم';
-  const dashboardHref = userRole === 'parent' ? '/parent' : userRole === 'student' ? '/kids' : '/dashboard';
+  const dashboardHref = userRole === 'parent'
+    ? (schoolBranch === 'IKHLAS_JEDDAH' ? '/school-parent' : '/parent')
+    : userRole === 'student'
+    ? '/school-student'
+    : '/dashboard';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100" dir="rtl">
