@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME, hasSessionSecret } from '@/lib/auth/session.server';
-import { getAdminDb, hasFirebaseAdminConfig } from '@/lib/firebaseAdmin.server';
-
-export const runtime = 'nodejs';
+import { verifyProductionCredential, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session.server';
+import { getAdminDb } from '@/lib/firebaseAdmin.server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,18 +50,20 @@ export async function POST(req: NextRequest) {
       const adminDb = getAdminDb();
       if (adminDb && account.id && !account.id.startsWith('generated_')) {
         const now = new Date().toISOString();
-        await adminDb.collection('accounts').doc(account.id).set(
-          {
-            id: account.id,
-            name: account.name || 'مستخدم مسار',
-            email: account.email || '',
-            role: account.role || 'doctor',
-            lastLoginAt: now,
-            lastActiveAt: now,
-            lastLoginProvider: 'password',
-          },
-          { merge: true },
-        ).catch((e) => console.warn('[AuthLogin] accounts update warning:', e?.message));
+        const writes: Promise<any>[] = [
+          adminDb.collection('accounts').doc(account.id).set(
+            {
+              id: account.id,
+              name: account.name || 'مستخدم مسار',
+              email: account.email || '',
+              role: account.role || 'doctor',
+              lastLoginAt: now,
+              lastActiveAt: now,
+              lastLoginProvider: 'password',
+            },
+            { merge: true },
+          ).catch((e) => console.warn('[AuthLogin] accounts update warning:', e?.message)),
+        ];
 
         const targetStudentId = (account as any).linkedStudentId;
         if (targetStudentId && typeof targetStudentId === 'string' && targetStudentId.trim()) {
@@ -74,11 +74,17 @@ export async function POST(req: NextRequest) {
               ? { parentLastLoginAt: now, parentLastActiveAt: now }
               : { lastLoginAt: now, lastActiveAt: now };
 
-          await Promise.all([
+          writes.push(
             adminDb.collection('students').doc(targetStudentId.trim()).set(studentUpdate, { merge: true }).catch(() => {}),
             adminDb.collection('class_students').doc(targetStudentId.trim()).set(studentUpdate, { merge: true }).catch(() => {}),
-          ]);
+          );
         }
+
+        // Concurrently run writes with a 1500ms safety timeout to prevent Vercel lambda timeouts
+        await Promise.race([
+          Promise.all(writes),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]);
       }
     } catch (dbErr: any) {
       console.warn('[AuthLogin] Background Firestore update warning:', dbErr?.message);

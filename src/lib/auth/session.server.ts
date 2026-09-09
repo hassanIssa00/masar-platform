@@ -807,6 +807,30 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
       let onboardingReq = data.onboardingRequired;
       let resolvedLinkedStudentId = data.linkedStudentId;
 
+      // FAST PATH: If the account already has a complete profile & linked student, return immediately!
+      // This eliminates timeout-inducing Firestore collection scans during normal login.
+      const hasCompleteName = Boolean(resolvedName && !resolvedName.includes('جديد') && resolvedName !== 'ولي الأمر' && resolvedName !== 'طالب');
+      const hasDirectLink = Boolean(resolvedLinkedStudentId || data.role === 'doctor' || data.role === 'teacher' || data.role === 'specialist');
+
+      if (hasCompleteName && hasDirectLink) {
+        return {
+          id: accountDoc.id,
+          name: resolvedName!,
+          email: data.email.trim().toLowerCase(),
+          role: data.role,
+          schoolBranch: data.schoolBranch || 'MASAR',
+          phone: resolvedPhone,
+          photoUrl: resolvedPhoto,
+          providerId: data.providerId,
+          onboardingRequired: data.onboardingRequired ?? false,
+          linkedStudentId: resolvedLinkedStudentId,
+          linkedStudentEmail: data.linkedStudentEmail,
+          linkedStudentName: data.linkedStudentName,
+          linkedParentId: data.linkedParentId,
+          linkedParentEmail: data.linkedParentEmail,
+        };
+      }
+
       // Look up student details from students collection if account has placeholder name OR linkedStudentId is missing
       const needsStudentLookup =
         !resolvedName ||
