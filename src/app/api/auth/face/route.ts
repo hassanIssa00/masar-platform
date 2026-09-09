@@ -233,6 +233,29 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
 
+  // ── DIAGNOSTIC ACTION: Check account & credentials status ────────────────
+  if (body.action === 'check_account') {
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const accSnap = await adminDb.collection('accounts').where('email', '==', email).get();
+    const lookupId = `lookup_${email.replace(/[^a-z0-9._+-]+/g, '_').slice(0, 140)}`;
+    const credSnap = await adminDb.collection('auth_credentials').doc(lookupId).get();
+    const accCredSnap = await adminDb.collection('account_credentials').doc(lookupId).get();
+
+    let passwordMatch = false;
+    if (body.password && credSnap.exists && credSnap.data()?.passwordHash) {
+      const bcrypt = await import('bcryptjs');
+      passwordMatch = await bcrypt.compare(body.password, credSnap.data()?.passwordHash);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      email,
+      accounts: accSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      authCred: credSnap.exists ? { id: credSnap.id, hasHash: !!credSnap.data()?.passwordHash, passwordMatch } : null,
+      accountCred: accCredSnap.exists ? { id: accCredSnap.id, hasHash: !!accCredSnap.data()?.passwordHash } : null,
+    });
+  }
+
   // ── DELETE ACTION: Remove specific Face Record ───────────────────────────
   if (body.action === 'delete') {
     const targetUserId = typeof body.userId === 'string' ? body.userId.trim() : '';
