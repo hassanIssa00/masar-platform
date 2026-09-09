@@ -169,12 +169,28 @@ export async function detectFace(video: HTMLVideoElement): Promise<DetectFaceRes
       (p: any) => ({ x: p[0] ?? p.x ?? 0, y: p[1] ?? p.y ?? 0, z: p[2] ?? p.z ?? 0 })
     );
 
-    // Box
-    const box = face.boxRaw
-      ? { x: face.boxRaw[0], y: face.boxRaw[1], width: face.boxRaw[2], height: face.boxRaw[3] }
-      : face.box
-        ? { x: face.box.xMin, y: face.box.yMin, width: face.box.width, height: face.box.height }
-        : null;
+    // Box: إحداثيات بالبكسل لرسم الـ HUD وتحديد الموضع بدقة
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+    let box: { x: number; y: number; width: number; height: number } | null = null;
+
+    if (Array.isArray(face.box) && face.box.length >= 4) {
+      box = { x: face.box[0], y: face.box[1], width: face.box[2], height: face.box[3] };
+    } else if (Array.isArray(face.boxRaw) && face.boxRaw.length >= 4) {
+      box = {
+        x: face.boxRaw[0] * vw,
+        y: face.boxRaw[1] * vh,
+        width: face.boxRaw[2] * vw,
+        height: face.boxRaw[3] * vh,
+      };
+    } else if (face.box && typeof face.box.width === 'number') {
+      box = {
+        x: face.box.x ?? face.box.xMin ?? 0,
+        y: face.box.y ?? face.box.yMin ?? 0,
+        width: face.box.width,
+        height: face.box.height,
+      };
+    }
 
     const liveness: number = typeof face.liveness === 'number' ? face.liveness : 1;
     const antispoof: number = typeof face.antispoof === 'number' ? face.antispoof : 1;

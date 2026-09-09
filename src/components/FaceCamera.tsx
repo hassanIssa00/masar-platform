@@ -399,76 +399,70 @@ export default function FaceCamera({
       }
 
       if (curPhase === 'scanning') {
-        const faceAdequate = box ? (box.width >= v.videoWidth * 0.12) : true;
+        // Face is already detected with valid embedding from Human
+        verifyCandidatesRef.current.push(embedding);
+        const count = verifyCandidatesRef.current.length;
 
-        if (!faceAdequate) {
-          setScanStatusText('يرجى الاقتراب قليلاً من الكاميرا 🔍');
-        } else {
-          // Process frame immediately without blocking on head tilt or expressions
-          verifyCandidatesRef.current.push(embedding);
-          const count = verifyCandidatesRef.current.length;
+        if (onVerify) {
+          // Instant continuous verification stream (like Apple Face ID)
+          // Test each frame live. If a match is detected, unlock instantly in sub-second time.
+          if (!isCheckingRef.current && !successCalledRef.current) {
+            isCheckingRef.current = true;
+            const snap = captureSnapshot();
 
-          if (onVerify) {
-            // Instant continuous verification stream (like Apple Face ID)
-            // Test each frame live. If a match is detected, unlock instantly in sub-second time.
-            if (!isCheckingRef.current && !successCalledRef.current) {
-              isCheckingRef.current = true;
-              const snap = captureSnapshot();
+            onVerify(embedding, snap)
+              .then((res) => {
+                isCheckingRef.current = false;
+                const isMatch = typeof res === 'boolean' ? res : Boolean(res && res.ok);
+                if (isMatch && !successCalledRef.current) {
+                  successCalledRef.current = true;
+                  setProgress(100);
+                  poseOkRef.current = true;
+                  const matchedName = typeof res === 'object' && res?.name ? res.name : '';
+                  setScanStatusText(matchedName ? `✅ مرحباً بك يا ${matchedName}` : '✅ تم التحقق البيومتري بنجاح');
+                  setPhase('success');
+                  setTimeout(() => {
+                    onSuccess?.(embedding, snap);
+                  }, 280);
+                } else if (!successCalledRef.current) {
+                  scanFrameCountRef.current++;
+                  const maxScanFrames = 80; // ~3.5 seconds of active face scanning
+                  const smoothProgress = Math.min(95, 30 + Math.round((scanFrameCountRef.current / maxScanFrames) * 65));
+                  setProgress(smoothProgress);
+                  setScanStatusText('🔒 جاري مطابقة بصمة الوجه مع السجلات...');
 
-              onVerify(embedding, snap)
-                .then((res) => {
-                  isCheckingRef.current = false;
-                  const isMatch = typeof res === 'boolean' ? res : Boolean(res && res.ok);
-                  if (isMatch && !successCalledRef.current) {
+                  if (scanFrameCountRef.current >= maxScanFrames) {
                     successCalledRef.current = true;
-                    setProgress(100);
-                    poseOkRef.current = true;
-                    const matchedName = typeof res === 'object' && res?.name ? res.name : '';
-                    setScanStatusText(matchedName ? `✅ مرحباً بك يا ${matchedName}` : '✅ تم التحقق البيومتري بنجاح');
-                    setPhase('success');
-                    setTimeout(() => {
-                      onSuccess?.(embedding, snap);
-                    }, 280);
-                  } else if (!successCalledRef.current) {
-                    scanFrameCountRef.current++;
-                    const maxScanFrames = 80; // ~3.5 seconds of active face scanning
-                    const smoothProgress = Math.min(95, 30 + Math.round((scanFrameCountRef.current / maxScanFrames) * 65));
-                    setProgress(smoothProgress);
-                    setScanStatusText('🔒 جاري مطابقة بصمة الوجه مع السجلات...');
-
-                    if (scanFrameCountRef.current >= maxScanFrames) {
-                      successCalledRef.current = true;
-                      onFail?.();
-                    }
+                    onFail?.();
                   }
-                })
-                .catch(() => {
-                  isCheckingRef.current = false;
-                });
-            }
+                }
+              })
+              .catch(() => {
+                isCheckingRef.current = false;
+              });
+          }
+        } else {
+          // Standard batch verify — with 8 frames this completes in ~270ms (Apple Face ID speed)
+          // Start from 20% immediately so user sees instant feedback
+          const pct = Math.min(100, 20 + Math.round((count / TARGET_VERIFY_FRAMES) * 80));
+          setProgress(pct);
+
+          if (pct < 50) {
+            setScanStatusText('⚡ جاري مسح بصمة الوجه...');
+          } else if (pct < 85) {
+            setScanStatusText('🔒 جاري مطابقة البصمة البيومترية...');
           } else {
-            // Standard batch verify — with 8 frames this completes in ~270ms (Apple Face ID speed)
-            // Start from 20% immediately so user sees instant feedback
-            const pct = Math.min(100, 20 + Math.round((count / TARGET_VERIFY_FRAMES) * 80));
-            setProgress(pct);
+            setScanStatusText('✅ اكتمل التحليل البيومتري');
+          }
 
-            if (pct < 50) {
-              setScanStatusText('⚡ جاري مسح بصمة الوجه...');
-            } else if (pct < 85) {
-              setScanStatusText('🔒 جاري مطابقة البصمة البيومترية...');
-            } else {
-              setScanStatusText('✅ اكتمل التحليل البيومتري');
-            }
-
-            if (count >= TARGET_VERIFY_FRAMES && !successCalledRef.current) {
-              successCalledRef.current = true;
-              const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
-              const snap   = captureSnapshot();
-              setPhase('success');
-              setTimeout(() => {
-                onSuccess?.(avgEmb, snap);
-              }, 350);
-            }
+          if (count >= TARGET_VERIFY_FRAMES && !successCalledRef.current) {
+            successCalledRef.current = true;
+            const avgEmb = averageEmbeddings(verifyCandidatesRef.current);
+            const snap   = captureSnapshot();
+            setPhase('success');
+            setTimeout(() => {
+              onSuccess?.(avgEmb, snap);
+            }, 350);
           }
         }
       }
