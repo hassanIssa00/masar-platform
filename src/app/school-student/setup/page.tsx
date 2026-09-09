@@ -81,82 +81,9 @@ export default function StudentSetupPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadSetup = async () => {
-      await pullCloudDataToLocal(['students', 'accounts', 'reports', 'classStudents']).catch(() => {});
-      if (cancelled) return;
-
-      const session = getSession() ?? await hydrateSessionFromServer();
-      if (cancelled) return;
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
-
-      const students = getStudents();
-      const email = session.email?.trim().toLowerCase() ?? '';
-      const phone = session.phone?.replace(/\D/g, '') ?? '';
-      const sName = session.name?.trim().toLowerCase() ?? '';
-
-      const linked = students.find((s) => {
-        const record = s as StudentRecord & { email?: string; parentEmail?: string };
-        const pPhone = s.parentPhone?.replace(/\D/g, '') ?? '';
-        if (session.id && s.id === session.id) return true;
-        if (s.fullName && s.fullName.trim().toLowerCase() === sName) return true;
-        if (s.fullName && sName && (s.fullName.includes(sName) || sName.includes(s.fullName))) return true;
-        if (email && (record.email?.trim().toLowerCase() === email || record.parentEmail?.trim().toLowerCase() === email)) return true;
-        if (phone && pPhone.includes(phone)) return true;
-        return false;
-      }) || null; // Never fall back to a random student
-
-      if (linked) {
-        setStudent(linked);
-        setFullName(linked.fullName || session.name || '');
-        setNationalId(linked.nationalId || '');
-        setGrade(linked.grade || 'الصف الأول');
-        // Derive parent (father) name: strip first word from student name when parentName is missing or same as student name
-        const rawParentName = linked.parentName || '';
-        const derivedParentName =
-          !rawParentName ||
-          normalizeArabicText(rawParentName) === normalizeArabicText(linked.fullName)
-            ? extractFatherNameFromStudent(linked.fullName)
-            : rawParentName;
-        setParentName(derivedParentName || '');
-        setParentPhone(linked.parentPhone || session.phone || '');
-        // Only pre-fill recoveryEmail if it looks like a real human email (not auto-generated)
-        const rawEmail = (linked as any).recoveryEmail || (linked as any).email || '';
-        const isAutoGenEmail = rawEmail.includes('student.') || rawEmail.includes('student.ikhlas') || rawEmail.includes('@masarplatform.org');
-        setRecoveryEmail(isAutoGenEmail ? '' : rawEmail);
-        setNotes((linked as any).notes || '');
-
-        if (linked.dateOfBirth) {
-          const parts = linked.dateOfBirth.split('-');
-          if (parts.length === 3) {
-            setBirthYear(parts[0]);
-            setBirthMonth(parts[1].padStart(2, '0'));
-            setBirthDay(parts[2].padStart(2, '0'));
-          }
-        }
-        if (linked.photoUrl) {
-          if (linked.photoUrl.startsWith('data:image') || linked.photoUrl.startsWith('http')) {
-            setCustomPhoto(linked.photoUrl);
-          } else {
-            const matchAv = PRESET_AVATARS.find((av) => av.emoji === linked.photoUrl || av.id === linked.photoUrl);
-            if (matchAv) setSelectedAvatar(matchAv.id);
-          }
-        }
-      } else {
-        // New user — only pre-fill from session if the name looks real (not "طالب جديد" etc.)
-        const nameIsReal = session.name && !session.name.includes('جديد') && !session.name.includes('طالب');
-        if (nameIsReal) setFullName(session.name!);
-        if (session.phone) setParentPhone(session.phone);
-        // Don't pre-fill email — let user enter it manually
-      }
-    };
-    void loadSetup();
-    return () => {
-      cancelled = true;
-    };
+    const params = typeof window !== 'undefined' ? window.location.search : '';
+    const cleanParams = params.replace(/^\?/, '');
+    router.replace(`/student/new?flow=student${cleanParams ? `&${cleanParams}` : ''}`);
   }, [router]);
 
   // Formatted ISO date & dynamic age calculation

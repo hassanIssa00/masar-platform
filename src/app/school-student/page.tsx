@@ -159,9 +159,7 @@ export default function StudentDashboard() {
       const sBranch = (linked as any)?.schoolBranch || (session as any)?.schoolBranch || 'MASAR';
 
       if (isSyntheticOrGeneric(finalName) || (isFirstLogin && (!linked || !linked.dateOfBirth || !linked.nationalId))) {
-        router.replace(sBranch === 'IKHLAS_JEDDAH'
-          ? `/school-student/setup${sId ? `?student=${encodeURIComponent(sId)}` : ''}&firstLogin=1`
-          : `/student/new?flow=student${sId ? `&student=${encodeURIComponent(sId)}` : ''}&firstLogin=1`);
+        router.replace(`/student/new?flow=student${sId ? `&student=${encodeURIComponent(sId)}` : ''}&firstLogin=1`);
         return;
       }
 
@@ -271,20 +269,22 @@ export default function StudentDashboard() {
 
       setFaceEnrolled(isEnrolled);
 
-      // Check today's attendance status (READ ONLY — NEVER auto-record attendance on page load!)
-      const existingAtt = getStudentTodayAttendance(resolvedId) || (session.id ? getStudentTodayAttendance(session.id) : undefined);
-      setTodayAttendance(existingAtt || null);
-      setTodayPeriodsAttendance(getStudentTodayPeriodsAttendance(resolvedId));
+      // Attendance and Face ID are exclusively for Dr. Ismail's class (IKHLAS_JEDDAH)
+      if (isSessionIkhlas) {
+        const existingAtt = getStudentTodayAttendance(resolvedId) || (session.id ? getStudentTodayAttendance(session.id) : undefined);
+        setTodayAttendance(existingAtt || null);
+        setTodayPeriodsAttendance(getStudentTodayPeriodsAttendance(resolvedId));
 
-      // Trigger one-time prompt ONLY if truly not enrolled AND prompt hasn't been seen/dismissed
-      if (!isEnrolled) {
-        const promptKey = `masar_face_prompt_seen_${resolvedId}`;
-        const promptKeySession = `masar_face_prompt_seen_${session.id}`;
-        const seen = typeof window !== 'undefined' ? (localStorage.getItem(promptKey) || localStorage.getItem(promptKeySession)) : null;
-        if (!seen) {
-          setTimeout(() => {
-            setShowOneTimeFacePrompt(true);
-          }, 850);
+        // Trigger one-time prompt ONLY if truly not enrolled AND prompt hasn't been seen/dismissed
+        if (!isEnrolled) {
+          const promptKey = `masar_face_prompt_seen_${resolvedId}`;
+          const promptKeySession = `masar_face_prompt_seen_${session.id}`;
+          const seen = typeof window !== 'undefined' ? (localStorage.getItem(promptKey) || localStorage.getItem(promptKeySession)) : null;
+          if (!seen) {
+            setTimeout(() => {
+              setShowOneTimeFacePrompt(true);
+            }, 850);
+          }
         }
       }
     };
@@ -527,7 +527,7 @@ export default function StudentDashboard() {
 
   const tabs: Array<{ key: Tab; label: string; icon: any }> = [
     { key: 'home',         label: 'الرئيسية',                                icon: Home },
-    { key: 'attendance',   label: 'حضوري 📸',                                icon: ScanFace },
+    ...(isIkhlas ? [{ key: 'attendance' as Tab, label: 'حضوري 📸', icon: ScanFace }] : []),
     { key: 'homework',     label: 'الواجبات',                                icon: BookOpen },
     ...(isIkhlas ? [{ key: 'schedule' as Tab, label: 'الجدول', icon: Clock }] : []),
     { key: 'curriculum',   label: isIkhlas ? 'المناهج' : (hasApprovedTrack ? 'المسار المعتمد' : 'مسار الطالب'), icon: isIkhlas ? BookMarked : Award },
@@ -885,8 +885,8 @@ export default function StudentDashboard() {
           variant="student"
           showParent={true}
           allowPhotoUpload={true}
-          isFaceEnrolled={faceEnrolled}
-          onEnrollFaceRequested={() => setShowFaceEnrollModal(true)}
+          isFaceEnrolled={isIkhlas ? faceEnrolled : undefined}
+          onEnrollFaceRequested={isIkhlas ? () => setShowFaceEnrollModal(true) : undefined}
           onPhotoUpdated={(newPhoto) => {
             setStudentPhoto(newPhoto);
             if (studentRecord) {
@@ -896,8 +896,10 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* ── Smart Period Face Attendance Card (بطاقة حضور الحصص بالبصمة الذكية) ── */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4 relative overflow-hidden">
+      {/* ── Smart Period Face Attendance & Biometrics (حصرياً لفصل د. إسماعيل عيسى) ── */}
+      {isIkhlas && (
+        <>
+          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4 relative overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200/60 shadow-xs">
@@ -1120,6 +1122,8 @@ export default function StudentDashboard() {
             إعادة التسجيل 🔄
           </button>
         </div>
+      )}
+        </>
       )}
 
       {/* Quick Homework Preview */}
@@ -1640,7 +1644,7 @@ export default function StudentDashboard() {
         ) : (
           <>
             {activeTab === 'home'         && renderHomeTab()}
-            {activeTab === 'attendance'   && renderAttendanceTab()}
+            {activeTab === 'attendance'   && isIkhlas && renderAttendanceTab()}
             {activeTab === 'homework'     && renderHomeworkTab()}
             {activeTab === 'schedule'     && isIkhlas && renderScheduleTab()}
             {activeTab === 'curriculum'   && (isIkhlas ? renderCurriculumTab() : renderApprovedTrackTab())}
@@ -1695,7 +1699,7 @@ export default function StudentDashboard() {
       )}
 
       {/* One-Time Face ID Invitation Modal */}
-      {showOneTimeFacePrompt && !faceEnrolled && (
+      {showOneTimeFacePrompt && isIkhlas && !faceEnrolled && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in duration-300" dir="rtl">
           <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden text-right ring-4 ring-emerald-500/10">
             {/* Header */}
@@ -1710,29 +1714,34 @@ export default function StudentDashboard() {
               </p>
             </div>
 
-            {/* Content */}
+            {/* Body */}
             <div className="p-6 space-y-4">
               <div className="space-y-2.5">
-                {[
-                  { icon: '⚡', title: 'دخول سريع بلمح البصر', desc: 'بمجرد النظر للكاميرا يفتح حسابك فوراً بدون كلمة مرور' },
-                  { icon: '🔒', title: 'أمان وخصوصية تامة', desc: 'لا تُحفظ أي صورة لك — بياناتك مشفرة محلياً' },
-                  { icon: '🎯', title: 'تسجيل لمرة واحدة فقط', desc: 'تستغرق أقل من 10 ثوانٍ وتريحك في كل مرة تدخل فيها' },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-2xl shrink-0">{item.icon}</span>
-                    <div>
-                      <h5 className="text-xs font-black text-slate-900">{item.title}</h5>
-                      <p className="text-[11px] font-bold text-slate-500 leading-relaxed">{item.desc}</p>
-                    </div>
+                <div className="flex items-start gap-3 text-xs font-bold text-slate-700">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-black">
+                    1
                   </div>
-                ))}
+                  <p>دخول مباشر وفوري لحسابك بمسحة وجه في جزء من الثانية ⚡</p>
+                </div>
+                <div className="flex items-start gap-3 text-xs font-bold text-slate-700">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-black">
+                    2
+                  </div>
+                  <p>توثيق حضور الحصص المدرسية تلقائياً مع د. إسماعيل عيسى 📚</p>
+                </div>
+                <div className="flex items-start gap-3 text-xs font-bold text-slate-700">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-black">
+                    3
+                  </div>
+                  <p>أمان بيومتري كامل — لا أحد يستطيع فتح حسابك سواك 🛡️</p>
+                </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="pt-3 flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={handleStartFaceEnroll}
-                  className="flex-1 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer"
+                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-sm font-black shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
                 >
                   <Camera size={16} />
                   <span>سجّل بصمة وجهك الآن 📸</span>
@@ -1751,7 +1760,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Face Enroll Modal */}
-      {showFaceEnrollModal && (
+      {showFaceEnrollModal && isIkhlas && (
         <FaceEnrollModal
           userId={accountSessionId || studentId || (studentRecord as any)?.id || ''}
           accountId={accountSessionId}
@@ -1768,7 +1777,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Face Attendance Verification Modal */}
-      {showFaceAttendanceModal && (
+      {showFaceAttendanceModal && isIkhlas && (
         <StudentFaceAttendanceModal
           studentId={studentId || (studentRecord as any)?.id || accountSessionId || ''}
           studentName={studentName}
