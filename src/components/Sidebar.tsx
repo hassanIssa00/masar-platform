@@ -9,7 +9,7 @@ import {
   BookOpen, FileText, Gamepad2, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, UsersRound, X,
   ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban,
-  Sparkles, ShieldCheck, ScanFace
+  Sparkles, ShieldCheck, ScanFace, Archive
 } from 'lucide-react';
 import { clearSession, getSession, getStudents, getReports, hydrateSessionFromServer } from '@/lib/cloudStore';
 
@@ -50,6 +50,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
     programs: false,
     sessions: false,
     classroom: false,
+    archive: false,
   });
 
   const [userRole, setUserRole] = useState<string>('doctor');
@@ -168,6 +169,14 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
       links: [
         { name: 'فصل د. إسماعيل عيسى', path: '/branches/ikhlas-jeddah', icon: Building2, badge: '🌟', badgeColor: 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow-xs' },
         { name: 'إعدادات المنصة', path: '/platform-settings', icon: Settings2 },
+      ],
+    },
+    {
+      id: 'archive',
+      title: 'الأرشيف والحفظ',
+      icon: Archive,
+      links: [
+        { name: 'الأرشيف الشامل', path: '/archive', icon: Archive, badge: '🗄️', badgeColor: 'bg-slate-700 text-white border-slate-600 font-black shadow-xs' },
       ],
     },
   ];
