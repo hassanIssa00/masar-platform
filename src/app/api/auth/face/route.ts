@@ -233,6 +233,20 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
 
+  // ── DELETE ACTION: Remove specific Face Record ───────────────────────────
+  if (body.action === 'delete') {
+    const targetUserId = typeof body.userId === 'string' ? body.userId.trim() : '';
+    if (!targetUserId) {
+      return NextResponse.json({ ok: false, error: 'معرف المستخدم مطلوب للحذف.' }, { status: 400 });
+    }
+    try {
+      await adminDb.collection('faceRecordsV2').doc(targetUserId).delete();
+      return NextResponse.json({ ok: true, message: `تم حذف بصمة الوجه للسجل ${targetUserId} بنجاح.` });
+    } catch (err: any) {
+      return NextResponse.json({ ok: false, error: err?.message || 'خطأ في الحذف' }, { status: 500 });
+    }
+  }
+
   // ── ENROLL ACTION: Direct Cloud Biometric Registration ────────────────────
   if (body.action === 'enroll') {
     const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
@@ -251,12 +265,14 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    const isParent = meta.userRole === 'parent';
+
     const newRecord = {
       userId,
       accountId:    meta.accountId || userId,
-      studentId:    meta.studentId || userId,
-      userName:     meta.userName || 'مستخدم',
-      userRole:     meta.userRole || 'parent',
+      studentId:    meta.studentId || null,
+      userName:     meta.userName || (isParent ? 'ولي أمر' : 'طالب'),
+      userRole:     meta.userRole || (isParent ? 'parent' : 'student'),
       userEmail:    meta.userEmail || `${userId}@masarplatform.org`,
       parentName:   meta.parentName || null,
       schoolBranch: meta.schoolBranch || 'MASAR',
@@ -272,12 +288,13 @@ export async function POST(req: NextRequest) {
       if (meta.accountId && meta.accountId !== userId) {
         writes.push(adminDb.collection('faceRecordsV2').doc(meta.accountId).set({ ...newRecord, userId: meta.accountId }, { merge: true }));
       }
-      if (meta.studentId && meta.studentId !== userId) {
+      // ONLY write to studentId if enrollee is genuinely a STUDENT (never copy parent face to student doc)
+      if (meta.userRole === 'student' && meta.studentId && meta.studentId !== userId && meta.studentId !== meta.accountId) {
         writes.push(adminDb.collection('faceRecordsV2').doc(meta.studentId).set({ ...newRecord, userId: meta.studentId }, { merge: true }));
       }
       await Promise.all(writes);
 
-      console.log(`[FaceID] Cloud enrolled successfully for ${userId} (${meta.userName}) with ${multiEmbs.length} template(s)`);
+      console.log(`[FaceID] Cloud enrolled successfully for ${userId} (${meta.userName}, role=${meta.userRole}) with ${multiEmbs.length} template(s)`);
       return NextResponse.json({ ok: true, message: 'تم حفظ بصمة الوجه سحابياً بنجاح.' });
     } catch (err: any) {
       console.error('[FaceID] Enroll error:', err);
@@ -349,7 +366,7 @@ export async function POST(req: NextRequest) {
 
   // جلب بيانات الحساب مع التمييز الدقيق بين الطالب وولي الأمر والفرع (مسار vs إخلاص جدة)
   let account: any = null;
-  const isStudentRecord = best.record?.userRole === 'student' || Boolean(best.record?.studentId);
+  const isStudentRecord = best.record?.userRole === 'student';
 
   if (isStudentRecord) {
     const studentId = best.record?.studentId || best.userId;
@@ -381,13 +398,14 @@ export async function POST(req: NextRequest) {
       linkedStudentId: studentId,
     };
   } else {
-    // حسابات الكادر أو أولياء الأمور
-    let accountDoc = await adminDb.collection('accounts').doc(best.userId).get();
+    // حسابات أولياء الأمور أو الكادر التعليمي
+    const parentId = best.record?.accountId || best.userId;
+    let accountDoc = await adminDb.collection('accounts').doc(parentId).get();
     if (!accountDoc.exists && best.record?.accountId) {
       accountDoc = await adminDb.collection('accounts').doc(best.record.accountId).get();
     }
     const accData = accountDoc.exists ? (accountDoc.data() as AccountData) : null;
-    const linkedStudentId = accData?.linkedStudentId || best.record?.studentId;
+    const linkedStudentId = accData?.linkedStudentId || best.record?.studentId || null;
 
     let isIkhlasParent = false;
     if (best.record?.schoolBranch === 'IKHLAS_JEDDAH' || accData?.schoolBranch === 'IKHLAS_JEDDAH') {
@@ -401,9 +419,9 @@ export async function POST(req: NextRequest) {
     const role = accData?.role || best.record?.userRole || 'parent';
 
     account = {
-      id:           best.userId,
-      name:         accData?.name || best.record?.userName || (role === 'parent' ? 'ولي أمر' : 'مستخدم مسار'),
-      email:        String(accData?.email || best.record?.userEmail || `${best.userId}@masarplatform.org`).trim().toLowerCase(),
+      id:           parentId,
+      name:         best.record?.userName || accData?.name || (role === 'parent' ? 'ولي أمر' : 'مستخدم مسار'),
+      email:        String(accData?.email || best.record?.userEmail || `${parentId}@masarplatform.org`).trim().toLowerCase(),
       role:         role,
       schoolBranch: branch,
       phone:        accData?.phone,

@@ -451,7 +451,7 @@ export async function enrollFace(
       };
       mark(userId);
       if (meta?.accountId) mark(meta.accountId);
-      if (meta?.studentId) mark(meta.studentId);
+      if (meta?.userRole === 'student' && meta?.studentId) mark(meta.studentId);
     } catch {}
 
     // Direct guaranteed cloud save through /api/auth/face (Open public endpoint)
@@ -492,7 +492,7 @@ export async function enrollFace(
   const writes = [syncDocToCloud('faceRecordsV2', userId, newRecord)];
   if (meta?.accountId && meta.accountId !== userId)
     writes.push(syncDocToCloud('faceRecordsV2', meta.accountId, { ...newRecord, userId: meta.accountId }));
-  if (meta?.studentId && meta.studentId !== userId)
+  if (meta?.userRole === 'student' && meta?.studentId && meta.studentId !== userId && meta.studentId !== meta.accountId)
     writes.push(syncDocToCloud('faceRecordsV2', meta.studentId, { ...newRecord, userId: meta.studentId }));
   await Promise.allSettled(writes);
 }

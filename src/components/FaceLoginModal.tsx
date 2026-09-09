@@ -66,25 +66,32 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         const allStudents = (await import('@/lib/cloudStore')).getStudents();
         const classStudents = (await import('@/lib/classDb')).getClassStudents();
 
-        const targetId = match.record.userId || match.record.accountId || match.record.studentId;
+        const isParentRecord = match.record.userRole === 'parent';
+        const isStudentRecord = match.record.userRole === 'student';
+
+        // Target account ID
+        const targetId = isParentRecord
+          ? (match.record.accountId || match.record.userId)
+          : (match.record.studentId || match.record.userId || match.record.accountId);
+
         const foundAcc = allAccounts.find(
-          a => (targetId && (a.id === targetId || a.linkedStudentId === targetId)) ||
+          a => (targetId && a.id === targetId) ||
                (match.record?.userEmail && a.email?.toLowerCase() === match.record.userEmail.toLowerCase())
         );
 
-        const sid = match.record.studentId || (match.record.userRole === 'student' ? match.record.userId : null) || foundAcc?.linkedStudentId || targetId;
+        // Explicit Role Decision:
+        const isStudent = isStudentRecord || (!isParentRecord && foundAcc?.role === 'student');
+
+        const sid = match.record.studentId || foundAcc?.linkedStudentId || undefined;
         const matchedClassStudent = classStudents.find(cs => sid && (cs.id === sid || cs.studentAccountId === sid));
         const matchedGeneralStudent = allStudents.find(s => sid && (s.id === sid || s.studentAccountId === sid));
-
-        const isStudent = match.record.userRole === 'student' || Boolean(match.record.studentId) || foundAcc?.role === 'student' || Boolean(matchedClassStudent);
 
         // Accurate branch determination:
         let branch: 'MASAR' | 'IKHLAS_JEDDAH' = 'MASAR';
         if (
           match.record.schoolBranch === 'IKHLAS_JEDDAH' ||
           foundAcc?.schoolBranch === 'IKHLAS_JEDDAH' ||
-          Boolean(matchedClassStudent) ||
-          matchedGeneralStudent?.schoolBranch === 'IKHLAS_JEDDAH'
+          Boolean(matchedClassStudent)
         ) {
           branch = 'IKHLAS_JEDDAH';
         } else {
@@ -92,8 +99,8 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
         }
 
         if (isStudent) {
-          const studentId = sid || 'student';
-          const studentName = matchedClassStudent?.fullName || matchedGeneralStudent?.fullName || foundAcc?.name || match.record.userName || (branch === 'IKHLAS_JEDDAH' ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
+          const studentId = sid || targetId || 'student';
+          const studentName = match.record.userName || matchedClassStudent?.fullName || matchedGeneralStudent?.fullName || foundAcc?.name || (branch === 'IKHLAS_JEDDAH' ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
           resolvedAccount = {
             id: studentId,
             name: studentName,
@@ -103,17 +110,17 @@ export default function FaceLoginModal({ onCancel, onFallback }: Props) {
             linkedStudentId: studentId,
           } as AccountRecord;
         } else {
-          const pRole = (foundAcc?.role || match.record.userRole || 'parent') as any;
-          const pId = foundAcc?.id || targetId || 'user';
-          const pName = foundAcc?.name || match.record.userName || 'ولي أمر';
+          // Parent account:
+          const pId = match.record.accountId || match.record.userId || foundAcc?.id || 'user';
+          const pName = match.record.userName || foundAcc?.name || 'ولي أمر';
           const pEmail = foundAcc?.email || match.record.userEmail || `${pId}@masarplatform.org`;
-          const pLinkedSid = foundAcc?.linkedStudentId || (matchedClassStudent?.id || matchedGeneralStudent?.id) || undefined;
+          const pLinkedSid = sid || foundAcc?.linkedStudentId || undefined;
 
           resolvedAccount = {
             id: pId,
             name: pName,
             email: pEmail,
-            role: pRole,
+            role: 'parent',
             schoolBranch: branch,
             linkedStudentId: pLinkedSid,
             phone: foundAcc?.phone,
