@@ -129,8 +129,8 @@ export default function FaceEnrollPage() {
 
     setPhase(prev => (prev === 'camera' ? 'challenge' : prev));
 
-    // كشف الرمشة عبر blendshapes
-    const { isBlinking } = checkBlink(result.blendshapes);
+    // كشف الرمشة عبر نتيجة Human الكاملة
+    const isBlinking = checkBlink(result);
 
     if (isBlinking && !wasBlinkingRef.current) {
       blinkCountRef.current += 1;

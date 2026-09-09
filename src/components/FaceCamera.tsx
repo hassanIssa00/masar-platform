@@ -357,7 +357,7 @@ export default function FaceCamera({
     const curPhase = phaseRef.current;
     const curStep  = enrollStepRef.current;
     const pose     = estimateHeadPose(landmarks);
-    const { isBlinking, score: blinkScore } = checkBlink(blendshapes);
+    const isBlinking = checkBlink(result);
 
     // ── Draw high-tech HUD on canvas ─────────────────────────────────────────
     if (canvas && box && v) {
@@ -472,7 +472,7 @@ export default function FaceCamera({
         if (step) {
           if (curStep === 0) {
             // Frontal requires frontal angle + open eyes (not blinking)
-            ok = step.check(pose.yaw, pose.pitch) && !isBlinking && blinkScore < 0.35;
+            ok = step.check(pose.yaw, pose.pitch) && !isBlinking;
           } else {
             ok = step.check(pose.yaw, pose.pitch);
           }
