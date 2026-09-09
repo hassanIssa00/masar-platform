@@ -43,26 +43,20 @@ export function getJwtSecret(): string {
  * Sign payload into base64url token with HMAC SHA-256 signature.
  */
 async function signToken(payload: SessionPayload): Promise<string | null> {
-  const secret = getJwtSecret();
+  try {
+    const secret = getJwtSecret();
 
-  const enc = new TextEncoder();
-  const header = JSON.stringify({ alg: 'HS256', typ: 'JWT' });
-  const headerB64 = Buffer.from(header).toString('base64url');
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const data = `${headerB64}.${payloadB64}`;
+    const header = JSON.stringify({ alg: 'HS256', typ: 'JWT' });
+    const headerB64 = Buffer.from(header).toString('base64url');
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const data = `${headerB64}.${payloadB64}`;
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
-  const sigB64 = Buffer.from(sig).toString('base64url');
-
-  return `${data}.${sigB64}`;
+    const sigB64 = createHmac('sha256', secret).update(data).digest('base64url');
+    return `${data}.${sigB64}`;
+  } catch (err) {
+    console.error('[SessionToken] signToken failed:', err);
+    return null;
+  }
 }
 
 /**
@@ -78,28 +72,16 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 
     const [headerB64, payloadB64, sigB64] = parts;
     const data = `${headerB64}.${payloadB64}`;
-    const enc = new TextEncoder();
 
-    if (secret) {
-      try {
-        const key = await crypto.subtle.importKey(
-          'raw',
-          enc.encode(secret),
-          { name: 'HMAC', hash: 'SHA-256' },
-          false,
-          ['verify']
-        );
+    const expectedSig = createHmac('sha256', secret).update(data).digest('base64url');
+    const expectedBuf = Buffer.from(expectedSig);
+    const actualBuf = Buffer.from(sigB64);
 
-        const sig = Buffer.from(sigB64, 'base64url');
-        const valid = await crypto.subtle.verify('HMAC', key, sig, enc.encode(data));
-
-        if (valid) {
-          const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as SessionPayload;
-          if (!payload.exp || Date.now() / 1000 <= payload.exp) {
-            return payload;
-          }
-        }
-      } catch {}
+    if (expectedBuf.length === actualBuf.length && timingSafeEqual(expectedBuf, actualBuf)) {
+      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as SessionPayload;
+      if (!payload.exp || Date.now() / 1000 <= payload.exp) {
+        return payload;
+      }
     }
 
     return null;

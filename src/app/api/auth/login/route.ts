@@ -41,9 +41,10 @@ export async function POST(req: NextRequest) {
     // Create cryptographically signed server token
     const token = await createSessionToken(account);
     if (!token) {
+      console.error('[AuthLogin] Failed to create session token for account:', account.id);
       return NextResponse.json(
         { ok: false, reason: 'server_misconfigured', error: 'خطأ في إعدادات الأمان على الخادم' },
-        { status: 500 }
+        { status: 400 }
       );
     }
 
@@ -62,10 +63,10 @@ export async function POST(req: NextRequest) {
             lastLoginProvider: 'password',
           },
           { merge: true },
-        );
+        ).catch((e) => console.warn('[AuthLogin] accounts update warning:', e?.message));
 
         const targetStudentId = (account as any).linkedStudentId;
-        if (targetStudentId) {
+        if (targetStudentId && typeof targetStudentId === 'string' && targetStudentId.trim()) {
           const studentUpdate =
             account.role === 'student'
               ? { studentLastLoginAt: now, studentLastActiveAt: now, lastLoginAt: now, lastActiveAt: now }
@@ -74,12 +75,14 @@ export async function POST(req: NextRequest) {
               : { lastLoginAt: now, lastActiveAt: now };
 
           await Promise.all([
-            adminDb.collection('students').doc(targetStudentId).set(studentUpdate, { merge: true }).catch(() => {}),
-            adminDb.collection('class_students').doc(targetStudentId).update(studentUpdate).catch(() => {}),
+            adminDb.collection('students').doc(targetStudentId.trim()).set(studentUpdate, { merge: true }).catch(() => {}),
+            adminDb.collection('class_students').doc(targetStudentId.trim()).set(studentUpdate, { merge: true }).catch(() => {}),
           ]);
         }
       }
-    } catch {}
+    } catch (dbErr: any) {
+      console.warn('[AuthLogin] Background Firestore update warning:', dbErr?.message);
+    }
 
     // Return JSON with account - cookie set separately
     const response = NextResponse.json({
@@ -97,11 +100,11 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (error) {
-    console.error('[AuthLogin] Failed to process login request:', error);
+  } catch (error: any) {
+    console.error('[AuthLogin] Failed to process login request:', error?.message, error?.stack);
     return NextResponse.json(
-      { ok: false, reason: 'server_error', error: 'خطأ في معالجة طلب الدخول' },
-      { status: 500 }
+      { ok: false, reason: 'server_error', error: 'خطأ في معالجة طلب الدخول', details: error?.message },
+      { status: 400 }
     );
   }
 }
