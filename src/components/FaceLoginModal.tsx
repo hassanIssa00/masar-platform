@@ -29,7 +29,6 @@ type Phase = 'scanning' | 'verifying' | 'select_account' | 'success' | 'fail' | 
 
 export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'all' }: Props) {
   const router = useRouter();
-  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'parent'>(initialRole);
   const [phase, setPhase] = useState<Phase>('scanning');
   const [failCount, setFailCount] = useState(0);
   const [matchedName, setMatchedName] = useState('');
@@ -314,7 +313,6 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
           credentials: 'include',
           body: JSON.stringify({
             embedding,
-            targetRole: roleFilter !== 'all' ? roleFilter : undefined,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -448,47 +446,6 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
           )}
         </div>
 
-        {/* Role Filter Tabs */}
-        <div className="px-6 pt-3">
-          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => { setRoleFilter('all'); if (phase === 'select_account') setPhase('scanning'); }}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
-                roleFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>🌟</span>
-              <span>تلقائي (الكل)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setRoleFilter('student'); if (phase === 'select_account') setPhase('scanning'); }}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
-                roleFilter === 'student'
-                  ? 'bg-teal-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>🎓</span>
-              <span>طالب مسار</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setRoleFilter('parent'); if (phase === 'select_account') setPhase('scanning'); }}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
-                roleFilter === 'parent'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>👨‍👧</span>
-              <span>ولي أمر</span>
-            </button>
-          </div>
-        </div>
 
         <div className="p-6 space-y-4">
 
