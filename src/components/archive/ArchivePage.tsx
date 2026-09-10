@@ -239,6 +239,7 @@ export default function ArchivePage() {
               classStudents={snapshot.classStudents}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('students', d)}
               faceRecords={snapshot.faceRecords}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'accounts' && (
@@ -246,30 +247,35 @@ export default function ArchivePage() {
               data={snapshot.accounts}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('accounts', d)}
               faceRecords={snapshot.faceRecords}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'reports' && (
             <ReportsArchiveTab
               data={snapshot.reports}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('reports', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'surveys' && (
             <SurveysArchiveTab
               data={snapshot.surveys}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('surveys', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'homework' && (
             <HomeworkArchiveTab
               data={snapshot.homeworkLogs}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('homework', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'certs' && (
             <CertificatesArchiveTab
               data={snapshot.certificateLogs}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('certificates', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'messages' && (
@@ -283,12 +289,14 @@ export default function ArchivePage() {
               data={snapshot.attendance}
               ikhlasLogs={snapshot.ikhlasLogs}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('attendance', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'face' && (
             <FaceRecordsArchiveTab
               data={snapshot.faceRecords}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('face-records', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'activity' && (
@@ -301,6 +309,7 @@ export default function ArchivePage() {
             <IEPArchiveTab
               data={snapshot.iepRecords}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('iep-records', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'sessions' && (
@@ -313,6 +322,7 @@ export default function ArchivePage() {
             <InvoicesArchiveTab
               data={snapshot.invoices}
               onDownload={(d: Record<string, unknown>[]) => downloadCollection('invoices', d)}
+              onRefresh={loadData}
             />
           )}
           {activeTab === 'consents' && (

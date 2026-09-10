@@ -1,11 +1,14 @@
 'use client';
-import { useState, useMemo } from 'react';
-import { Download, Search, CheckCircle, ScanFace } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Download, Search, CheckCircle, ScanFace, Printer, Trash2, AlertTriangle } from 'lucide-react';
+import { exportAttendanceCollectionPdf } from '@/lib/archivePdfExport';
+import { deleteArchiveItem } from '@/lib/archiveDelete';
 
 interface Props {
   data: Record<string, unknown>[];
   ikhlasLogs: Record<string, unknown>[];
   onDownload: (d: Record<string, unknown>[]) => void;
+  onRefresh?: () => void;
 }
 const PAGE_SIZE = 20;
 const statusColor: Record<string, string> = {
@@ -16,21 +19,25 @@ const statusColor: Record<string, string> = {
 };
 const statusLabel: Record<string, string> = { present: '✅ حاضر', absent: '❌ غائب', late: '⏰ متأخر', excused: '🔵 معذور' };
 
-export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload }: Props) {
+export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload, onRefresh }: Props) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(0);
+  const [deleteConfirm, setDeleteConfirm] = useState<Record<string, unknown> | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
   const merged = useMemo(() => {
     const seen = new Set<string>();
     const all = [...data, ...ikhlasLogs.map((l: any) => ({ ...l, _source: 'ikhlas' }))];
     return all.filter((r: any) => {
       const key = r.id;
-      if (key && seen.has(key)) return false;
+      if (key && (seen.has(key) || deletedIds.has(key))) return false;
       if (key) seen.add(key);
       return true;
     });
-  }, [data, ikhlasLogs]);
+  }, [data, ikhlasLogs, deletedIds]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -53,8 +60,61 @@ export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload }: P
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const handleDelete = useCallback(async (item: Record<string, unknown>) => {
+    const id = String(item.id || '');
+    if (!id) { setFeedback({ ok: false, msg: 'لا يمكن حذف سجل بدون معرف' }); return; }
+    setDeletingId(id);
+    const col = (item as any)._source === 'ikhlas' ? 'ikhlasLogs' : 'attendance';
+    const res = await deleteArchiveItem(col, id);
+    setDeletingId(null);
+    setDeleteConfirm(null);
+    if (res.success) {
+      setDeletedIds(prev => new Set([...prev, id]));
+      setFeedback({ ok: true, msg: '✅ تم حذف سجل الحضور بنجاح' });
+    } else {
+      setFeedback({ ok: false, msg: '❌ ' + res.message });
+    }
+    setTimeout(() => setFeedback(null), 4000);
+    onRefresh?.();
+  }, [onRefresh]);
+
   return (
     <div className="p-5" dir="rtl">
+      {feedback && (
+        <div className={`mb-3 rounded-xl px-4 py-2.5 text-xs font-black border ${feedback.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+          {feedback.msg}
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" dir="rtl">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="font-black text-slate-900">تأكيد حذف سجل الحضور</p>
+                <p className="text-xs text-slate-500 mt-0.5">هذه العملية لا يمكن التراجع عنها</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-700 mb-4">
+              هل أنت متأكد من حذف سجل حضور الطالب <strong>{String((deleteConfirm as any).studentName || '—')}</strong> بتاريخ <strong>{String((deleteConfirm as any).sessionDate || (deleteConfirm as any).date || '—')}</strong>؟
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => handleDelete(deleteConfirm)} disabled={deletingId !== null}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-sm font-black transition cursor-pointer disabled:opacity-50">
+                {deletingId ? 'جاري الحذف...' : '🗑️ حذف نهائياً'}
+              </button>
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-black transition hover:bg-slate-50 cursor-pointer">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Bar */}
       <div className="mb-4 grid grid-cols-4 gap-3">
         {[
@@ -85,9 +145,13 @@ export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload }: P
             </button>
           ))}
         </div>
+        <button onClick={() => exportAttendanceCollectionPdf(filtered)}
+          className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 px-3 py-2.5 text-xs font-black text-white cursor-pointer transition">
+          <Printer className="h-3.5 w-3.5" /> PDF الكل
+        </button>
         <button onClick={() => onDownload(filtered)}
           className="flex items-center gap-1.5 rounded-xl bg-green-500 hover:bg-green-400 px-3 py-2.5 text-xs font-black text-white cursor-pointer transition">
-          <Download className="h-3.5 w-3.5" /> تصدير
+          <Download className="h-3.5 w-3.5" /> JSON
         </button>
       </div>
 
@@ -95,7 +159,7 @@ export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload }: P
         <table className="min-w-full text-xs">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              {['الطالب', 'التاريخ', 'الوقت', 'الحالة', 'طريقة التحقق', 'الحصة', 'المادة', 'أُبلغ ولي الأمر'].map(h => (
+              {['الطالب', 'التاريخ', 'الوقت', 'الحالة', 'طريقة التحقق', 'الحصة', 'المادة', 'أُبلغ ولي الأمر', 'إجراءات'].map(h => (
                 <th key={h} className="px-3 py-3 text-right text-[11px] font-black text-slate-500 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -123,9 +187,15 @@ export default function AttendanceArchiveTab({ data, ikhlasLogs, onDownload }: P
                 <td className="px-3 py-3 text-center">
                   {r.parentNotified ? <CheckCircle className="h-4 w-4 text-emerald-500 mx-auto" /> : <span className="text-slate-300">—</span>}
                 </td>
+                <td className="px-3 py-3">
+                  <button onClick={() => setDeleteConfirm(r)} title="حذف" disabled={deletingId === String(r.id)}
+                    className="inline-flex items-center gap-1 rounded-lg bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 px-2 py-1 text-[10px] font-black text-slate-500 hover:text-rose-600 cursor-pointer transition disabled:opacity-40">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </td>
               </tr>
             ))}
-            {pageData.length === 0 && <tr><td colSpan={8} className="py-16 text-center text-slate-400 text-sm">لا توجد سجلات حضور</td></tr>}
+            {pageData.length === 0 && <tr><td colSpan={9} className="py-16 text-center text-slate-400 text-sm">لا توجد سجلات حضور</td></tr>}
           </tbody>
         </table>
       </div>

@@ -1,28 +1,39 @@
 'use client';
-import { useState, useMemo } from 'react';
-import { Download, Search, ScanFace, Fingerprint } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Download, Search, ScanFace, Fingerprint, Trash2, AlertTriangle } from 'lucide-react';
+import { deleteFaceRecord } from '@/lib/archiveDelete';
 
-interface Props { data: Record<string, unknown>[]; onDownload: (d: Record<string, unknown>[]) => void; }
+interface Props {
+  data: Record<string, unknown>[];
+  onDownload: (d: Record<string, unknown>[]) => void;
+  onRefresh?: () => void;
+}
 const PAGE_SIZE = 20;
 const roleLabel: Record<string, string> = {
   doctor: '🩺 معالج', parent: '👨‍👩‍👧 ولي أمر',
   specialist: '🧑‍⚕️ أخصائي', teacher: '👩‍🏫 معلم', student: '🎓 طالب',
 };
 
-export default function FaceRecordsArchiveTab({ data, onDownload }: Props) {
+export default function FaceRecordsArchiveTab({ data, onDownload, onRefresh }: Props) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [localData, setLocalData] = useState<Record<string, unknown>[]>(data);
+  const [deleteConfirm, setDeleteConfirm] = useState<Record<string, unknown> | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useMemo(() => setLocalData(data), [data]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter((f: any) =>
+    if (!q) return localData;
+    return localData.filter((f: any) =>
       String(f.userName ?? '').toLowerCase().includes(q) ||
       String(f.userEmail ?? '').toLowerCase().includes(q) ||
       String(f.userRole ?? '').toLowerCase().includes(q) ||
       String(f.schoolBranch ?? '').toLowerCase().includes(q)
     );
-  }, [data, search]);
+  }, [localData, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -35,8 +46,60 @@ export default function FaceRecordsArchiveTab({ data, onDownload }: Props) {
     return count;
   };
 
+  const handleDelete = useCallback(async (item: Record<string, unknown>) => {
+    const id = String(item.userId || item.accountId || (item as any).id || '');
+    if (!id) { setFeedback({ ok: false, msg: 'لا يمكن حذف بصمة بدون معرف' }); return; }
+    setDeletingId(id);
+    const res = await deleteFaceRecord(id);
+    setDeletingId(null);
+    setDeleteConfirm(null);
+    if (res.success) {
+      setLocalData(prev => prev.filter((f: any) => f.userId !== id && f.accountId !== id && f.id !== id));
+      setFeedback({ ok: true, msg: '✅ تم حذف بصمة الوجه بنجاح' });
+    } else {
+      setFeedback({ ok: false, msg: '❌ ' + res.message });
+    }
+    setTimeout(() => setFeedback(null), 4000);
+    onRefresh?.();
+  }, [onRefresh]);
+
   return (
     <div className="p-5" dir="rtl">
+      {feedback && (
+        <div className={`mb-3 rounded-xl px-4 py-2.5 text-xs font-black border ${feedback.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+          {feedback.msg}
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" dir="rtl">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="font-black text-slate-900">تأكيد حذف بصمة الوجه</p>
+                <p className="text-xs text-slate-500 mt-0.5">سيتم إلغاء تسجيل البصمة لهذا المستخدم</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-700 mb-4">
+              هل أنت متأكد من حذف بصمة الوجه للمستخدم <strong>{String((deleteConfirm as any).userName || '—')}</strong>؟
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => handleDelete(deleteConfirm)} disabled={deletingId !== null}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-sm font-black transition cursor-pointer disabled:opacity-50">
+                {deletingId ? 'جاري الحذف...' : '🗑️ حذف نهائياً'}
+              </button>
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-black transition hover:bg-slate-50 cursor-pointer">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Warning banner */}
       <div className="mb-4 rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 flex items-start gap-2.5">
         <Fingerprint className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
@@ -67,8 +130,9 @@ export default function FaceRecordsArchiveTab({ data, onDownload }: Props) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {pageData.map((f: any, i) => {
           const embCount = getEmbeddingCount(f);
+          const fId = String(f.userId || f.accountId || f.id || i);
           return (
-            <div key={f.userId ?? i} className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-xs">
+            <div key={fId} className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-xs relative">
               <div className="flex items-start gap-3">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-500 shadow-sm shrink-0">
                   <ScanFace className="h-5 w-5 text-white" />
@@ -87,6 +151,14 @@ export default function FaceRecordsArchiveTab({ data, onDownload }: Props) {
                     )}
                   </div>
                 </div>
+                <button
+                  onClick={() => setDeleteConfirm(f)}
+                  title="حذف البصمة"
+                  disabled={deletingId === fId}
+                  className="rounded-lg bg-white/80 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 p-1.5 text-slate-400 hover:text-rose-600 transition cursor-pointer disabled:opacity-40"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
 
               {/* Biometric count badge */}

@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Download, ScanFace, Mail, Phone, Globe, Clock, FileText,
          BookOpen, Award, MessageSquareText, CalendarCheck, Activity,
          User, Shield, Fingerprint, Copy, Check, ChevronDown, ChevronUp,
-         Hash, MapPin, Calendar, Link2 } from 'lucide-react';
+         Hash, MapPin, Calendar, Link2, Printer } from 'lucide-react';
 import type { PersonArchiveProfile } from '@/lib/archiveSnapshot';
+import { exportStudentProfilePdf } from '@/lib/archivePdfExport';
 
 interface Props {
   profile: PersonArchiveProfile;
@@ -106,11 +107,18 @@ export default function PersonProfileModal({ profile, onClose, onDownload }: Pro
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => exportStudentProfilePdf(profile)}
+              className="flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-3 py-2 text-xs font-black text-white transition cursor-pointer"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              PDF
+            </button>
+            <button
               onClick={onDownload}
               className="flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-3 py-2 text-xs font-black text-white transition cursor-pointer"
             >
               <Download className="h-3.5 w-3.5" />
-              تنزيل JSON
+              JSON
             </button>
             <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition cursor-pointer">
               <X className="h-4 w-4" />
