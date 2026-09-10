@@ -592,31 +592,6 @@ export default function LoginPage() {
                 🔒 آمن 100%
               </span>
             </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setFaceLoginRole('student');
-                  setFaceLoginOpen(true);
-                }}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-xs font-black transition cursor-pointer active:scale-98"
-              >
-                <span>🎓</span>
-                <span>دخول طالب بالوجه</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFaceLoginRole('parent');
-                  setFaceLoginOpen(true);
-                }}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-black transition cursor-pointer active:scale-98"
-              >
-                <span>👨‍👧</span>
-                <span>دخول ولي أمر بالوجه</span>
-              </button>
-            </div>
           </div>
 
           <div className="relative my-5 text-center">

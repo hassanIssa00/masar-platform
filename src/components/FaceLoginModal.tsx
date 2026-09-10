@@ -17,7 +17,7 @@ interface Props {
 export interface MatchedCandidate {
   account: AccountRecord;
   targetId: string;
-  role: 'student' | 'parent';
+  role: 'student' | 'parent' | 'doctor' | 'specialist' | 'teacher';
   name: string;
   roleLabel: string;
   branch: 'MASAR' | 'IKHLAS_JEDDAH';
@@ -69,6 +69,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
   }, []);
 
   /** Helper to construct a normalized Candidate Account from any FaceRecord */
+  /** Helper to construct a normalized Candidate Account from any FaceRecord */
   const buildCandidate = async (
     record: FaceRecord,
     similarity: number,
@@ -76,96 +77,155 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
     allStudents: any[],
     classStudents: any[]
   ): Promise<MatchedCandidate> => {
-    const isParentRecord = record.userRole === 'parent';
-    const isStudentRecord = record.userRole === 'student';
-
-    const targetId = isParentRecord
-      ? (record.accountId || record.userId)
-      : (record.studentId || record.userId || record.accountId);
+    const targetId = record.studentId || record.accountId || record.userId;
 
     const foundAcc = allAccounts.find(
       a => (targetId && a.id === targetId) ||
+           (record.accountId && a.id === record.accountId) ||
+           (record.userId && a.id === record.userId) ||
            (record.userEmail && a.email?.toLowerCase() === record.userEmail.toLowerCase())
     );
 
-    const isStudent = isStudentRecord || (!isParentRecord && foundAcc?.role === 'student');
+    const effectiveRole = foundAcc?.role || record.userRole || 'parent';
 
-    const sid = record.studentId || foundAcc?.linkedStudentId || undefined;
-    const matchedClassStudent = classStudents.find(cs => sid && (cs.id === sid || cs.studentAccountId === sid));
-    const matchedGeneralStudent = allStudents.find(s => sid && (s.id === sid || s.studentAccountId === sid));
-
-    let branch: 'MASAR' | 'IKHLAS_JEDDAH' = 'MASAR';
-    if (
-      record.schoolBranch === 'IKHLAS_JEDDAH' ||
-      foundAcc?.schoolBranch === 'IKHLAS_JEDDAH' ||
-      Boolean(matchedClassStudent)
-    ) {
-      branch = 'IKHLAS_JEDDAH';
-    } else {
-      branch = 'MASAR';
+    // 1. Doctor / Clinical Administrator (د. إسماعيل عيسى)
+    if (effectiveRole === 'doctor') {
+      const docId = foundAcc?.id || targetId || 'doctor';
+      const docName = foundAcc?.name || record.userName || 'د. إسماعيل عيسى';
+      const account = {
+        id: docId,
+        name: docName,
+        email: foundAcc?.email || record.userEmail || 'doctor@masarplatform.org',
+        role: 'doctor',
+        schoolBranch: 'MASAR',
+      } as AccountRecord;
+      return {
+        account,
+        targetId: docId,
+        role: 'doctor',
+        name: docName,
+        roleLabel: '🩺 طبيب ومعالج المنصة الإكلينيكي',
+        branch: 'MASAR',
+        targetUrl: '/dashboard',
+        similarity,
+      };
     }
 
-    if (isStudent) {
-      const studentId = sid || targetId || 'student';
+    // 2. Specialist (أخصائي التأهيل)
+    if (effectiveRole === 'specialist') {
+      const spId = foundAcc?.id || targetId || 'specialist';
+      const spName = foundAcc?.name || record.userName || 'أخصائي المنصة';
+      const account = {
+        id: spId,
+        name: spName,
+        email: foundAcc?.email || record.userEmail || `${spId}@masarplatform.org`,
+        role: 'specialist',
+        schoolBranch: 'MASAR',
+      } as AccountRecord;
+      return {
+        account,
+        targetId: spId,
+        role: 'specialist',
+        name: spName,
+        roleLabel: '🧑‍⚕️ أخصائي التأهيل الإكلينيكي',
+        branch: 'MASAR',
+        targetUrl: '/dashboard',
+        similarity,
+      };
+    }
+
+    // 3. Teacher (معلم فصل د. إسماعيل بجدة)
+    if (effectiveRole === 'teacher') {
+      const tId = foundAcc?.id || targetId || 'teacher';
+      const tName = foundAcc?.name || record.userName || 'معلم الفصل';
+      const account = {
+        id: tId,
+        name: tName,
+        email: foundAcc?.email || record.userEmail || `${tId}@masarplatform.org`,
+        role: 'teacher',
+        schoolBranch: 'IKHLAS_JEDDAH',
+      } as AccountRecord;
+      return {
+        account,
+        targetId: tId,
+        role: 'teacher',
+        name: tName,
+        roleLabel: '👩‍🏫 معلم فصل د. إسماعيل (جدة)',
+        branch: 'IKHLAS_JEDDAH',
+        targetUrl: '/branches/ikhlas-jeddah',
+        similarity,
+      };
+    }
+
+    // 4. Student (طالب مسار أو الإخلاص جدة)
+    if (effectiveRole === 'student') {
+      const sid = record.studentId || foundAcc?.linkedStudentId || targetId || 'student';
+      const matchedClassStudent = classStudents.find(cs => sid && (cs.id === sid || cs.studentAccountId === sid));
+      const matchedGeneralStudent = allStudents.find(s => sid && (s.id === sid || s.studentAccountId === sid));
+      const isIkhlas = record.schoolBranch === 'IKHLAS_JEDDAH' || foundAcc?.schoolBranch === 'IKHLAS_JEDDAH' || Boolean(matchedClassStudent);
+      const branch = isIkhlas ? 'IKHLAS_JEDDAH' : 'MASAR';
       const studentName = record.userName || matchedClassStudent?.fullName || matchedGeneralStudent?.fullName || foundAcc?.name || (branch === 'IKHLAS_JEDDAH' ? 'طالب فصل د. إسماعيل' : 'طالب مسار');
       const account = {
-        id: studentId,
+        id: sid,
         name: studentName,
-        email: foundAcc?.email || record.userEmail || `${studentId}@masarplatform.org`,
+        email: foundAcc?.email || record.userEmail || `${sid}@masarplatform.org`,
         role: 'student',
         schoolBranch: branch,
-        linkedStudentId: studentId,
+        linkedStudentId: sid,
       } as AccountRecord;
-      const targetUrl = `/school-student?student=${encodeURIComponent(studentId)}`;
-      const roleLabel = branch === 'IKHLAS_JEDDAH' ? 'طالب (فصل د. إسماعيل — جدة)' : 'طالب (مسار التأهيل)';
+      const targetUrl = `/school-student?student=${encodeURIComponent(sid)}`;
+      const roleLabel = branch === 'IKHLAS_JEDDAH' ? '🎓 طالب (فصل د. إسماعيل — جدة)' : '🎓 طالب (مسار التأهيل)';
       return {
         account,
-        targetId: studentId,
+        targetId: sid,
         role: 'student',
         name: studentName,
-        roleLabel,
-        branch,
-        targetUrl,
-        similarity,
-      };
-    } else {
-      const pId = record.accountId || record.userId || foundAcc?.id || 'user';
-      const pName = record.userName || foundAcc?.name || 'ولي أمر';
-      const pEmail = foundAcc?.email || record.userEmail || `${pId}@masarplatform.org`;
-      const pLinkedSid = sid || foundAcc?.linkedStudentId || undefined;
-      const account = {
-        id: pId,
-        name: pName,
-        email: pEmail,
-        role: 'parent',
-        schoolBranch: branch,
-        linkedStudentId: pLinkedSid,
-        phone: foundAcc?.phone,
-      } as AccountRecord;
-      const sParam = pLinkedSid ? `?student=${encodeURIComponent(pLinkedSid)}` : '';
-      const targetUrl = branch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
-      const roleLabel = branch === 'IKHLAS_JEDDAH' ? 'ولي أمر (فصل د. إسماعيل — جدة)' : 'ولي أمر (مسار التأهيل)';
-      return {
-        account,
-        targetId: pId,
-        role: 'parent',
-        name: pName,
         roleLabel,
         branch,
         targetUrl,
         similarity,
       };
     }
+
+    // 5. Parent (ولي أمر)
+    const pId = record.accountId || record.userId || foundAcc?.id || 'user';
+    const pName = record.userName || foundAcc?.name || 'ولي أمر';
+    const pEmail = foundAcc?.email || record.userEmail || `${pId}@masarplatform.org`;
+    const pLinkedSid = record.studentId || foundAcc?.linkedStudentId || undefined;
+    const isIkhlasParent = record.schoolBranch === 'IKHLAS_JEDDAH' || foundAcc?.schoolBranch === 'IKHLAS_JEDDAH';
+    const pBranch = isIkhlasParent ? 'IKHLAS_JEDDAH' : 'MASAR';
+    const account = {
+      id: pId,
+      name: pName,
+      email: pEmail,
+      role: 'parent',
+      schoolBranch: pBranch,
+      linkedStudentId: pLinkedSid,
+      phone: foundAcc?.phone,
+    } as AccountRecord;
+    const sParam = pLinkedSid ? `?student=${encodeURIComponent(pLinkedSid)}` : '';
+    const targetUrl = pBranch === 'IKHLAS_JEDDAH' ? `/school-parent${sParam}` : `/parent${sParam}`;
+    const roleLabel = pBranch === 'IKHLAS_JEDDAH' ? '👨‍👧 ولي أمر (فصل د. إسماعيل — جدة)' : '👨‍👧 ولي أمر (مسار التأهيل)';
+    return {
+      account,
+      targetId: pId,
+      role: 'parent',
+      name: pName,
+      roleLabel,
+      branch: pBranch,
+      targetUrl,
+      similarity,
+    };
   };
 
   /** Continuous background matching function - runs while live camera streams */
   const handleLiveVerify = async (embedding: number[]): Promise<{ ok: boolean; name?: string }> => {
     lastEmbeddingRef.current = embedding;
 
-    // 1. Instant local biometric matching
+    // 1. Instant local biometric matching with strict 0.62 threshold
     try {
       const { findAllFaceMatches } = await import('@/lib/faceAuth');
-      const matches = findAllFaceMatches(embedding, 0.48, roleFilter);
+      const matches = findAllFaceMatches(embedding, 0.62, 'all');
 
       if (matches.length > 0) {
         const allAccounts = getAccounts();
@@ -185,14 +245,9 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
         });
         const candidates = Array.from(uniqueMap.values());
 
-        // Check if roleFilter specifically narrows it down
-        const filtered = roleFilter === 'all'
-          ? candidates
-          : candidates.filter(c => c.role === roleFilter);
-
         // Case A: Exactly 1 candidate account
-        if (filtered.length === 1) {
-          const chosen = filtered[0];
+        if (candidates.length === 1) {
+          const chosen = candidates[0];
           activeAccountRef.current = chosen.account;
           targetRedirectUrlRef.current = chosen.targetUrl;
           setActiveAccount(chosen.account);
@@ -214,9 +269,33 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
           return { ok: true, name: chosen.name };
         }
 
-        // Case B: Multiple candidate accounts with different roles (e.g. Student AND Parent)
-        if (filtered.length > 1) {
-          setMultipleCandidates(filtered);
+        // Case B: Multiple candidates -> Check if top match is dominant
+        if (candidates.length > 1) {
+          const top = candidates[0];
+          const second = candidates[1];
+          // If top candidate has high confidence and clearly outperforms second, select it automatically!
+          if (top.similarity >= 0.70 && (top.similarity - second.similarity) >= 0.08) {
+            activeAccountRef.current = top.account;
+            targetRedirectUrlRef.current = top.targetUrl;
+            setActiveAccount(top.account);
+            setTargetRedirectUrl(top.targetUrl);
+            setMatchedName(top.name);
+
+            fetch('/api/auth/face', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                embedding,
+                verifiedUserId: top.targetId,
+                targetRole: top.role,
+              }),
+            }).catch(() => {});
+
+            return { ok: true, name: top.name };
+          }
+
+          setMultipleCandidates(candidates);
           setPhase('select_account');
           return { ok: false };
         }

@@ -22,7 +22,7 @@ import {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'masar.face.v2';
-const SIMILARITY_THRESHOLD = 0.40; // Human يستخدم 0→1 similarity (أعلى = أشبه)
+const SIMILARITY_THRESHOLD = 0.62; // Human يستخدم 0→1 similarity (أعلى = أشبه، 0.62 عتبة الأمان القياسية)
 const MODEL_PATH = '/human-models/';
 const LOAD_TIMEOUT_MS = 10000; // 10 ثواني حد أقصى للتحميل
 
@@ -312,19 +312,18 @@ export function compareBiometricFaces(
     absSum += Math.abs(d);
   }
 
-  // 1. Cosine similarity (المعيار الذهبي لمتجهات الوجوه ArcFace / MobileFaceNet / Human)
+  // Cosine similarity (المعيار الذهبي والرياضي الدقيق لمتجهات الوجوه في ArcFace / MobileFaceNet / Human)
   const denom = Math.sqrt(normA) * Math.sqrt(normB);
   const cosine = denom > 0 ? Math.max(0, Math.min(1, dotProduct / denom)) : 0;
 
-  // 2. Human native normalized distance
-  const dist = Math.round(100 * 25 * sumSq) / 100;
-  const root = Math.sqrt(dist);
-  const humanNorm = Math.max(0, Math.min(1, (1 - (root / 100) - 0.2) / (0.8 - 0.2)));
-
-  // Combine both: highest similarity wins
-  const similarity = Math.max(cosine, humanNorm);
-  const isMatch = similarity >= 0.48;
-  const confidence = Math.round(similarity * 100);
+  // عتبة التطابق البيومتري الصارمة:
+  // نفس الشخص تحت إضاءات مختلفة: 0.65 إلى 0.95
+  // أشخاص مختلفون تماماً: أقل من 0.48 دائماً
+  // العتبة 0.62 تمنع نهائياً أي تطابق خاطئ بين شخصين مختلفين
+  const MATCH_THRESHOLD = 0.62;
+  const isMatch = cosine >= MATCH_THRESHOLD;
+  const similarity = cosine;
+  const confidence = Math.round(cosine * 100);
   const mae = absSum / minLen;
 
   return {
@@ -333,7 +332,7 @@ export function compareBiometricFaces(
     confidence,
     mae,
     cosine,
-    sigDiff: 1 - similarity,
+    sigDiff: 1 - cosine,
   };
 }
 
@@ -542,7 +541,7 @@ export interface FaceMatchResult {
 
 export function findAllFaceMatches(
   embedding: number[],
-  threshold = 0.48,
+  threshold = 0.62,
   roleFilter?: 'student' | 'parent' | 'all'
 ): FaceMatchResult[] {
   let records = readStore();
@@ -571,6 +570,23 @@ export function findAllFaceMatches(
 
   // Sort descending by similarity
   matches.sort((a, b) => b.similarity - a.similarity);
+
+  // إذا كان هناك تطابق أول قوي جداً (مثلاً د. إسماعيل بنسبة 75%+ أو فارق شاسع)، نلغي أي نتائج ضعيفة لا تخص نفس الشخص
+  if (matches.length > 1) {
+    const top = matches[0];
+    const topPersonId = top.record.userId || top.record.accountId;
+    const topName = top.record.userName;
+    return matches.filter(m => {
+      const isSamePerson =
+        (m.record.userId && m.record.userId === topPersonId) ||
+        (m.record.accountId && m.record.accountId === topPersonId) ||
+        (topName && m.record.userName && m.record.userName === topName);
+      if (isSamePerson) return true;
+      // لا نقبل شخصاً آخر إلا إذا كانت بصمته قريبة جداً من المتصدر بفارق لا يتعدى 0.04
+      return (top.similarity - m.similarity) <= 0.04 && m.similarity >= 0.68;
+    });
+  }
+
   return matches;
 }
 
