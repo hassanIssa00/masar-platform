@@ -10,7 +10,7 @@ import {
   ScanFace, X, GraduationCap, Calendar, Phone, Building2, ShieldCheck,
   Trophy, Medal, Award, Gift, KeyRound, FileText, ExternalLink, Send
 } from 'lucide-react';
-import { DAY_NAMES, SUBJECT_COLORS } from '@/data/ikhlasSchedule';
+import { DAY_NAMES, SUBJECT_COLORS, getMinutesUntilDismissal, getSavedSchedule } from '@/data/ikhlasSchedule';
 import Image from 'next/image';
 import { clearSession, getAccounts, getMessages, getReports, getSession, getStudents, getSurveys, hydrateSessionFromServer, MessageRecord, ReportRecord, saveMessage, StudentRecord } from '@/lib/cloudStore';
 import StudentProfileCard from '@/components/StudentProfileCard';
@@ -62,6 +62,17 @@ export default function SchoolParentPage() {
   const [replySent, setReplySent] = useState(false);
   const [parentFaceEnrolled, setParentFaceEnrolled] = useState(false);
   const [parentAccountId, setParentAccountId] = useState('');
+  const [minsUntilDismissal, setMinsUntilDismissal] = useState<number>(-1);
+
+  useEffect(() => {
+    const updateDismissal = () => {
+      const sched = getSavedSchedule();
+      setMinsUntilDismissal(getMinutesUntilDismissal(sched));
+    };
+    updateDismissal();
+    const id = setInterval(updateDismissal, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -838,6 +849,36 @@ export default function SchoolParentPage() {
                 }}
               />
             </div>
+
+            {/* تنبيه اقتراب موعد الانصراف لأولياء الأمور */}
+            {minsUntilDismissal > 0 && minsUntilDismissal <= 20 && !dashboard?.todayLog?.exitTime && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4.5 flex items-center gap-3.5 shadow-md shadow-amber-100/50 animate-pulse">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-200 flex items-center justify-center shrink-0">
+                  <Clock className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-amber-900">⏰ اقتراب موعد انصراف الطلاب (متبقي {minsUntilDismissal} دقيقة)</p>
+                  <p className="text-xs text-amber-700 mt-0.5 font-bold">
+                    نحيطكم علماً بأن اليوم الدراسي سينتهي قريباً، يرجى التوجه لبوابة مدرسة الإخلاص لاستلام الطالب.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* إشعار انتهاء اليوم الدراسي وحضور الاستلام */}
+            {minsUntilDismissal <= 0 && minsUntilDismissal >= -45 && !dashboard?.todayLog?.exitTime && (
+              <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-4.5 flex items-center gap-3.5 shadow-md shadow-emerald-100/50">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-emerald-900">🏫 انتهى اليوم الدراسي — انصراف الطلاب الآن</p>
+                  <p className="text-xs text-emerald-700 mt-0.5 font-bold">
+                    تم بحمد الله انتهاء حصص اليوم، أبناؤكم جاهزون للاستلام ببوابة مدرسة الإخلاص. حفظهم الله ورعاهم.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* تنبيه تأخر استلام الطفل العاجل */}
             {dashboard?.todayLog?.lateAlertSent && (

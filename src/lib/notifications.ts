@@ -12,7 +12,8 @@ export type NotificationType =
   | 'system'
   | 'achievement'
   | 'homework'
-  | 'assessment';
+  | 'assessment'
+  | 'dismissal';
 
 export type TargetRole = 'doctor' | 'parent' | 'student' | 'all';
 

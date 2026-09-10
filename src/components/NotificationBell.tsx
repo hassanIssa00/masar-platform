@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Award, BookOpen, CheckCircle, FileText, MessageSquare, Sparkles, User, Video, X } from 'lucide-react';
+import { Bell, Award, BookOpen, CheckCircle, FileText, MessageSquare, Sparkles, User, Video, X, Clock } from 'lucide-react';
 import {
   subscribeToNotifications,
   markNotificationAsRead,
@@ -23,6 +23,7 @@ const NOTIF_ICONS: Record<string, React.ElementType> = {
   achievement: Award,
   homework: BookOpen,
   assessment: CheckCircle,
+  dismissal: Clock,
 };
 
 interface NotificationBellProps {

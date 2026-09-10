@@ -47,6 +47,11 @@ import {
   DEFAULT_IKHLAS_LOCATION, getCurrentBrowserPosition
 } from '@/lib/schoolLocation';
 import InteractiveGeofenceMap from '@/components/InteractiveGeofenceMap';
+import {
+  checkAndAutoDispatchDismissal,
+  sendManualDismissalNotification,
+  getDismissalNotificationsStatusToday,
+} from '@/lib/autoDismissalNotifier';
 
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 const BRANCH = 'IKHLAS_JEDDAH';
@@ -232,12 +237,45 @@ export default function IkhlasJeddahPage() {
     setGeoFeedback({ type: 'success', msg: 'تمت استعادة موقع مدرسة الإخلاص الرسمي الافتراضي.' });
   };
 
+  /* ── Auto Dismissal Notifications State ── */
+  const [dismissalNotifStatus, setDismissalNotifStatus] = useState(() => getDismissalNotificationsStatusToday());
+  const [manualSendingDismissal, setManualSendingDismissal] = useState(false);
+  const [dismissalManualFeedback, setDismissalManualFeedback] = useState<string | null>(null);
+
+  const handleManualSendDismissal = async () => {
+    if (manualSendingDismissal) return;
+    setManualSendingDismissal(true);
+    setDismissalManualFeedback(null);
+    try {
+      const res = await sendManualDismissalNotification(minsUntilDismissal > 0 ? minsUntilDismissal : 0);
+      if (res.success) {
+        setDismissalNotifStatus(getDismissalNotificationsStatusToday());
+        setDismissalManualFeedback('✅ تم إرسال الإشعار لجميع أولياء الأمور بنجاح');
+        setTimeout(() => setDismissalManualFeedback(null), 6000);
+      } else {
+        setDismissalManualFeedback('❌ ' + res.message);
+      }
+    } catch {
+      setDismissalManualFeedback('❌ حدث خطأ في إرسال الإشعار');
+    } finally {
+      setManualSendingDismissal(false);
+    }
+  };
+
   /* ── Clock ── */
   useEffect(() => {
     const tick = () => {
       setCurrentPeriod(getCurrentPeriod(schedule));
-      setMinsUntilDismissal(getMinutesUntilDismissal(schedule));
+      const mins = getMinutesUntilDismissal(schedule);
+      setMinsUntilDismissal(mins);
       setTodayPeriods(getTodayPeriods(schedule));
+
+      // فحص وإرسال إشعارات الانصراف التلقائية لأولياء الأمور
+      void checkAndAutoDispatchDismissal(schedule).then((res) => {
+        if (res.dispatched) {
+          setDismissalNotifStatus(getDismissalNotificationsStatusToday());
+        }
+      });
     };
     tick();
     const id = setInterval(tick, 30000);
@@ -1091,11 +1129,38 @@ export default function IkhlasJeddahPage() {
 
             {/* Dismissal Alert */}
             {minsUntilDismissal > 0 && minsUntilDismissal <= 20 && (
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center gap-3 animate-pulse shadow-sm shadow-amber-100">
-                <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
-                <div>
-                  <p className="font-black text-amber-900">⏰ تنبيه: {minsUntilDismissal} دقيقة للخروج!</p>
-                  <p className="text-xs text-amber-700 mt-0.5">يُنصح بإرسال إشعار لأولياء الأمور للحضور</p>
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between gap-3 animate-pulse shadow-sm shadow-amber-100 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-black text-amber-900">⏰ تنبيه: {minsUntilDismissal} دقيقة للخروج!</p>
+                      {dismissalNotifStatus?.lastSentMilestone !== undefined && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          تم الإرسال التلقائي لأولياء الأمور ({dismissalNotifStatus.lastSentMilestone === 0 ? 'انصراف' : `متبقي ${dismissalNotifStatus.lastSentMilestone} دقيقة`})
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-amber-700 mt-0.5 font-medium">
+                      النظام يُرسل إشعارات تلقائية لأولياء الأمور بموعد الاستلام والمتبقي لانتهاء اليوم.
+                    </p>
+                    {dismissalManualFeedback && (
+                      <p className="text-[11px] font-black mt-1 text-emerald-800">{dismissalManualFeedback}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleManualSendDismissal}
+                    disabled={manualSendingDismissal}
+                    className="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+                  >
+                    {manualSendingDismissal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    <span>إرسال إشعار فوري الآن 📲</span>
+                  </button>
                 </div>
               </div>
             )}
