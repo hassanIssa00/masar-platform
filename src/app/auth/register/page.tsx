@@ -877,7 +877,7 @@ export default function RegisterPage() {
           />
 
           <CloudflareTurnstile
-            theme="dark"
+            theme="light"
             onVerify={(token) => {
               setTurnstileToken(token);
               setGoogleError('');

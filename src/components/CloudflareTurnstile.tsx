@@ -41,7 +41,7 @@ export default function CloudflareTurnstile({
   onVerify,
   onError,
   onExpire,
-  theme = 'dark',
+  theme = 'light',
   className = '',
   autoVerifyDelayMs = 1200,
 }: CloudflareTurnstileProps) {
@@ -255,16 +255,16 @@ export default function CloudflareTurnstile({
                   fill="#FAAE40"
                 />
               </svg>
-              <span className="text-[11px] font-black tracking-wider text-slate-300">
+              <span className={`text-[11px] font-black tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 CLOUDFLARE
               </span>
             </div>
-            <div className="flex items-center gap-1 text-[9px] text-slate-400 font-normal mt-0.5">
+            <div className={`flex items-center gap-1 text-[9px] font-normal mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               <a
                 href="https://www.cloudflare.com/privacypolicy/"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:underline hover:text-slate-300"
+                className={`hover:underline ${isDark ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}
               >
                 Privacy
               </a>
@@ -273,7 +273,7 @@ export default function CloudflareTurnstile({
                 href="https://www.cloudflare.com/website-terms/"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:underline hover:text-slate-300"
+                className={`hover:underline ${isDark ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}
               >
                 Help
               </a>

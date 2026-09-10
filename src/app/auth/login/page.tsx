@@ -714,7 +714,7 @@ export default function LoginPage() {
 
             {/* ── Cloudflare Turnstile Verification ── */}
             <CloudflareTurnstile
-              theme="dark"
+              theme="light"
               onVerify={(token) => {
                 setTurnstileToken(token);
                 setLoginError('');
@@ -825,7 +825,7 @@ export default function LoginPage() {
                 </label>
 
                 <CloudflareTurnstile
-                  theme="dark"
+                  theme="light"
                   onVerify={(token) => {
                     setForgotTurnstileToken(token);
                     setForgotError('');
