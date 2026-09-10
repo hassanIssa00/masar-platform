@@ -134,7 +134,7 @@ export default function RegisterPage() {
       setGoogleError(result.reason);
     }
   };
-  const [accountType, setAccountType] = useState<'parent' | 'student' | 'teacher'>('parent');
+  const [accountType, setAccountType] = useState<'parent' | 'student'>('parent');
 
   // Form Fields
   const [parentName, setParentName] = useState('');
@@ -154,7 +154,7 @@ export default function RegisterPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const getSelectedRole = () =>
-    accountType === 'teacher' ? 'teacher' : accountType === 'student' ? 'student' : 'parent';
+    accountType === 'student' ? 'student' : 'parent';
 
   const getMasarStartPath = (type: typeof accountType) =>
     type === 'student' ? '/student/new?flow=student' : type === 'parent' ? '/student/new?flow=parent' : '/dashboard';
@@ -189,10 +189,8 @@ export default function RegisterPage() {
     handleGoogleRedirectResult(getSelectedRole() as import('@/lib/cloudStore').UserRole, schoolBranch).then((result) => {
       if (result && result.ok) {
         setSession(result.account, false, false);
-        const resolvedType =
-          result.account.role === 'student' ? 'student'
-          : result.account.role === 'parent' ? 'parent'
-          : 'teacher';
+        const resolvedType: 'parent' | 'student' =
+          result.account.role === 'student' ? 'student' : 'parent';
         routeRegisteredAccount(resolvedType, (result.account.schoolBranch as typeof schoolBranch) || schoolBranch);
       } else if (result?.reason) {
         setGoogleError(result.reason);
@@ -265,7 +263,6 @@ export default function RegisterPage() {
   };
 
   const getChildNameError = (): string => {
-    if (accountType === 'teacher') return '';
     if (accountType === 'parent') {
       // If a student is detected from father's name/phone, child name is completely optional
       if (detectedStudent) return '';
@@ -328,7 +325,7 @@ export default function RegisterPage() {
 
   const hasErrors = useMemo(() => {
     if (accountType === 'parent' && errors.parentName) return true;
-    if (accountType !== 'teacher' && errors.childName) return true;
+    if (errors.childName) return true;
     return !!(errors.email || errors.phone || errors.password);
   }, [errors, accountType]);
 
@@ -359,7 +356,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const fullPhone = `${selectedCountry.code}${phone}`;
-    const primaryName = accountType === 'parent' ? parentName : accountType === 'teacher' ? (parentName || 'معلم') : childName;
+    const primaryName = accountType === 'parent' ? parentName : childName;
 
     // Clear any existing session (e.g. a previous doctor demo session)
     // so that the new parent/student account starts fresh
@@ -368,7 +365,7 @@ export default function RegisterPage() {
     const effectiveChildName = childName.trim() || detectedStudent?.fullName || '';
     const effectiveStudentId = detectedStudent?.id || '';
 
-    const role = accountType === 'parent' ? 'parent' : accountType === 'teacher' ? 'teacher' : 'student';
+    const role = accountType === 'parent' ? 'parent' : 'student';
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -474,7 +471,7 @@ export default function RegisterPage() {
         ...(linkedParentId ? { linkedParentId } : {}),
         ...(linkedParentEmail ? { linkedParentEmail } : {}),
       });
-    } else if (accountType !== 'teacher' && childName.trim()) {
+    } else if (childName.trim()) {
       // Only create a student record if the parent actually entered a child name.
       // If childName is empty, skip this and let /student/new handle it.
       matchingStudent = saveStudent({
@@ -595,7 +592,7 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => { setSchoolBranch('MASAR'); if (accountType === 'teacher') setAccountType('parent'); }}
+              onClick={() => { setSchoolBranch('MASAR'); }}
               className={`p-3 rounded-2xl border text-xs font-black text-center transition-all ${
                 schoolBranch === 'MASAR'
                   ? 'bg-teal-700 text-white border-teal-700 shadow-md'
@@ -619,7 +616,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Account Type Selector Tabs */}
-        <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+        <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 border border-slate-200">
           <button
             type="button"
             onClick={() => setAccountType('parent')}
@@ -645,21 +642,6 @@ export default function RegisterPage() {
             <GraduationCap size={15} />
             <span>طالب</span>
           </button>
-
-          {schoolBranch === 'IKHLAS_JEDDAH' && (
-            <button
-              type="button"
-              onClick={() => setAccountType('teacher')}
-              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-black transition ${
-                accountType === 'teacher'
-                  ? 'bg-amber-600 text-white shadow-md'
-                  : 'text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <UserPlus size={15} />
-              <span>معلم</span>
-            </button>
-          )}
         </div>
 
         {/* Registration Form */}
