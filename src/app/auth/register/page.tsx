@@ -3,8 +3,11 @@
 import { FormEvent, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { UserPlus, GraduationCap, HeartHandshake, Search, ChevronDown, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
+
+const CloudflareTurnstile = dynamic(() => import('@/components/CloudflareTurnstile'), { ssr: false });
 import { signInWithGoogle, handleGoogleRedirectResult, signInWithApple, signInWithMicrosoft } from '@/lib/auth';
 import { getAccounts, getSession, getStudents, getSurveys, saveAccount, saveStudent, setSession, clearSession, updateStudent, type StudentRecord } from '@/lib/cloudStore';
 import { getClassStudents } from '@/lib/classDb';
@@ -144,6 +147,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Track field touch status for instant live error feedback
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -344,6 +348,11 @@ export default function RegisterPage() {
     });
 
     if (hasErrors) {
+      return;
+    }
+
+    if (!turnstileToken) {
+      setGoogleError('يرجى الانتظار لحين اكتمال التحقق الأمني من Cloudflare.');
       return;
     }
 
@@ -865,6 +874,15 @@ export default function RegisterPage() {
             placeholder="اكتب كلمة مرور قوية"
             type="password"
             error={(touched.password || submitted) ? errors.password : ''}
+          />
+
+          <CloudflareTurnstile
+            theme="dark"
+            onVerify={(token) => {
+              setTurnstileToken(token);
+              setGoogleError('');
+            }}
+            onError={(err) => setGoogleError(err || 'فشل التحقق الأمني من Cloudflare')}
           />
 
           <button 

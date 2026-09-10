@@ -30,6 +30,7 @@ import { trackEvent } from '@/lib/analyticsTracker';
 import { findMatchingStudentForParent, normalizeArabicText } from '@/lib/nameMatching';
 import dynamic from 'next/dynamic';
 const FaceLoginModal = dynamic(() => import('@/components/FaceLoginModal'), { ssr: false });
+const CloudflareTurnstile = dynamic(() => import('@/components/CloudflareTurnstile'), { ssr: false });
 const LOGIN_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys'] as const;
 
 // Google icon SVG (official brand colors)
@@ -80,6 +81,8 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [forgotTurnstileToken, setForgotTurnstileToken] = useState<string | null>(null);
 
   // ── Forgot Password States ──
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -158,6 +161,11 @@ export default function LoginPage() {
     const clean = forgotEmail.trim().toLowerCase();
     if (!clean || !clean.includes('@')) {
       setForgotError('يُرجى إدخال بريد إلكتروني صحيح.');
+      return;
+    }
+
+    if (!forgotTurnstileToken) {
+      setForgotError('يرجى الانتظار لحين اكتمال التحقق الأمني من Cloudflare.');
       return;
     }
 
@@ -328,6 +336,11 @@ export default function LoginPage() {
 
     if (cleanPassword.length < 6) {
       setLoginError('كلمة المرور يجب ألا تقل عن 6 أحرف.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setLoginError('يرجى الانتظار لحين اكتمال التحقق الأمني من Cloudflare.');
       return;
     }
 
@@ -699,6 +712,16 @@ export default function LoginPage() {
               </button>
             </div>
 
+            {/* ── Cloudflare Turnstile Verification ── */}
+            <CloudflareTurnstile
+              theme="dark"
+              onVerify={(token) => {
+                setTurnstileToken(token);
+                setLoginError('');
+              }}
+              onError={(err) => setLoginError(err || 'فشل التحقق الأمني من Cloudflare')}
+            />
+
             <button
               id="btn-login-submit"
               type="submit"
@@ -800,6 +823,15 @@ export default function LoginPage() {
                     />
                   </div>
                 </label>
+
+                <CloudflareTurnstile
+                  theme="dark"
+                  onVerify={(token) => {
+                    setForgotTurnstileToken(token);
+                    setForgotError('');
+                  }}
+                  onError={(err) => setForgotError(err || 'فشل التحقق الأمني من Cloudflare')}
+                />
 
                 <button
                   id="btn-send-reset-code"
