@@ -7,6 +7,7 @@ import { AccountRecord, getAccounts, setSession } from '@/lib/cloudStore';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analyticsTracker';
 import type { FaceRecord } from '@/lib/faceAuth';
+import { isAccountArchived } from '@/lib/accountArchiver';
 
 interface Props {
   onCancel: () => void;
@@ -75,8 +76,17 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
     allAccounts: AccountRecord[],
     allStudents: any[],
     classStudents: any[]
-  ): Promise<MatchedCandidate> => {
+  ): Promise<MatchedCandidate | null> => {
     const targetId = record.studentId || record.accountId || record.userId;
+
+    // ── Block archived / deleted accounts — never allow ghost logins ──────────
+    if (isAccountArchived(targetId) ||
+        isAccountArchived(record.accountId) ||
+        isAccountArchived(record.userId) ||
+        isAccountArchived(record.userEmail)) {
+      console.warn('[FaceLogin] Blocked archived account from logging in:', targetId);
+      return null;
+    }
 
     const foundAcc = allAccounts.find(
       a => (targetId && a.id === targetId) ||
@@ -234,7 +244,9 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
         const candidatePromises = matches.map(m =>
           buildCandidate(m.record, m.similarity, allAccounts, allStudents, classStudents)
         );
-        const resolvedCandidates = await Promise.all(candidatePromises);
+        const resolvedRaw = await Promise.all(candidatePromises);
+        // Filter out null (archived/deleted accounts)
+        const resolvedCandidates = resolvedRaw.filter((c): c is MatchedCandidate => c !== null);
 
         // Deduplicate candidates by unique target ID + role
         const uniqueMap = new Map<string, MatchedCandidate>();

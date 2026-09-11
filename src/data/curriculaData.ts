@@ -158,6 +158,26 @@ export const curriculaList: CurriculumSubject[] = [
       { title: 'الوحدة الرابعة: مجال التشكيل والتجسيم', fromPage: 67, toPage: 85 },
     ],
   },
+  {
+    slug: 'quran',
+    title: 'جزء عمّ — القرآن الكريم',
+    shortTitle: 'جزء عمّ',
+    subtitle: 'عرض تفاعلي للقراءة والحفظ والتلاوة',
+    grade: 'الصف الأول الابتدائي',
+    term: 'الفصل الدراسي الأول',
+    year: '1448هـ',
+    pageCount: 30,
+    color: '#065f46',
+    accent: '#d97706',
+    badge: 'القرآن الكريم — الجزء الثلاثون',
+    promise: 'عرض تفاعلي لجزء عمّ كامل بخط واضح وتصفح سهل. مخصص للقراءة والحفظ والمتابعة — دون إمكانية الكتابة على الصفحات حفاظاً على حرمة المصحف الشريف.',
+    units: [
+      { title: 'سورة النبأ إلى سورة الانفطار', fromPage: 1, toPage: 8 },
+      { title: 'سورة المطففين إلى سورة الطارق', fromPage: 9, toPage: 15 },
+      { title: 'سورة الأعلى إلى سورة الشمس', fromPage: 16, toPage: 22 },
+      { title: 'سورة الليل إلى سورة الناس', fromPage: 23, toPage: 30 },
+    ],
+  },
 ];
 
 export function getCurriculumBySlug(slug: string): CurriculumSubject | undefined {

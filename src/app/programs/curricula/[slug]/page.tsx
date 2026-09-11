@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import CurriculumInteractiveWorkbook from '@/components/CurriculumInteractiveWorkbook';
+import QuranReadOnlyViewer from '@/components/QuranReadOnlyViewer';
 import { curriculaList, getCurriculumBySlug } from '@/data/curriculaData';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +53,11 @@ export default async function CurriculumBookPage({ params }: PageProps) {
             </Link>
           </div>
 
-          <CurriculumInteractiveWorkbook curriculum={curriculum} />
+          {curriculum.slug === 'quran' ? (
+            <QuranReadOnlyViewer curriculum={curriculum} />
+          ) : (
+            <CurriculumInteractiveWorkbook curriculum={curriculum} />
+          )}
         </main>
       </div>
     </div>

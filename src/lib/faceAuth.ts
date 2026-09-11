@@ -19,6 +19,7 @@ import {
   syncDocToCloud,
   writeCloudCache,
 } from './firestoreSync';
+import { isAccountArchived } from './accountArchiver';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'masar.face.v2';
@@ -387,6 +388,8 @@ export interface FaceRecord {
   embeddings?:   number[][];
   poses?:        Record<string, number[]>;
   embeddingsJson?: string;
+  photoUrl?:     string; // 📸 Real camera snapshot / face photo
+  snapshot?:     string;
   enrolledAt?:   string;
 }
 
@@ -415,6 +418,8 @@ export async function enrollFace(
     studentId?:    string;
     parentName?:   string;
     schoolBranch?: string;
+    photoUrl?:     string;
+    snapshot?:     string;
   },
   multiAngleEmbeddings?: number[][]
 ): Promise<void> {
@@ -422,6 +427,8 @@ export async function enrollFace(
   records = records.filter(
     r => r.userId !== userId && r.accountId !== userId && r.studentId !== userId
   );
+
+  const photo = meta?.photoUrl || meta?.snapshot;
 
   const newRecord: FaceRecord = {
     userId,
@@ -432,6 +439,8 @@ export async function enrollFace(
     studentId:    meta?.studentId,
     parentName:   meta?.parentName,
     schoolBranch: meta?.schoolBranch,
+    photoUrl:     photo,
+    snapshot:     photo,
     embedding,
     embeddings:   multiAngleEmbeddings && multiAngleEmbeddings.length > 0
       ? multiAngleEmbeddings
@@ -521,7 +530,10 @@ export function findBestFaceMatch(
   record: FaceRecord | null;
   similarity: number;
 } {
-  let records = readStore();
+  let records = readStore().filter(r => {
+    const id = r.studentId || r.accountId || r.userId || '';
+    return !isAccountArchived(id) && !isAccountArchived(r.userId) && !isAccountArchived(r.accountId) && !isAccountArchived(r.userEmail);
+  });
   if (roleFilter && roleFilter !== 'all') {
     records = records.filter(r => r.userRole === roleFilter);
   }
@@ -544,7 +556,10 @@ export function findAllFaceMatches(
   threshold = 0.62,
   roleFilter?: 'student' | 'parent' | 'all'
 ): FaceMatchResult[] {
-  let records = readStore();
+  let records = readStore().filter(r => {
+    const id = r.studentId || r.accountId || r.userId || '';
+    return !isAccountArchived(id) && !isAccountArchived(r.userId) && !isAccountArchived(r.accountId) && !isAccountArchived(r.userEmail);
+  });
   if (roleFilter && roleFilter !== 'all') {
     records = records.filter(r => r.userRole === roleFilter);
   }

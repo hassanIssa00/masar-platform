@@ -555,7 +555,7 @@ function PlacementAssessmentContent() {
         return;
       }
 
-      const fromUrl = searchParams.get('level') as PlacementGradeKey | null;
+      const fromUrl = (searchParams.get('level') || searchParams.get('grade')) as PlacementGradeKey | null;
       if (fromUrl && placementAssessments.some((item) => item.key === fromUrl)) {
         setGradeKey(fromUrl);
       } else {
@@ -1480,6 +1480,10 @@ function PlacementAssessmentContent() {
 function getRecommendedProgram(domains: Array<{ name: string; score: number }>) {
   const weakest = [...domains].sort((first, second) => first.score - second.score)[0]?.name ?? '';
 
+  if (weakest.includes('إشار') || weakest.includes('شفاه') || weakest.includes('صم') || weakest.includes('تواصل وظيفي')) {
+    return { href: '/programs/deaf-mute', label: 'مسار الصم والبكم والتأهيل البصري' };
+  }
+
   if (weakest.includes('رياض')) {
     return { href: '/programs/math', label: 'برنامج الرياضيات المحسوسة' };
   }
@@ -1494,6 +1498,7 @@ function getRecommendedProgram(domains: Array<{ name: string; score: number }>) 
 function getGradeKeyFromStudentGrade(grade?: string): PlacementGradeKey {
   if (!grade) return 'g1';
   const g = grade.trim();
+  if (g.includes('صم') || g.includes('بكم') || g.includes('إشارة') || g.includes('اشارة') || g.toLowerCase().includes('deaf')) return 'deaf-mute';
   if (g.includes('روضة') || g.includes('تمهيدي') || g.toUpperCase().includes('KG')) return 'kg';
   if (g.includes('الأول') || g.includes('الاول') || g.includes('أول') || g.includes('اول') || g.includes('1')) return 'g1';
   if (g.includes('الثاني') || g.includes('الثانى') || g.includes('ثاني') || g.includes('ثانى') || g.includes('2')) return 'g2';

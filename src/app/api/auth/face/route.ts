@@ -302,6 +302,8 @@ export async function POST(req: NextRequest) {
       embedding:    emb,
       poses,
       embeddingsJson: JSON.stringify(multiEmbs),
+      // 📸 Persist face snapshot photo from enrollment
+      photoUrl:     meta.photoUrl || meta.snapshot || null,
       enrolledAt:   new Date().toISOString(),
       updatedAt:    new Date().toISOString(),
     };
@@ -459,6 +461,29 @@ export async function POST(req: NextRequest) {
       { ok: false, reason: 'account_missing', error: 'تم التعرف على الوجه لكن تعذر ربطه بالحساب.' },
       { status: 404 },
     );
+  }
+
+  // ── Block archived / deleted accounts from logging in ─────────────────────
+  try {
+    const archivedDoc = await adminDb.collection('archived_accounts').doc(account.id).get();
+    if (archivedDoc.exists) {
+      return NextResponse.json(
+        { ok: false, reason: 'account_archived', error: 'هذا الحساب محذوف ومؤرشف. لا يمكن تسجيل الدخول به.' },
+        { status: 403 },
+      );
+    }
+    // Also check by best.userId in case IDs differ
+    if (best.userId && best.userId !== account.id) {
+      const archivedByUserId = await adminDb.collection('archived_accounts').doc(best.userId).get();
+      if (archivedByUserId.exists) {
+        return NextResponse.json(
+          { ok: false, reason: 'account_archived', error: 'هذا الحساب محذوف ومؤرشف. لا يمكن تسجيل الدخول به.' },
+          { status: 403 },
+        );
+      }
+    }
+  } catch (archiveErr) {
+    console.warn('[FaceID] Archive check error:', archiveErr);
   }
 
   const token = await createSessionToken(account);

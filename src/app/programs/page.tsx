@@ -101,13 +101,32 @@ export default function ProgramsPage() {
                   <InfoLine icon={<ClipboardCheck size={15} />} label="المخرجات" value={program.outcomes.slice(0, 2).join('، ')} />
                 </div>
 
-                <Link
-                  href={`/programs/${program.slug}`}
-                  className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-teal-800"
-                >
-                  فتح المسار
-                  <ArrowLeft size={16} />
-                </Link>
+                {program.slug === 'deaf-mute' ? (
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/programs/${program.slug}`}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-600 bg-sky-600 px-3 py-2.5 text-xs font-black text-white transition hover:bg-sky-700"
+                    >
+                      فتح المسار
+                      <ArrowLeft size={14} />
+                    </Link>
+                    <Link
+                      href="/assessment?level=deaf-mute"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs font-black text-sky-800 transition hover:bg-sky-100"
+                    >
+                      الاختبار المتخصص
+                      <ClipboardCheck size={14} />
+                    </Link>
+                  </div>
+                ) : (
+                  <Link
+                    href={`/programs/${program.slug}`}
+                    className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-teal-800"
+                  >
+                    فتح المسار
+                    <ArrowLeft size={16} />
+                  </Link>
+                )}
               </article>
             ))}
           </section>

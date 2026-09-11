@@ -1392,7 +1392,7 @@ export default function StudentDashboard() {
             const files = uploadedFiles.filter(f => f.subjectId === subject.slug);
             const subjectIcons: Record<string, string> = {
               'lughati': '📖', 'math': '🔢', 'islamic': '🌙', 'science': '🔬',
-              'english': '🔤', 'life-skills': '🌱', 'art': '🎨',
+              'english': '🔤', 'life-skills': '🌱', 'art': '🎨', 'quran': '🕌',
             };
             return (
               <SubjectCard key={subject.slug} subject={{
@@ -1845,9 +1845,13 @@ function SubjectCard({ subject, studentId }: { subject: { slug?: string; name: s
           {subject.slug && (
             <Link
               href={bookHref}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black shadow-xs transition active:scale-95 cursor-pointer text-white ${
+                subject.slug === 'quran'
+                  ? 'bg-gradient-to-r from-emerald-700 to-amber-600 hover:from-emerald-800 hover:to-amber-700'
+                  : 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700'
+              }`}
             >
-              <span>فتح الكتاب التفاعلي ✍️</span>
+              <span>{subject.slug === 'quran' ? 'فتح المصحف الشريف 📖' : 'فتح الكتاب التفاعلي ✍️'}</span>
             </Link>
           )}
           <button
@@ -1864,16 +1868,28 @@ function SubjectCard({ subject, studentId }: { subject: { slug?: string; name: s
         <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/50">
           {/* Direct Interactive Link Alert */}
           {subject.slug && (
-            <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-2">
+            <div className={`p-3 border rounded-xl flex items-center justify-between gap-2 ${
+              subject.slug === 'quran'
+                ? 'bg-emerald-50 border-emerald-200'
+                : 'bg-teal-50 border-teal-200'
+            }`}>
               <div className="text-right">
-                <p className="text-xs font-black text-teal-900">الكتاب المدرسي التفاعلي بالقلم والحل الرقمي</p>
-                <p className="text-[10px] text-teal-700 font-bold">يمكنك الكتابة والتلوين وحل الواجبات مباشرة داخل صفحات هذا المنهج.</p>
+                <p className={`text-xs font-black ${subject.slug === 'quran' ? 'text-emerald-900' : 'text-teal-900'}`}>
+                  {subject.slug === 'quran' ? 'المصحف الشريف — جزء عمّ كاملاً' : 'الكتاب المدرسي التفاعلي بالقلم والحل الرقمي'}
+                </p>
+                <p className={`text-[10px] font-bold ${subject.slug === 'quran' ? 'text-emerald-700' : 'text-teal-700'}`}>
+                  {subject.slug === 'quran'
+                    ? 'عرض وتصفح تفاعلي للقراءة والتلاوة والحفظ (للعرض والقراءة فقط دون إمكانية الكتابة).'
+                    : 'يمكنك الكتابة والتلوين وحل الواجبات مباشرة داخل صفحات هذا المنهج.'}
+                </p>
               </div>
               <Link
                 href={bookHref}
-                className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shrink-0 transition"
+                className={`text-white text-xs font-black px-3 py-1.5 rounded-lg shrink-0 transition ${
+                  subject.slug === 'quran' ? 'bg-emerald-800 hover:bg-emerald-900' : 'bg-teal-700 hover:bg-teal-800'
+                }`}
               >
-                دخول الكتاب 📖
+                {subject.slug === 'quran' ? 'تصفح المصحف 🕌' : 'دخول الكتاب 📖'}
               </Link>
             </div>
           )}

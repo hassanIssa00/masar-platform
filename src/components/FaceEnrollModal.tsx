@@ -47,6 +47,9 @@ export default function FaceEnrollModal({
           userRole,
           userEmail,
           schoolBranch,
+          // 📸 Save the frontal face photo captured during enrollment
+          photoUrl: _snapshot,
+          snapshot: _snapshot,
         },
         embeddings, // pass all 5 pose embeddings
       );

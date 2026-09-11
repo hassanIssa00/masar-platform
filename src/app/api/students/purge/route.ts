@@ -11,6 +11,7 @@ const STUDENT_SCOPED_COLLECTIONS = [
   'surveys',
   'messages',
   'faceRecords',
+  'faceRecordsV2',
   'notifications',
   'attendance',
   'assessment_results',

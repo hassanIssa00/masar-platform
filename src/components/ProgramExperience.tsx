@@ -23,14 +23,14 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
   useEffect(() => {
     let cancelled = false;
     const loadProgramAccess = async () => {
-    const session = getSession() ?? await hydrateSessionFromServer();
-    if (cancelled) return;
-    // Block unauthenticated access
-    if (!session) {
-      router.replace('/kids');
-      return;
-    }
-    queueMicrotask(() => setAuthorized(true));
+      const session = getSession() ?? await hydrateSessionFromServer();
+      if (cancelled) return;
+      // Block unauthenticated access
+      if (!session) {
+        router.replace('/kids');
+        return;
+      }
+      queueMicrotask(() => setAuthorized(true));
     };
     void loadProgramAccess();
     return () => {
@@ -63,9 +63,13 @@ export default function ProgramExperience({ program }: ProgramExperienceProps) {
                 <h1 className="max-w-3xl text-3xl font-black leading-tight text-slate-950 md:text-5xl">{program.title}</h1>
                 <p className="mt-4 max-w-3xl text-base font-bold leading-8 text-slate-600">{program.promise}</p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-95" style={{ backgroundColor: program.color }}>
+                  <Link
+                    href={program.slug === 'deaf-mute' ? '/assessment?level=deaf-mute' : '/student/new'}
+                    className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-95"
+                    style={{ backgroundColor: program.color }}
+                  >
                     <ClipboardCheck size={17} />
-                    تقييم الطالب
+                    {program.slug === 'deaf-mute' ? 'بدء اختبار الصم والبكم المتخصص' : 'تقييم الطالب'}
                   </Link>
                   <Link href="/student/new" className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-6 py-3 text-sm font-black text-slate-900 hover:bg-slate-50">
                     <Route size={17} />

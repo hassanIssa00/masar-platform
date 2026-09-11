@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import CloudSyncProvider from '@/components/CloudSyncProvider';
 import FaceAuthPreloader from '@/components/FaceAuthPreloader';
 import JsonLdSchema from '@/components/JsonLdSchema';
+import PullToRefresh from '@/components/PullToRefresh';
 import { Cairo } from 'next/font/google';
 
 export const metadata: Metadata = {
@@ -124,7 +125,7 @@ export default function RootLayout({
       </head>
       <body className={cairo.className}>
         <FaceAuthPreloader />
-        <CloudSyncProvider>{children}</CloudSyncProvider>
+        <CloudSyncProvider><PullToRefresh>{children}</PullToRefresh></CloudSyncProvider>
       </body>
     </html>
   );

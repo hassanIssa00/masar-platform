@@ -131,12 +131,21 @@ export default function FaceRecordsArchiveTab({ data, onDownload, onRefresh }: P
         {pageData.map((f: any, i) => {
           const embCount = getEmbeddingCount(f);
           const fId = String(f.userId || f.accountId || f.id || i);
+          const facePhoto = f.photoUrl || f.snapshot || f.faceRecord?.photoUrl || f.faceRecord?.snapshot;
+          const isArchived = Boolean(f.deletedAt || f.archivedAt || f._isArchived);
           return (
-            <div key={fId} className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-xs relative">
+            <div key={fId} className={`rounded-2xl border p-4 shadow-xs relative ${isArchived ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white' : 'border-indigo-100 bg-gradient-to-br from-indigo-50 to-white'}`}>
               <div className="flex items-start gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-500 shadow-sm shrink-0">
-                  <ScanFace className="h-5 w-5 text-white" />
-                </div>
+                {/* Face Photo or Icon */}
+                {facePhoto ? (
+                  <div className="shrink-0 h-14 w-14 rounded-xl overflow-hidden border-2 border-indigo-200 shadow-sm">
+                    <img src={facePhoto} alt={f.userName || 'صورة الوجه'} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-500 shadow-sm shrink-0">
+                    <ScanFace className="h-5 w-5 text-white" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-black text-slate-800 text-sm truncate">{f.userName || 'مجهول'}</p>
                   {f.userEmail && <p className="text-[11px] text-slate-500 truncate">{f.userEmail}</p>}
@@ -149,16 +158,28 @@ export default function FaceRecordsArchiveTab({ data, onDownload, onRefresh }: P
                     {f.schoolBranch && (
                       <span className="text-[10px] font-bold bg-sky-50 border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-md">{f.schoolBranch}</span>
                     )}
+                    {/* Active / Archived status badge */}
+                    {isArchived ? (
+                      <span className="text-[10px] font-black bg-rose-100 border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded-md">
+                        🔴 حساب محذوف (بصمة مؤرشفة وغير نشطة)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded-md">
+                        🟢 بصمة نشطة
+                      </span>
+                    )}
                   </div>
                 </div>
-                <button
-                  onClick={() => setDeleteConfirm(f)}
-                  title="حذف البصمة"
-                  disabled={deletingId === fId}
-                  className="rounded-lg bg-white/80 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 p-1.5 text-slate-400 hover:text-rose-600 transition cursor-pointer disabled:opacity-40"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {!isArchived && (
+                  <button
+                    onClick={() => setDeleteConfirm(f)}
+                    title="حذف البصمة"
+                    disabled={deletingId === fId}
+                    className="rounded-lg bg-white/80 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 p-1.5 text-slate-400 hover:text-rose-600 transition cursor-pointer disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Biometric count badge */}
@@ -171,6 +192,11 @@ export default function FaceRecordsArchiveTab({ data, onDownload, onRefresh }: P
                   <span className="text-[10px] text-slate-400">{String(f.enrolledAt).slice(0, 10)}</span>
                 )}
               </div>
+              {isArchived && f.deletedAt && (
+                <p className="text-[10px] text-rose-500 mt-1 font-bold">
+                  🗑️ تاريخ الحذف: {String(f.deletedAt).slice(0, 10)}
+                </p>
+              )}
 
               {/* Visual bar */}
               <div className="mt-2 h-1.5 rounded-full bg-indigo-100 overflow-hidden">

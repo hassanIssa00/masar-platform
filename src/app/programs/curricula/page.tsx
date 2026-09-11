@@ -148,10 +148,14 @@ export default function CurriculaHubPage() {
                   <div className="mt-5 flex items-center gap-2 pt-3 border-t border-slate-100">
                     <Link
                       href={`/programs/curricula/${curriculum.slug}`}
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-xs font-black text-white hover:bg-teal-800 transition shadow-xs"
+                      className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black text-white transition shadow-xs ${
+                        curriculum.slug === 'quran'
+                          ? 'bg-emerald-800 hover:bg-emerald-900'
+                          : 'bg-slate-950 hover:bg-teal-800'
+                      }`}
                     >
-                      <PenTool size={15} />
-                      فتح الكتاب التفاعلي
+                      {curriculum.slug === 'quran' ? <BookOpen size={15} /> : <PenTool size={15} />}
+                      {curriculum.slug === 'quran' ? 'تصفح المصحف الشريف 📖' : 'فتح الكتاب التفاعلي'}
                       <ArrowLeft size={14} />
                     </Link>
                   </div>
