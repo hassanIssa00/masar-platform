@@ -217,17 +217,19 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
       
       {/* 1. HEADER NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-xs">
+      <header
+        className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-xs"
+        style={{ animation: 'navbar-slide-down 400ms cubic-bezier(0.16,1,0.3,1) both' }}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-6 lg:px-8">
           <Link href="/" className="focus-ring rounded-lg shrink-0">
             <BrandMark size="sm" />
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Animated Nexus Entry Button in Header — sm and up */}
             <Link 
               href="https://nexus.masarplatform.org" 
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-3.5 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95 shrink-0"
+              className="shimmer hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-slate-950 via-cyan-950 to-teal-950 px-3.5 py-2 text-xs font-black text-white shadow-md transition-all duration-300 hover:scale-105 active:scale-95 shrink-0"
             >
               <Trophy size={14} className="text-amber-400 shrink-0" />
               <span>بوابة NEXUS للمدارس</span>
@@ -235,102 +237,152 @@ export default function Home() {
 
             <Link 
               href="/auth/login" 
-              className="focus-ring rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition active:scale-95 shadow-2xs shrink-0"
+              className="focus-ring rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2 text-xs font-black text-slate-700 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-800 transition-all active:scale-95 shadow-xs shrink-0"
             >
               دخول
             </Link>
-
           </div>
         </div>
       </header>
 
       <main>
         
-        {/* 2. HERO SECTION - CLEAN, CONCISE & HIGH IMPACT */}
+        {/* 2. HERO SECTION — ANIMATED */}
         <section className="relative isolate overflow-hidden bg-gradient-to-b from-teal-50/90 via-slate-50 to-white pt-8 pb-16 lg:pt-14 lg:pb-24">
           
-          {/* Background Glows */}
-          <div className="absolute top-10 right-10 -z-10 h-96 w-96 rounded-full bg-teal-200/40 blur-[140px] pointer-events-none" />
-          <div className="absolute bottom-10 left-10 -z-10 h-96 w-96 rounded-full bg-cyan-200/40 blur-[140px] pointer-events-none" />
+          {/* Animated Glow Orbs */}
+          <div
+            className="absolute top-10 right-10 -z-10 h-96 w-96 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%)',
+              filter: 'blur(60px)',
+              animation: 'pulse-glow 5s ease-in-out infinite alternate',
+            }}
+          />
+          <div
+            className="absolute bottom-10 left-10 -z-10 h-96 w-96 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, rgba(56,189,248,0.14) 0%, transparent 70%)',
+              filter: 'blur(60px)',
+              animation: 'pulse-glow 7s 2s ease-in-out infinite alternate',
+            }}
+          />
 
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-8 items-center lg:grid-cols-[1.1fr_0.9fr]">
               
-              {/* Left Column: Concise Headline & Direct Actions */}
+              {/* Left Column: Animated Headline */}
               <div className="space-y-5 text-right">
                 
-                {/* Header Pills */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-600 px-3.5 py-1 text-xs font-black text-white shadow-xs">
+                {/* Animated Pills */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 motion-fade-up" style={{ animationDelay: '0ms' }}>
+                  <div className="shimmer inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-600 px-3.5 py-1 text-xs font-black text-white shadow-md">
                     <Sparkles size={14} />
                     <span>تعليمي • علاجي • خطط فردية</span>
                   </div>
-
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-black text-teal-900 shadow-2xs">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-black text-teal-900 shadow-xs">
                     <CheckCircle2 size={14} className="text-teal-600" />
                     <span>إشراف د. إسماعيل عيسى</span>
                   </div>
                 </div>
 
-                {/* Headline */}
+                {/* Gradient Headline with staggered animation */}
                 <h1 className="text-3xl font-black leading-tight text-slate-900 sm:text-5xl md:text-5xl lg:text-6xl">
-                  <span className="block font-black text-slate-900 mb-1" style={{fontSize:'inherit'}}>مَسَار</span>
-                  اكتشف طفلك. طوّر قدراته.{' '}
-                  <span className="bg-gradient-to-l from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+                  <span
+                    className="block font-black mb-1 motion-fade-up"
+                    style={{
+                      fontSize: 'inherit',
+                      background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 40%, #0284c7 100%)',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      animationDelay: '80ms',
+                    }}
+                  >
+                    مَسَار
+                  </span>
+                  <span className="motion-fade-up block" style={{ animationDelay: '180ms' }}>
+                    اكتشف طفلك. طوّر قدراته.{' '}
+                  </span>
+                  <span
+                    className="motion-fade-up"
+                    style={{
+                      background: 'linear-gradient(135deg, #d97706, #f59e0b, #fbbf24)',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      display: 'inline-block',
+                      animationDelay: '280ms',
+                    }}
+                  >
                     غيّر مستقبله.
                   </span>
                 </h1>
 
-                <p className="max-w-2xl text-sm font-bold leading-relaxed text-slate-600 sm:text-base md:text-lg">
+                <p className="max-w-2xl text-sm font-bold leading-relaxed text-slate-600 sm:text-base md:text-lg motion-fade-up" style={{ animationDelay: '380ms' }}>
                   من كشف المهارات التشخيصي المبسط إلى بناء التفوق الأكاديمي: تأسيس القراءة والكتابة، التفكير الرياضي، النطق والتخاطب، والتركيز بخطة فردية مخصصة لطفلك.
                 </p>
 
-                {/* Hero Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-3">
+                {/* Shimmer CTA */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-3 motion-fade-up" style={{ animationDelay: '480ms' }}>
                   <Link 
                     href="/auth/login" 
-                    className="group focus-ring inline-flex items-center justify-center gap-3 rounded-2xl bg-teal-600 px-10 py-4.5 text-lg sm:text-xl font-black text-white shadow-xl shadow-teal-600/30 hover:bg-teal-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 w-full sm:w-auto"
+                    className="shimmer group focus-ring inline-flex items-center justify-center gap-3 rounded-2xl px-10 py-4 text-lg sm:text-xl font-black text-white shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 w-full sm:w-auto"
+                    style={{
+                      background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 50%, #0d9488 100%)',
+                      boxShadow: '0 8px 32px rgba(15,118,110,0.40), 0 2px 8px rgba(15,23,42,0.15)',
+                    }}
                   >
                     <span>تسجيل الدخول الآن</span>
-                    <MoveLeft size={24} className="transition-transform duration-300 group-hover:-translate-x-2" />
+                    <MoveLeft size={22} className="transition-transform duration-300 group-hover:-translate-x-2 shrink-0" />
                   </Link>
                 </div>
 
-                {/* Trust Metrics Bar */}
-                <div className="pt-4 border-t border-slate-200/80 grid grid-cols-3 gap-3 text-right">
-                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
-                    <p className="text-xl sm:text-2xl font-black text-slate-900">+5,000</p>
-                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">طالب تم تقييمهم</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
-                    <p className="text-xl sm:text-2xl font-black text-teal-600">98%</p>
-                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">نسبة التحسن</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/80 p-3 border border-slate-200/60 shadow-2xs">
-                    <p className="text-xl sm:text-2xl font-black text-cyan-600">7 صفوف</p>
-                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">اختبارات تشخيصية</p>
-                  </div>
+                {/* Animated Trust Metrics */}
+                <div className="pt-4 border-t border-slate-200/80 grid grid-cols-3 gap-3 text-right motion-fade-up" style={{ animationDelay: '560ms' }}>
+                  {[
+                    { value: '+5,000', label: 'طالب تم تقييمهم', color: 'text-slate-900' },
+                    { value: '98%', label: 'نسبة التحسن', color: 'text-teal-600' },
+                    { value: '7 صفوف', label: 'اختبارات تشخيصية', color: 'text-sky-600' },
+                  ].map((stat, i) => (
+                    <div
+                      key={stat.label}
+                      className="hover-lift rounded-2xl bg-white/90 p-3 border border-slate-200/60 shadow-xs cursor-default"
+                    >
+                      <p className={`text-xl sm:text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                      <p className="text-[11px] font-bold text-slate-500 mt-0.5">{stat.label}</p>
+                    </div>
+                  ))}
                 </div>
 
               </div>
 
-              {/* Right Column: Full Uncropped Realistic Photograph Showing Child & Specialist Interaction */}
-              <div className="relative">
-                <div className="relative rounded-3xl border border-slate-200/90 bg-white p-3 shadow-2xl overflow-hidden group hover:shadow-teal-500/10 transition-shadow duration-500">
-                  
-                  {/* Full Display Image (Uncropped) */}
+              {/* Right Column: Image with entrance + hover effects */}
+              <div className="relative motion-slide-right" style={{ animationDelay: '300ms' }}>
+                <div
+                  className="relative rounded-3xl border border-slate-200/90 bg-white p-3 overflow-hidden group"
+                  style={{ boxShadow: '0 24px 80px rgba(15,23,42,0.12), 0 4px 16px rgba(15,23,42,0.06)' }}
+                >
                   <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100">
                     <Image 
                       src="/dr-ismail-student.jpg" 
                       alt="د. إسماعيل عيسى مع طالبه في جلسة تعليم علاجي تفاعلية" 
                       fill 
                       priority
-                      className="object-cover object-center group-hover:scale-102 transition duration-700" 
+                      className="object-cover object-center transition duration-700 group-hover:scale-[1.03]" 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
-                    {/* Floating Overlay Badge with Animated Arrow */}
-                    <div className="absolute bottom-4 right-4 left-4 rounded-2xl bg-white/95 backdrop-blur-md p-4 border border-slate-200/80 shadow-xl flex items-center justify-between">
+                    {/* Floating Overlay Badge */}
+                    <div
+                      className="absolute bottom-4 right-4 left-4 rounded-2xl p-4 border border-white/80 flex items-center justify-between"
+                      style={{
+                        background: 'rgba(255,255,255,0.95)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        boxShadow: '0 8px 32px rgba(15,23,42,0.2)',
+                      }}
+                    >
                       <div className="flex items-center gap-3">
                         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-100 text-teal-800 font-bold">
                           <Activity size={20} />
@@ -343,15 +395,17 @@ export default function Home() {
 
                       <Link 
                         href="/auth/login"
-                        className="group/btn rounded-xl bg-teal-600 px-4 py-2 text-xs font-black text-white hover:bg-teal-700 transition shrink-0 flex items-center gap-1.5"
+                        className="shimmer group/btn rounded-xl px-4 py-2 text-xs font-black text-white hover:scale-105 active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
+                        style={{
+                          background: 'linear-gradient(135deg, #0f766e, #14b8a6)',
+                          boxShadow: '0 4px 12px rgba(15,118,110,0.3)',
+                        }}
                       >
                         <span>تسجيل الدخول الآن</span>
-                        <ArrowLeft size={14} className="transition-transform duration-300 group-hover/btn:-translate-x-1" />
+                        <ArrowLeft size={13} className="transition-transform duration-300 group-hover/btn:-translate-x-1" />
                       </Link>
                     </div>
-
                   </div>
-
                 </div>
               </div>
 
@@ -359,13 +413,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3. NEW INTERACTIVE DEMO WIDGET SECTION (تجربة تفاعلية حية لأسئلة التقييم) */}
-        <section className="py-16 border-t border-slate-200 bg-white relative">
-          <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-8">
+        {/* 3. INTERACTIVE DEMO SECTION */}
+        <section className="py-16 border-t border-slate-200 bg-white relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(20,184,166,0.04) 0%, transparent 60%)' }} />
+          <div className="relative mx-auto max-w-5xl px-5 lg:px-8 space-y-8">
             
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-black px-4 py-1.5 shadow-2xs">
-                <MousePointerClick size={16} className="text-cyan-700 animate-bounce" />
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 rounded-full bg-cyan-100 border border-cyan-200 text-cyan-900 text-xs font-black px-4 py-1.5 shadow-xs">
+                <MousePointerClick size={16} className="text-cyan-700" />
                 <span>تجربة تفاعلية حية</span>
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">جرب عينة من أسئلة التقييم التفاعلية</h2>
@@ -375,7 +430,7 @@ export default function Home() {
             </div>
 
             {/* Interactive Demo Quiz Box */}
-            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-6 sm:p-8 shadow-xl space-y-6 max-w-3xl mx-auto">
+            <div className="motion-scale-in rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 space-y-6 max-w-3xl mx-auto" style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.10), 0 4px 16px rgba(15,23,42,0.06)', animationDelay: '150ms' }}>
               
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-2">
@@ -454,15 +509,15 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. DYNAMIC NEXUS ENTRY BRIDGE WITH ANIMATED ARROWS (LIGHT THEME AS REQUESTED) */}
+        {/* 4. NEXUS ENTRY BRIDGE SECTION */}
         <section className="py-20 border-t border-slate-200 bg-gradient-to-b from-slate-50 via-teal-50/50 to-white relative overflow-hidden">
           
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
             {/* Section Header */}
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-100 px-4 py-1.5 text-xs font-black text-teal-900 shadow-2xs">
-                <Trophy size={16} className="text-teal-700 animate-bounce" />
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-100 px-4 py-1.5 text-xs font-black text-teal-900 shadow-xs">
+                <Trophy size={16} className="text-teal-700" />
                 <span>المنظومة المزدوجة المتكاملة</span>
               </span>
               <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-tight">
@@ -473,19 +528,18 @@ export default function Home() {
               </p>
             </div>
 
-            {/* ANIMATED ARROWS BRIDGE CONNECTOR INDICATOR */}
-            <div className="relative py-2 text-center">
+            {/* ANIMATED ARROWS BRIDGE CONNECTOR */}
+            <div className="relative py-2 text-center motion-scale-in" style={{ animationDelay: '200ms' }}>
               <div className="inline-flex items-center justify-center gap-3 rounded-full border border-teal-200 bg-white px-6 py-2.5 shadow-md">
                 <span className="text-xs font-black text-teal-800 flex items-center gap-1">
                   <UserCheck size={16} className="text-teal-600" />
                   <span>منصة مسار (الأسر)</span>
                 </span>
 
-                {/* Animated Arrow Flow Beam */}
                 <div className="flex items-center gap-1 text-cyan-600 px-2">
                   <span className="h-2 w-2 rounded-full bg-cyan-500 animate-ping" />
                   <MoveLeft size={20} className="animate-pulse text-cyan-600" />
-                  <MoveLeft size={20} className="animate-pulse text-teal-600 delay-100" />
+                  <MoveLeft size={20} className="animate-pulse text-teal-600" style={{ animationDelay: '150ms' }} />
                   <span className="h-2 w-2 rounded-full bg-teal-500 animate-ping" />
                 </div>
 
@@ -496,11 +550,11 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Split System Cards (Light Theme) */}
+            {/* Split System Cards */}
             <div className="grid lg:grid-cols-2 gap-8 items-stretch">
               
-              {/* Masar Card (Light Theme) */}
-              <div className="rounded-3xl border border-teal-200 bg-white p-6 sm:p-8 space-y-6 shadow-xl relative flex flex-col justify-between hover:border-teal-400 transition-all duration-300">
+              {/* Masar Card */}
+              <div className="hover-lift rounded-3xl border border-teal-200/80 bg-white p-6 sm:p-8 space-y-6 relative flex flex-col justify-between motion-fade-up" style={{ animationDelay: '150ms', boxShadow: '0 8px 32px rgba(15,118,110,0.08)' }}>
                 <div className="space-y-5">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <div className="flex items-center gap-3">
@@ -632,11 +686,11 @@ export default function Home() {
         </section>
 
         {/* 5. VISUAL LEARNING LABS SHOWCASE */}
-        <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
+        <section className="py-20 border-t border-slate-200 bg-slate-50 relative overflow-hidden">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-xs">
                 <span>بيئة التأهيل البصري والحسي</span>
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">
@@ -648,19 +702,30 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {labs.map((lab) => (
+              {labs.map((lab, labIdx) => (
                 <div 
                   key={lab.title} 
-                  className="group rounded-3xl border border-slate-200 overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-2 transition duration-300 flex flex-col bg-white"
+                  className="group rounded-3xl border border-slate-200/80 overflow-hidden flex flex-col bg-white motion-fade-up"
+                  style={{
+                    animationDelay: `${labIdx * 120}ms`,
+                    boxShadow: '0 4px 20px rgba(15,23,42,0.08)',
+                    transition: 'transform 300ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 300ms ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-8px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 20px 60px rgba(15,23,42,0.14)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(15,23,42,0.08)'; }}
                 >
                   <div className="relative h-60 w-full overflow-hidden bg-slate-100">
                     <Image 
                       src={lab.image} 
                       alt={lab.title} 
                       fill 
-                      className="object-cover group-hover:scale-105 transition duration-500" 
+                      className="object-cover group-hover:scale-105 transition duration-600" 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
+                    {/* Shimmer overlay on hover */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.12), transparent 50%)' }}
+                    />
                   </div>
                   <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
                     <div>
@@ -669,7 +734,7 @@ export default function Home() {
                     </div>
                     <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
                       {lab.tags.map((tag) => (
-                        <span key={tag} className="px-2.5 py-1 rounded-lg bg-teal-100/70 border border-teal-200 text-teal-900 text-[11px] font-black">
+                        <span key={tag} className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-black">
                           {tag}
                         </span>
                       ))}
@@ -683,11 +748,11 @@ export default function Home() {
         </section>
 
         {/* 6. SEVEN PLACEMENT LEVELS INTERACTIVE EXPLORER */}
-        <section className="py-20 border-t border-slate-200 bg-white relative">
+        <section className="py-20 border-t border-slate-200 bg-white relative overflow-hidden">
           <div className="mx-auto max-w-7xl px-5 lg:px-8 space-y-12">
             
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black shadow-2xs">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black shadow-xs">
                 <span>اختبارات تحديد المستوى الـ 7</span>
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">
@@ -699,16 +764,20 @@ export default function Home() {
             </div>
 
             {/* Level Selector Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-none justify-start lg:justify-center">
+            <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-none justify-start lg:justify-center motion-fade-up" style={{ animationDelay: '150ms' }}>
               {placementLevels.map((lvl) => (
                 <button
                   key={lvl.id}
                   onClick={() => setSelectedLevel(lvl)}
-                  className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition cursor-pointer ${
+                  className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all duration-200 cursor-pointer ${
                     selectedLevel.id === lvl.id
-                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25 scale-105'
-                      : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+                      ? 'text-white scale-105'
+                      : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-800'
                   }`}
+                  style={selectedLevel.id === lvl.id ? {
+                    background: 'linear-gradient(135deg, #0f766e, #14b8a6)',
+                    boxShadow: '0 6px 20px rgba(15,118,110,0.35)',
+                  } : {}}
                 >
                   {lvl.title}
                 </button>
@@ -789,18 +858,18 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 7. PARENT TESTIMONIAL STORIES CAROUSEL */}
-        <section className="py-20 border-t border-slate-200 bg-slate-50 relative">
+        {/* 7. PARENT TESTIMONIAL STORIES */}
+        <section className="py-20 border-t border-slate-200 bg-slate-50 relative overflow-hidden">
           <div className="mx-auto max-w-5xl px-5 lg:px-8 space-y-10">
             
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-xs">
                 <span>تجارب وقصص نجاح</span>
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">قصص تحول واقعية للأطفال والطلاب</h2>
             </div>
 
-            {/* Testimonials Switcher */}
+            {/* Testimonials Grid */}
             <div className="grid md:grid-cols-3 gap-4">
               {parentStories.map((story, idx) => {
                 const isActive = activeStoryIdx === idx;
@@ -808,11 +877,17 @@ export default function Home() {
                   <div
                     key={story.name}
                     onClick={() => setActiveStoryIdx(idx)}
-                    className={`rounded-3xl border p-6 transition cursor-pointer flex flex-col justify-between space-y-4 ${
-                      isActive 
-                        ? 'border-teal-500 bg-white shadow-xl ring-2 ring-teal-500/20 scale-102' 
-                        : 'border-slate-200 bg-white/70 hover:bg-white'
-                    }`}
+                    className="rounded-3xl border p-6 cursor-pointer flex flex-col justify-between space-y-4 motion-fade-up"
+                    style={{
+                      animationDelay: `${idx * 100}ms`,
+                      transition: 'all 280ms cubic-bezier(0.34,1.56,0.64,1)',
+                      transform: isActive ? 'scale(1.03)' : 'scale(1)',
+                      background: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                      borderColor: isActive ? '#14b8a6' : '#e2e8f0',
+                      boxShadow: isActive
+                        ? '0 12px 40px rgba(20,184,166,0.20), 0 0 0 2px rgba(20,184,166,0.15)'
+                        : '0 2px 8px rgba(15,23,42,0.06)',
+                    }}
                   >
                     <div className="space-y-3 text-right">
                       <div className="flex items-center justify-between">
@@ -829,7 +904,7 @@ export default function Home() {
                       <h4 className="font-black text-slate-900 text-sm">{story.name}</h4>
                       
                       <div className="space-y-2 text-xs font-bold leading-relaxed">
-                        <p className="text-slate-500 line-through">قبل: {story.before}</p>
+                        <p className="text-slate-400 line-through">قبل: {story.before}</p>
                         <p className="text-teal-900 font-black">بعد: {story.after}</p>
                       </div>
                     </div>
@@ -842,37 +917,47 @@ export default function Home() {
         </section>
 
         {/* 8. FAQS ACCORDION SECTION */}
-        <section className="py-20 border-t border-slate-200 bg-white relative">
+        <section className="py-20 border-t border-slate-200 bg-white relative overflow-hidden">
           <div className="mx-auto max-w-4xl px-5 lg:px-8 space-y-10">
             
-            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-2xs">
+            <div className="flex flex-col items-center justify-center text-center gap-3.5 max-w-3xl mx-auto motion-fade-up">
+              <span className="shimmer inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black shadow-xs">
                 <span>إجابات واستفسارات</span>
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-snug">الأسئلة الشائعة حول المنصة</h2>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 motion-fade-up" style={{ animationDelay: '150ms' }}>
               {faqs.map((faq, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden transition shadow-2xs"
+                  className="rounded-2xl overflow-hidden border transition-all duration-200"
+                  style={{
+                    borderColor: activeFaq === idx ? '#14b8a6' : '#e2e8f0',
+                    background: activeFaq === idx ? 'rgba(20,184,166,0.03)' : '#f8fafc',
+                    boxShadow: activeFaq === idx ? '0 4px 16px rgba(20,184,166,0.12)' : '0 1px 4px rgba(15,23,42,0.04)',
+                  }}
                 >
                   <button
                     onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                    className="w-full p-5 text-right font-black text-base text-slate-900 flex items-center justify-between gap-4 cursor-pointer"
+                    className="w-full p-5 text-right font-black text-sm text-slate-900 flex items-center justify-between gap-4 cursor-pointer hover:text-teal-800 transition-colors duration-150"
                   >
                     <span>{faq.q}</span>
                     <ChevronDown 
                       size={18} 
-                      className={`text-teal-600 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180' : ''}`} 
+                      className={`shrink-0 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180 text-teal-600' : 'text-slate-400'}`} 
                     />
                   </button>
-                  {activeFaq === idx && (
-                    <div className="p-5 pt-0 text-xs sm:text-sm font-bold text-slate-600 leading-relaxed border-t border-slate-200/60">
-                      {faq.a}
+                  <div
+                    className="grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                    style={{ gridTemplateRows: activeFaq === idx ? '1fr' : '0fr', opacity: activeFaq === idx ? 1 : 0 }}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="px-5 pb-5 text-xs sm:text-sm font-bold text-slate-600 leading-relaxed border-t border-slate-200/60">
+                        {faq.a}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -881,25 +966,36 @@ export default function Home() {
         </section>
 
         {/* 9. FINAL CTA SECTION */}
-        <section className="py-20 border-t border-slate-200 bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white relative overflow-hidden">
-          <div className="mx-auto max-w-5xl px-5 text-center space-y-6">
-            <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-              جاهز للبدء في تقييم وتأسيس طفلك؟
-            </h2>
-            <p className="text-teal-100 font-bold text-sm sm:text-lg max-w-2xl mx-auto">
-              سجل الآن وابدأ اختبار تحديد المستوى للحصول على تقرير تشخيصي فوري وخطة علاجية مخصصة.
-            </p>
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <section className="py-24 border-t border-slate-200 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0c4a44 0%, #0f766e 40%, #0284c7 100%)' }}>
+          {/* Animated orbs */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-0 right-0 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animation: 'pulse-glow 5s ease-in-out infinite alternate' }} />
+            <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%)', filter: 'blur(80px)', animation: 'pulse-glow 7s 2s ease-in-out infinite alternate' }} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+          </div>
+
+          <div className="relative mx-auto max-w-5xl px-5 text-center space-y-6">
+            <div className="motion-fade-up">
+              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>
+                جاهز للبدء في تقييم وتأسيس طفلك؟
+              </h2>
+              <p className="mt-4 text-teal-100/90 font-bold text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
+                سجل الآن وابدأ اختبار تحديد المستوى للحصول على تقرير تشخيصي فوري وخطة علاجية مخصصة.
+              </p>
+            </div>
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4 motion-fade-up" style={{ animationDelay: '200ms' }}>
               <Link 
                 href="/auth/login" 
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white hover:bg-slate-100 text-teal-950 font-black text-base shadow-xl transition active:scale-95 flex items-center justify-center gap-2"
+                className="shimmer group w-full sm:w-auto px-8 py-4 rounded-2xl font-black text-base shadow-xl active:scale-95 flex items-center justify-center gap-2 hover:scale-105 transition-all duration-300"
+                style={{ background: '#ffffff', color: '#0c4a44', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
               >
                 <span>تسجيل الدخول الآن</span>
-                <ArrowLeft size={18} />
+                <ArrowLeft size={18} className="transition-transform duration-300 group-hover:-translate-x-1" />
               </Link>
               <Link 
                 href="/auth/login" 
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/30 bg-white/10 hover:bg-white/20 text-white font-black text-base backdrop-blur transition active:scale-95"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl border font-black text-base text-white backdrop-blur transition-all duration-300 active:scale-95 hover:bg-white/20"
+                style={{ borderColor: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)' }}
               >
                 تسجيل الدخول للحساب الحالي
               </Link>
