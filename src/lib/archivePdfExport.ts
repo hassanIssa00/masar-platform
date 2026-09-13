@@ -13,73 +13,182 @@ const MASAR_LIGHT = '#f0fdf4';
 const PAGE_BREAK_EVERY = 40; // سطور
 
 // ─── الترويسة المشتركة ─────────────────────────────────────────────────────
-function headerHtml(title: string, subtitle = '') {
+function headerHtml(title: string, subtitle = '', categoryTag = 'الأرشيف الرقمي المعتمد') {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const now = new Date().toLocaleDateString('ar-SA', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
+  const chars = '0123456789ABCDEF';
+  let serialCode = 'MASAR-';
+  for (let i = 0; i < 6; i++) serialCode += chars[Math.floor(Math.random() * chars.length)];
+
   return `
-    <div class="hdr">
-      <div class="hdr-logo">مَسَار</div>
-      <div class="hdr-center">
-        <div class="hdr-title">${title}</div>
-        ${subtitle ? `<div class="hdr-sub">${subtitle}</div>` : ''}
-        <div class="hdr-date">${now}</div>
+    <div class="doc-top-header">
+      <div class="doc-brand-group">
+        <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" />
+        <div class="doc-brand-text">
+          <span class="doc-brand-title">مَسَار</span>
+          <span class="doc-brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
+        </div>
       </div>
-      <div class="hdr-stamp">الأرشيف الرسمي<br/>د. إسماعيل عيسى</div>
+      <div class="doc-serial-group">
+        <div class="doc-report-type">${categoryTag}</div>
+        <div class="doc-serial-number">${serialCode}</div>
+      </div>
+    </div>
+    <div class="doc-header-divider"></div>
+
+    <div class="report-meta-bar">
+      <div>
+        <div class="report-title-text">${title}</div>
+        ${subtitle ? `<div class="report-subtitle-text">${subtitle}</div>` : ''}
+      </div>
+      <div class="report-date-badge">${now}</div>
+    </div>`;
+}
+
+function footerHtml() {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const nowNumeric = new Date().toISOString().slice(0, 10);
+  return `
+    <div class="bottom-container">
+      <div class="signatures-wrapper">
+        <div class="stamp-column">
+          <svg xmlns="http://www.w3.org/2000/svg" width="105" height="105" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" stroke-width="2.5"/>
+            <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" stroke-width="1.2"/>
+            <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرسمي</text>
+            <text x="80" y="49" text-anchor="middle" font-family="Cairo,Arial" font-size="10" font-weight="900" fill="#06392c">د. إسماعيل عيسى</text>
+            <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" stroke-width="0.8"/>
+            <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply"/>
+            <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
+            <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${nowNumeric}</text>
+            <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+          </svg>
+          <div class="stamp-under-label">الختم الرقمي</div>
+        </div>
+        <div class="sig-card-box">
+          <div class="sig-card-title">التوقيع والاعتماد</div>
+          <div class="sig-card-img-wrap">
+            <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" />
+          </div>
+          <div class="sig-card-divider"></div>
+          <div class="sig-card-name">د. إسماعيل عيسى</div>
+          <div class="sig-card-date">${nowNumeric}</div>
+        </div>
+      </div>
+      <div class="footer-bottom-line">
+        <div class="copy-text">منصة مسار للتأهيل والتعليم الذكي - جميع الحقوق محفوظة</div>
+        <div class="page-num">صفحة 1 من 1</div>
+      </div>
     </div>`;
 }
 
 // ─── الأنماط المشتركة ─────────────────────────────────────────────────────
 const BASE_CSS = `
-  @page { size: A4 landscape; margin: 12mm 10mm; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #fff; color: #1e293b; font-size: 10px; margin: 0; padding: 0; }
-  .no-print { padding: 10px 16px; background: ${MASAR_GREEN}; text-align: center; }
-  .no-print button { background: #f59e0b; color: #0f172a; font-weight: 900; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; }
-  .page-wrap { padding: 6mm 8mm; }
-  .hdr { display: flex; align-items: center; justify-content: space-between; background: ${MASAR_GREEN}; color: #fff; padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
-  .hdr-logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; min-width: 60px; }
-  .hdr-center { text-align: center; flex: 1; }
-  .hdr-title { font-size: 14px; font-weight: 900; }
-  .hdr-sub { font-size: 10px; opacity: .8; margin-top: 2px; }
-  .hdr-date { font-size: 9px; opacity: .7; margin-top: 2px; }
-  .hdr-stamp { font-size: 9px; text-align: left; opacity: .85; min-width: 90px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+  @page { size: A4 landscape; margin: 6mm 6mm 6mm 6mm; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #e2e8f0; color: #1e293b; font-size: 10px; margin: 0; padding: 0; }
+  .no-print { padding: 10px 16px; background: ${MASAR_GREEN}; text-align: center; display: flex; justify-content: center; gap: 10px; }
+  .no-print button { background: #d6a83f; color: #06392c; font-weight: 900; border: none; padding: 8px 22px; border-radius: 999px; cursor: pointer; font-size: 13px; }
+  .page-wrap { padding: 14px 0; max-width: 297mm; margin: 0 auto; }
+  .report-frame {
+    position: relative;
+    border: 2.2px solid #06392c;
+    border-radius: 14px;
+    padding: 18px 22px 14px 22px;
+    background: #ffffff;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.12);
+  }
+  .report-frame::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px solid #d6a83f;
+    border-radius: 10px;
+    pointer-events: none;
+  }
+  .doc-top-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
+  .doc-brand-group { display: flex; align-items: center; gap: 12px; }
+  .doc-logo-img { width: 44px; height: 44px; object-fit: contain; }
+  .doc-brand-text { display: flex; align-items: baseline; gap: 8px; }
+  .doc-brand-title { font-size: 26px; font-weight: 900; color: #06392c; }
+  .doc-brand-sub { font-size: 11px; font-weight: 800; color: #1e293b; }
+  .doc-serial-group { text-align: left; display: flex; flex-direction: column; align-items: flex-start; }
+  .doc-report-type { font-size: 11.5px; font-weight: 900; color: #047857; }
+  .doc-serial-number { font-size: 13px; font-weight: 900; font-family: 'Courier New', monospace; letter-spacing: 1.5px; color: #0f172a; direction: ltr; }
+  .doc-header-divider { border-bottom: 2px solid #06392c; margin: 4px 0 10px 0; }
+  .report-meta-bar { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; margin-bottom: 10px; }
+  .report-title-text { font-size: 13px; font-weight: 900; color: #06392c; }
+  .report-subtitle-text { font-size: 9.5px; font-weight: 700; color: #64748b; }
+  .report-date-badge { font-size: 9px; font-weight: 800; color: #047857; background: #ecfdf5; padding: 2px 8px; border-radius: 6px; border: 1px solid #a7f3d0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9px; }
   thead { background: ${MASAR_GREEN}; color: #fff; }
-  th { padding: 5px 6px; font-size: 9px; font-weight: 900; text-align: right; white-space: nowrap; }
-  td { padding: 4px 6px; font-size: 9px; border-bottom: 1px solid #e2e8f0; }
+  th { padding: 5px 6px; font-size: 9px; font-weight: 900; text-align: right; white-space: nowrap; border: 1px solid #06392c; }
+  td { padding: 4px 6px; font-size: 9px; border: 1px solid #e2e8f0; }
   tr:nth-child(even) td { background: ${MASAR_LIGHT}; }
-  .badge { display: inline-block; padding: 2px 6px; border-radius: 6px; font-weight: 900; font-size: 8px; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 5px; font-weight: 900; font-size: 8px; }
   .badge-green { background: #d1fae5; color: #065f46; }
   .badge-amber { background: #fef3c7; color: #92400e; }
   .badge-red { background: #fee2e2; color: #991b1b; }
   .badge-sky { background: #e0f2fe; color: #0369a1; }
   .badge-violet { background: #ede9fe; color: #6d28d9; }
-  .footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 4px; }
-  .section-title { font-size: 12px; font-weight: 900; color: ${MASAR_GREEN}; border-bottom: 2px solid ${MASAR_GREEN}; padding-bottom: 4px; margin: 10px 0 6px; }
-  .count-bar { display: flex; gap: 12px; margin-bottom: 8px; }
-  .count-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 10px; font-weight: 900; font-size: 9px; color: #475569; }
+  .section-title { font-size: 11px; font-weight: 900; color: ${MASAR_GREEN}; border-bottom: 1.5px solid ${MASAR_GREEN}; padding-bottom: 3px; margin: 8px 0 5px; }
+  .count-bar { display: flex; gap: 8px; margin-bottom: 8px; }
+  .count-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 3px 8px; font-weight: 900; font-size: 8.5px; color: #475569; }
   .page-break { page-break-after: always; }
+  .bottom-container { margin-top: auto; padding-top: 10px; }
+  .signatures-wrapper { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 8px; }
+  .sig-card-box { border: 1.8px solid #06392c; border-radius: 12px; padding: 6px 14px; width: 190px; text-align: center; background: #ffffff; }
+  .sig-card-title { font-size: 10.5px; font-weight: 900; color: #06392c; margin-bottom: 2px; }
+  .sig-card-img-wrap { height: 38px; display: flex; align-items: center; justify-content: center; }
+  .sig-card-img-wrap img { max-height: 36px; max-width: 140px; object-fit: contain; mix-blend-mode: multiply; }
+  .sig-card-divider { border-bottom: 1.5px solid #06392c; margin: 2px 0 4px 0; }
+  .sig-card-name { font-size: 12px; font-weight: 900; color: #06392c; }
+  .sig-card-date { font-size: 9px; font-weight: 800; color: #475569; font-family: 'Courier New', monospace; }
+  .stamp-column { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 120px; }
+  .stamp-under-label { font-size: 10px; font-weight: 900; color: #06392c; margin-top: 3px; }
+  .footer-bottom-line { border-top: 1.5px solid #06392c; padding-top: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; font-weight: 800; color: #475569; }
+  @media print {
+    body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+    .no-print { display: none !important; }
+    .page-wrap { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+    .report-frame { box-shadow: none !important; border: 2mm solid #06392c !important; page-break-after: auto; }
+    .report-frame::after { border: 1px solid #d6a83f !important; }
+  }
 `;
 
 // ─── فتح نافذة PDF ─────────────────────────────────────────────────────────
 function openPdfWindow(title: string, bodyHtml: string, autoPrint = false) {
   const win = window.open('', '_blank');
   if (!win) { alert('يرجى السماح بالنوافذ المنبثقة لتصدير PDF'); return; }
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   win.document.write(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <base href="${origin}/" />
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${title} — مسار</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>${BASE_CSS}</style>
 </head>
 <body>
   <div class="no-print">
     <button onclick="window.print()">🖨️ طباعة / حفظ PDF الآن</button>
-    <button onclick="window.close()" style="background:#94a3b8;margin-right:8px;">إغلاق</button>
+    <button onclick="window.close()" style="background:#475569;margin-right:8px;">إغلاق</button>
   </div>
-  <div class="page-wrap">${bodyHtml}</div>
+  <div class="page-wrap">
+    <div class="report-frame">
+      ${bodyHtml}
+      ${footerHtml()}
+    </div>
+  </div>
   <script>
     ${autoPrint ? `window.addEventListener('load',()=>setTimeout(()=>window.print(),400));` : ''}
   </script>

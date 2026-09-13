@@ -53,15 +53,44 @@ function formatTime(d: Date = new Date()): string {
   }
 }
 
+function getTodayIsoDate(): string {
+  try {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch {
+    return '2026-09-13';
+  }
+}
+
+function generateReportSerial(categoryTag = ''): string {
+  const chars = '0123456789ABCDEF';
+  let res = '';
+  for (let i = 0; i < 6; i++) {
+    res += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `MASAR-${res}`;
+}
+
 const COMMON_PRINT_CSS = `
-  @page { size: A4 portrait; margin: 12mm 10mm; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+  @page {
+    size: A4 portrait;
+    margin: 6mm 6mm 6mm 6mm;
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
   body {
-    font-family: 'Segoe UI', Tahoma, 'Cairo', Arial, sans-serif;
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
     direction: rtl;
-    background: #ffffff;
+    background: #e2e8f0;
     color: #0f172a;
-    font-size: 10.5px;
+    font-size: 10px;
     line-height: 1.5;
     margin: 0;
     padding: 0;
@@ -73,79 +102,181 @@ const COMMON_PRINT_CSS = `
     position: sticky;
     top: 0;
     z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    display: flex;
+    justify-content: center;
+    gap: 12px;
   }
   .no-print button {
-    background: #f59e0b;
-    color: #0f172a;
+    background: #d6a83f;
+    color: #06392c;
     font-weight: 900;
     border: none;
     padding: 9px 24px;
-    border-radius: 10px;
+    border-radius: 999px;
     cursor: pointer;
     font-size: 13px;
     transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
-  .no-print button:hover { background: #d97706; color: #fff; }
-  .no-print button.close-btn {
-    background: #475569;
+  .no-print button:hover {
+    background: #b58d2e;
     color: #fff;
-    margin-right: 10px;
+  }
+  .no-print button.close-btn {
+    background: #334155;
+    color: #fff;
   }
   .report-wrap {
-    padding: 8mm 10mm;
+    padding: 16px 0;
     max-width: 210mm;
     margin: 0 auto;
   }
-  .official-header {
-    border: 2px solid ${MASAR_DARK_GREEN};
+  /* الإطار الخارجي والداخلي الفخم المحيط بالتقرير */
+  .report-frame {
+    position: relative;
+    border: 2.2px solid #06392c;
     border-radius: 14px;
-    padding: 12px 16px;
-    background: linear-gradient(135deg, #06392c 0%, #0f766e 100%);
-    color: #ffffff;
+    padding: 22px 24px 16px 24px;
+    background: #ffffff;
+    box-sizing: border-box;
+    min-height: calc(297mm - 16mm);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 12px 36px rgba(15,23,42,0.12);
+  }
+  .report-frame::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px solid #d6a83f;
+    border-radius: 10px;
+    pointer-events: none;
+  }
+  .report-frame > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 1. الترويسة العلوية مع الشعار والسيريال */
+  .doc-top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 6px;
+  }
+  .doc-brand-group {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
+    gap: 12px;
   }
-  .brand-block { text-align: right; }
-  .brand-logo { font-size: 24px; font-weight: 900; letter-spacing: 1px; color: #fde047; }
-  .brand-tagline { font-size: 9px; opacity: 0.9; margin-top: 2px; }
-  .title-block { text-align: center; flex: 1; padding: 0 10px; }
-  .report-main-title { font-size: 16px; font-weight: 900; margin: 0; }
-  .report-sub-title { font-size: 10px; opacity: 0.85; margin-top: 3px; }
-  .report-date { font-size: 8.5px; opacity: 0.8; margin-top: 3px; }
-  .stamp-block {
+  .doc-logo-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+  .doc-brand-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .doc-brand-title {
+    font-size: 28px;
+    font-weight: 900;
+    color: #06392c;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+  .doc-brand-sub {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #1e293b;
+    white-space: nowrap;
+  }
+
+  .doc-serial-group {
     text-align: left;
-    border-right: 1px solid rgba(255,255,255,0.25);
-    padding-right: 12px;
-    font-size: 9px;
-    line-height: 1.4;
-    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
+  .doc-report-type {
+    font-size: 12px;
+    font-weight: 900;
+    color: #047857;
+    margin-bottom: 2px;
+  }
+  .doc-serial-number {
+    font-size: 13.5px;
+    font-weight: 900;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1.5px;
+    color: #0f172a;
+    direction: ltr;
+  }
+
+  .doc-header-divider {
+    border-bottom: 2px solid #06392c;
+    margin: 4px 0 12px 0;
+  }
+
+  /* تفاصيل عنوان التقرير الداخلي */
+  .report-meta-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+  }
+  .report-title-text {
+    font-size: 14px;
+    font-weight: 900;
+    color: #06392c;
+  }
+  .report-subtitle-text {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #64748b;
+  }
+  .report-date-badge {
+    font-size: 9px;
+    font-weight: 800;
+    color: #047857;
+    background: #ecfdf5;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #a7f3d0;
+  }
+
+  /* بطاقات الإحصائيات */
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
   .stat-card {
     border: 1px solid #e2e8f0;
-    background: ${MASAR_BG_LIGHT};
-    border-radius: 10px;
-    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 6px 10px;
     text-align: center;
   }
-  .stat-val { font-size: 18px; font-weight: 900; color: ${MASAR_TEAL}; margin-top: 2px; }
-  .stat-lbl { font-size: 9px; font-weight: 900; color: #64748b; }
+  .stat-val { font-size: 16px; font-weight: 900; color: #0f766e; margin-top: 1px; }
+  .stat-lbl { font-size: 8.5px; font-weight: 900; color: #64748b; }
+
+  /* العناوين والجداول */
   .section-hdr {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
-    color: ${MASAR_DARK_GREEN};
-    border-bottom: 2px solid ${MASAR_TEAL};
-    padding-bottom: 4px;
-    margin: 14px 0 8px;
+    color: #06392c;
+    border-bottom: 1.5px solid #0f766e;
+    padding-bottom: 3px;
+    margin: 10px 0 6px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -153,63 +284,137 @@ const COMMON_PRINT_CSS = `
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 10px;
-    font-size: 9.5px;
+    margin-bottom: 8px;
+    font-size: 9px;
   }
-  thead { background: ${MASAR_DARK_GREEN}; color: #ffffff; }
+  thead { background: #06392c; color: #ffffff; }
   th {
-    padding: 7px 8px;
+    padding: 6px 7px;
     font-weight: 900;
     text-align: right;
     border: 1px solid #06392c;
   }
   td {
-    padding: 6px 8px;
+    padding: 5px 7px;
     border: 1px solid #e2e8f0;
   }
   tr:nth-child(even) td { background: #f8fafc; }
   .badge {
     display: inline-block;
-    padding: 2px 7px;
-    border-radius: 6px;
+    padding: 2px 6px;
+    border-radius: 5px;
     font-weight: 900;
-    font-size: 8.5px;
+    font-size: 8px;
   }
   .badge-teal { background: #ccfbf1; color: #0f766e; }
   .badge-amber { background: #fef3c7; color: #92400e; }
   .badge-sky { background: #e0f2fe; color: #0369a1; }
   .badge-green { background: #dcfce7; color: #15803d; }
   .badge-rose { background: #ffe4e6; color: #be123c; }
-  .signature-bar {
-    margin-top: 20px;
-    border-top: 2px dashed #cbd5e1;
-    padding-top: 12px;
+
+  /* الجزء السفلي والتوقيع والختم - مطابق لمعايير المنصة */
+  .bottom-container {
+    margin-top: auto;
+    padding-top: 14px;
+  }
+  .signatures-wrapper {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    padding-bottom: 10px;
   }
-  .signature-box {
-    text-align: center;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
+
+  /* بطاقة التوقيع والاعتماد - يسار */
+  .sig-card-box {
+    border: 1.8px solid #06392c;
+    border-radius: 12px;
     padding: 8px 16px;
-    background: #fff;
-    min-width: 170px;
-  }
-  .signature-title { font-size: 9px; font-weight: 900; color: #64748b; }
-  .signature-name { font-size: 12px; font-weight: 900; color: ${MASAR_DARK_GREEN}; margin-top: 3px; }
-  .signature-stamp { font-size: 8.5px; color: ${MASAR_GOLD}; margin-top: 2px; font-weight: 800; }
-  .page-footer {
+    width: 210px;
     text-align: center;
-    font-size: 8px;
-    color: #94a3b8;
-    margin-top: 14px;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 6px;
+    background: #ffffff;
   }
+  .sig-card-title {
+    font-size: 11px;
+    font-weight: 900;
+    color: #06392c;
+    margin-bottom: 4px;
+  }
+  .sig-card-img-wrap {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sig-card-img-wrap img {
+    max-height: 40px;
+    max-width: 150px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+  }
+  .sig-card-divider {
+    border-bottom: 1.5px solid #06392c;
+    margin: 3px 0 5px 0;
+  }
+  .sig-card-name {
+    font-size: 13px;
+    font-weight: 900;
+    color: #06392c;
+  }
+  .sig-card-date {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #475569;
+    font-family: 'Courier New', monospace;
+    margin-top: 1px;
+  }
+
+  /* الختم الرقمي الدائري - يمين */
+  .stamp-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 130px;
+  }
+  .stamp-under-label {
+    font-size: 11px;
+    font-weight: 900;
+    color: #06392c;
+    margin-top: 4px;
+  }
+
+  /* شريط الفوتر النهائي مع رقم الصفحة والحقوق */
+  .footer-bottom-line {
+    border-top: 1.5px solid #06392c;
+    padding-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #475569;
+  }
+  .footer-bottom-line .copy-text {
+    color: #334155;
+  }
+  .footer-bottom-line .page-num {
+    font-family: 'Cairo', Arial, sans-serif;
+  }
+
   @media print {
+    body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     .no-print { display: none !important; }
-    body { background: #fff !important; }
+    .report-wrap { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+    .report-frame {
+      box-shadow: none !important;
+      border: 2.2px solid #06392c !important;
+      min-height: calc(297mm - 14mm) !important;
+      padding: 16px 20px 14px 20px !important;
+      page-break-after: auto;
+    }
+    .report-frame::after {
+      border: 1px solid #d6a83f !important;
+    }
   }
 `;
 
@@ -218,58 +423,99 @@ function renderOfficialTemplate(
   subtitle: string,
   statsHtml: string,
   contentHtml: string,
-  categoryTag = 'منظومة مسار الرسمية'
+  categoryTag = 'تقرير تقييم وتأهيل رقمي'
 ): string {
   const currentDate = formatDate();
   const currentTime = formatTime();
+  const numericDate = getTodayIsoDate();
+  const serialCode = generateReportSerial(categoryTag);
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const reportTypeBadge = categoryTag || 'تقرير تقييم وتأهيل رقمي';
 
   return `
-    <div class="official-header">
-      <div class="brand-block">
-        <div class="brand-logo">مَسَار</div>
-        <div class="brand-tagline">منصة التأهيل الذكي والتعلم التفاعلي</div>
+    <div class="report-frame">
+      <!-- 1. الترويسة العلوية مع الشعار والسيريال -->
+      <div class="doc-top-header">
+        <div class="doc-brand-group">
+          <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" />
+          <div class="doc-brand-text">
+            <span class="doc-brand-title">مَسَار</span>
+            <span class="doc-brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
+          </div>
+        </div>
+        <div class="doc-serial-group">
+          <div class="doc-report-type">${reportTypeBadge}</div>
+          <div class="doc-serial-number">${serialCode}</div>
+        </div>
       </div>
-      <div class="title-block">
-        <h1 class="report-main-title">${title}</h1>
-        <div class="report-sub-title">${subtitle}</div>
-        <div class="report-date">${currentDate} — ${currentTime} | ${categoryTag}</div>
-      </div>
-      <div class="stamp-block">
-        <strong>التقرير الرسمي المعتمد</strong><br/>
-        د. إسماعيل عيسى<br/>
-        <span style="color:#fde047;">مستند رسمي موثق</span>
-      </div>
-    </div>
+      <div class="doc-header-divider"></div>
 
-    ${statsHtml ? `<div class="stats-grid">${statsHtml}</div>` : ''}
-
-    ${contentHtml}
-
-    <div class="signature-bar">
-      <div class="signature-box">
-        <div class="signature-title">الاعتماد والختم الإداري</div>
-        <div class="signature-name">د. إسماعيل عيسى</div>
-        <div class="signature-stamp">استشاري التأهيل النمائي والتعليم الحديث</div>
+      <!-- 2. بطاقة موضوع التقرير والتاريخ -->
+      <div class="report-meta-bar">
+        <div>
+          <div class="report-title-text">${title}</div>
+          <div class="report-subtitle-text">${subtitle}</div>
+        </div>
+        <div class="report-date-badge">${currentDate} — ${currentTime}</div>
       </div>
-      <div style="font-size: 8.5px; color: #64748b; text-align: center; line-height: 1.6;">
-        هذا التقرير صادر إلكترونياً من منصة مسار الرسمية (masarplatform.org)<br/>
-        موثق بنظام التشفير السحابي والتدقيق الإكلينيكي المعتمد.
-      </div>
-      <div class="signature-box">
-        <div class="signature-title">رمز التحقق الرقمي</div>
-        <div class="signature-name" style="font-family: monospace; font-size: 11px;">MSR-${Date.now().toString(36).toUpperCase()}</div>
-        <div class="signature-stamp" style="color: #15803d;">✓ تم التحقق والمصادقة</div>
-      </div>
-    </div>
 
-    <div class="page-footer">
-      منصة مسار © ${new Date().getFullYear()} — جميع الحقوق محفوظة | فرع د. إسماعيل عيسى — جدة / المملكة العربية السعودية
+      <!-- 3. مؤشرات الأداء والإحصائيات -->
+      ${statsHtml ? `<div class="stats-grid">${statsHtml}</div>` : ''}
+
+      <!-- 4. محتوى وجداول التقرير التفصيلية -->
+      <div class="report-content-body">
+        ${contentHtml}
+      </div>
+
+      <!-- 5. قسم التوقيع والاعتماد والختم الرقمي والفوتر -->
+      <div class="bottom-container">
+        <div class="signatures-wrapper">
+          <!-- الختم الرقمي الدائري - يمين في RTL -->
+          <div class="stamp-column">
+            <svg xmlns="http://www.w3.org/2000/svg" width="106" height="106" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="76" fill="none" stroke="#06392c" stroke-width="2.5"/>
+              <circle cx="80" cy="80" r="68" fill="white" stroke="#06392c" stroke-width="1.2"/>
+              <text x="80" y="34" text-anchor="middle" font-family="Cairo,Arial" font-size="6.5" font-weight="bold" fill="#06392c">الختم الرسمي</text>
+              <text x="80" y="49" text-anchor="middle" font-family="Cairo,Arial" font-size="10" font-weight="900" fill="#06392c">د. إسماعيل عيسى</text>
+              <line x1="22" y1="60" x2="138" y2="60" stroke="#06392c" stroke-width="0.8"/>
+              <defs>
+                <clipPath id="sig-clip-${serialCode}">
+                  <rect x="22" y="60" width="116" height="38"/>
+                </clipPath>
+              </defs>
+              <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-${serialCode})" style="mix-blend-mode:multiply"/>
+              <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
+              <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${numericDate}</text>
+              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+            </svg>
+            <div class="stamp-under-label">الختم الرقمي</div>
+          </div>
+
+          <!-- بطاقة التوقيع والاعتماد - يسار في RTL -->
+          <div class="sig-card-box">
+            <div class="sig-card-title">التوقيع والاعتماد</div>
+            <div class="sig-card-img-wrap">
+              <img src="${origin}/dr-ismail-signature.png" alt="توقيع د. إسماعيل عيسى" />
+            </div>
+            <div class="sig-card-divider"></div>
+            <div class="sig-card-name">د. إسماعيل عيسى</div>
+            <div class="sig-card-date">${numericDate}</div>
+          </div>
+        </div>
+
+        <!-- شريط الفوتر النهائي -->
+        <div class="footer-bottom-line">
+          <div class="copy-text">منصة مسار للتأهيل والتعليم الذكي - جميع الحقوق محفوظة</div>
+          <div class="page-num">صفحة 1 من 1</div>
+        </div>
+      </div>
     </div>
   `;
 }
 
 function openPdfWindow(title: string, fullBodyHtml: string) {
   if (typeof window === 'undefined') return;
+  const origin = window.location.origin;
   const win = window.open('', '_blank', 'width=1100,height=850');
   if (!win) {
     alert('يرجى السماح بالنوافذ المنبثقة (Pop-ups) في المتصفح لتصدير وحفظ تقرير الـ PDF');
@@ -278,9 +524,11 @@ function openPdfWindow(title: string, fullBodyHtml: string) {
   win.document.write(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <base href="${origin}/" />
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${title} — منصة مسار</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>${COMMON_PRINT_CSS}</style>
 </head>
 <body>
