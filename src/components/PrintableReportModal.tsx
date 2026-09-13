@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Printer, X, Award, FileCheck } from 'lucide-react';
+import { Printer, X, Award, FileCheck, Image as ImageIcon, Volume2 } from 'lucide-react';
 import { getStudents, type ReportRecord, type StudentRecord } from '@/lib/cloudStore';
+import { exportReportMediaPdf } from '@/lib/allPagesPdfReports';
 
 function getTodayHijri(): string {
   try {
@@ -32,6 +33,44 @@ export default function PrintableReportModal({
     () => student ?? getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName) ?? null,
     [report.studentId, report.studentName, student],
   );
+
+  const mediaItems = useMemo(() => {
+    const items: Array<{ id: string; type: 'audio' | 'image'; dataUrl: string; label: string; categoryLabel?: string }> = [];
+    if (report.media) {
+      Object.entries(report.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl)) {
+          items.push({ id: k, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (resolvedStudent?.media) {
+      Object.entries(resolvedStudent.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl) && !items.some((i) => i.dataUrl === v.dataUrl)) {
+          items.push({ id: `stu_${k}`, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (Array.isArray(report.answers)) {
+      report.answers.forEach((ans, idx) => {
+        if (!ans || !ans.answer) return;
+        const isAudio = ans.answer.includes('مرفق: تسجيل صوتي') || ans.answer.includes('تسجيل صوتي محفوظ');
+        const isImage = ans.answer.includes('مرفق: رسم') || ans.answer.includes('رسم محفوظ');
+        if (isAudio || isImage) {
+          const label = ans.question || `بند تقييم ${idx + 1}`;
+          if (!items.some((i) => i.label === label)) {
+            items.push({
+              id: `ans_${report.id}_${idx}`,
+              type: isAudio ? 'audio' : 'image',
+              dataUrl: '',
+              label,
+              categoryLabel: isAudio ? 'استجابة شفهية موثقة' : 'رسم وتوصيل موثق',
+            });
+          }
+        }
+      });
+    }
+    return items;
+  }, [report, resolvedStudent]);
 
   function handlePrint(autoPrint = false) {
     const reportScore = typeof report.score === 'number' ? report.score : 0;
@@ -189,7 +228,9 @@ export default function PrintableReportModal({
       return chunks.length > 0 ? chunks : [[]];
     };
     const answerChunks = chunkAnswers(printableAnswers, 14);
-    const totalPages = isAnswersReport ? answerChunks.length + 1 : 2;
+    const hasMedia = mediaItems.length > 0;
+    const mediaPageNum = hasMedia ? 3 : 0;
+    const totalPages = (isAnswersReport ? answerChunks.length + 1 : 2) + (hasMedia ? 1 : 0);
     const answersRows = answerChunks[0].map((ans, i) => answerRow(ans, i)).join('');
     const signatureBlockHtml = `
         <div class="verification-statement">
@@ -227,7 +268,7 @@ export default function PrintableReportModal({
         </div>`;
     const answerContinuationPages = isAnswersReport
       ? answerChunks.slice(1).map((chunk, pageIndex) => {
-          const pageNumber = pageIndex + 3;
+          const pageNumber = pageIndex + (hasMedia ? 4 : 3);
           const startNumber = answerChunks.slice(0, pageIndex + 1).reduce((sum, item) => sum + item.length, 0);
           const isLastAnswerPage = pageNumber === totalPages;
           return `
@@ -719,7 +760,7 @@ export default function PrintableReportModal({
           </div>
         </div>
         ` : ''}
-        ${(!isAnswersReport || answerChunks.length === 1) ? signatureBlockHtml : ''}
+        ${(!hasMedia && (!isAnswersReport || answerChunks.length === 1)) ? signatureBlockHtml : ''}
       </div>
 
       <div class="footer">
@@ -727,6 +768,81 @@ export default function PrintableReportModal({
         <span>صفحة 2 من ${totalPages}</span>
       </div>
     </section>
+
+    ${hasMedia ? `
+    <!-- PAGE 3: MEDIA ATTACHMENTS & VOICE RECORDINGS -->
+    <section class="print-page">
+      <div>
+        ${compactHeaderHtml('مرفقات الاختبار والرسومات والتسجيلات الصوتية')}
+
+        <div class="sec-head">3. مرفقات التقييم العملي والرسومات والتسجيلات المباشرة (${mediaItems.length} مرفق)</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:10px;font-weight:700;color:#475569;line-height:1.6;">
+          يوثق هذا القسم نتاج التفاعل المباشر للطالب أثناء جلسة التقييم، ويشمل الرسومات البيانية والتوصيل البصري، بالإضافة إلى التسجيلات الصوتية الموثقة في المنصة للتحليل اللغوي والنطقي.
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:12px;margin-bottom:12px;">
+          ${mediaItems.map((item, idx) => `
+            <div style="border:1.5px solid #06392c;border-radius:10px;padding:10px;background:#ffffff;page-break-inside:avoid;break-inside:avoid;">
+              <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:8.5px;font-weight:900;background:${item.type === 'audio' ? '#fef3c7' : '#e0f2fe'};color:${item.type === 'audio' ? '#b45309' : '#0369a1'};">
+                    ${item.type === 'audio' ? '🎤 تسجيل صوتي' : '🎨 رسم وتوصيل'}
+                  </span>
+                  <span style="font-size:10px;font-weight:900;color:#06392c;">مرفق رقم (${idx + 1})</span>
+                </div>
+                <span style="font-size:8.5px;font-weight:800;color:#64748b;">${item.categoryLabel || 'بند تقييم موثق'}</span>
+              </div>
+
+              <div style="font-size:9.5px;font-weight:800;color:#1e293b;margin-bottom:8px;min-height:22px;line-height:1.4;">
+                ${item.label}
+              </div>
+
+              ${item.type === 'image' && item.dataUrl ? `
+                <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;overflow:hidden;height:120px;display:flex;align-items:center;justify-content:center;">
+                  <img src="${item.dataUrl}" alt="${item.label}" style="max-height:100%;max-width:100%;object-fit:contain;" />
+                </div>
+              ` : item.type === 'image' ? `
+                <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px;">
+                  <div style="font-size:22px;margin-bottom:4px;">🎨</div>
+                  <div style="font-size:9.5px;font-weight:900;color:#06392c;">رسم الطالب التفاعلي محفوظ ومؤرشف</div>
+                  <div style="font-size:8px;font-weight:700;color:#64748b;margin-top:2px;">تم إنجاز الرسم والتوصيل التفاعلي بدقة وحفظه بالملف</div>
+                </div>
+              ` : `
+                <div style="background:#fffbeb;border:1px solid #fef3c7;border-radius:8px;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;">
+                  <div style="font-size:22px;margin-bottom:4px;">🎙️</div>
+                  <div style="font-size:9.5px;font-weight:900;color:#92400e;">استجابة صوتية مسجلة وموثقة</div>
+                  <div style="font-size:8px;font-weight:700;color:#b45309;margin-top:3px;line-height:1.4;">
+                    تم التقاط النطق ومخارج الحروف عبر المنصة والاحتفاظ بالملف الصوتي للمراجعة التأهيلية
+                  </div>
+                  <div style="margin-top:8px;width:80%;display:flex;align-items:center;gap:3px;justify-content:center;">
+                    <div style="height:10px;width:3px;background:#d97706;border-radius:2px;"></div>
+                    <div style="height:16px;width:3px;background:#d97706;border-radius:2px;"></div>
+                    <div style="height:22px;width:3px;background:#b45309;border-radius:2px;"></div>
+                    <div style="height:14px;width:3px;background:#d97706;border-radius:2px;"></div>
+                    <div style="height:26px;width:3px;background:#b45309;border-radius:2px;"></div>
+                    <div style="height:18px;width:3px;background:#d97706;border-radius:2px;"></div>
+                    <div style="height:8px;width:3px;background:#d97706;border-radius:2px;"></div>
+                  </div>
+                </div>
+              `}
+
+              <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-top:8px;display:flex;justify-content:space-between;font-size:8px;font-weight:800;color:#64748b;">
+                <span style="color:#047857;">✓ معتمد ومحفوظ بالمنصة</span>
+                <span style="font-family:monospace;">${report.date || hijriDate}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        ${(!isAnswersReport) ? signatureBlockHtml : ''}
+      </div>
+
+      <div class="footer">
+        <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
+        <span>صفحة ${mediaPageNum} من ${totalPages}</span>
+      </div>
+    </section>
+    ` : ''}
 
     ${answerContinuationPages}
   </div>
@@ -764,7 +880,14 @@ export default function PrintableReportModal({
 
         <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs space-y-2">
           <p className="font-bold text-slate-700">افتح نفس نسخة التقرير التي سيتم طباعتها، أو ادخل مباشرة إلى نافذة الطباعة وحفظ PDF.</p>
-          <p className="text-slate-500 font-mono">رقم التقرير: {fileNumber}</p>
+          <div className="flex items-center justify-between text-slate-500 font-mono text-[11px]">
+            <span>رقم التقرير: {fileNumber}</span>
+            {mediaItems.length > 0 && (
+              <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-sans text-[10px]">
+                يتضمن {mediaItems.length} مرفقات ورسومات وتسجيلات
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -782,6 +905,16 @@ export default function PrintableReportModal({
             <Printer size={16} />
             طباعة / حفظ PDF
           </button>
+          {mediaItems.length > 0 && (
+            <button
+              onClick={() => exportReportMediaPdf(report, resolvedStudent)}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 py-3 text-sm font-black text-amber-900 hover:bg-amber-100 transition shadow-sm"
+              title="تصدير تقرير مستقل يحتوي فقط على رسومات الطالب واستجاباته الصوتية"
+            >
+              <ImageIcon size={16} className="text-amber-700" />
+              مرفقات الاختبار
+            </button>
+          )}
           <button
             onClick={onClose}
             className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 hover:bg-slate-50"

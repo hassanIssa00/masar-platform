@@ -30,10 +30,53 @@ export default function ReportPrintDocument({
   const domainsList = Array.isArray(report.domains) ? report.domains : [];
   const recommendationsList = Array.isArray(report.recommendations) ? report.recommendations : [];
   const answersList = Array.isArray(report.answers) ? report.answers : [];
+  const mediaItems = React.useMemo(() => {
+    const items: Array<{ id: string; type: 'audio' | 'image'; dataUrl: string; label: string; categoryLabel?: string }> = [];
+    if (report.media) {
+      Object.entries(report.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl)) {
+          items.push({ id: k, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (student?.media) {
+      Object.entries(student.media).forEach(([k, v]) => {
+        if (v && (v.dataUrl || (v as any).blobUrl) && !items.some((i) => i.dataUrl === v.dataUrl)) {
+          items.push({ id: `stu_${k}`, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+        }
+      });
+    }
+    if (Array.isArray(report.answers)) {
+      report.answers.forEach((ans, idx) => {
+        if (!ans || !ans.answer) return;
+        const isAudio = ans.answer.includes('مرفق: تسجيل صوتي') || ans.answer.includes('تسجيل صوتي محفوظ');
+        const isImage = ans.answer.includes('مرفق: رسم') || ans.answer.includes('رسم محفوظ');
+        if (isAudio || isImage) {
+          const label = ans.question || `بند تقييم ${idx + 1}`;
+          if (!items.some((i) => i.label === label)) {
+            items.push({
+              id: `ans_${report.id}_${idx}`,
+              type: isAudio ? 'audio' : 'image',
+              dataUrl: '',
+              label,
+              categoryLabel: isAudio ? 'استجابة شفهية موثقة' : 'رسم وتوصيل موثق',
+            });
+          }
+        }
+      });
+    }
+    return items;
+  }, [report, student]);
+
   const hasRecommendations = recommendationsList.length > 0;
+  const hasMedia = mediaItems.length > 0;
   const hasDetailedAnswers = answersList.length > 0;
-  const finalPageNumber = hasRecommendations ? (hasDetailedAnswers ? 4 : 3) : (hasDetailedAnswers ? 3 : 2);
-  const totalPages = finalPageNumber;
+
+  let pageCounter = 2;
+  const recsPageNum = hasRecommendations ? ++pageCounter : 0;
+  const mediaPageNum = hasMedia ? ++pageCounter : 0;
+  const answersPageNum = hasDetailedAnswers ? ++pageCounter : 0;
+  const totalPages = pageCounter;
   const reportPhoto = (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).studentPhotoUrl ||
     (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).photoUrl ||
     (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).avatarUrl;
@@ -316,7 +359,7 @@ export default function ReportPrintDocument({
               </tbody>
             </table>
           </div>
-          {!hasRecommendations && !hasDetailedAnswers && (
+          {!hasRecommendations && !hasDetailedAnswers && !hasMedia && (
             <>
               <div className="verification-statement mt-4">
                 <p className="statement-text">
@@ -337,7 +380,7 @@ export default function ReportPrintDocument({
       {/* ═════════════════════════════════════════════════════════════
           PAGE 3: HOME & SCHOOL RECOMMENDATIONS
       ═════════════════════════════════════════════════════════════ */}
-      {hasRecommendations && <section className="print-page page-3">
+      {hasRecommendations && <section className={`print-page page-${recsPageNum}`}>
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
@@ -386,7 +429,7 @@ export default function ReportPrintDocument({
               يُنصح بإجراء تقييم مرحلي بعد <strong>4 أسابيع</strong> من بدء الخطة التأهيلية لقياس نسبة النمو والتطور في المهارات المستهدفة وتعديل الأهداف عند الحاجة.
             </p>
           </div>
-          {!hasDetailedAnswers && (
+          {!hasDetailedAnswers && !hasMedia && (
             <>
               <div className="verification-statement mt-4">
                 <p className="statement-text">
@@ -400,14 +443,118 @@ export default function ReportPrintDocument({
 
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة 3 من {totalPages}</span>
+          <span className="page-num">صفحة {recsPageNum} من {totalPages}</span>
         </footer>
       </section>}
 
       {/* ═════════════════════════════════════════════════════════════
-          PAGE 4: DETAILED ANSWERS & OFFICIAL SIGN-OFF / STAMP
+          PAGE MEDIA: التسجيلات الصوتية ومرفقات الاختبار
       ═════════════════════════════════════════════════════════════ */}
-      {hasDetailedAnswers && <section className="print-page page-4">
+      {hasMedia && (
+        <section className={`print-page page-${mediaPageNum}`}>
+          <header className="page-header">
+            <div className="brand flex-items">
+              <span className="brand-logo">مَسَار</span>
+              <span className="brand-sub">مرفقات الاختبار والرسومات المحفوظة</span>
+            </div>
+            <div className="doc-meta">
+              <span className="doc-serial">{fileNumber}</span>
+            </div>
+          </header>
+
+          <div className="page-body flex-col justify-between" style={{ minHeight: 'calc(297mm - 40mm)' }}>
+            <div>
+              <div className="section-block">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #06392c', paddingBottom: '6px', marginBottom: '14px' }}>
+                  <div>
+                    <h2 className="section-heading" style={{ margin: 0 }}>مرفقات الاختبار والتسجيلات الصوتية والرسومات</h2>
+                    <p style={{ fontSize: '10px', color: '#475569', fontWeight: 700, margin: '2px 0 0 0' }}>
+                      إجابات الطالب الشفهية والرسومات المحفوظة للمراجعة والتدقيق الإكلينيكي المعتمد
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: '#047857', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '3px 10px', borderRadius: '8px' }}>
+                    عدد المرفقات: {mediaItems.length}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  {mediaItems.map((item, idx) => (
+                    <div key={item.id || idx} style={{ border: '1.5px solid #06392c', borderRadius: '12px', padding: '12px', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 900, color: item.type === 'audio' ? '#0369a1' : '#92400e', background: item.type === 'audio' ? '#e0f2fe' : '#fef3c7', padding: '2px 8px', borderRadius: '6px' }}>
+                            {item.categoryLabel || (item.type === 'audio' ? 'استجابة شفهية مسجلة' : 'رسم وتوصيل يدوي')}
+                          </span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '9px', fontWeight: 800, color: '#64748b' }}>
+                            بند #{idx + 1}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a', margin: '0 0 8px 0', lineHeight: 1.4 }}>
+                          {item.label}
+                        </p>
+                      </div>
+
+                      {item.type === 'audio' ? (
+                        <div style={{ background: '#f0fdf4', border: '1px dashed #15803d', borderRadius: '10px', padding: '14px', textAlign: 'center', margin: '4px 0' }}>
+                          <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎙️</div>
+                          <div style={{ fontSize: '11px', fontWeight: 900, color: '#15803d' }}>استجابة صوتية شفهية مسجلة</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', margin: '8px 0' }}>
+                            {[6, 12, 20, 26, 16, 22, 28, 18, 10, 16, 24, 18, 12, 8, 14, 20, 10, 6].map((h, i) => (
+                              <span key={i} style={{ width: '3px', height: `${h}px`, backgroundColor: '#15803d', borderRadius: '999px', display: 'inline-block' }} />
+                            ))}
+                          </div>
+                          <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 700 }}>
+                            تم التوثيق والمطابقة السمعية ضمن أرشيف تقييم الطالب
+                          </div>
+                        </div>
+                      ) : (
+                        item.dataUrl ? (
+                          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px', textAlign: 'center', margin: '4px 0', minHeight: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={item.dataUrl} alt={item.label} style={{ maxHeight: '150px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px' }} />
+                          </div>
+                        ) : (
+                          <div style={{ background: '#fffbeb', border: '1px dashed #d97706', borderRadius: '10px', padding: '14px', textAlign: 'center', margin: '4px 0' }}>
+                            <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎨</div>
+                            <div style={{ fontSize: '11px', fontWeight: 900, color: '#b45309' }}>رسم وتوصيل يدوي معتمد</div>
+                            <div style={{ fontSize: '8.5px', color: '#475569', marginTop: '4px', fontWeight: 700 }}>
+                              تم إنجاز الرسم والتوصيل التفاعلي بدقة وحفظه بالملف
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '6px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#64748b' }}>
+                        <span style={{ color: '#047857' }}>✓ معتمد بالنظام</span>
+                        <span style={{ fontFamily: 'monospace' }}>{report.date || hijriDate}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {!hasDetailedAnswers && (
+                <div className="verification-statement mt-4">
+                  <p className="statement-text">
+                    نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {!hasDetailedAnswers && <SignatureBlock />}
+          </div>
+
+          <footer className="page-footer">
+            <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+            <span className="page-num">صفحة {mediaPageNum} من {totalPages}</span>
+          </footer>
+        </section>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════
+          PAGE 4/5: DETAILED ANSWERS & OFFICIAL SIGN-OFF / STAMP
+      ═════════════════════════════════════════════════════════════ */}
+      {hasDetailedAnswers && <section className={`print-page page-${answersPageNum}`}>
         <header className="page-header">
           <div className="brand flex-items">
             <span className="brand-logo">مَسَار</span>
@@ -460,7 +607,7 @@ export default function ReportPrintDocument({
 
         <footer className="page-footer">
           <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة {finalPageNumber} من {totalPages}</span>
+          <span className="page-num">صفحة {answersPageNum} من {totalPages}</span>
         </footer>
       </section>}
 

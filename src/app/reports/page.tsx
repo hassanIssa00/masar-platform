@@ -16,7 +16,7 @@ import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSy
 import { isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 import { getPlayableAudioUrl } from '@/app/assessment/page';
 import PageReportButton from '@/components/PageReportButton';
-import { TAB_PDF_EXPORTERS } from '@/lib/allPagesPdfReports';
+import { TAB_PDF_EXPORTERS, exportReportMediaPdf } from '@/lib/allPagesPdfReports';
 
 const REPORTS_SYNC_KEYS = ['students', 'reports', 'surveys'] as const;
 
@@ -325,6 +325,17 @@ function ReportsContent() {
                   <span>طباعة التقرير الرقمي / PDF</span>
                 </button>
 
+                {reportMediaItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => exportReportMediaPdf(selected, selectedStudent)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-50 border-2 border-blue-600 text-blue-900 hover:bg-blue-100 active:scale-[0.98] px-5 py-3.5 text-sm font-black transition-all shadow-sm hover:shadow-md cursor-pointer"
+                  >
+                    <Headphones size={18} className="text-blue-700" />
+                    <span>تقرير المرفقات والرسومات (PDF)</span>
+                  </button>
+                )}
+
                 {!parentMode && (
                   <button
                     type="button"
@@ -338,19 +349,27 @@ function ReportsContent() {
               </div>
             </div>
 
-            {/* Media Recordings & Attachments Banner (Only for Doctor/Parent on-screen review, hidden on Print) */}
+            {/* Media Recordings & Attachments Banner (Interactive on-screen review + Print action) */}
             {reportMediaItems.length > 0 && (
               <div className="no-print mb-6 rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-xs">
-                <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                   <div className="flex items-center gap-2.5">
                     <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-600 text-white shadow-xs">
                       <Headphones size={16} />
                     </span>
                     <div>
                       <h3 className="text-sm font-black text-blue-950">التسجيلات الصوتية ومرفقات الاختبار ({reportMediaItems.length})</h3>
-                      <p className="text-xs font-bold text-blue-800/80">إجابات الطالب الشفهية والرسومات المحفوظة للمراجعة</p>
+                      <p className="text-xs font-bold text-blue-800/80">إجابات الطالب الشفهية والرسومات المحفوظة للمراجعة والطباعة</p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => exportReportMediaPdf(selected, selectedStudent)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 text-xs font-black transition shadow-xs hover:shadow-md cursor-pointer"
+                  >
+                    <Printer size={15} />
+                    <span>طباعة تقرير المرفقات والرسومات (PDF)</span>
+                  </button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {reportMediaItems.map((item) => (

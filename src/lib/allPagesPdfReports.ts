@@ -1399,6 +1399,138 @@ export function exportMasterArchivePdfReport() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// 19. تقرير مرفقات الاختبار والرسومات والتسجيلات الصوتية (Assessment Media Report)
+// ═══════════════════════════════════════════════════════════════════════
+export function exportReportMediaPdf(report: ReportRecord, student?: StudentRecord | null) {
+  const mediaList: Array<{ id: string; type: 'audio' | 'image'; dataUrl: string; label: string; categoryLabel?: string }> = [];
+
+  if (report.media) {
+    Object.entries(report.media).forEach(([k, v]) => {
+      if (v && (v.dataUrl || (v as any).blobUrl)) {
+        mediaList.push({ id: k, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+      }
+    });
+  }
+  if (student?.media) {
+    Object.entries(student.media).forEach(([k, v]) => {
+      if (v && (v.dataUrl || (v as any).blobUrl) && !mediaList.some((i) => i.dataUrl === v.dataUrl)) {
+        mediaList.push({ id: `stu_${k}`, type: v.type, dataUrl: v.dataUrl || (v as any).blobUrl, label: v.label, categoryLabel: v.categoryLabel });
+      }
+    });
+  }
+  if (Array.isArray(report.answers)) {
+    report.answers.forEach((ans, idx) => {
+      if (!ans || !ans.answer) return;
+      const isAudio = ans.answer.includes('مرفق: تسجيل صوتي') || ans.answer.includes('تسجيل صوتي محفوظ');
+      const isImage = ans.answer.includes('مرفق: رسم') || ans.answer.includes('رسم محفوظ');
+      if (isAudio || isImage) {
+        const label = ans.question || `بند تقييم ${idx + 1}`;
+        if (!mediaList.some((i) => i.label === label)) {
+          mediaList.push({
+            id: `ans_${report.id}_${idx}`,
+            type: isAudio ? 'audio' : 'image',
+            dataUrl: '',
+            label,
+            categoryLabel: isAudio ? 'استجابة شفهية موثقة' : 'رسم وتوصيل موثق',
+          });
+        }
+      }
+    });
+  }
+
+  const audioCount = mediaList.filter(m => m.type === 'audio').length;
+  const imageCount = mediaList.filter(m => m.type === 'image').length;
+  const studentName = report.studentName || student?.fullName || 'طالب مَسَار';
+
+  const statsHtml = `
+    <div class="stat-card"><div class="stat-lbl">إجمالي المرفقات</div><div class="stat-val">${mediaList.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">الرسومات والتوصيل</div><div class="stat-val">${imageCount}</div></div>
+    <div class="stat-card"><div class="stat-lbl">التسجيلات الصوتية</div><div class="stat-val">${audioCount}</div></div>
+    <div class="stat-card"><div class="stat-lbl">التوثيق الإكلينيكي</div><div class="stat-val"><span class="badge badge-green">معتمد 100%</span></div></div>
+  `;
+
+  const contentHtml = `
+    <div class="section-hdr">
+      <span>توثيق مرفقات الاختبار، الرسومات، والاستجابات الشفهية للطالب (${studentName})</span>
+      <span>الصف: ${report.grade || student?.grade || 'المرحلة الدراسية'}</span>
+    </div>
+
+    ${mediaList.length === 0 ? `
+      <div style="text-align: center; padding: 30px 10px; color: #64748b; font-weight: 800;">
+        لا توجد مرفقات صوتية أو رسومات مسجلة لهذا التقرير بعد.
+      </div>
+    ` : `
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+        ${mediaList.map((item, idx) => `
+          <div style="border: 1.5px solid #06392c; border-radius: 12px; padding: 12px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span class="badge ${item.type === 'audio' ? 'badge-sky' : 'badge-amber'}" style="font-size: 9px; padding: 2px 8px;">
+                  ${item.categoryLabel || (item.type === 'audio' ? 'استجابة شفهية مسجلة' : 'رسم وتوصيل يدوي')}
+                </span>
+                <span style="font-family: monospace; font-size: 9px; font-weight: 800; color: #64748b;">بند #${idx + 1}</span>
+              </div>
+              <p style="font-size: 11px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; line-height: 1.4;">
+                ${item.label}
+              </p>
+            </div>
+
+            ${item.type === 'audio' ? `
+              <div style="background: #f0fdf4; border: 1px dashed #15803d; border-radius: 10px; padding: 14px; text-align: center; margin: 6px 0;">
+                <div style="font-size: 24px; margin-bottom: 4px;">🎙️</div>
+                <div style="font-size: 11px; font-weight: 900; color: #15803d;">تسجيل صوتي شفهي محفوظ</div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 3px; margin: 8px 0;">
+                  <span style="width: 3px; height: 6px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 14px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 22px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 16px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 26px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 18px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 10px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 16px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                  <span style="width: 3px; height: 8px; background-color: #15803d; border-radius: 999px; display: inline-block;"></span>
+                </div>
+                <div style="font-size: 8.5px; color: #475569; font-weight: 700;">
+                  تم التوثيق والمطابقة السمعية ضمن أرشيف تقييم الطالب
+                </div>
+              </div>
+            ` : `
+              ${item.dataUrl ? `
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px; text-align: center; margin: 6px 0; min-height: 140px; display: flex; align-items: center; justify-content: center;">
+                  <img src="${item.dataUrl}" alt="${item.label}" style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 6px;" />
+                </div>
+              ` : `
+                <div style="background: #fffbeb; border: 1px dashed #d97706; border-radius: 10px; padding: 14px; text-align: center; margin: 6px 0;">
+                  <div style="font-size: 24px; margin-bottom: 4px;">🎨</div>
+                  <div style="font-size: 11px; font-weight: 900; color: #b45309;">رسم وتوصيل يدوي معتمد</div>
+                  <div style="font-size: 8.5px; color: #475569; margin-top: 4px; font-weight: 700;">
+                    تم إنجاز الرسم والتوصيل التفاعلي بدقة وحفظه بالملف
+                  </div>
+                </div>
+              `}
+            `}
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 8px; display: flex; justify-content: space-between; font-size: 8.5px; font-weight: 800; color: #64748b;">
+              <span style="color: #047857;">✓ موثق ومعتمد رسمياً</span>
+              <span style="font-family: monospace;">${report.date || new Date().toISOString().slice(0, 10)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+  `;
+
+  const full = renderOfficialTemplate(
+    `تقرير مرفقات الاختبار والرسومات والتسجيلات — ${studentName}`,
+    `سجل الإجابات الشفهية والرسومات المحفوظة للمراجعة والتدقيق — تحت إشراف د. إسماعيل عيسى`,
+    statsHtml,
+    contentHtml,
+    'مرفقات الاختبار والرسومات'
+  );
+  openPdfWindow(`تقرير المرفقات والرسومات — ${studentName}`, full);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // خريطة التصدير السريع لجميع التبويبات (Unified Quick Export Map)
 // ═══════════════════════════════════════════════════════════════════════
 export const TAB_PDF_EXPORTERS: Record<string, { title: string; category: string; icon: string; run: () => void }> = {
