@@ -223,14 +223,7 @@ export default function PrintableReportModal({
         <td style="padding:7px 10px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">${ans.question}</td>
         <td style="padding:7px 10px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${ans.answer}</td>
       </tr>`;
-    const chunkAnswers = (items: typeof printableAnswers, size: number) => {
-      const chunks: typeof printableAnswers[] = [];
-      for (let index = 0; index < items.length; index += size) {
-        chunks.push(items.slice(index, index + size));
-      }
-      return chunks.length > 0 ? chunks : [[]];
-    };
-    const answerChunks = chunkAnswers(printableAnswers, 14);
+    const answerChunks = printableAnswers.length > 0 ? [printableAnswers] : [[]];
     const hasMedia = mediaItems.length > 0;
     const mediaPageNum = hasMedia ? 3 : 0;
     const totalPages = (isAnswersReport ? answerChunks.length + 1 : 2) + (hasMedia ? 1 : 0);
@@ -384,6 +377,9 @@ export default function PrintableReportModal({
         box-shadow: none !important;
         width: 210mm !important;
         min-height: 297mm !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         border: none !important;
         page-break-after: always !important;
         break-after: page !important;
@@ -549,9 +545,26 @@ export default function PrintableReportModal({
       font-size: 12px; font-weight: 900; color: #06392c;
       border-right: 4px solid #d97706; padding-right: 8px; margin-bottom: 8px;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 12px;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    tbody {
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     tr { page-break-inside: avoid; break-inside: avoid; }
-    table, .banner, .info-grid, .score-card, .sig-box, .stamp-box {
+    .print-page, .banner, .info-grid, .score-card {
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .sig-box, .stamp-box, .signature-row, .verification-statement {
       page-break-inside: avoid;
       break-inside: avoid;
     }

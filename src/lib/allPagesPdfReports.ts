@@ -148,7 +148,7 @@ const COMMON_PRINT_CSS = `
     box-shadow: 0 18px 45px rgba(15,23,42,0.18);
     page-break-after: always;
     break-after: page;
-    overflow: hidden;
+    overflow: visible;
   }
   .report-frame:last-child {
     page-break-after: auto;
@@ -183,6 +183,9 @@ const COMMON_PRINT_CSS = `
       box-shadow: none !important;
       width: 210mm !important;
       min-height: 297mm !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
       border: none !important;
       page-break-after: always !important;
       break-after: page !important;
@@ -325,8 +328,23 @@ const COMMON_PRINT_CSS = `
     border-collapse: collapse;
     margin-bottom: 8px;
     font-size: 9px;
+    break-inside: auto;
+    page-break-inside: auto;
   }
-  thead { background: #06392c; color: #ffffff; }
+  thead {
+    display: table-header-group;
+    background: #06392c;
+    color: #ffffff;
+  }
+  tbody {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  tfoot { display: table-footer-group; }
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   th {
     padding: 6px 7px;
     font-weight: 900;
@@ -355,6 +373,8 @@ const COMMON_PRINT_CSS = `
   .bottom-container {
     margin-top: auto;
     padding-top: 14px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .signatures-wrapper {
     display: flex;
@@ -448,6 +468,9 @@ const COMMON_PRINT_CSS = `
       box-shadow: none !important;
       border: 2.2px solid #06392c !important;
       min-height: calc(297mm - 14mm) !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
       padding: 16px 20px 14px 20px !important;
       page-break-after: auto;
     }
@@ -602,7 +625,7 @@ export function exportDashboardPdfReport(customStudents?: StudentRecord[], custo
   `;
 
   const contentHtml = `
-    <div class="section-hdr"><span>قائمة أحدث الطلاب ومستوياتهم</span><span>إجمالي: ${students.length} طالب</span></div>
+    <div class="section-hdr"><span>قائمة كل الطلاب ومستوياتهم</span><span>إجمالي: ${students.length} طالب</span></div>
     <table>
       <thead>
         <tr>
@@ -615,7 +638,7 @@ export function exportDashboardPdfReport(customStudents?: StudentRecord[], custo
         </tr>
       </thead>
       <tbody>
-        ${students.slice(0, 15).map((s, idx) => `
+        ${students.map((s, idx) => `
           <tr>
             <td>${idx + 1}</td>
             <td style="font-weight:900;">${s.fullName}</td>
@@ -628,7 +651,7 @@ export function exportDashboardPdfReport(customStudents?: StudentRecord[], custo
       </tbody>
     </table>
 
-    <div class="section-hdr"><span>ملخص أحدث التقارير التأهيلية والتشخيصية</span><span>مكتملة: ${reports.length}</span></div>
+    <div class="section-hdr"><span>ملخص كل التقارير التأهيلية والتشخيصية</span><span>مكتملة: ${reports.length}</span></div>
     <table>
       <thead>
         <tr>
@@ -641,7 +664,7 @@ export function exportDashboardPdfReport(customStudents?: StudentRecord[], custo
         </tr>
       </thead>
       <tbody>
-        ${reports.slice(0, 10).map((r, idx) => `
+        ${reports.map((r, idx) => `
           <tr>
             <td>${idx + 1}</td>
             <td style="font-weight:900;">${r.studentName || '—'}</td>

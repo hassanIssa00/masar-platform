@@ -866,12 +866,37 @@ button {
   }
 
   .print-break-inside-avoid,
-  .card,
   .sig-box,
   .stamp-container,
+  .stamp-box,
+  .signature-row,
+  .sign-stamp-wrapper {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-page,
+  .report-frame,
+  .page {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .card,
   .report-section,
   .print-report-section,
-  article,
+  article {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  table,
+  tbody {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
   tr {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -884,6 +909,7 @@ button {
   }
 
   thead { display: table-header-group !important; }
+  tfoot { display: table-footer-group !important; }
 
   img, svg {
     max-width: 100% !important;

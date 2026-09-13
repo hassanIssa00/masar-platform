@@ -333,7 +333,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     margin:0 auto 18px auto;
     padding:18mm 18mm 16mm;
     position:relative;
-    overflow:hidden;
+    overflow:visible;
     background:#fff;
     page-break-after:always;
     break-after:page;
@@ -361,9 +361,20 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
     html,body{margin:0!important;padding:0!important;background:#fff!important;}
-    .page{width:210mm!important;min-height:297mm!important;margin:0!important;box-shadow:none!important;}
-    .card{page-break-inside:avoid;break-inside:avoid;}
-    table{page-break-inside:avoid;break-inside:avoid;}
+    .page{
+      width:210mm!important;
+      min-height:297mm!important;
+      height:auto!important;
+      max-height:none!important;
+      overflow:visible!important;
+      margin:0!important;
+      box-shadow:none!important;
+    }
+    .card{page-break-inside:auto;break-inside:auto;}
+    table,tbody{page-break-inside:auto;break-inside:auto;}
+    thead{display:table-header-group;}
+    tfoot{display:table-footer-group;}
+    tr{page-break-inside:avoid;break-inside:avoid;}
   }
   .card{background:#fff;border:1px solid #dbe3df;border-radius:10px;padding:10px 13px;margin-bottom:10px;}
   .card-green{background:#f4fbf7;border-color:#bfd6ca;}

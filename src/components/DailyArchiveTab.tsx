@@ -501,7 +501,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -535,11 +535,15 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         .pill-red { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
         .pill-amber { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
         .pill-blue { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#06392c; color:#fff; }
         thead th { padding:10px 8px; font-weight:900; text-align:right; font-size:12px; }
         thead th:first-child, thead th:nth-child(3), thead th:nth-child(4), thead th:nth-child(5), thead th:nth-child(6), thead th:nth-child(7) { text-align:center; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .sig-block .name { font-size:15px; font-weight:900; color:#06392c; margin-top:8px; }
         .sig-block .title { font-size:11px; color:#64748b; font-weight:bold; }
@@ -644,7 +648,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -674,11 +678,15 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         .student-title p { margin:3px 0 0; font-size:12px; font-weight:bold; color:#64748b; }
         .stats-pills { display:flex; gap:8px; flex-wrap:wrap; }
         .pill { padding:4px 12px; border-radius:999px; font-size:12px; font-weight:900; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#0b4d3c; color:#fff; }
         thead th { padding:10px 8px; font-weight:900; text-align:right; font-size:12px; }
         thead th:first-child, thead th:nth-child(4), thead th:nth-child(5), thead th:nth-child(6), thead th:nth-child(7) { text-align:center; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .sig-block .name { font-size:15px; font-weight:900; color:#06392c; margin-top:8px; }
         .sig-block .title { font-size:11px; color:#64748b; }
@@ -766,7 +774,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -796,11 +804,15 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         .student-title p { margin:3px 0 0; font-size:12px; font-weight:bold; color:#64748b; }
         .stats-pills { display:flex; gap:8px; flex-wrap:wrap; }
         .pill { padding:4px 12px; border-radius:999px; font-size:12px; font-weight:900; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#1e40af; color:#fff; }
         thead th { padding:10px 8px; font-weight:900; text-align:right; font-size:12px; }
         thead th:first-child, thead th:nth-child(4), thead th:nth-child(5) { text-align:center; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .sig-block .name { font-size:15px; font-weight:900; color:#1e40af; margin-top:8px; }
         .sig-block .title { font-size:11px; color:#64748b; }
@@ -914,7 +926,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; font-size: 11px; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; font-size: 11px; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -935,10 +947,14 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         .header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:3px solid #06392c; background:linear-gradient(135deg,#06392c 0%,#0b4d3c 100%); border-radius:10px; color:#fff; }
         .doc-title { margin-top:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
         .section-header { margin-top:16px; display:flex; align-items:center; justify-content:space-between; background:#e2e8f0; padding:6px 12px; border-radius:6px; font-weight:900; color:#06392c; font-size:13px; }
-        table { width:100%; border-collapse:collapse; margin-top:6px; }
+        table { width:100%; border-collapse:collapse; margin-top:6px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#0b4d3c; color:#fff; }
         thead th { padding:6px 8px; text-align:right; font-size:11px; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:14px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:14px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .stamp { width:80px; height:80px; border-radius:50%; border:3px double #06392c; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6px; font-size:8px; font-weight:900; color:#06392c; }
       </style>
@@ -1007,7 +1023,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -1027,10 +1043,14 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #06392c; background:linear-gradient(135deg,#06392c 0%,#0b4d3c 100%); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
-        table { width:100%; border-collapse:collapse; margin-top:0; }
+        table { width:100%; border-collapse:collapse; margin-top:0; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#06392c; color:#fff; }
         thead th { padding:10px 12px; font-size:12px; font-weight:900; text-align:right; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .stamp { width:90px; height:90px; border-radius:50%; border:3px double #06392c; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px; font-size:9px; font-weight:900; color:#06392c; }
       </style>
@@ -1090,7 +1110,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -1110,10 +1130,14 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #0b4d3c; background:linear-gradient(135deg,#0b4d3c,#1a6b52); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#0b4d3c; color:#fff; }
         thead th { padding:10px 12px; font-size:12px; font-weight:900; text-align:right; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .stamp { width:90px; height:90px; border-radius:50%; border:3px double #06392c; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px; font-size:9px; font-weight:900; color:#06392c; }
       </style>
@@ -1171,7 +1195,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; height:auto; overflow:visible; box-sizing: border-box; }
         body::before {
           content: '';
           position: absolute;
@@ -1191,10 +1215,14 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
         }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #1e40af; background:linear-gradient(135deg,#1e3a8a,#1e40af); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; break-inside:auto; page-break-inside:auto; }
+        thead { display:table-header-group; }
+        tbody { break-inside:auto; page-break-inside:auto; }
+        tfoot { display:table-footer-group; }
+        tr { break-inside:avoid; page-break-inside:avoid; }
         thead tr { background:#1e40af; color:#fff; }
         thead th { padding:10px 12px; font-size:12px; font-weight:900; text-align:right; }
-        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; }
+        .footer { margin-top:24px; display:flex; align-items:flex-end; justify-content:space-between; padding-top:16px; border-top:2px dashed #cbd5e1; break-inside:avoid; page-break-inside:avoid; }
         .sig-block { text-align:center; }
         .stamp { width:90px; height:90px; border-radius:50%; border:3px double #1e40af; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px; font-size:9px; font-weight:900; color:#1e40af; }
       </style>

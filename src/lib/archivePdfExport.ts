@@ -10,7 +10,6 @@ import type { PersonArchiveProfile } from './archiveSnapshot';
 
 const MASAR_GREEN = '#06392c';
 const MASAR_LIGHT = '#f0fdf4';
-const PAGE_BREAK_EVERY = 40; // سطور
 
 // ─── الترويسة المشتركة ─────────────────────────────────────────────────────
 function headerHtml(title: string, subtitle = '', categoryTag = 'الأرشيف الرقمي المعتمد') {
@@ -108,7 +107,7 @@ const BASE_CSS = `
     box-shadow: 0 18px 45px rgba(15,23,42,0.18);
     page-break-after: always;
     break-after: page;
-    overflow: hidden;
+    overflow: visible;
   }
   .report-frame::before {
     content: '';
@@ -143,8 +142,28 @@ const BASE_CSS = `
   .report-title-text { font-size: 13px; font-weight: 900; color: #06392c; }
   .report-subtitle-text { font-size: 9.5px; font-weight: 700; color: #64748b; }
   .report-date-badge { font-size: 9px; font-weight: 800; color: #047857; background: #ecfdf5; padding: 2px 8px; border-radius: 6px; border: 1px solid #a7f3d0; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9px; }
-  thead { background: ${MASAR_GREEN}; color: #fff; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6px;
+    font-size: 9px;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  thead {
+    display: table-header-group;
+    background: ${MASAR_GREEN};
+    color: #fff;
+  }
+  tbody {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  tfoot { display: table-footer-group; }
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   th { padding: 5px 6px; font-size: 9px; font-weight: 900; text-align: right; white-space: nowrap; border: 1px solid #06392c; }
   td { padding: 4px 6px; font-size: 9px; border: 1px solid #e2e8f0; }
   tr:nth-child(even) td { background: ${MASAR_LIGHT}; }
@@ -158,7 +177,12 @@ const BASE_CSS = `
   .count-bar { display: flex; gap: 8px; margin-bottom: 8px; }
   .count-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 3px 8px; font-weight: 900; font-size: 8.5px; color: #475569; }
   .page-break { page-break-after: always; }
-  .bottom-container { margin-top: auto; padding-top: 10px; }
+  .bottom-container {
+    margin-top: auto;
+    padding-top: 10px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .signatures-wrapper { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 8px; }
   .sig-card-box { border: 1.8px solid #06392c; border-radius: 12px; padding: 6px 14px; width: 190px; text-align: center; background: #ffffff; }
   .sig-card-title { font-size: 10.5px; font-weight: 900; color: #06392c; margin-bottom: 2px; }
@@ -179,6 +203,9 @@ const BASE_CSS = `
       border: none !important;
       width: 297mm !important;
       min-height: 210mm !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
       page-break-after: auto;
     }
     .report-frame::before { border: 1.25mm double #06392c !important; }
@@ -303,7 +330,7 @@ export function exportStudentProfilePdf(profile: PersonArchiveProfile, autoPrint
     <table>
       <thead><tr><th>#</th><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>طريقة التحقق</th><th>أُبلغ ولي الأمر</th></tr></thead>
       <tbody>
-        ${attendance.slice(0, PAGE_BREAK_EVERY).map((a: any, i: number) => `
+        ${attendance.map((a: any, i: number) => `
           <tr>
             <td>${i + 1}</td>
             <td>${val(a.sessionDate)}</td>
@@ -693,4 +720,3 @@ export function exportAttendanceCollectionPdf(records: Record<string, unknown>[]
 
   openPdfWindow('سجل الحضور', body, autoPrint);
 }
-

@@ -677,7 +677,7 @@ export default function ReportPrintDocument({
           box-shadow: 0 18px 45px rgba(15,23,42,0.18);
           page-break-after: always;
           break-after: page;
-          overflow: hidden;
+          overflow: visible;
         }
 
         .print-page:last-child {
@@ -711,12 +711,24 @@ export default function ReportPrintDocument({
           z-index: 1;
         }
 
+        .print-page,
+        .page-body,
+        .section-block,
+        .answers-table-container {
+          break-inside: auto;
+          page-break-inside: auto;
+          overflow: visible;
+        }
+
         @media print {
           .print-page {
             margin: 0 !important;
             box-shadow: none !important;
             width: 210mm !important;
             min-height: 297mm !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
             border: none !important;
             page-break-after: always !important;
             break-after: page !important;
@@ -955,6 +967,26 @@ export default function ReportPrintDocument({
           width: 100%;
           border-collapse: collapse;
           font-size: 10px;
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+
+        .doc-table thead {
+          display: table-header-group;
+        }
+
+        .doc-table tfoot {
+          display: table-footer-group;
+        }
+
+        .doc-table tbody {
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+
+        .doc-table tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
 
         .doc-table th {
