@@ -78,7 +78,7 @@ const COMMON_PRINT_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
   @page {
     size: A4 portrait;
-    margin: 6mm 6mm 6mm 6mm;
+    margin: 0;
   }
   * {
     box-sizing: border-box;
@@ -132,31 +132,70 @@ const COMMON_PRINT_CSS = `
     max-width: 210mm;
     margin: 0 auto;
   }
-  /* الإطار الخارجي والداخلي الفخم المحيط بالتقرير */
+  /* الإطار الخارجي والداخلي الفخم المحيط بالتقرير مطابق تماماً لتقرير المنصة الرسمي */
   .report-frame {
-    position: relative;
-    border: 2.2px solid #06392c;
-    border-radius: 14px;
-    padding: 22px 24px 16px 24px;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto 20px;
     background: #ffffff;
+    padding: 18mm 20mm 17mm 20mm;
     box-sizing: border-box;
-    min-height: calc(297mm - 16mm);
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 12px 36px rgba(15,23,42,0.12);
+    border: none;
+    box-shadow: 0 18px 45px rgba(15,23,42,0.18);
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+  }
+  .report-frame:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .report-frame::before {
+    content: '';
+    position: absolute;
+    inset: 8mm;
+    border: 1.25mm double #06392c;
+    border-radius: 5mm;
+    pointer-events: none;
   }
   .report-frame::after {
-    content: "";
+    content: '';
     position: absolute;
-    inset: 4px;
-    border: 1px solid #d6a83f;
-    border-radius: 10px;
+    inset: 10.6mm;
+    border: 0.45mm solid #d6a83f;
+    border-radius: 3.5mm;
+    box-shadow:
+      inset 0 0 0 0.35mm rgba(6,57,44,0.18),
+      inset 0 0 22mm rgba(214,168,63,0.06);
     pointer-events: none;
   }
   .report-frame > * {
     position: relative;
     z-index: 1;
+  }
+  @media print {
+    .report-frame {
+      margin: 0 !important;
+      box-shadow: none !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      border: none !important;
+      page-break-after: always !important;
+      break-after: page !important;
+    }
+    .report-frame:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+    .report-wrap {
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: none !important;
+    }
   }
 
   /* 1. الترويسة العلوية مع الشعار والسيريال */

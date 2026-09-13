@@ -499,9 +499,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <meta charset="utf-8"/>
       <title>سجل حضور الطالب — ${selectedStudent.fullName}</title>
       <style>
-        @page { size: A4; margin: 16mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #06392c; background:linear-gradient(135deg,#06392c 0%,#0b4d3c 100%); border-radius:12px 12px 0 0; }
         .logo-area { display:flex; align-items:center; gap:14px; }
         .logo-circle { width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; font-size:24px; }
@@ -625,9 +642,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <meta charset="utf-8"/>
       <title>سجل واجبات الطالب — ${selectedStudent.fullName}</title>
       <style>
-        @page { size: A4; margin: 16mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #0b4d3c; background:linear-gradient(135deg,#0b4d3c,#1a6b52); border-radius:12px 12px 0 0; }
         .logo-area { display:flex; align-items:center; gap:14px; }
         .logo-circle { width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; font-size:24px; }
@@ -730,9 +764,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <meta charset="utf-8"/>
       <title>سجل كويزات الطالب — ${selectedStudent.fullName}</title>
       <style>
-        @page { size: A4; margin: 16mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #1e40af; background:linear-gradient(135deg,#1e3a8a,#1e40af); border-radius:12px 12px 0 0; }
         .logo-area { display:flex; align-items:center; gap:14px; }
         .logo-circle { width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; font-size:24px; }
@@ -861,9 +912,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <meta charset="utf-8"/>
       <title>الملف الأكاديمي الشامل — ${selectedStudent.fullName}</title>
       <style>
-        @page { size: A4; margin: 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; font-size: 11px; }
+        body { margin: 0; background: #fff; color: #1e293b; font-size: 11px; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:3px solid #06392c; background:linear-gradient(135deg,#06392c 0%,#0b4d3c 100%); border-radius:10px; color:#fff; }
         .doc-title { margin-top:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
         .section-header { margin-top:16px; display:flex; align-items:center; justify-content:space-between; background:#e2e8f0; padding:6px 12px; border-radius:6px; font-weight:900; color:#06392c; font-size:13px; }
@@ -937,9 +1005,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     const html = `<!doctype html><html lang="ar" dir="rtl"><head>
       <meta charset="utf-8"/><title>سجل الحضور والغياب — ${formatArabicDate(snap.date)}</title>
       <style>
-        @page { size: A4; margin: 18mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #06392c; background:linear-gradient(135deg,#06392c 0%,#0b4d3c 100%); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
         table { width:100%; border-collapse:collapse; margin-top:0; }
@@ -1003,9 +1088,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     const html = `<!doctype html><html lang="ar" dir="rtl"><head>
       <meta charset="utf-8"/><title>سجل الواجبات — ${snap.homeworkTitle}</title>
       <style>
-        @page { size: A4; margin: 18mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #0b4d3c; background:linear-gradient(135deg,#0b4d3c,#1a6b52); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; }
         table { width:100%; border-collapse:collapse; margin-top:12px; }
@@ -1067,9 +1169,26 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
     const html = `<!doctype html><html lang="ar" dir="rtl"><head>
       <meta charset="utf-8"/><title>نتائج الكويز — ${snap.quizTitle}</title>
       <style>
-        @page { size: A4; margin: 18mm 14mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
-        body { margin: 0; background: #fff; color: #1e293b; }
+        body { margin: 0; background: #fff; color: #1e293b; padding: 18mm 20mm 16mm 20mm; position: relative; min-height: 297mm; box-sizing: border-box; }
+        body::before {
+          content: '';
+          position: absolute;
+          inset: 8mm;
+          border: 1.25mm double #06392c;
+          border-radius: 5mm;
+          pointer-events: none;
+        }
+        body::after {
+          content: '';
+          position: absolute;
+          inset: 10.6mm;
+          border: 0.45mm solid #d6a83f;
+          border-radius: 3.5mm;
+          box-shadow: inset 0 0 0 0.35mm rgba(6,57,44,0.18), inset 0 0 22mm rgba(214,168,63,0.06);
+          pointer-events: none;
+        }
         .header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid #1e40af; background:linear-gradient(135deg,#1e3a8a,#1e40af); border-radius:12px 12px 0 0; color:#fff; }
         .doc-title { background:#f8fafc; border:1px solid #e2e8f0; border-top:none; padding:16px 20px; }
         table { width:100%; border-collapse:collapse; margin-top:12px; }

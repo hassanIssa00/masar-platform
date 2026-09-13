@@ -87,30 +87,46 @@ function footerHtml() {
 // ─── الأنماط المشتركة ─────────────────────────────────────────────────────
 const BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-  @page { size: A4 landscape; margin: 6mm 6mm 6mm 6mm; }
+  @page { size: A4 landscape; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; background: #e2e8f0; color: #1e293b; font-size: 10px; margin: 0; padding: 0; }
   .no-print { padding: 10px 16px; background: ${MASAR_GREEN}; text-align: center; display: flex; justify-content: center; gap: 10px; }
   .no-print button { background: #d6a83f; color: #06392c; font-weight: 900; border: none; padding: 8px 22px; border-radius: 999px; cursor: pointer; font-size: 13px; }
   .page-wrap { padding: 14px 0; max-width: 297mm; margin: 0 auto; }
   .report-frame {
-    position: relative;
-    border: 2.2px solid #06392c;
-    border-radius: 14px;
-    padding: 18px 22px 14px 22px;
+    width: 297mm;
+    min-height: 210mm;
+    margin: 0 auto 20px;
     background: #ffffff;
+    padding: 16mm 18mm 14mm 18mm;
     box-sizing: border-box;
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(15,23,42,0.12);
+    border: none;
+    box-shadow: 0 18px 45px rgba(15,23,42,0.18);
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+  }
+  .report-frame::before {
+    content: '';
+    position: absolute;
+    inset: 8mm;
+    border: 1.25mm double #06392c;
+    border-radius: 5mm;
+    pointer-events: none;
   }
   .report-frame::after {
-    content: "";
+    content: '';
     position: absolute;
-    inset: 4px;
-    border: 1px solid #d6a83f;
-    border-radius: 10px;
+    inset: 10.6mm;
+    border: 0.45mm solid #d6a83f;
+    border-radius: 3.5mm;
+    box-shadow:
+      inset 0 0 0 0.35mm rgba(6,57,44,0.18),
+      inset 0 0 22mm rgba(214,168,63,0.06);
     pointer-events: none;
   }
   .doc-top-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
@@ -158,8 +174,15 @@ const BASE_CSS = `
     body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     .no-print { display: none !important; }
     .page-wrap { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
-    .report-frame { box-shadow: none !important; border: 2mm solid #06392c !important; page-break-after: auto; }
-    .report-frame::after { border: 1px solid #d6a83f !important; }
+    .report-frame {
+      box-shadow: none !important;
+      border: none !important;
+      width: 297mm !important;
+      min-height: 210mm !important;
+      page-break-after: auto;
+    }
+    .report-frame::before { border: 1.25mm double #06392c !important; }
+    .report-frame::after { border: 0.45mm solid #d6a83f !important; }
   }
 `;
 
