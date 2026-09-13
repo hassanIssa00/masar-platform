@@ -223,7 +223,24 @@ export default function PrintableReportModal({
         <td style="padding:7px 10px;font-weight:700;color:#1e293b;font-size:10.5px;border-bottom:1px solid #e2e8f0">${ans.question}</td>
         <td style="padding:7px 10px;font-weight:900;color:#06392c;font-size:11px;border-bottom:1px solid #e2e8f0">${ans.answer}</td>
       </tr>`;
-    const answerChunks = printableAnswers.length > 0 ? [printableAnswers] : [[]];
+    const chunkAnswersForPrint = (items: typeof printableAnswers) => {
+      if (items.length === 0) return [[]];
+      const chunks: typeof printableAnswers[] = [];
+      const plainPageRows = 12;
+      const finalPageRows = 8;
+      let cursor = 0;
+      while (items.length - cursor > finalPageRows) {
+        const remaining = items.length - cursor;
+        const rowsForThisPage = remaining - plainPageRows <= finalPageRows
+          ? Math.max(1, remaining - finalPageRows)
+          : plainPageRows;
+        chunks.push(items.slice(cursor, cursor + rowsForThisPage));
+        cursor += rowsForThisPage;
+      }
+      chunks.push(items.slice(cursor));
+      return chunks;
+    };
+    const answerChunks = chunkAnswersForPrint(printableAnswers);
     const hasMedia = mediaItems.length > 0;
     const mediaPageNum = hasMedia ? 3 : 0;
     const totalPages = (isAnswersReport ? answerChunks.length + 1 : 2) + (hasMedia ? 1 : 0);

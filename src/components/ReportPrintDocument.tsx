@@ -72,10 +72,28 @@ export default function ReportPrintDocument({
   const hasMedia = mediaItems.length > 0;
   const hasDetailedAnswers = answersList.length > 0;
 
+  const chunkItemsForPrint = <T,>(items: T[], plainPageRows = 12, finalPageRows = 8): T[][] => {
+    if (items.length === 0) return [];
+    const chunks: T[][] = [];
+    let cursor = 0;
+    while (items.length - cursor > finalPageRows) {
+      const remaining = items.length - cursor;
+      const rowsForThisPage = remaining - plainPageRows <= finalPageRows
+        ? Math.max(1, remaining - finalPageRows)
+        : plainPageRows;
+      chunks.push(items.slice(cursor, cursor + rowsForThisPage));
+      cursor += rowsForThisPage;
+    }
+    chunks.push(items.slice(cursor));
+    return chunks;
+  };
+  const answerChunks = chunkItemsForPrint(answersList);
+
   let pageCounter = 2;
   const recsPageNum = hasRecommendations ? ++pageCounter : 0;
   const mediaPageNum = hasMedia ? ++pageCounter : 0;
-  const answersPageNum = hasDetailedAnswers ? ++pageCounter : 0;
+  const answersStartPageNum = hasDetailedAnswers ? pageCounter + 1 : 0;
+  if (hasDetailedAnswers) pageCounter += answerChunks.length;
   const totalPages = pageCounter;
   const reportPhoto = (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).studentPhotoUrl ||
     (report as ReportRecord & { photoUrl?: string; studentPhotoUrl?: string; avatarUrl?: string }).photoUrl ||
@@ -566,65 +584,77 @@ export default function ReportPrintDocument({
       {/* ═════════════════════════════════════════════════════════════
           PAGE 4/5: DETAILED ANSWERS & OFFICIAL SIGN-OFF / STAMP
       ═════════════════════════════════════════════════════════════ */}
-      {hasDetailedAnswers && <section className={`print-page page-${answersPageNum}`}>
-        <header className="page-header">
-          <div className="brand">
-            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
-            <div className="brand-text">
-              <span className="brand-logo">مَسَار</span>
-              <span className="brand-sub">الاعتماد الرقمي والختم</span>
-            </div>
-          </div>
-          <div className="doc-meta">
-            <span className="doc-serial">{fileNumber}</span>
-          </div>
-        </header>
+      {hasDetailedAnswers && answerChunks.map((chunk, chunkIndex) => {
+        const pageNumber = answersStartPageNum + chunkIndex;
+        const startNumber = answerChunks.slice(0, chunkIndex).reduce((sum, item) => sum + item.length, 0);
+        const isLastAnswerPage = chunkIndex === answerChunks.length - 1;
 
-        <div className="page-body flex-col justify-between" style={{ minHeight: 'calc(297mm - 40mm)' }}>
-          <div>
-            {/* Detailed Answers Section (Clean rows, not heavy cards) */}
-            {answersList.length > 0 && (
-              <div className="section-block">
-                <h2 className="section-heading">5. سجل الإجابات التفصيلية المحفوظة للتقييم</h2>
-                <div className="answers-table-container">
-                  <table className="doc-table answers-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '8%' }}>#</th>
-                        <th style={{ width: '52%' }}>السؤال المستهدف</th>
-                        <th style={{ width: '40%' }}>استجابة الطالب المحفوظة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {answersList.map((ans, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
-                          <td className="font-bold font-mono text-center">{idx + 1}</td>
-                          <td className="font-bold text-slate-800">{ans.question}</td>
-                          <td className="font-black text-emerald-950">{ans.answer}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        return (
+          <section key={`answers-${chunkIndex}`} className={`print-page page-${pageNumber}`}>
+            <header className="page-header">
+              <div className="brand">
+                <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+                <div className="brand-text">
+                  <span className="brand-logo">مَسَار</span>
+                  <span className="brand-sub">
+                    {isLastAnswerPage ? 'الاعتماد الرقمي والختم' : 'سجل الإجابات التفصيلية'}
+                  </span>
                 </div>
               </div>
-            )}
+              <div className="doc-meta">
+                <span className="doc-serial">{fileNumber}</span>
+              </div>
+            </header>
 
-            {/* Verification Statement */}
-            <div className="verification-statement mt-4">
-              <p className="statement-text">
-                نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
-              </p>
+            <div className="page-body flex-col justify-between" style={{ minHeight: 'calc(297mm - 40mm)' }}>
+              <div>
+                <div className="section-block">
+                  <h2 className="section-heading">
+                    {chunkIndex === 0
+                      ? '5. سجل الإجابات التفصيلية المحفوظة للتقييم'
+                      : `5. تابع سجل الإجابات التفصيلية (${chunkIndex + 1})`}
+                  </h2>
+                  <div className="answers-table-container">
+                    <table className="doc-table answers-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '8%' }}>#</th>
+                          <th style={{ width: '52%' }}>السؤال المستهدف</th>
+                          <th style={{ width: '40%' }}>استجابة الطالب المحفوظة</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chunk.map((ans, idx) => (
+                          <tr key={`${chunkIndex}-${idx}`} className={(startNumber + idx) % 2 === 0 ? 'row-even' : 'row-odd'}>
+                            <td className="font-bold font-mono text-center">{startNumber + idx + 1}</td>
+                            <td className="font-bold text-slate-800">{ans.question}</td>
+                            <td className="font-black text-emerald-950">{ans.answer}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {isLastAnswerPage && (
+                  <div className="verification-statement mt-4">
+                    <p className="statement-text">
+                      نشهد نحن إدارة منصة مَسَار للتأهيل والتعليم الحديث بأن كافة البيانات والمعلومات الواردة بهذا التقرير مستخرجة من سجلات الطالب داخل المنصة، وتحت إشراف د. إسماعيل عيسى، وهي موثقة بالختم الرقمي والتوقيع أدناه.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {isLastAnswerPage && <SignatureBlock />}
             </div>
-          </div>
 
-          <SignatureBlock />
-        </div>
-
-        <footer className="page-footer">
-          <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
-          <span className="page-num">صفحة {answersPageNum} من {totalPages}</span>
-        </footer>
-      </section>}
+            <footer className="page-footer">
+              <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+              <span className="page-num">صفحة {pageNumber} من {totalPages}</span>
+            </footer>
+          </section>
+        );
+      })}
 
       {/* ═════════════════════════════════════════════════════════════
           PRINT STYLES ENGINE (A4 PAGE MODEL & PERFECT BORDERS)
