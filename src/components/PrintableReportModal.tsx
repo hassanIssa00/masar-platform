@@ -145,7 +145,10 @@ export default function PrintableReportModal({
             <span>وثيقة رقمية</span>
           </div>
           <div class="brand-center">
-            <div class="brand-title">MASAR · مَسَار</div>
+            <div class="brand-title" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+              <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" style="width:26px;height:26px;object-fit:contain;border-radius:6px;border:1px solid #d6a83f;padding:1px;background:#fff;" onerror="this.src='/brand/masar-logo.png';" />
+              <span>MASAR · مَسَار</span>
+            </div>
             <div class="brand-subtitle">منصة التأهيل والتعليم الذكي لصعوبات التعلم</div>
             <div class="brand-owner">تحت إشراف د. إسماعيل عيسى للتأهيل والتعليم الحديث</div>
             <div class="brand-label">${label}</div>

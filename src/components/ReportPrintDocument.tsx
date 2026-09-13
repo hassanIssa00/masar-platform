@@ -175,9 +175,12 @@ export default function ReportPrintDocument({
       <section className="print-page page-1">
         {/* Top Header Bar */}
         <header className="page-header">
-          <div className="brand flex-items">
-            <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
+          <div className="brand">
+            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <div className="brand-text">
+              <span className="brand-logo">مَسَار</span>
+              <span className="brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
+            </div>
           </div>
           <div className="doc-meta">
             <span className="doc-type">تقرير تقييم وتأهيل رقمي</span>
@@ -270,9 +273,12 @@ export default function ReportPrintDocument({
       ═════════════════════════════════════════════════════════════ */}
       <section className="print-page page-2">
         <header className="page-header">
-          <div className="brand flex-items">
-            <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">تقرير التقييم الشامل</span>
+          <div className="brand">
+            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <div className="brand-text">
+              <span className="brand-logo">مَسَار</span>
+              <span className="brand-sub">تقرير التقييم الشامل</span>
+            </div>
           </div>
           <div className="doc-meta">
             <span className="doc-serial">{fileNumber}</span>
@@ -382,9 +388,12 @@ export default function ReportPrintDocument({
       ═════════════════════════════════════════════════════════════ */}
       {hasRecommendations && <section className={`print-page page-${recsPageNum}`}>
         <header className="page-header">
-          <div className="brand flex-items">
-            <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">التوصيات والتوجيهات الإكلينيكية</span>
+          <div className="brand">
+            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <div className="brand-text">
+              <span className="brand-logo">مَسَار</span>
+              <span className="brand-sub">التوصيات والتوجيهات الإكلينيكية</span>
+            </div>
           </div>
           <div className="doc-meta">
             <span className="doc-serial">{fileNumber}</span>
@@ -453,9 +462,12 @@ export default function ReportPrintDocument({
       {hasMedia && (
         <section className={`print-page page-${mediaPageNum}`}>
           <header className="page-header">
-            <div className="brand flex-items">
-              <span className="brand-logo">مَسَار</span>
-              <span className="brand-sub">مرفقات الاختبار والرسومات المحفوظة</span>
+            <div className="brand">
+              <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+              <div className="brand-text">
+                <span className="brand-logo">مَسَار</span>
+                <span className="brand-sub">مرفقات الاختبار والرسومات المحفوظة</span>
+              </div>
             </div>
             <div className="doc-meta">
               <span className="doc-serial">{fileNumber}</span>
@@ -556,9 +568,12 @@ export default function ReportPrintDocument({
       ═════════════════════════════════════════════════════════════ */}
       {hasDetailedAnswers && <section className={`print-page page-${answersPageNum}`}>
         <header className="page-header">
-          <div className="brand flex-items">
-            <span className="brand-logo">مَسَار</span>
-            <span className="brand-sub">الاعتماد الرقمي والختم</span>
+          <div className="brand">
+            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <div className="brand-text">
+              <span className="brand-logo">مَسَار</span>
+              <span className="brand-sub">الاعتماد الرقمي والختم</span>
+            </div>
           </div>
           <div className="doc-meta">
             <span className="doc-serial">{fileNumber}</span>
@@ -722,17 +737,41 @@ export default function ReportPrintDocument({
           margin-bottom: 12px;
         }
 
+        .brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .brand-logo-img {
+          width: 42px;
+          height: 42px;
+          object-fit: contain;
+          border-radius: 10px;
+          border: 1.5px solid #d6a83f;
+          padding: 2px;
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(6, 57, 44, 0.08);
+          flex-shrink: 0;
+        }
+
+        .brand-text {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+
         .brand-logo {
-          font-size: 18px;
+          font-size: 22px;
           font-weight: 900;
           color: #06392c;
-          margin-left: 8px;
+          line-height: 1;
         }
 
         .brand-sub {
-          font-size: 9.5px;
-          font-weight: 700;
-          color: #475569;
+          font-size: 10.5px;
+          font-weight: 800;
+          color: #1e293b;
         }
 
         .doc-type {

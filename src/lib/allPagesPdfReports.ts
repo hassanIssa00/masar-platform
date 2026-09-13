@@ -437,7 +437,7 @@ function renderOfficialTemplate(
       <!-- 1. الترويسة العلوية مع الشعار والسيريال -->
       <div class="doc-top-header">
         <div class="doc-brand-group">
-          <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" />
+          <img src="${origin || ''}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" onerror="this.src='/brand/masar-logo.png';" />
           <div class="doc-brand-text">
             <span class="doc-brand-title">مَسَار</span>
             <span class="doc-brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>

@@ -455,6 +455,23 @@ export default function IEPPage() {
 
               {/* Printable Body */}
               <div className="space-y-6" id="iep-print">
+                {/* Print-Only Official Header with Logo */}
+                <div className="hidden print:flex items-center justify-between border-b-2 border-emerald-950 pb-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <img src="/brand/masar-logo.png" alt="شعار مسار" className="w-11 h-11 object-contain rounded-xl border border-amber-400 p-1 bg-white" />
+                    <div>
+                      <h1 className="text-xl font-black text-emerald-950">منصة مَسَار للتأهيل والتعليم الذكي</h1>
+                      <p className="text-xs font-bold text-slate-600">خطة التربية الفردية (IEP) — إشراف: د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      خطة معتمدة ✓
+                    </span>
+                    <p className="text-[10px] font-mono text-slate-500 mt-1">MASAR-IEP</p>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 rounded-2xl bg-slate-50 p-4 border text-xs font-bold sm:grid-cols-[90px_repeat(4,1fr)]">
                   <div className="row-span-2 grid place-items-center">
                     {selectedIepStudent?.photoUrl ? (

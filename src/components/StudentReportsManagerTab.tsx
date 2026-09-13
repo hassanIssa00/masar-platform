@@ -249,23 +249,17 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       <!-- ══ COMPACT HEADER ROW ══ -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
 
-        <!-- RIGHT: Logos -->
+        <!-- RIGHT: Logos & Brand -->
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:50px;height:50px;border-radius:16px;border:2px solid #06392c;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f7faf8;flex-shrink:0;">
-            <img src="${origin}/brand/masar-logo.webp" alt="مسار"
-              style="width:42px;height:42px;object-fit:contain;"
-              onerror="this.outerHTML='<span style=\'font-size:16px;font-weight:900;color:#06392c;\'>مـ</span>';" />
+          <div style="width:46px;height:46px;border-radius:12px;border:1.5px solid #d6a83f;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0;padding:2px;">
+            <img src="${origin}/brand/masar-logo.png" alt="شعار مسار"
+              style="width:100%;height:100%;object-fit:contain;"
+              onerror="this.src='/brand/masar-logo.png';" />
           </div>
-          <div style="width:1px;height:30px;background:#e2e8f0;"></div>
-          <img src="${origin}/brand/nexus-logo-new.webp" alt="Nexus"
-            style="height:36px;width:auto;object-fit:contain;"
-            onerror="this.style.display='none';" />
-        </div>
-
-        <!-- CENTER: Title -->
-        <div style="text-align:center;flex:1;padding:0 16px;">
-          <div style="font-size:18px;font-weight:900;color:#0f172a;font-family:'Cairo',sans-serif;">مسار · MASAR</div>
-          <div style="font-size:9px;color:#475569;font-weight:700;font-family:'Cairo',sans-serif;margin-top:1px;">منصة التأهيل والتعليم الذكي — مؤسس المنصة: د. إسماعيل عيسى</div>
+          <div style="text-align:right;">
+            <div style="font-size:20px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;line-height:1.1;">مَسَار · MASAR</div>
+            <div style="font-size:9px;color:#475569;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">منصة التأهيل والتعليم الذكي — إشراف: د. إسماعيل عيسى</div>
+          </div>
         </div>
 
         <!-- LEFT: Ref Badge -->
