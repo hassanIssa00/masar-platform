@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import { curriculaList } from '@/data/curriculaData';
 
 export default function CurriculaHubPage() {
@@ -50,7 +51,7 @@ export default function CurriculaHubPage() {
           <header className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-l from-slate-950 via-indigo-950 to-blue-900 p-6 text-white shadow-xl lg:p-8">
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3.5 py-1 text-xs font-black text-amber-300 ring-1 ring-amber-400/40">
                     <Sparkles size={14} />
                     المناهج الرسمية المعتمدة 1448هـ
@@ -58,6 +59,7 @@ export default function CurriculaHubPage() {
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
                     الصف الأول الابتدائي
                   </span>
+                  <PageReportButton tabKey="curricula" label="تقرير المناهج (PDF)" variant="amber" size="sm" />
                 </div>
                 <h1 className="mt-4 text-3xl font-black md:text-4xl lg:text-5xl">
                   مجلد المناهج التعليمية التفاعلية

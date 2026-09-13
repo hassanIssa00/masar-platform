@@ -137,7 +137,7 @@ const DOMAINS: Domain[] = [
     icon: 'Laptop',
     color: '#065f46',
     questions: [
-      { id: 'at1', text: 'هل يستخدم الطفل سماعة طبية (Hearing Aid)؟', type: 'yesno' },
+      { id: 'at1', text: 'هل يستخدم الطفل سماعة سمعية معينة (Hearing Aid)؟', type: 'yesno' },
       { id: 'at2', text: 'هل يستخدم زرع القوقعة الصناعية (Cochlear Implant)؟', type: 'yesno' },
       { id: 'at3', text: 'هل يتلقى جلسات تأهيل سمعي منتظمة؟', type: 'choice3' },
       { id: 'at4', text: 'هل يتلقى تدريباً رسمياً على لغة الإشارة السعودية؟', type: 'choice3' },

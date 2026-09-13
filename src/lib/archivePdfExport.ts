@@ -505,7 +505,7 @@ export function exportIepPdf(iep: Record<string, unknown>, autoPrint = false) {
     <table>
       <thead><tr><th>البيان</th><th>القيمة</th><th>البيان</th><th>القيمة</th></tr></thead>
       <tbody>
-        <tr><td>اسم الطالب</td><td style="font-weight:900;">${val(r.studentName)}</td><td>الطبيب / الأخصائي</td><td>${val(r.doctorName)}</td></tr>
+        <tr><td>اسم الطالب</td><td style="font-weight:900;">${val(r.studentName)}</td><td>الاستشاري / الأخصائي</td><td>${val(r.doctorName)}</td></tr>
         <tr><td>الحالة</td><td>${val(r.status)}</td><td>تاريخ المراجعة القادمة</td><td>${dateVal(r.nextReviewDate)}</td></tr>
         <tr><td>الأهداف الرئيسية</td><td colspan="3">${val(r.primaryGoals || r.goalsSummary)}</td></tr>
       </tbody>

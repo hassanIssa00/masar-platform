@@ -153,7 +153,7 @@ export async function checkAndAutoDispatchDismissal(schedule: Period[]): Promise
 }
 
 /**
- * إرسال إشعار فوري يدوي لأولياء الأمور بالدقائق المتبقية بضغطة زر من المعلم/الطبيب
+ * إرسال إشعار فوري يدوي لأولياء الأمور بالدقائق المتبقية بضغطة زر من المعلم/الأخصائي
  */
 export async function sendManualDismissalNotification(minsLeft: number): Promise<{
   success: boolean;

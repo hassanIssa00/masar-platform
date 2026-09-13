@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle2, ClipboardCheck, Volume2, Sparkles, ChevronDown
 import BrandMark from '@/components/BrandMark';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import { placementAssessments, PlacementGradeKey, PlacementQuestion } from '@/data/placementAssessments';
 import { buildPlacementRecommendations, buildPlacementSummary, enrichDomains, getDecisionFromScore } from '@/data/assessmentModel';
 import { getSession, getStudents, hydrateSessionFromServer, saveAccount, saveReport, saveStudent, setSession, StudentRecord, updateStudent, createId } from '@/lib/cloudStore';
@@ -180,6 +181,62 @@ function PlacementVisual({ visual }: { visual: string }) {
       return <ShapeCard label="أخضر"><Dot className="h-16 w-16 bg-emerald-600" /></ShapeCard>;
     case 'color-yellow':
       return <ShapeCard label="أصفر"><Dot className="h-16 w-16 bg-amber-400" /></ShapeCard>;
+
+    // ─── KG Preschool Visuals ──────────────────────────────
+    case 'kg-color-red':
+      return <div className="flex flex-col items-center gap-3"><span className="h-28 w-28 rounded-full bg-red-500 shadow-xl shadow-red-500/30 animate-pulse" /><span className="text-xl font-black text-red-600">🔴 لون أحمر</span></div>;
+    case 'kg-color-yellow':
+      return <div className="flex flex-col items-center gap-3"><span className="h-28 w-28 rounded-full bg-amber-400 shadow-xl shadow-amber-400/30 animate-pulse" /><span className="text-xl font-black text-amber-600">☀️ لون أصفر</span></div>;
+    case 'kg-color-blue':
+      return <div className="flex flex-col items-center gap-3"><span className="h-28 w-28 rounded-full bg-blue-600 shadow-xl shadow-blue-600/30 animate-pulse" /><span className="text-xl font-black text-blue-600">🌊 لون أزرق</span></div>;
+    case 'kg-color-green':
+      return <div className="flex flex-col items-center gap-3"><span className="h-28 w-28 rounded-full bg-emerald-500 shadow-xl shadow-emerald-500/30 animate-pulse" /><span className="text-xl font-black text-emerald-600">🍃 لون أخضر</span></div>;
+
+    case 'kg-shape-circle':
+      return <div className="flex flex-col items-center gap-3"><div className="h-28 w-28 rounded-full border-8 border-rose-500 bg-rose-50 shadow-md" /><span className="text-lg font-black text-slate-700">دائرة مستديرة</span></div>;
+    case 'kg-shape-square':
+      return <div className="flex flex-col items-center gap-3"><div className="h-28 w-28 rounded-2xl border-8 border-emerald-600 bg-emerald-50 shadow-md" /><span className="text-lg font-black text-slate-700">مربع متساوي الأضلاع</span></div>;
+    case 'kg-shape-triangle':
+      return <div className="flex flex-col items-center gap-3"><div className="h-0 w-0 border-x-[55px] border-b-[95px] border-x-transparent border-b-amber-500 drop-shadow-md" /><span className="text-lg font-black text-slate-700">مثلث ثلاثي الرؤوس</span></div>;
+    case 'kg-shape-star':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none animate-bounce">⭐</span><span className="text-lg font-black text-amber-600">نجمة لامعة</span></div>;
+
+    case 'kg-fruit-apple':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🍎</span><span className="text-lg font-black text-rose-700">تفاحة حمراء</span></div>;
+    case 'kg-fruit-banana':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🍌</span><span className="text-lg font-black text-amber-600">موزة صفراء</span></div>;
+    case 'kg-drink-cup':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🥛</span><span className="text-lg font-black text-blue-700">كوب ماء وحليب</span></div>;
+    case 'kg-healthy-milk':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🥛</span><span className="text-lg font-black text-teal-700">حليب صحي</span></div>;
+
+    case 'kg-animal-lion':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🦁</span><span className="text-lg font-black text-amber-800">أسد الغابة</span></div>;
+    case 'kg-animal-cat':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🐱</span><span className="text-lg font-black text-slate-700">قطة أليفة</span></div>;
+    case 'kg-animal-fish':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🐟</span><span className="text-lg font-black text-blue-600">سمكة تسبح في الماء</span></div>;
+    case 'kg-animal-bird':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none filter drop-shadow">🕊️</span><span className="text-lg font-black text-teal-700">حمامة تطير</span></div>;
+
+    case 'kg-count-1-balloon':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none animate-pulse">🎈</span><span className="text-xl font-black text-rose-600">بالون واحد (1)</span></div>;
+    case 'kg-count-2-apples':
+      return <div className="flex flex-col items-center gap-3"><div className="flex gap-4 text-7xl select-none"><span>🍎</span><span>🍎</span></div><span className="text-xl font-black text-emerald-700">تفاحتان اثنتان (2)</span></div>;
+    case 'kg-count-3-stars':
+      return <div className="flex flex-col items-center gap-3"><div className="flex gap-3 text-7xl select-none"><span>⭐</span><span>⭐</span><span>⭐</span></div><span className="text-xl font-black text-amber-600">ثلاث نجوم (3)</span></div>;
+    case 'kg-hand-two':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none">✌️</span><span className="text-xl font-black text-blue-700">إصبعان اثنان (2)</span></div>;
+
+    case 'kg-size-big-elephant':
+      return <div className="flex items-center justify-center gap-8"><div className="text-center"><span className="text-8xl select-none">🐘</span><span className="block text-sm font-black text-slate-700">فيل كبير</span></div><div className="text-center"><span className="text-3xl select-none">🐜</span><span className="block text-xs font-bold text-slate-500">نملة</span></div></div>;
+    case 'kg-size-small-ant':
+      return <div className="flex items-center justify-center gap-8"><div className="text-center"><span className="text-3xl select-none">🐜</span><span className="block text-xs font-bold text-slate-500">نملة صغيرة</span></div><div className="text-center"><span className="text-8xl select-none">🦁</span><span className="block text-sm font-black text-slate-700">أسد</span></div></div>;
+    case 'kg-time-sun':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none">☀️</span><span className="text-xl font-black text-amber-600">شمس النهار المشرقة</span></div>;
+    case 'kg-face-happy':
+      return <div className="flex flex-col items-center gap-3"><span className="text-8xl select-none">😊</span><span className="text-xl font-black text-emerald-600">وجه مسرور وسعيد</span></div>;
+
     default:
       return <span>{visual}</span>;
   }
@@ -1063,10 +1120,13 @@ function PlacementAssessmentContent() {
                   اختر المستوى، أدخل بيانات الطالب، أجب على الأسئلة، وسيتم حفظ تقرير كامل بالإجابات والتحليل داخل صفحة التقارير.
                 </p>
               </div>
-              <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
-                فتح التقارير
-                <ArrowLeft size={17} />
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <PageReportButton tabKey="assessment" label="تقرير اختبارات المستوى (PDF)" variant="primary" />
+                <Link href="/reports" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
+                  فتح التقارير
+                  <ArrowLeft size={17} />
+                </Link>
+              </div>
             </div>
           </header>
         )}
@@ -1185,26 +1245,75 @@ function PlacementAssessmentContent() {
                 </div>
 
                 {currentResponseType === 'choice' || currentResponseType === 'observation' ? (
-                  <div className="mt-5 grid gap-3 md:grid-cols-2">
-                    {current.options.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setSelectedDraft(option)}
-                        onPointerDown={(event) => {
-                          event.preventDefault();
-                          setSelectedDraft(option);
-                        }}
-                        className={`min-h-16 rounded-xl border-2 px-4 py-4 text-right text-base font-black transition cursor-pointer ${
-                          selectedDraft === option
-                            ? 'border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-200 shadow-xs'
-                            : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
+                  gradeKey === 'kg' ? (
+                    <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {current.options.map((option) => {
+                        const match = option.match(/^([\p{Emoji}\u200d\uFE0F\u25A0-\u25FF\u2600-\u26FF\u2700-\u27BF]+)\s*(.*)$/u);
+                        const icon = match ? match[1] : '';
+                        const text = match ? match[2] : option;
+                        const isSelected = selectedDraft === option;
+
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => {
+                              setSelectedDraft(option);
+                              speak(text || option);
+                            }}
+                            onPointerDown={(event) => {
+                              event.preventDefault();
+                              setSelectedDraft(option);
+                              speak(text || option);
+                            }}
+                            className={`group relative flex flex-col items-center justify-center p-5 rounded-3xl border-4 transition-all duration-300 transform active:scale-95 cursor-pointer shadow-md ${
+                              isSelected
+                                ? 'border-teal-500 bg-gradient-to-b from-teal-50 to-emerald-100 ring-4 ring-teal-300/50 scale-105 shadow-xl shadow-teal-500/20'
+                                : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/40 hover:scale-102'
+                            }`}
+                          >
+                            {icon && (
+                              <span className="text-6xl sm:text-7xl mb-3 filter drop-shadow-sm group-hover:scale-110 transition-transform duration-300 select-none">
+                                {icon}
+                              </span>
+                            )}
+                            <span className="text-base sm:text-lg font-black text-slate-900 text-center leading-snug">
+                              {text || option}
+                            </span>
+                            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 opacity-70 group-hover:opacity-100">
+                              🔊 استمع
+                            </span>
+                            {isSelected && (
+                              <span className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-white text-xs font-black shadow-sm">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-5 grid gap-3 md:grid-cols-2">
+                      {current.options.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setSelectedDraft(option)}
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            setSelectedDraft(option);
+                          }}
+                          className={`min-h-16 rounded-xl border-2 px-4 py-4 text-right text-base font-black transition cursor-pointer ${
+                            selectedDraft === option
+                              ? 'border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-200 shadow-xs'
+                              : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )
                 ) : null}
 
                 {currentResponseType === 'text' ? (

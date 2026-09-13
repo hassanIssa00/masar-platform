@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import {
   fetchAnalyticsSummary, subscribeToRecentEvents,
   getPlatformConfig, savePlatformConfig,
@@ -637,11 +638,14 @@ export default function PlatformSettingsPage() {
                 </h1>
                 <p className="text-xs font-bold text-slate-400 mt-0.5">لوحة تحكم شاملة — إحصائيات · مستخدمون · إعدادات · أمان · بيانات</p>
               </div>
-              <button onClick={loadSummary} disabled={loading}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition shadow-xs disabled:opacity-50">
-                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                تحديث
-              </button>
+              <div className="flex items-center gap-2">
+                <PageReportButton tabKey="platformSettings" label="تقرير إعدادات المنصة (PDF)" variant="primary" />
+                <button onClick={loadSummary} disabled={loading}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition shadow-xs disabled:opacity-50">
+                  <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                  تحديث
+                </button>
+              </div>
             </div>
 
             {/* Tabs */}

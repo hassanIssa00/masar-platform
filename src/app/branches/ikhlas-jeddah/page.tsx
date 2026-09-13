@@ -23,6 +23,7 @@ import {
 import { clearSession } from '@/lib/cloudStore';
 import { getClassStudents } from '@/lib/classDb';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
+import PageReportButton from '@/components/PageReportButton';
 import LiveStreamTab from '@/components/LiveStreamTab';
 import ExcellenceCertificateTab from '@/components/ExcellenceCertificateTab';
 import ProfessionalScheduleTab from '@/components/ProfessionalScheduleTab';
@@ -997,6 +998,20 @@ export default function IkhlasJeddahPage() {
         {/* ── MAIN CONTENT AREA (CENTERED OR FULL WIDTH) ── */}
         <main className="flex-1 p-4 md:p-6 min-w-0">
           <div className="max-w-7xl mx-auto space-y-6">
+
+            {/* Top Classroom Bar with PDF Report Button */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 text-xl font-black">
+                  🏫
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-black text-slate-900 truncate">فصل د. إسماعيل عيسى (جدة)</h1>
+                  <p className="text-xs font-bold text-slate-500 truncate">نظام إدارة ومتابعة الفصل الدراسي الحضوري والافتراضي</p>
+                </div>
+              </div>
+              <PageReportButton tabKey="classroom" label="تقرير الفصل (PDF)" variant="primary" />
+            </div>
 
         {/* ════════════ الأرشيف اليومي الشامل (حضور، غياب، واجبات، كويزات) ════════════ */}
         {activeTab === 'archive' && <DailyArchiveTab students={classStudents} />}

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import {
   getAccounts, getMessages, getReports, getSession, getStudents, hydrateSessionFromServer,
@@ -237,10 +238,13 @@ export default function ParentsManagementPage() {
                   لوحة تحكم الاستشاري لإرسال التقارير، والرسائل التشخيصية، ومواعيد اجتماعات Zoom مباشرة لحسابات أولياء الأمور.
                 </p>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-black text-teal-800 self-start">
+              <div className="flex flex-wrap items-center gap-2 self-start">
+                <PageReportButton tabKey="parents" label="تقرير أولياء الأمور (PDF)" variant="primary" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
                 <Shield size={16} className="text-teal-600" />
                 <span>مركز الإرسال والتواصل (د. إسماعيل)</span>
-              </span>
+                </span>
+              </div>
             </div>
           </header>
 

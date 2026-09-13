@@ -92,10 +92,10 @@ export default function SessionRecordsPage() {
             <div>
               <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                 <ClipboardPen className="text-teal-600" size={26} />
-                سجلات الجلسات الطبية والعلاجية (Clinical Session Records)
+                سجلات الجلسات التأهيلية والعلاجية (Session Records)
               </h1>
               <p className="text-xs font-bold text-slate-500 mt-1">
-                توثيق السجل الطبي الكامل لكل جلسة، الملاحظات السلوكية، وتتبع مخرجات التعلم
+                توثيق السجل التأهيلي الكامل لكل جلسة، الملاحظات السلوكية، وتتبع مخرجات التعلم
               </p>
             </div>
             <button
@@ -107,14 +107,14 @@ export default function SessionRecordsPage() {
           </div>
 
           <FeatureGuideBanner
-            title="السجل الطبي للجلسات (Clinical Session Records)"
-            description="نظام توثيق طبي إلكتروني دقيق يسجل محتوى كل جلسة علاجيّة، الأهداف المنفذة، درجة انتباه وتعاون الطفل، والنتائج المرحلية فور انتهائها."
+            title="السجل التأهيلي للجلسات (Session Records)"
+            description="نظام توثيق تأهيلي إلكتروني دقيق يسجل محتوى كل جلسة علاجيّة، الأهداف المنفذة، درجة انتباه وتعاون الطفل، والنتائج المرحلية فور انتهائها."
             benefits={[
               'يُلغي الاعتماد على الذاكرة الشخصية أو الأوراق المفقودة في متابعة تطور الطالب.',
-              'يسمح للأخصائي الجديد بمراجعة التاريخ الطبي الكامل للطفل بدقة وسرعة.',
+              'يسمح للأخصائي الجديد بمراجعة التاريخ التأهيلي الكامل للطفل بدقة وسرعة.',
               'يوفر بيانات إحصائية دقيقة لتقييم أداء وتفاعل الطالب عبر الجلسات المتتالية.'
             ]}
-            modernShift="التوثيق الإكلينيكي الإلكتروني (Electronic Health & Therapy Records - EHTR) هو الأساس في الممارسة الطبية الحديثة، حيث يُحوّل الانطباعات الشفهية إلى سجل تاريخي علمي رصين."
+            modernShift="التوثيق الإكلينيكي الإلكتروني (Electronic Health & Therapy Records - EHTR) هو الأساس في الممارسة التأهيلية والتربوية الحديثة، حيث يُحوّل الانطباعات الشفهية إلى سجل تاريخي علمي رصين."
           />
 
           {/* Records Grid */}
@@ -122,7 +122,7 @@ export default function SessionRecordsPage() {
             <div className="py-20 text-center rounded-2xl border border-dashed border-slate-300 bg-white space-y-3">
               <ClipboardPen className="mx-auto text-slate-300" size={48} />
               <p className="text-lg font-black text-slate-700">لا توجد سجلات جلسات وثقت بعد</p>
-              <p className="text-xs font-bold text-slate-400">توثيق الجلسات هو متطلب أساسي في الملف الطبي للطالب</p>
+              <p className="text-xs font-bold text-slate-400">توثيق الجلسات هو متطلب أساسي في الملف التأهيلي للطالب</p>
               <button onClick={() => setShowModal(true)} className="mx-auto flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-black text-white hover:bg-teal-700">
                 <Plus size={16} /> توثيق أول جلسة
               </button>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import { getStudents, getSession, type StudentRecord } from '@/lib/cloudStore';
 import { createNotification } from '@/lib/notifications';
 
@@ -137,12 +138,15 @@ export default function DoctorCalendarPage() {
                 جدولة الجلسات وتتبع حضور ومواعيد الطلاب في الوقت الفعلي
               </p>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white hover:bg-teal-700 transition shadow-sm"
-            >
-              <Plus size={18} /> جدولة جلسة جديدة
-            </button>
+            <div className="flex items-center gap-2">
+              <PageReportButton tabKey="calendar" label="تقرير جدول الجلسات (PDF)" variant="primary" />
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white hover:bg-teal-700 transition shadow-sm"
+              >
+                <Plus size={18} /> جدولة جلسة جديدة
+              </button>
+            </div>
           </div>
 
           {/* Calendar Picker + Daily Schedule Grid */}

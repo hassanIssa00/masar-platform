@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import BrandMark from '@/components/BrandMark';
 import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import { readCloudCache, syncDocToCloud, writeCloudCache } from '@/lib/firestoreSync';
@@ -205,9 +206,10 @@ export default function MeetingsPage() {
               {/* Page header */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h1 className="text-3xl font-black text-slate-900">الفصول الافتراضية</h1>
-                  <p className="text-slate-500 mt-1">إدارة وحضور المحاضرات المباشرة</p>
+                  <h1 className="text-3xl font-black text-slate-900">الفصول الافتراضية واجتماعات Zoom</h1>
+                  <p className="text-slate-500 mt-1">إدارة وحضور المحاضرات واللقاءات الاستشارية المباشرة</p>
                 </div>
+                <PageReportButton tabKey="meetings" label="تقرير اجتماعات Zoom (PDF)" variant="primary" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -15,6 +15,8 @@ import { trackEvent } from '@/lib/analyticsTracker';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { isParentChildNameMatch, normalizeArabicText } from '@/lib/nameMatching';
 import { getPlayableAudioUrl } from '@/app/assessment/page';
+import PageReportButton from '@/components/PageReportButton';
+import { TAB_PDF_EXPORTERS } from '@/lib/allPagesPdfReports';
 
 const REPORTS_SYNC_KEYS = ['students', 'reports', 'surveys'] as const;
 
@@ -40,6 +42,7 @@ function ReportsContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [printReport, setPrintReport] = useState<ReportRecord | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [showAllReportsHub, setShowAllReportsHub] = useState<boolean>(false);
   const parentMode = searchParams.get('mode') === 'parent';
   const reportTopRef = useRef<HTMLDivElement | null>(null);
 
@@ -471,19 +474,76 @@ function ReportsContent() {
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
 
           {/* ── Header ─────────────────────────────── */}
-          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-black text-teal-800">التقارير الشاملة</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950">عرض وطباعة تقارير التقييم</h1>
+                <p className="text-sm font-black text-teal-800">التقارير الشاملة لمنصة مسار</p>
+                <h1 className="mt-2 text-2xl sm:text-3xl font-black text-slate-950">مركز التقارير التأهيلية والتشخيصية</h1>
                 <p className="mt-2 text-sm font-bold leading-7 text-slate-600">
-                  مقسّمة حسب النوع — {reports.length} تقرير محفوظ إجمالاً
+                  {reports.length} تقرير تقييم محفوظ — مع دعم تصدير تقرير PDF رسمي لكل تبويب بالمنصة
                 </p>
               </div>
-              <Link href="/student/new" className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800">
-                إنشاء تقرير جديد
-              </Link>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <PageReportButton tabKey="reports" label="تصدير كشف التقارير PDF" variant="primary" />
+                <button
+                  type="button"
+                  onClick={() => setShowAllReportsHub(!showAllReportsHub)}
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2.5 text-xs sm:text-sm font-black text-teal-800 transition cursor-pointer shadow-xs"
+                >
+                  <span>🖨️ مركز تقارير المنصة الموحد ({Object.keys(TAB_PDF_EXPORTERS).length} تبويب)</span>
+                </button>
+                <Link href="/student/new" className="rounded-xl bg-slate-950 px-4 py-2.5 text-xs sm:text-sm font-black text-white hover:bg-slate-800 transition">
+                  إنشاء تقرير جديد
+                </Link>
+              </div>
             </div>
+
+            {/* 🌟 مركز تقارير المنصة الموحد (All-Tabs PDF Hub) 🌟 */}
+            {showAllReportsHub && (
+              <div className="mt-6 pt-6 border-t border-slate-200 animate-fade-in">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      🖨️ مركز تقارير المنصة الموحد لجميع التبويبات (جاهز للطباعة والحفظ PDF فورياً)
+                    </h3>
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">
+                      اضغط على أي زر أدناه لتصدير وطباعة التقرير الرسمي المعتمد لتبويبات المنصة
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllReportsHub(false)}
+                    className="text-xs font-black text-slate-400 hover:text-slate-700 underline cursor-pointer"
+                  >
+                    إخفاء اللوحة
+                  </button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {Object.entries(TAB_PDF_EXPORTERS).map(([key, item]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => item.run()}
+                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-right hover:border-teal-400 hover:bg-teal-50/60 transition group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl shrink-0">{item.icon}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-slate-900 truncate group-hover:text-teal-900">
+                            {item.title}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400">{item.category}</p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-[10px] font-black text-teal-700 border border-slate-200 group-hover:bg-teal-700 group-hover:text-white transition">
+                        PDF 🖨️
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </header>
 
           {/* ── Category tabs ───────────────────────── */}

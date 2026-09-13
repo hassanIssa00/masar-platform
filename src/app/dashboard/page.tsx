@@ -9,6 +9,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import SyncStatus from '@/components/SyncStatus';
+import PageReportButton from '@/components/PageReportButton';
 import { getStudents, getReports, getSession, hydrateSessionFromServer, StudentRecord, ReportRecord } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
 import { useRouter } from 'next/navigation';
@@ -143,6 +144,7 @@ export default function Dashboard() {
               <Link href="/iep" className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
                 خطط IEP
               </Link>
+              <PageReportButton tabKey="dashboard" label="تقرير لوحة التشغيل (PDF)" variant="amber" size="sm" />
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">

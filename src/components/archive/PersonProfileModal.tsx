@@ -38,7 +38,7 @@ export default function PersonProfileModal({ profile, onClose, onDownload }: Pro
 
   const typeLabel: Record<string, string> = {
     student: '🎓 طالب', parent: '👨‍👩‍👧 ولي أمر',
-    doctor: '🩺 طبيب/معالج', specialist: '🧑‍⚕️ أخصائي', teacher: '👩‍🏫 معلم',
+    doctor: '⭐ استشاري/معالج', specialist: '🧑‍⚕️ أخصائي', teacher: '👩‍🏫 معلم',
   };
 
   const CopyBtn = ({ value, field }: { value: string; field: string }) => (

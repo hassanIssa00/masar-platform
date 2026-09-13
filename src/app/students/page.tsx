@@ -14,6 +14,7 @@ import { clearCloudCache, clearSnapshotBackoff, pullCloudDataToLocal, subscribeT
 import { trackEvent } from '@/lib/analyticsTracker';
 import CertificateModal from '@/components/CertificateModal';
 import StudentProfileCard from '@/components/StudentProfileCard';
+import PageReportButton from '@/components/PageReportButton';
 import { getStudentNotes, saveStudentNote, deleteStudentNote, StudentNote } from '@/lib/classDb';
 import { Award, Mic, Send, X, Target } from 'lucide-react';
 import { broadcastAssessmentToStudentsAndParents } from '@/lib/broadcastService';
@@ -535,6 +536,7 @@ export default function StudentsControlPage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <PageReportButton tabKey="students" label="تقرير إدارة الطلاب (PDF)" variant="primary" />
                 <button
                   type="button"
                   onClick={() => setShowBroadcastModal(true)}
@@ -1189,13 +1191,13 @@ export default function StudentsControlPage() {
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                       <div>
                         <h3 className="font-black text-slate-900 text-lg">📁 خزنة مستندات وفحوصات الطالب</h3>
-                        <p className="text-xs font-bold text-slate-500 mt-0.5">حفظ الفحوصات الخارجية والملفات الطبية والسمعيات</p>
+                        <p className="text-xs font-bold text-slate-500 mt-0.5">حفظ الفحوصات الخارجية والملفات التأهيلية والسمعيات</p>
                       </div>
                     </div>
 
                     <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center space-y-2">
-                      <p className="text-xs font-black text-slate-700">إضافة مستند طبّي / تقرير خارجي لملف الطالب</p>
-                      <p className="text-[11px] font-bold text-slate-400">يدعم ملفات PDF، صور الفحوصات، أو التقارير الطبية الموثقة</p>
+                      <p className="text-xs font-black text-slate-700">إضافة مستند تشخيصي / تقرير خارجي لملف الطالب</p>
+                      <p className="text-[11px] font-bold text-slate-400">يدعم ملفات PDF، صور الفحوصات، أو التقارير التأهيلية الموثقة</p>
                       <input
                         type="file"
                         id="vault-upload"

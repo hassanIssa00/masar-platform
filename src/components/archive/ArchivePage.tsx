@@ -28,6 +28,7 @@ import ActivityArchiveTab from './tabs/ActivityArchiveTab';
 import FaceRecordsArchiveTab from './tabs/FaceRecordsArchiveTab';
 import PersonProfileModal from './PersonProfileModal';
 import SnapshotsTab from './tabs/SnapshotsTab';
+import PageReportButton from '@/components/PageReportButton';
 // Phase 2A
 import IEPArchiveTab from './tabs/IEPArchiveTab';
 import SessionRecordsArchiveTab from './tabs/SessionRecordsArchiveTab';
@@ -136,6 +137,7 @@ export default function ArchivePage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <PageReportButton tabKey="archive" label="تقرير الأرشيف الشامل (PDF)" variant="amber" />
             <button
               onClick={loadData}
               disabled={loading}
@@ -377,7 +379,7 @@ function PersonsTab({
   }, [profiles, filter]);
 
   const typeLabel: Record<string, string> = {
-    student: 'طالب', parent: 'ولي أمر', doctor: 'طبيب/معالج',
+    student: 'طالب', parent: 'ولي أمر', doctor: 'استشاري/معالج',
     specialist: 'أخصائي', teacher: 'معلم',
   };
 

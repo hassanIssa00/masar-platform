@@ -115,9 +115,9 @@ export default function DoctorSignatureCard({
       {/* Doctor Credentials & Timestamp Footer */}
       <div className="grid gap-3 sm:grid-cols-2 pt-2 border-t border-slate-200/80 text-xs font-bold text-slate-600">
         <div>
-          <span className="text-[10px] font-black text-slate-400 block uppercase">اسم الطبيب الاستشاري</span>
+          <span className="text-[10px] font-black text-slate-400 block uppercase">اسم الاستشاري المسؤول</span>
           <span className="text-sm font-black text-slate-900">د. إسماعيل عيسى</span>
-          <span className="block text-[11px] text-teal-700 font-bold">استشاري طب الأطفال والتأهيل النمائي</span>
+          <span className="block text-[11px] text-teal-700 font-bold">استشاري التأهيل النمائي وصعوبات التعلم</span>
         </div>
         
         <div className="text-right sm:text-left">

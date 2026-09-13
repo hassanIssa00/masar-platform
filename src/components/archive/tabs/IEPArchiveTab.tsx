@@ -121,7 +121,7 @@ export default function IEPArchiveTab({ data, onDownload, onRefresh }: Props) {
         <div className="relative flex-1 min-w-52">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-            placeholder="ابحث باسم الطالب أو الطبيب..."
+            placeholder="ابحث باسم الطالب أو الأخصائي..."
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-9 pl-3 text-sm placeholder-slate-400 focus:border-sky-400 focus:outline-none" />
         </div>
         <div className="flex gap-1.5 flex-wrap">

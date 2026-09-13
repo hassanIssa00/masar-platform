@@ -293,7 +293,7 @@ export default function StudentProfilePage() {
     { id: 'profile', name: 'البروفايل' },
     { id: 'recordings', name: `التسجيلات والمرفقات (${mediaList.length})` },
     { id: 'plan', name: 'خطة التعلم' },
-    ...(isStaff ? [{ id: 'reports', name: 'التقارير الطبيّة (للدكتور فقط)' }] : []),
+    ...(isStaff ? [{ id: 'reports', name: 'التقارير التأهيلية (للدكتور فقط)' }] : []),
     { id: 'progress', name: 'التقدم' },
   ];
 

@@ -13,7 +13,7 @@ interface Props {
 
 const PAGE_SIZE = 20;
 const roleLabel: Record<string, string> = {
-  doctor: '🩺 طبيب/معالج', parent: '👨‍👩‍👧 ولي أمر',
+  doctor: '⭐ استشاري/معالج', parent: '👨‍👩‍👧 ولي أمر',
   specialist: '🧑‍⚕️ أخصائي', teacher: '👩‍🏫 معلم', student: '🎓 طالب',
 };
 const roleColor: Record<string, string> = {

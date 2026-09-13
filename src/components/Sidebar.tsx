@@ -9,9 +9,36 @@ import {
   BookOpen, FileText, Gamepad2, LogOut, MessageSquareText,
   PanelRightClose, PanelRightOpen, Settings2, UsersRound, X,
   ClipboardList, Users, Building2, Bot, KeyRound, Route, FolderKanban,
-  Sparkles, ShieldCheck, ScanFace, Archive
+  Sparkles, ShieldCheck, ScanFace, Archive, Printer
 } from 'lucide-react';
 import { clearSession, getSession, getStudents, getReports, hydrateSessionFromServer } from '@/lib/cloudStore';
+import { TAB_PDF_EXPORTERS } from '@/lib/allPagesPdfReports';
+import { PlatformReportsModal } from '@/components/PageReportButton';
+
+const PATH_TO_TAB_KEY: Record<string, string> = {
+  '/dashboard': 'dashboard',
+  '/ai-assistant': 'aiAssistant',
+  '/face-id': 'faceId',
+  '/students': 'students',
+  '/platform-settings?tab=users&focus=account-generator': 'accountGenerator',
+  '/parents': 'parents',
+  '/messages': 'messages',
+  '/assessment': 'assessment',
+  '/reports': 'reports',
+  '/programs': 'programs',
+  '/programs/curricula': 'curricula',
+  '/iep': 'iep',
+  '/resources': 'resources',
+  '/calendar': 'calendar',
+  '/meetings': 'meetings',
+  '/branches/ikhlas-jeddah': 'classroom',
+  '/platform-settings': 'platformSettings',
+  '/archive': 'archive',
+  '/parent': 'parents',
+  '/survey': 'assessment',
+  '/school-student': 'classroom',
+  '/kids': 'curricula',
+};
 
 type NavLink = {
   name: string;
@@ -55,6 +82,7 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
   });
 
   const [userRole, setUserRole] = useState<string>('doctor');
+  const [showReportsCenter, setShowReportsCenter] = useState(false);
   const isMobileShow = mobileOpen || externalOpen;
 
   useEffect(() => {
@@ -462,17 +490,40 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
                                 <span className="truncate text-right font-black tracking-wide">{name}</span>
                               </div>
 
-                              {badge !== undefined && (
-                                <span
-                                  className={`
-                                    text-[11px] font-black px-1.5 py-0.5 rounded-full border shrink-0
-                                    ${badgeColor || (isActive ? 'bg-white/20 text-white border-white/30' : 'bg-teal-100 text-teal-700 border-teal-200')}
-                                  `}
-                                  style={{ animation: typeof badge === 'number' && badge > 0 ? 'badge-pop 2s ease-in-out 1s infinite' : 'none' }}
-                                >
-                                  {badge}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {badge !== undefined && (
+                                  <span
+                                    className={`
+                                      text-[11px] font-black px-1.5 py-0.5 rounded-full border shrink-0
+                                      ${badgeColor || (isActive ? 'bg-white/20 text-white border-white/30' : 'bg-teal-100 text-teal-700 border-teal-200')}
+                                    `}
+                                    style={{ animation: typeof badge === 'number' && badge > 0 ? 'badge-pop 2s ease-in-out 1s infinite' : 'none' }}
+                                  >
+                                    {badge}
+                                  </span>
+                                )}
+
+                                {PATH_TO_TAB_KEY[path] && TAB_PDF_EXPORTERS[PATH_TO_TAB_KEY[path]] && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      TAB_PDF_EXPORTERS[PATH_TO_TAB_KEY[path]]?.run();
+                                    }}
+                                    title={`تصدير تقرير PDF رسمي: ${name}`}
+                                    className={`
+                                      grid h-6 w-6 place-items-center rounded-lg shrink-0 transition-all duration-150 cursor-pointer
+                                      ${isActive
+                                        ? 'text-white/80 hover:text-white hover:bg-white/25'
+                                        : 'text-slate-400 hover:text-teal-700 hover:bg-teal-100'
+                                      }
+                                    `}
+                                  >
+                                    <Printer size={12} />
+                                  </button>
+                                )}
+                              </div>
                             </Link>
                           );
                         })}
@@ -483,6 +534,36 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
               </section>
             );
           })}
+
+          {/* ── All Tabs Reports Center Launcher ── */}
+          <div className="pt-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setShowReportsCenter(true)}
+              className={`
+                w-full flex items-center justify-between rounded-2xl p-2.5 font-black transition-all cursor-pointer border
+                ${collapsed && !isMobileShow
+                  ? 'justify-center bg-teal-50 border-teal-200 text-teal-800 hover:bg-teal-100'
+                  : 'bg-gradient-to-r from-teal-50 via-emerald-50/70 to-teal-50 border-teal-200/90 hover:border-teal-400 text-teal-900 text-xs shadow-2xs hover:shadow-xs'
+                }
+              `}
+              title="مركز تقارير المنصة الموحد لجميع التبويبات (PDF)"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="grid h-7 w-7 place-items-center rounded-xl bg-teal-700 text-white shadow-2xs shrink-0">
+                  <Printer size={14} />
+                </div>
+                {(!collapsed || isMobileShow) && (
+                  <span className="truncate text-xs font-black">تقارير PDF لجميع التبويبات</span>
+                )}
+              </div>
+              {(!collapsed || isMobileShow) && (
+                <span className="text-[10px] font-black bg-teal-700 text-white px-2 py-0.5 rounded-lg shrink-0">
+                  18 تقرير
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ── Footer: User Profile ── */}
@@ -572,6 +653,9 @@ export default function Sidebar({ open: externalOpen = false, onClose }: Sidebar
           )}
         </div>
       </aside>
+
+      {/* 🌟 نافذة مركز تقارير المنصة الموحد لجميع التبويبات 🌟 */}
+      <PlatformReportsModal isOpen={showReportsCenter} onClose={() => setShowReportsCenter(false)} />
     </>
   );
 }

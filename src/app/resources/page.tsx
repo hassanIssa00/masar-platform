@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import {
   getLocalResources, createResource, deleteResource, incrementDownload,
   type ResourceItem, type ResourceCategory, type ResourceDomain, type DifficultyLevel,
@@ -93,17 +94,20 @@ export default function ResourcesPage() {
                 أوراق عمل، أنشطة، أدوات تقييم وموارد علمية مصنفة حسب المجال والمستوى
               </p>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white hover:bg-teal-700 shadow-sm"
-            >
-              <Plus size={18} /> رفع مورد جديد
-            </button>
+            <div className="flex items-center gap-2">
+              <PageReportButton tabKey="resources" label="تقرير مكتبة الموارد (PDF)" variant="primary" />
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white hover:bg-teal-700 shadow-sm"
+              >
+                <Plus size={18} /> رفع مورد جديد
+              </button>
+            </div>
           </div>
 
           <FeatureGuideBanner
             title="مكتبة الموارد التشاركية (Resource Library)"
-            description="مستودع رقمي محمي يضم جميع الوسائل، أوراق العمل، التمارين والتطبيقات السلوكية والأكاديمية المعتمدة بالمركز لتبادلها بين الفريق الطبي والأسرة."
+            description="مستودع رقمي محمي يضم جميع الوسائل، أوراق العمل، التمارين والتطبيقات السلوكية والأكاديمية المعتمدة بالمركز لتبادلها بين فريق التأهيل والأسرة."
             benefits={[
               'تمنع عشوائية المواد المستخدمة وتوفر محتوى موحّد وعالي الجودة للجلسات.',
               'تسمح بنقل التمارين والواجبات إلى المنزل بسهولة بضغطة زر مع متابعة التحميل.',

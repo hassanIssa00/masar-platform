@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { ArrowLeft, BookOpen, ClipboardCheck, Clock, Ear, FolderOpen, GraduationCap, Layers3, Route, Sparkles, Target } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import { curriculumPrograms } from '@/data/curriculum';
 
 export default function ProgramsPage() {
@@ -17,10 +18,13 @@ export default function ProgramsPage() {
           <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="grid gap-6 p-6 lg:grid-cols-[1fr_340px] lg:p-8">
               <div>
-                <p className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
-                  <Route size={16} />
-                  المسارات العلاجية
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-2 text-xs font-black text-teal-800">
+                    <Route size={16} />
+                    المسارات العلاجية
+                  </p>
+                  <PageReportButton tabKey="programs" label="تقرير المسارات العلاجية (PDF)" variant="primary" />
+                </div>
                 <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 md:text-5xl">
                   مكتبة المسارات المعتمدة داخل منصة مسار
                 </h1>

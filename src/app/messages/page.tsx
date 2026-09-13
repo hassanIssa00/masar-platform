@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Send, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import VoiceRecorderButton, { MessageAudio } from '@/components/VoiceRecorderButton';
 import { getMessages, getSession, getStudents, hydrateSessionFromServer, MessageRecord, saveMessage, StudentRecord } from '@/lib/cloudStore';
 import { pullCloudDataToLocal, subscribeToCloudUpdates } from '@/lib/firestoreSync';
@@ -84,12 +85,15 @@ function MessagesContent() {
       <div className="flex">
         <Sidebar desktopOnly />
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
-          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between flex-wrap gap-4">
+            <div>
             <p className="text-sm font-black text-teal-800">الرسائل</p>
             <h1 className="mt-2 text-3xl font-black text-slate-950">مراسلة د. إسماعيل وولي الأمر</h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-slate-600">
               كل محادثة مرتبطة بملف طالب محدد حتى تكون المتابعة واضحة بجانب التقارير والمسار.
             </p>
+            </div>
+            <PageReportButton tabKey="messages" label="تقرير سجل الرسائل (PDF)" variant="primary" />
           </header>
 
           <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">

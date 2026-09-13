@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import {
   getLocalIEPs, createIEP, updateIEP, deleteIEP, type IEPRecord, type IEPGoal,
   type IEPDomain, DOMAIN_LABELS, DOMAIN_COLORS, type IEPGoalStatus
@@ -183,6 +184,7 @@ export default function IEPPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <PageReportButton tabKey="iep" label="تقرير خطط IEP (PDF)" variant="primary" />
               {view !== 'list' && (
                 <button
                   onClick={() => setView('list')}

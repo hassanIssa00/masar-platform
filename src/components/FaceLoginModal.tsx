@@ -113,7 +113,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
         targetId: docId,
         role: 'doctor',
         name: docName,
-        roleLabel: '🩺 طبيب ومعالج المنصة الإكلينيكي',
+        roleLabel: '⭐ استشاري المنصة ومسؤول التأهيل',
         branch: 'MASAR',
         targetUrl: '/dashboard',
         similarity,

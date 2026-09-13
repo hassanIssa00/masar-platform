@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import PageReportButton from '@/components/PageReportButton';
 import { getSession, hydrateSessionFromServer } from '@/lib/cloudStore';
 import { removeFaceEnrollment, removeAllFaceEnrollments } from '@/lib/faceAuth';
 
@@ -273,6 +274,7 @@ export default function FaceIdPage() {
             </div>
 
             <div className="flex items-center gap-2.5">
+              <PageReportButton tabKey="faceId" label="تقرير Face ID (PDF)" variant="primary" />
               {records.length > 0 && (
                 <button
                   type="button"
