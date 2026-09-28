@@ -64,8 +64,8 @@ export default function StudentAchievementsTab({
   // Multi-tenant and branch context resolution
   const isIkhlas = schoolBranch === 'IKHLAS_JEDDAH' || (grade && grade.includes('إسماعيل'));
   const supervisorName = isIkhlas ? 'د. إسماعيل عيسى' : 'المعلم المشرف';
-  const supervisorRole = isIkhlas ? 'المشرف العام — فصل الإخلاص بجدة' : 'إدارة منصة مَسَار التعليمية';
-  const supervisorFullTitle = isIkhlas ? 'د. إسماعيل عيسى — فصل الإخلاص بجدة' : 'المعلم المشرف وإدارة منصة مَسَار التعليمية';
+  const supervisorRole = isIkhlas ? 'المشرف العام — فصل الإخلاص بجدة' : 'إدارة منصة نِكْسَس التعليمية';
+  const supervisorFullTitle = isIkhlas ? 'د. إسماعيل عيسى — فصل الإخلاص بجدة' : 'المشرف العام وإدارة منصة نِكْسَس التعليمية';
 
   // Build a comprehensive set of valid student IDs strictly for THIS specific student
   const buildValidStudentIds = () => {
@@ -388,7 +388,7 @@ export default function StudentAchievementsTab({
             <div className="space-y-8">
               {certificates.map((cert) => {
                 const certData = toCertData(cert);
-                const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org'}/verify/${certData.certNumber}?name=${encodeURIComponent(certData.studentName)}&prog=${encodeURIComponent(certData.achievement)}&score=${certData.score}&date=${encodeURIComponent(certData.date)}`;
+                const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com'}/verify/${certData.certNumber}?name=${encodeURIComponent(certData.studentName)}&prog=${encodeURIComponent(certData.achievement)}&score=${certData.score}&date=${encodeURIComponent(certData.date)}`;
 
                 return (
                   <div
@@ -450,7 +450,7 @@ export default function StudentAchievementsTab({
                       </div>
                     </div>
 
-                    {/* ── THE OFFICIAL MASAR CERTIFICATE DISPLAY ── */}
+                    {/* ── THE OFFICIAL NEXUS CERTIFICATE DISPLAY ── */}
                     <div className="overflow-x-auto rounded-2xl bg-slate-900/70 p-2 sm:p-4 border border-emerald-700/40 flex justify-center shadow-inner">
                       <div className="w-full max-w-4xl min-w-[680px]">
                         <OfficialMasarCertificateDesign
@@ -549,7 +549,7 @@ export default function StudentAchievementsTab({
 
 
       {/* ══════════════════════════════════════════════════════════════════
-          CERTIFICATE FULL PREVIEW MODAL (OFFICIAL MASAR DESIGN)
+          CERTIFICATE FULL PREVIEW MODAL (OFFICIAL NEXUS DESIGN)
       ══════════════════════════════════════════════════════════════════ */}
       {selectedCert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 overflow-y-auto">

@@ -7,7 +7,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import { Cairo } from 'next/font/google';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://masarplatform.org'),
+  metadataBase: new URL('https://nexus-edu.com'),
   title: {
     default: 'د. إسماعيل عيسى | منصة مَسَار — تشخيص وتطوير قدرات الأطفال وعلاج صعوبات التعلم',
     template: '%s | د. إسماعيل عيسى — منصة مسار',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     'مدرسة الإخلاص الأهلية',
     'استشارات تربوية ونفسية للأطفال',
   ],
-  authors: [{ name: 'د. إسماعيل عيسى', url: 'https://masarplatform.org' }],
+  authors: [{ name: 'د. إسماعيل عيسى', url: 'https://nexus-edu.com' }],
   creator: 'د. إسماعيل عيسى',
   publisher: 'منصة مَسَار التعليمية',
   category: 'education',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: 'https://masarplatform.org',
+    canonical: 'https://nexus-edu.com',
   },
   icons: {
     icon: [
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     title: 'د. إسماعيل عيسى | منصة مَسَار — تشخيص وتطوير قدرات الأطفال',
     description:
       'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، وتأسيس أكاديمي متكامل لكل طالب.',
-    url: 'https://masarplatform.org',
+    url: 'https://nexus-edu.com',
     siteName: 'منصة مَسَار | د. إسماعيل عيسى',
     locale: 'ar_SA',
     type: 'website',

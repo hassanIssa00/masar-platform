@@ -267,7 +267,7 @@ export default function SignaturePage() {
                   {dateStrEn}
                 </text>
                 <text x={CX} y={CY + 122} textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="9.5" fontWeight="bold" letterSpacing="0.3" fill={INK}>
-                  MASAR PLATFORM · REMEDIAL EDUCATION · JEDDAH
+                  NEXUS PLATFORM · REMEDIAL EDUCATION · JEDDAH
                 </text>
               </svg>
 
@@ -309,7 +309,7 @@ export default function SignaturePage() {
                 </div>
                 <div className="flex justify-between pt-2">
                   <span className="text-gray-500 font-bold">الجهة والتمركز</span>
-                  <span className="font-black text-slate-800">{activeTab === 'ar' ? 'منصة مسار · جدة' : 'MASAR PLATFORM · JEDDAH'}</span>
+                  <span className="font-black text-slate-800">{activeTab === 'ar' ? 'منصة مسار · جدة' : 'NEXUS PLATFORM · JEDDAH'}</span>
                 </div>
               </div>
             </div>

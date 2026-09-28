@@ -18,13 +18,13 @@ function headerHtml(title: string, subtitle = '', categoryTag = 'الأرشيف 
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
   const chars = '0123456789ABCDEF';
-  let serialCode = 'MASAR-';
+  let serialCode = 'NEXUS-';
   for (let i = 0; i < 6; i++) serialCode += chars[Math.floor(Math.random() * chars.length)];
 
   return `
     <div class="doc-top-header">
       <div class="doc-brand-group">
-        <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" />
+        <img src="${origin}/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" class="doc-logo-img" />
         <div class="doc-brand-text">
           <span class="doc-brand-title">مَسَار</span>
           <span class="doc-brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
@@ -62,7 +62,7 @@ function footerHtml() {
             <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply"/>
             <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
             <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${nowNumeric}</text>
-            <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+            <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة نِكْسَس · التعليم الحديث</text>
           </svg>
           <div class="stamp-under-label">الختم الرقمي</div>
         </div>
@@ -77,7 +77,7 @@ function footerHtml() {
         </div>
       </div>
       <div class="footer-bottom-line">
-        <div class="copy-text">منصة مسار للتأهيل والتعليم الذكي - جميع الحقوق محفوظة</div>
+        <div class="copy-text">منصة نِكْسَس للتعليم والتأهيل الذكي - جميع الحقوق محفوظة</div>
         <div class="page-num">صفحة 1 من 1</div>
       </div>
     </div>`;
@@ -102,7 +102,7 @@ const BASE_CSS = `
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     border: none;
     box-shadow: 0 18px 45px rgba(15,23,42,0.18);
     page-break-after: always;
@@ -178,7 +178,7 @@ const BASE_CSS = `
   .count-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 3px 8px; font-weight: 900; font-size: 8.5px; color: #475569; }
   .page-break { page-break-after: always; }
   .bottom-container {
-    margin-top: auto;
+    margin-top: 12px;
     padding-top: 10px;
     break-inside: avoid;
     page-break-inside: avoid;
@@ -202,10 +202,11 @@ const BASE_CSS = `
       box-shadow: none !important;
       border: none !important;
       width: 297mm !important;
-      min-height: 210mm !important;
+      min-height: auto !important;
       height: auto !important;
       max-height: none !important;
       overflow: visible !important;
+      display: block !important;
       page-break-after: auto;
     }
     .report-frame::before { border: 1.25mm double #06392c !important; }
@@ -596,7 +597,7 @@ export function exportStudentCardPdf(student: Record<string, unknown>, autoPrint
 export function exportInvoicePdf(invoice: Record<string, unknown>, autoPrint = false) {
   const inv = invoice as any;
   const body = `
-    ${headerHtml(`فاتورة مالية رسمية — ${inv.invoiceNumber || '—'}`, `الجهة: منصة مسار التعليمية`)}
+    ${headerHtml(`فاتورة مالية رسمية — ${inv.invoiceNumber || '—'}`, `الجهة: منصة نِكْسَس التعليمية`)}
 
     <div class="count-bar">
       <span class="count-item">رقم الفاتورة: ${inv.invoiceNumber || inv.id || '—'}</span>

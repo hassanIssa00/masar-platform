@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { DAY_NAMES, SUBJECT_COLORS, getTodayPeriods, getCurrentPeriod, getSavedSchedule, Period } from '@/data/ikhlasSchedule';
 import { getSaudiNow } from '@/lib/saudiTime';
-import { curriculaList } from '@/data/curriculaData';
+import { curriculaList, getCurriculaForGrade } from '@/data/curriculaData';
 import { curriculumPrograms } from '@/data/curriculum';
 import { games } from '@/data/games';
 import { getCurriculumFiles } from '@/lib/curriculumDb';
@@ -1373,26 +1373,34 @@ export default function StudentDashboard() {
   // ── Curriculum Tab ─────────────────────────────────────────────────────────
   const renderCurriculumTab = () => {
     const uploadedFiles = getCurriculumFiles();
+    const activeCurricula = getCurriculaForGrade(studentRecord?.grade || 'g1');
 
     return (
       <div className="space-y-4">
-        <div className="bg-gradient-to-br from-teal-600 to-emerald-700 rounded-3xl p-5 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-teal-600 via-emerald-700 to-blue-800 rounded-3xl p-5 text-white shadow-lg">
           <div className="flex items-center gap-3 mb-2">
             <BookMarked size={22} />
-            <h2 className="text-base font-black">المناهج التعليمية 📚</h2>
+            <h2 className="text-base font-black">المناهج والمسارات التعليمية 📚</h2>
           </div>
           <p className="text-xs text-teal-100 font-bold">
-            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH' ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى' : 'الصف الأول الابتدائي — منصة مَسَار التعليمية'}
+            {studentRecord?.schoolBranch === 'IKHLAS_JEDDAH'
+              ? 'الصف الأول الابتدائي — فصل د. إسماعيل عيسى'
+              : `${studentRecord?.grade || 'المسار التعليمي المعتمد'} — منصة نِكْسَس التعليمية`}
           </p>
-          <p className="text-xs text-teal-100 mt-1">المنهج الدراسي للعام ١٤٤٨ هـ</p>
+          <p className="text-xs text-teal-100 mt-1">المناهج والمسارات المعتمدة للعام الدراسي ١٤٤٨ هـ</p>
         </div>
 
         <div className="space-y-3">
-          {curriculaList.map(subject => {
+          {activeCurricula.map(subject => {
             const files = uploadedFiles.filter(f => f.subjectId === subject.slug);
             const subjectIcons: Record<string, string> = {
               'lughati': '📖', 'math': '🔢', 'islamic': '🌙', 'science': '🔬',
               'english': '🔤', 'life-skills': '🌱', 'art': '🎨', 'quran': '🕌',
+              'kg-arabic': '🔤', 'kg-math': '🔢', 'kg-art': '🎨', 'kg-science': '🌿',
+              'lughati-khalida': '📚', 'math-middle': '📐', 'science-middle': '⚗️',
+              'english-middle': '🌐', 'digital-coding': '💻', 'critical-thinking': '🧠',
+              'arabic-competencies': '📜', 'math-advanced': '📊', 'physics': '⚡',
+              'chemistry': '🧪', 'biology-ecology': '🧬', 'digital-ai': '🤖',
             };
             return (
               <SubjectCard key={subject.slug} subject={{
@@ -1562,11 +1570,11 @@ export default function StudentDashboard() {
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
           {/* Brand Identity & Portal Tag */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <Link href="/" className="shrink-0 transition-transform active:scale-95 group" title="منصة مسار">
-              <span className="relative inline-flex w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-200/70 ring-2 ring-emerald-500/15 shadow-sm items-center justify-center">
+            <Link href="/" className="shrink-0 transition-transform active:scale-95 group" title="منصة نكسس">
+              <span className="relative inline-flex w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500/10 via-white to-blue-500/10 border border-teal-500/30 ring-2 ring-teal-500/15 shadow-sm items-center justify-center">
                 <Image
-                  src="/brand/masar-logo.webp"
-                  alt="شعار منصة مسار"
+                  src="/brand/nexus-logo-new.webp"
+                  alt="شعار منصة نكسس"
                   fill
                   className="object-contain p-1 group-hover:scale-105 transition-transform"
                   priority
@@ -1576,7 +1584,7 @@ export default function StudentDashboard() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight shrink-0">
-                  منصة مَسَار
+                  منصة نِكْسَس
                 </span>
                 {isIkhlas ? (
                   <span className="text-[10px] sm:text-xs bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shadow-2xs shrink-0">

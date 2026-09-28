@@ -134,7 +134,7 @@ export default function ParentDashboard() {
       }
 
       // TIER 4: Parent email match (skip generated/alias emails)
-      if (myStudents.length === 0 && parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org') && !parentEmail.startsWith('parent.')) {
+      if (myStudents.length === 0 && parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@nexus-edu.com') && !parentEmail.startsWith('parent.')) {
         const byEmail = allKnown.filter((s) => {
           const fields = [(s as any).parentEmail, (s as any).email, (s as any).recoveryEmail].map((e) => (e || '').trim().toLowerCase());
           return fields.some((e) => e && e === parentEmail);
@@ -188,7 +188,7 @@ export default function ParentDashboard() {
               return sp.length >= 8 && sp.slice(-8) === parentPhoneSuffix;
             })
           : null;
-        const byEmail = parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org')
+        const byEmail = parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@nexus-edu.com')
           ? realCandidates.find((s) => {
               const ems = [(s as any).parentEmail, (s as any).email].map((e) => (e || '').trim().toLowerCase());
               return ems.includes(parentEmail);
@@ -726,7 +726,7 @@ export default function ParentDashboard() {
                   <span>بوابة ولي الأمر التفاعلية</span>
                 </span>
                 <h1 className="mt-1 text-2xl md:text-3xl font-black text-slate-950">
-                  أهلاً بك أ. {parentName} في منصة مَسَار 👋
+                  أهلاً بك أ. {parentName} في منصة نِكْسَس 👋
                 </h1>
                 <p className="mt-1 text-xs md:text-sm font-bold text-slate-600">
                   متابعة الخطة التعليمية والتقارير الموثقة المباشرة من {supervisorName} لطفلك: <span className="font-black text-teal-800">{selectedStudent?.fullName || 'الطفل'}</span>.
@@ -766,7 +766,7 @@ export default function ParentDashboard() {
                     lastActiveAt: selectedStudent.lastActiveAt,
                     lastLoginAt: selectedStudent.lastLoginAt,
                   }}
-                  greeting="بيانات طفلي المسجل في منصة مسار 🌟"
+                  greeting="بيانات طفلي المسجل في منصة نِكْسَس 🌟"
                   variant="parent"
                   showParent={true}
                   className="border-0 shadow-none rounded-2xl"

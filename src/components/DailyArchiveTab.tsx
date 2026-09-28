@@ -555,7 +555,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div class="logo-area" style="display:flex;align-items:center;gap:12px;">
           <div class="logo-circle" style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div class="platform-name">
             <h1>منصة مَسَار للتأهيل والتعليم الذكي</h1>
@@ -698,7 +698,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div class="logo-area" style="display:flex;align-items:center;gap:12px;">
           <div class="logo-circle" style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div class="platform-name"><h1>منصة مَسَار للتأهيل والتعليم الذكي</h1><p>فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>
@@ -824,7 +824,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div class="logo-area" style="display:flex;align-items:center;gap:12px;">
           <div class="logo-circle" style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div class="platform-name"><h1>منصة مَسَار للتأهيل والتعليم الذكي</h1><p>فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>
@@ -962,7 +962,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div><h1 style="margin:0;font-size:17px;">منصة مَسَار للتأهيل والتعليم الذكي</h1><p style="margin:2px 0 0;font-size:11px;opacity:0.9;">فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>
@@ -1058,7 +1058,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div><h1 style="margin:0;font-size:18px;">منصة مَسَار للتأهيل والتعليم الذكي</h1><p style="margin:2px 0 0;font-size:12px;opacity:0.9;">فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>
@@ -1145,7 +1145,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div><h1 style="margin:0;font-size:18px;">منصة مَسَار للتأهيل والتعليم الذكي</h1><p style="margin:2px 0 0;font-size:12px;opacity:0.9;">فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>
@@ -1230,7 +1230,7 @@ export default function DailyArchiveTab({ students: propStudents }: Props = {}) 
       <div class="header">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:44px;height:44px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px solid #d6a83f;padding:2px;overflow:hidden;flex-shrink:0;">
-            <img src="/brand/masar-logo.png" alt="شعار مسار" style="width:100%;height:100%;object-fit:contain;" />
+            <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" style="width:100%;height:100%;object-fit:contain;" />
           </div>
           <div><h1 style="margin:0;font-size:18px;">منصة مَسَار للتأهيل والتعليم الذكي</h1><p style="margin:2px 0 0;font-size:12px;opacity:0.9;">فصل الإخلاص — جدة | إشراف: د. إسماعيل عيسى</p></div>
         </div>

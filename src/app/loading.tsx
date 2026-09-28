@@ -255,7 +255,7 @@ export default function Loading() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/masar-logo.png"
+              src="/brand/nexus-logo-new.webp"
               alt="منصة مسار"
               className="w-full h-full object-contain p-1.5"
               style={{ animation: 'logo-breathe 3s ease-in-out infinite' }}

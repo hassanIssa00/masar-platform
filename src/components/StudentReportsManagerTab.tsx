@@ -58,14 +58,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
   const [singleSentMsg, setSingleSentMsg] = useState('');
   const [postBody, setPostBody] = useState('');
   const [postType, setPostType] = useState<'ANNOUNCEMENT' | 'GENERAL'>('ANNOUNCEMENT');
-  const [posts, setPosts] = useState<{ id: string; type: string; body: string; createdAt: string }[]>([
-    {
-      id: 'POST-1',
-      type: 'ANNOUNCEMENT',
-      body: '📢 أولياء الأمور الكرام: يرجى العلم بأنه تم رفع الجدول الدراسي المحدث وتحديث كشوف الواجبات الأسبوعية.',
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  const [posts, setPosts] = useState<{ id: string; type: string; body: string; createdAt: string }[]>([]);
 
   const handleCreatePost = () => {
     if (!postBody.trim()) return;
@@ -91,7 +84,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
           `📝 *ملاحظات د. إسماعيل عيسى:*\n` +
           `"${metrics.teacherNotes}"\n\n` +
           `💡 *التوصية والتوجيه:* ${metrics.recommendation}\n\n` +
-          `🌟 منصة مَسَار للتعليم والتأهيل الذكي`;
+          `🌟 منصة نِكْسَس للتعليم والتأهيل الذكي`;
 
         saveMessage({
           studentId: s.id,
@@ -165,7 +158,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       `📝 *ملاحظات د. إسماعيل عيسى:*\n` +
       `"${metrics.teacherNotes}"\n\n` +
       `💡 *التوصية والتوجيه:* ${metrics.recommendation}\n\n` +
-      `🌟 منصة مَسَار للتعليم والتأهيل الذكي`;
+      `🌟 منصة نِكْسَس للتعليم والتأهيل الذكي`;
 
     saveMessage({
       studentId: s.id,
@@ -218,7 +211,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     const metrics = getStudentMetrics(s.id);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     const text =
-      `📋 *التقرير الأكاديمي الشامل لولي الأمر — منصة مَسَار*%0A%0A` +
+      `📋 *التقرير الأكاديمي الشامل لولي الأمر — منصة نِكْسَس*%0A%0A` +
       `👤 *الطالب:* ${encodeURIComponent(s.name)}%0A` +
       `*الفصل:* فصل د. إسماعيل عيسى%0A` +
       `🏆 *التقدير العام:* ${encodeURIComponent(metrics.overallGrade)}%0A%0A` +
@@ -252,12 +245,12 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         <!-- RIGHT: Logos & Brand -->
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:46px;height:46px;border-radius:12px;border:1.5px solid #d6a83f;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0;padding:2px;">
-            <img src="${origin}/brand/masar-logo.png" alt="شعار مسار"
+            <img src="${origin}/brand/nexus-logo-new.webp" alt="شعار نِكْسَس"
               style="width:100%;height:100%;object-fit:contain;"
-              onerror="this.src='/brand/masar-logo.png';" />
+              onerror="this.src='/brand/nexus-logo-new.webp';" />
           </div>
           <div style="text-align:right;">
-            <div style="font-size:20px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;line-height:1.1;">مَسَار · MASAR</div>
+            <div style="font-size:20px;font-weight:900;color:#06392c;font-family:'Cairo',sans-serif;line-height:1.1;">نِكْسَس · NEXUS</div>
             <div style="font-size:9px;color:#475569;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">منصة التأهيل والتعليم الذكي — إشراف: د. إسماعيل عيسى</div>
           </div>
         </div>
@@ -265,7 +258,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         <!-- LEFT: Ref Badge -->
         <div style="background:#06392c;color:#fff;padding:7px 14px;border-radius:10px;text-align:center;flex-shrink:0;border:1px solid #d6a83f;">
           <div style="font-size:7.5px;font-weight:700;color:#d9eadf;font-family:'Cairo',sans-serif;">رقم الملف</div>
-          <div style="font-size:11px;font-weight:900;font-family:monospace;margin:1px 0;">${refNum.replace('REF-REP-2026-', 'MASAR-')}</div>
+          <div style="font-size:11px;font-weight:900;font-family:monospace;margin:1px 0;">${refNum.replace('REF-REP-2026-', 'NEXUS-')}</div>
           <div style="font-size:7px;color:#d9eadf;font-family:'Cairo',sans-serif;">${issuedDate}</div>
         </div>
       </div>
@@ -273,7 +266,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
       <!-- ══ DARK NAVY BANNER ══ -->
       <div style="background:linear-gradient(135deg,#06392c 0%,#0a4a39 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:14px;border-radius:8px;border:1px solid rgba(214,168,63,.55);">
         <div>
-          <div style="font-size:7.5px;color:#d9eadf;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL MASAR REPORT • وثيقة تعليمية حديثة</div>
+          <div style="font-size:7.5px;color:#d9eadf;font-weight:700;letter-spacing:1px;font-family:monospace;">OFFICIAL NEXUS REPORT • وثيقة تعليمية حديثة</div>
           <div style="font-size:14px;font-weight:900;color:#fff;font-family:'Cairo',sans-serif;margin-top:2px;">التقرير الأكاديمي والنمائي الشامل</div>
         </div>
         <div style="text-align:left;color:#d9eadf;font-family:'Cairo',sans-serif;">
@@ -287,7 +280,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
         <!-- LEFT: Info & QR Verification -->
         <div>
           <div style="font-size:10px;color:#64748b;font-weight:700;font-family:'Cairo',sans-serif;">المملكة العربية السعودية · جدة</div>
-          <div style="font-size:11px;color:#06392c;font-weight:900;font-family:'Cairo',sans-serif;">منصة مَسَار للتأهيل والتعليم الذكي</div>
+          <div style="font-size:11px;color:#06392c;font-weight:900;font-family:'Cairo',sans-serif;">منصة نِكْسَس للتأهيل والتعليم الذكي</div>
           <div style="font-size:9px;color:#94a3b8;font-weight:600;font-family:monospace;">${refNum} | ${issuedDate}</div>
         </div>
         <!-- CENTER: Circular Official Stamp SVG -->
@@ -301,7 +294,7 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
             <image href="${origin}/dr-ismail-signature.png" x="24" y="64" width="112" height="34" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply" />
             <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
             <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">${issuedDate}</text>
-            <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+            <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة نِكْسَس · التعليم الحديث</text>
           </svg>
           <div style="font-size:8px;color:#047857;font-weight:700;font-family:'Cairo',sans-serif;margin-top:2px;">وثيقة إشرافية موثقة ✓</div>
         </div>
@@ -363,10 +356,11 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     html,body{margin:0!important;padding:0!important;background:#fff!important;}
     .page{
       width:210mm!important;
-      min-height:297mm!important;
+      min-height:auto!important;
       height:auto!important;
       max-height:none!important;
       overflow:visible!important;
+      display:block!important;
       margin:0!important;
       box-shadow:none!important;
     }

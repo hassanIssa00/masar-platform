@@ -558,7 +558,7 @@ export default function CurriculumInteractiveWorkbook({
       parentName,
       from: 'doctor',
       to: 'parent',
-      body: `📚 *واجب منزلي تفاعلي جديد — مادة (${curriculum.title})*\n\nعزيزي ولي أمر البطل: *${student.fullName}* 👋\nكلف د. إسماعيل عيسى طفلك بحل التدريبات التفاعلية من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب المدرسي.\n\n📖 رابط فتح المنهج التفاعلي: https://masarplatform.org/school-student?tab=homework`,
+      body: `📚 *واجب منزلي تفاعلي جديد — مادة (${curriculum.title})*\n\nعزيزي ولي أمر البطل: *${student.fullName}* 👋\nكلف د. إسماعيل عيسى طفلك بحل التدريبات التفاعلية من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب المدرسي.\n\n📖 رابط فتح المنهج التفاعلي: https://nexus-edu.com/school-student?tab=homework`,
       read: false,
     } as any);
 
@@ -640,7 +640,7 @@ export default function CurriculumInteractiveWorkbook({
         description: `حل التدريبات والأنشطة من صفحة (${cleanFrom}) إلى صفحة (${cleanTo}) في الكتاب التفاعلي لمادة ${curriculum.title}.`,
         subject: curriculum.title,
         dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10),
-        notes: `رابط فتح المنهج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+        notes: `رابط فتح المنهج: https://nexus-edu.com/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
         fromPage: cleanFrom,
         toPage: cleanTo,
         subjectSlug: curriculum.slug,

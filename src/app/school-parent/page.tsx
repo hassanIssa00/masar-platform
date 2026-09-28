@@ -1401,13 +1401,13 @@ export default function SchoolParentPage() {
             <div className="text-center space-y-3">
               <div className="w-20 h-20 rounded-full bg-teal-50 border-4 border-emerald-400/80 shadow-lg flex items-center justify-center mx-auto text-4xl overflow-hidden">
                 {studentRecord?.photoUrl ? (
-                  studentRecord.photoUrl.startsWith('data:image') ? (
+                  (studentRecord.photoUrl.startsWith('data:') || studentRecord.photoUrl.startsWith('http') || studentRecord.photoUrl.startsWith('/') || studentRecord.photoUrl.startsWith('blob:') || studentRecord.photoUrl.length > 50) ? (
                     <img src={studentRecord.photoUrl} alt={studentRecord.fullName} className="w-full h-full object-cover" />
                   ) : (
                     <span>{studentRecord.photoUrl}</span>
                   )
                 ) : (
-                  <span>🎓</span>
+                  <span className="text-slate-400 font-bold text-xs">🎓</span>
                 )}
               </div>
 

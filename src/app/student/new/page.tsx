@@ -11,7 +11,23 @@ import { pullCloudDataToLocal, syncDocToCloud } from '@/lib/firestoreSync';
 import { extractFatherNameFromStudent, findMatchingStudentForParent, isParentChildNameMatch, normalizeArabicText, isStudentNameMatch } from '@/lib/nameMatching';
 import { getClassStudents } from '@/lib/classDb';
 
-const gradeOptions = ['الروضة', 'الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس', 'صعوبات التعلم'];
+const gradeOptions = [
+  'الروضة / التمهيدي',
+  'الصف الأول الابتدائي',
+  'الصف الثاني الابتدائي',
+  'الصف الثالث الابتدائي',
+  'الصف الرابع الابتدائي',
+  'الصف الخامس الابتدائي',
+  'الصف السادس الابتدائي',
+  'الصف الأول المتوسط',
+  'الصف الثاني المتوسط',
+  'الصف الثالث المتوسط',
+  'الصف الأول الثانوي (مسار مشترك)',
+  'الصف الثاني الثانوي (مسارات تخصصية)',
+  'الصف الثالث الثانوي (مسارات متقدمة)',
+  'صعوبات التعلم والتربية الخاصة',
+  'برامج التأهيل الحركي والنطق والتخاطب',
+];
 const STUDENT_WIZARD_SYNC_KEYS = ['accounts', 'students', 'reports', 'surveys', 'classStudents'] as const;
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'));
 const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
@@ -20,7 +36,7 @@ const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFull
 function isGeneratedAlias(emailStr?: string): boolean {
   if (!emailStr) return false;
   const e = emailStr.toLowerCase().trim();
-  return e.includes('@masarplatform.org') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
+  return e.includes('@nexus-edu.com') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
 }
 
 /** Derive the father's name from student full name when parentName is missing or incorrectly set to student name */

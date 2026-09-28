@@ -150,9 +150,22 @@ export default function StudentProfileCard({
               {currentPhoto}
             </div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 ring-4 ring-white/20 text-white font-black text-2xl shadow-inner">
-              {initials}
-            </div>
+            <label
+              className="flex flex-col h-full w-full items-center justify-center rounded-full bg-white/15 hover:bg-white/25 border-2 border-dashed border-white/50 text-white shadow-inner select-none cursor-pointer transition text-center px-1 group-hover:scale-105"
+              title="اضغط هنا لرفع صورتك الشخصية 📸"
+            >
+              <Camera size={22} className="text-white/90 mb-0.5" />
+              <span className="text-[9px] font-black text-white/95 leading-none">أضف صورتك</span>
+              {allowPhotoUpload && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={handlePhotoUpload}
+                />
+              )}
+            </label>
           )}
           {/* Dynamic Online/Offline dot */}
           <span

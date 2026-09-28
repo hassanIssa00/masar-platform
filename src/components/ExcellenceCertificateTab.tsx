@@ -192,7 +192,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     const parentName = recipient ? recipient.parentName : 'ولي الأمر';
     const parentPhone = recipient?.phone ? recipient.phone.replace(/\+/g, '') : '';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
     const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
     
     const text =
@@ -810,7 +810,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   OFFICIAL MASAR PLATFORM CERTIFICATE DESIGN
+   OFFICIAL NEXUS PLATFORM CERTIFICATE DESIGN
 ════════════════════════════════════════════════════════════════ */
 export function OfficialMasarCertificateDesign({
   form,
@@ -821,7 +821,7 @@ export function OfficialMasarCertificateDesign({
   isPrintTarget?: boolean;
   customId?: string;
 }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
   const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}`;
 
@@ -1020,7 +1020,7 @@ export function OfficialMasarCertificateDesign({
               <image href="/dr-ismail-signature.png" x="24" y="64" width="112" height="36" preserveAspectRatio="xMidYMid meet" clipPath="url(#sig-clip-ex)" style={{ mixBlendMode: 'multiply' } as React.CSSProperties} />
               <line x1="24" y1="100" x2="136" y2="100" stroke="#06392c" strokeWidth="0.8" />
               <text x="80" y="112" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="7.5" fontWeight="900" fill="#06392c">{form.date}</text>
-              <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+              <text x="80" y="124" textAnchor="middle" fontFamily="Cairo, Arial" fontSize="5" fontWeight="bold" fill="#06392c">منصة نِكْسَس · التعليم الحديث</text>
             </svg>
           </div>
 

@@ -359,7 +359,7 @@ export function saveStudentCertificateLog(log: Omit<StudentCertificateLog, 'id' 
     } catch {}
   }
 
-  const certNumber = log.certNumber || `MASAR-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+  const certNumber = log.certNumber || `NEXUS-CERT-2026-${Math.floor(10000 + Math.random() * 90000)}`;
   const newLog: StudentCertificateLog = {
     ...log,
     id: log.id || `cert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

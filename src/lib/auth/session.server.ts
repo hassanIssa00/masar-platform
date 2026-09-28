@@ -906,7 +906,7 @@ async function verifyGeneratedCredential(identifier: string, password: string) {
 }
 
 async function verifySignedGeneratedCredential(identifier: string, password: string): Promise<VerifiedAccount | null> {
-  if (!identifier.includes('@masarplatform.org')) return null;
+  if (!identifier.includes('@nexus-edu.com')) return null;
 
   const email = normalizeIdentifier(identifier);
   const normalizedPassword = normalizePasswordInput(password).toUpperCase();
@@ -1085,8 +1085,8 @@ async function verifyFirebasePasswordCredential(identifier: string, password: st
   const normalizedPass = normalizePasswordInput(password);
   const referersToTry = [
     '',
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://masarplatform.org/',
-    'https://masarplatform.org',
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://nexus-edu.com/',
+    'https://nexus-edu.com',
   ];
 
   for (const referer of referersToTry) {

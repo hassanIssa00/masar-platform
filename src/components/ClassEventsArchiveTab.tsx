@@ -80,38 +80,8 @@ const CATEGORY_CONFIG: Record<ClassEventItem['category'], { label: string; icon:
   },
 };
 
-/* Initial Demo Events if empty */
-const INITIAL_DEMO_EVENTS: ClassEventItem[] = [
-  {
-    id: 'EVT-1',
-    title: 'حفلة تكريم الطلاب المتفوقين في القراءة 🏆',
-    category: 'party',
-    categoryLabel: 'حفلة وحفل تكريم 🎉',
-    driveUrl: 'https://drive.google.com',
-    description: 'تغطية مصورة لحفلة تكريم طلاب الفصل المتميزين في مهارات القراءة والوعي الفونيجي بحضور إدارة المدرسة والآباء.',
-    date: new Date().toISOString().split('T')[0],
-    coverImage: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80'
-    ]
-  },
-  {
-    id: 'EVT-2',
-    title: 'الرحلة الاستكشافية للمركز العلمي 🚌',
-    category: 'trip',
-    categoryLabel: 'رحلة مدرسية 🚌',
-    driveUrl: 'https://drive.google.com',
-    description: 'صور وفيديوهات التوثيق لرحلة طلاب الصف الثالث إلى المعارض العلمية وتجارب الفيزياء التفاعلية.',
-    date: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0],
-    coverImage: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=80',
-  }
-];
-
 export default function ClassEventsArchiveTab({ eventsList, onCreateEvent }: Props) {
-  const [events, setEvents] = useState<ClassEventItem[]>(() => {
-    return eventsList.length > 0 ? eventsList : INITIAL_DEMO_EVENTS;
-  });
+  const [events, setEvents] = useState<ClassEventItem[]>(() => eventsList || []);
 
   /* Form State */
   const [title, setTitle] = useState('');
@@ -471,6 +441,17 @@ export default function ClassEventsArchiveTab({ eventsList, onCreateEvent }: Pro
               </div>
             );
           })}
+          {filteredEvents.length === 0 && (
+            <div className="col-span-full py-12 px-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                📸
+              </div>
+              <h4 className="text-sm font-black text-slate-800">لا توجد فعاليات مسجلة بعد</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                يمكنك توثيق أول حفل أو نشاط صفي أو رحلة للطلاب ورفع الصور والروابط المباشرة بسهولة.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

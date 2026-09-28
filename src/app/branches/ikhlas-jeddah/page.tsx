@@ -12,7 +12,7 @@ import {
   LogOut, Eye, ChevronDown, ChevronUp, Image, Upload,
   Radio, UserCheck, UserX, Phone, Sparkles, Award, FileText, HelpCircle,
   Menu, X, ChevronRight, ChevronLeft, ClipboardList, Archive, Medal, ScanFace,
-  ShieldCheck, MapPin,
+  ShieldCheck, MapPin, Zap,
 } from 'lucide-react';
 import {
   DEFAULT_SCHEDULE, DAY_NAMES, SUBJECT_COLORS,
@@ -40,6 +40,7 @@ import HomeworkCorrectionTab from '@/components/HomeworkCorrectionTab';
 import ParentsCommunityChatTab from '@/components/ParentsCommunityChatTab';
 import DailyArchiveTab from '@/components/DailyArchiveTab';
 import OverviewScheduleBoard from '@/components/OverviewScheduleBoard';
+import NexusToolsTab from '@/components/NexusToolsTab';
 import StudentBadgesManagerTab from '@/components/StudentBadgesManagerTab';
 import ClassroomFaceAttendanceFullPage from '@/components/ClassroomFaceAttendanceFullPage';
 import { getSaudiNow, formatSaudiDate } from '@/lib/saudiTime';
@@ -76,7 +77,8 @@ type Tab =
   | 'homework'
   | 'meetings'
   | 'photos'
-  | 'reports';
+  | 'reports'
+  | 'nexus-tools';
 
 function authHeaders() {
   return { 'Content-Type': 'application/json' };
@@ -567,7 +569,7 @@ export default function IkhlasJeddahPage() {
     if (!mtgTitle || !mtgDate) return;
     setMtgLoading(true);
     // Generate internal Masar room code
-    const roomCode = 'MASAR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const roomCode = 'NEXUS-' + Math.random().toString(36).slice(2, 8).toUpperCase();
     const hostToken = Math.random().toString(36).slice(2, 18);
     const meetingUrl = `/meetings?room=${roomCode}&t=${hostToken}`;
     try {
@@ -701,6 +703,7 @@ export default function IkhlasJeddahPage() {
         { key: 'ai-chat', label: 'مساعد المعلم AI', icon: Sparkles, badge: '⚡ AI', badgeColor: 'bg-emerald-400 text-slate-950 font-black' },
         { key: 'live', label: 'البث المباشر', icon: Radio, badge: '🔴 مباشر', badgeColor: 'bg-rose-500 text-white font-black' },
         { key: 'reports', label: 'التقارير وسجلات الطلاب', icon: FileText },
+        { key: 'nexus-tools', label: 'Nexus Tools — أدوات المعلم', icon: Zap, badge: '⚡ 20 أداة', badgeColor: 'bg-violet-500 text-white font-black' },
       ],
     },
     {
@@ -1012,6 +1015,9 @@ export default function IkhlasJeddahPage() {
               </div>
               <PageReportButton tabKey="classroom" label="تقرير الفصل (PDF)" variant="primary" />
             </div>
+
+        {/* ════════════ Nexus Tools ════════════ */}
+        {activeTab === 'nexus-tools' && <NexusToolsTab students={classStudents} />}
 
         {/* ════════════ الأرشيف اليومي الشامل (حضور، غياب، واجبات، كويزات) ════════════ */}
         {activeTab === 'archive' && <DailyArchiveTab students={classStudents} />}

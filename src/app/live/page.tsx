@@ -53,7 +53,7 @@ function LiveViewer() {
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 relative rounded-xl overflow-hidden border border-slate-700">
-            <Image src="/brand/masar-logo.png" alt="مسار" fill className="object-contain p-1" />
+            <Image src="/brand/nexus-logo-new.webp" alt="مسار" fill className="object-contain p-1" />
           </div>
           <div>
             <h1 className="font-black text-lg text-white">بث مباشر — مَسَار</h1>

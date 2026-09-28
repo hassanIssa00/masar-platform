@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Referer: 'https://masarplatform.org/',
+            Referer: 'https://nexus-edu.com/',
           },
           body: JSON.stringify({
             oobCode: code,

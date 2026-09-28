@@ -250,7 +250,7 @@ function DrIsmailStamp({ sigB64, isAr, dateStr }: { sigB64: string; isAr: boolea
       {/* Bottom label */}
       <text x={CX} y={CY + 44} textAnchor="middle"
         fontFamily="Cairo, Amiri, Arial" fontSize="5" fontWeight="bold" fill={INK}>
-        {isAr ? 'منصة مسار · التعليم الحديث' : 'MASAR PLATFORM · JEDDAH'}
+        {isAr ? 'منصة نِكْسَس · التعليم الحديث' : 'NEXUS PLATFORM · JEDDAH'}
       </text>
     </svg>
   );
@@ -367,7 +367,7 @@ function AcademicSealIcon() {
         <circle cx="28" cy="28" r="16.5" fill="none" stroke="#d9a238" strokeWidth="0.8" strokeDasharray="2 2" />
       </svg>
       <img
-        src="/brand/masar-logo.png"
+        src="/brand/nexus-logo-new.webp"
         alt="ختم مسار"
         className="absolute w-8 h-8 object-contain"
       />
@@ -398,7 +398,7 @@ function OfficialSealIcon() {
         <circle cx="28" cy="28" r="16.5" fill="none" stroke="#d9a238" strokeWidth="0.8" strokeDasharray="2 2" />
       </svg>
       <img
-        src="/brand/masar-logo.png"
+        src="/brand/nexus-logo-new.webp"
         alt="ختم مسار"
         className="absolute w-8 h-8 object-contain"
       />
@@ -643,7 +643,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* FIRST (RTL→RIGHT / LTR→LEFT): Logo */}
               <div style={{ display:'flex', alignItems:'center' }}>
-                <BrandMark size="md" showText={true} isEn={!isAr} hideNexus={true}/>
+                <BrandMark size="md" showText={true} isEn={!isAr} hideNexus={false}/>
               </div>
 
               {/* CENTER: Badge — temporarily hidden */}
@@ -820,7 +820,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
                     {isAr ? 'شهادة صادرة رقمياً وموثقة' : 'Officially Issued Certificate'}
                   </div>
                   <div style={{ fontSize:9.5, color:'#a8d4b8', lineHeight:1.3 }}>
-                    {isAr ? 'عبر منصة مسار للتأهيل والتعليم الذكي' : 'via Masar Smart Platform'}
+                    {isAr ? 'عبر منصة نِكْسَس للتعليم والتأهيل الذكي' : 'via Nexus Smart Platform'}
                   </div>
                 </div>
                 <BottomGoldMedal/>
@@ -835,7 +835,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* LEFT: Real Scannable QR Code + text */}
               {(() => {
-                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masar-platform.com';
+                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
                 const verifyUrl = `${origin}/verify/${certNo}?name=${encodeURIComponent(displayName)}&prog=${encodeURIComponent(data.programTitle)}&score=${data.score}&date=${encodeURIComponent(data.completionDate)}`;
                 const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`;
 

@@ -154,7 +154,7 @@ export default function FaceEnrollPage() {
             enrollFace(userId, capturedEmbRef.current, {
               userName,
               userRole,
-              userEmail: userEmail || `${userId}@masarplatform.org`,
+              userEmail: userEmail || `${userId}@nexus-edu.com`,
               schoolBranch: schoolBranch || 'MASAR',
               accountId: userId,
               studentId: userRole === 'student' ? userId : (linkedStudentId || undefined),

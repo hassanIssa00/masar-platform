@@ -94,7 +94,7 @@ export async function signInWithGoogle(
       return { ok: false, reason: 'تم حجب النافذة المنبثقة. يُرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح.' };
     }
     if (authErr.code === 'auth/unauthorized-domain') {
-      return { ok: false, reason: 'النطاق masarplatform.org غير مضاف في مصادقات Firebase (Authorized Domains).' };
+      return { ok: false, reason: 'النطاق غير مضاف في مصادقات Firebase (Authorized Domains). يرجى مراجعة Firebase Console وإضافة النطاق الحالي.' };
     }
     return { ok: false, reason: `خطأ في تسجيل الدخول (${authErr.code || 'error'}): ${authErr.message || 'خطأ غير معروف'}` };
   }
@@ -218,7 +218,7 @@ async function mapFirebaseUserToAccount(
   fallbackName: string,
 ): Promise<GoogleSignInResult> {
   const email = normalize(user.email ?? '');
-  const fallbackEmail = createdVia === 'apple' && !email ? `${user.uid}@apple.masarplatform.org` : '';
+  const fallbackEmail = createdVia === 'apple' && !email ? `${user.uid}@apple.nexus-edu.com` : '';
   const resolvedEmail = email || fallbackEmail;
 
   if (!resolvedEmail) {
@@ -344,7 +344,7 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
 
   try {
     await sendPasswordResetEmail(auth, clean, {
-      url: 'https://masarplatform.org/auth/login',
+      url: 'https://nexus-edu.com/auth/login',
       handleCodeInApp: false,
     });
     return { ok: true, mode: 'firebase' };

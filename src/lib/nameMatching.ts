@@ -249,7 +249,7 @@ export function findStudentsForParent(
     }
 
     // Email match
-    if (pEmail && !pEmail.includes('generated') && !pEmail.includes('@masar.local') && !pEmail.includes('@masarplatform.org')) {
+    if (pEmail && !pEmail.includes('generated') && !pEmail.includes('@masar.local') && !pEmail.includes('@nexus-edu.com')) {
       if (record.parentEmail && record.parentEmail.trim().toLowerCase() === pEmail) return true;
       if (record.recoveryEmail && record.recoveryEmail.trim().toLowerCase() === pEmail) return true;
       if (record.email && record.email.trim().toLowerCase() === pEmail) return true;

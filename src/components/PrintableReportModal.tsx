@@ -27,7 +27,7 @@ export default function PrintableReportModal({
   onClose: () => void;
 }) {
   const hijriDate = getTodayHijri();
-  const fileNumber = `MASAR-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
+  const fileNumber = `NEXUS-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const resolvedStudent = useMemo(
     () => student ?? getStudents().find((item) => item.id === report.studentId || item.fullName === report.studentName) ?? null,
@@ -141,16 +141,16 @@ export default function PrintableReportModal({
     const headerHtml = (label: string) => `
         <div class="header">
           <div class="brand-side">
-            <img src="${origin}/brand/masar-logo.png" alt="شعار منصة مسار" />
-            <span>وثيقة رقمية</span>
+            <img src="${origin}/brand/nexus-logo-new.webp" alt="شعار منصة نكسس" />
+            <span>وثيقة معتمدة</span>
           </div>
           <div class="brand-center">
             <div class="brand-title" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
-              <img src="${origin}/brand/masar-logo.png" alt="شعار مسار" style="width:26px;height:26px;object-fit:contain;border-radius:6px;border:1px solid #d6a83f;padding:1px;background:#fff;" onerror="this.src='/brand/masar-logo.png';" />
-              <span>MASAR · مَسَار</span>
+              <img src="${origin}/brand/nexus-logo-new.webp" alt="شعار نكسس" style="width:28px;height:28px;object-fit:contain;border-radius:6px;border:1px solid #14b8a6;padding:1px;background:#fff;" onerror="this.src='/brand/nexus-logo-new.webp';" />
+              <span>NEXUS · نِكْسَس</span>
             </div>
-            <div class="brand-subtitle">منصة التأهيل والتعليم الذكي لصعوبات التعلم</div>
-            <div class="brand-owner">تحت إشراف د. إسماعيل عيسى للتأهيل والتعليم الحديث</div>
+            <div class="brand-subtitle">منصة التعليم الذكي والتأهيل التفاعلي المتقدم</div>
+            <div class="brand-owner">تحت إشراف واستشارة د. إسماعيل عيسى للتأهيل والتعليم الحديث</div>
             <div class="brand-label">${label}</div>
           </div>
           <div class="serial-card">
@@ -163,9 +163,9 @@ export default function PrintableReportModal({
     const compactHeaderHtml = (label: string) => `
         <div class="compact-header">
           <div class="compact-brand">
-            <img src="${origin}/brand/masar-logo.png" alt="شعار منصة مسار" />
+            <img src="${origin}/brand/nexus-logo-new.webp" alt="شعار منصة نكسس" />
             <div>
-              <strong>مَسَار</strong>
+              <strong>نِكْسَس</strong>
               <span>${label}</span>
             </div>
           </div>
@@ -265,7 +265,7 @@ export default function PrintableReportModal({
               <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-modal)" style="mix-blend-mode:multiply"/>
               <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
               <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${hijriDate}</text>
-              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة نِكْسَس · التعليم والذكاء الاصطناعي</text>
             </svg>
             <div style="font-size:8.5px;font-weight:900;color:#06392c;margin-top:2px;">الختم الرقمي</div>
           </div>
@@ -304,7 +304,7 @@ export default function PrintableReportModal({
         ${isLastAnswerPage ? signatureBlockHtml : ''}
       </div>
       <div class="footer">
-        <span>جميع الحقوق محفوظة - منصة مَسَار للتأهيل والتعليم الذكي</span>
+        <span>جميع الحقوق محفوظة - منصة نِكْسَس للتعليم والتأهيل الذكي</span>
         <span>صفحة ${pageNumber} من ${totalPages}</span>
       </div>
     </section>`;
@@ -315,7 +315,7 @@ export default function PrintableReportModal({
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8"/>
-          <title>${reportTitle} - ${report.studentName || 'الطالب'} - منصة مسار</title>
+          <title>${reportTitle} - ${report.studentName || 'الطالب'} - منصة نِكْسَس</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after {
@@ -354,7 +354,7 @@ export default function PrintableReportModal({
       position: relative;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
       border: none;
       box-shadow: 0 18px 45px rgba(15,23,42,0.18);
       page-break-after: always;
@@ -393,10 +393,11 @@ export default function PrintableReportModal({
         margin: 0 !important;
         box-shadow: none !important;
         width: 210mm !important;
-        min-height: 297mm !important;
+        min-height: auto !important;
         height: auto !important;
         max-height: none !important;
         overflow: visible !important;
+        display: block !important;
         border: none !important;
         page-break-after: always !important;
         break-after: page !important;
@@ -590,7 +591,7 @@ export default function PrintableReportModal({
     .answers-table td { padding: 6px 9px !important; line-height: 1.55; }
     .footer {
       display: flex; justify-content: space-between; align-items: center;
-      border-top: 1.5px solid #06392c; padding-top: 6px; margin-top: auto;
+      border-top: 1.5px solid #06392c; padding-top: 6px; margin-top: 10px;
       font-size: 8.5px; font-weight: 800; color: #64748b;
     }
     .stamp-box { text-align: center; }

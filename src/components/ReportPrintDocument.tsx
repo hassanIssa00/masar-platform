@@ -23,8 +23,8 @@ export default function ReportPrintDocument({
   student?: StudentRecord | null;
 }) {
   const hijriDate = getTodayHijri();
-  const fileNumber = `MASAR-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
+  const fileNumber = `NEXUS-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
 
   const reportScore = typeof report.score === 'number' ? report.score : 0;
   const domainsList = Array.isArray(report.domains) ? report.domains : [];
@@ -194,10 +194,10 @@ export default function ReportPrintDocument({
         {/* Top Header Bar */}
         <header className="page-header">
           <div className="brand">
-            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <img src={`${origin}/brand/nexus-logo-new.webp`} alt="شعار نِكْسَس" className="brand-logo-img" />
             <div className="brand-text">
-              <span className="brand-logo">مَسَار</span>
-              <span className="brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
+              <span className="brand-logo">نِكْسَس</span>
+              <span className="brand-sub">منصة نِكْسَس للتعليم والتأهيل الذكي المتطور</span>
             </div>
           </div>
           <div className="doc-meta">
@@ -281,7 +281,7 @@ export default function ReportPrintDocument({
 
         {/* Footer Bar */}
         <footer className="page-footer">
-          <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+          <span>منصة نِكْسَس للتعليم والتأهيل الذكي · جميع الحقوق محفوظة</span>
           <span className="page-num">صفحة 1 من {totalPages}</span>
         </footer>
       </section>
@@ -292,9 +292,9 @@ export default function ReportPrintDocument({
       <section className="print-page page-2">
         <header className="page-header">
           <div className="brand">
-            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <img src={`${origin}/brand/nexus-logo-new.webp`} alt="شعار نِكْسَس" className="brand-logo-img" />
             <div className="brand-text">
-              <span className="brand-logo">مَسَار</span>
+              <span className="brand-logo">نِكْسَس</span>
               <span className="brand-sub">تقرير التقييم الشامل</span>
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function ReportPrintDocument({
         </div>
 
         <footer className="page-footer">
-          <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+          <span>منصة نِكْسَس للتعليم والتأهيل الذكي · جميع الحقوق محفوظة</span>
           <span className="page-num">صفحة 2 من {totalPages}</span>
         </footer>
       </section>
@@ -407,9 +407,9 @@ export default function ReportPrintDocument({
       {hasRecommendations && <section className={`print-page page-${recsPageNum}`}>
         <header className="page-header">
           <div className="brand">
-            <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+            <img src={`${origin}/brand/nexus-logo-new.webp`} alt="شعار نِكْسَس" className="brand-logo-img" />
             <div className="brand-text">
-              <span className="brand-logo">مَسَار</span>
+              <span className="brand-logo">نِكْسَس</span>
               <span className="brand-sub">التوصيات والتوجيهات الإكلينيكية</span>
             </div>
           </div>
@@ -469,7 +469,7 @@ export default function ReportPrintDocument({
         </div>
 
         <footer className="page-footer">
-          <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+          <span>منصة نِكْسَس للتعليم والتأهيل الذكي · جميع الحقوق محفوظة</span>
           <span className="page-num">صفحة {recsPageNum} من {totalPages}</span>
         </footer>
       </section>}
@@ -481,9 +481,9 @@ export default function ReportPrintDocument({
         <section className={`print-page page-${mediaPageNum}`}>
           <header className="page-header">
             <div className="brand">
-              <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+              <img src={`${origin}/brand/nexus-logo-new.webp`} alt="شعار نِكْسَس" className="brand-logo-img" />
               <div className="brand-text">
-                <span className="brand-logo">مَسَار</span>
+                <span className="brand-logo">نِكْسَس</span>
                 <span className="brand-sub">مرفقات الاختبار والرسومات المحفوظة</span>
               </div>
             </div>
@@ -492,7 +492,7 @@ export default function ReportPrintDocument({
             </div>
           </header>
 
-          <div className="page-body flex-col justify-between" style={{ minHeight: 'calc(297mm - 40mm)' }}>
+          <div className="page-body">
             <div>
               <div className="section-block">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #06392c', paddingBottom: '6px', marginBottom: '14px' }}>
@@ -575,7 +575,7 @@ export default function ReportPrintDocument({
           </div>
 
           <footer className="page-footer">
-            <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+            <span>منصة نِكْسَس للتعليم والتأهيل الذكي · جميع الحقوق محفوظة</span>
             <span className="page-num">صفحة {mediaPageNum} من {totalPages}</span>
           </footer>
         </section>
@@ -593,9 +593,9 @@ export default function ReportPrintDocument({
           <section key={`answers-${chunkIndex}`} className={`print-page page-${pageNumber}`}>
             <header className="page-header">
               <div className="brand">
-                <img src={`${origin}/brand/masar-logo.png`} alt="شعار مسار" className="brand-logo-img" />
+                <img src={`${origin}/brand/nexus-logo-new.webp`} alt="شعار نِكْسَس" className="brand-logo-img" />
                 <div className="brand-text">
-                  <span className="brand-logo">مَسَار</span>
+                  <span className="brand-logo">نِكْسَس</span>
                   <span className="brand-sub">
                     {isLastAnswerPage ? 'الاعتماد الرقمي والختم' : 'سجل الإجابات التفصيلية'}
                   </span>
@@ -606,7 +606,7 @@ export default function ReportPrintDocument({
               </div>
             </header>
 
-            <div className="page-body flex-col justify-between" style={{ minHeight: 'calc(297mm - 40mm)' }}>
+            <div className="page-body">
               <div>
                 <div className="section-block">
                   <h2 className="section-heading">
@@ -649,7 +649,7 @@ export default function ReportPrintDocument({
             </div>
 
             <footer className="page-footer">
-              <span>منصة مَسَار للتأهيل والتعليم الذكي · جميع الحقوق محفوظة</span>
+              <span>منصة نِكْسَس للتعليم والتأهيل الذكي · جميع الحقوق محفوظة</span>
               <span className="page-num">صفحة {pageNumber} من {totalPages}</span>
             </footer>
           </section>
@@ -671,7 +671,7 @@ export default function ReportPrintDocument({
             margin: 0 !important;
             padding: 0 !important;
             width: 210mm !important;
-            height: 100% !important;
+            height: auto !important;
           }
           .no-print {
             display: none !important;
@@ -702,7 +702,7 @@ export default function ReportPrintDocument({
           position: relative;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-start;
           border: none;
           box-shadow: 0 18px 45px rgba(15,23,42,0.18);
           page-break-after: always;
@@ -755,13 +755,20 @@ export default function ReportPrintDocument({
             margin: 0 !important;
             box-shadow: none !important;
             width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: auto !important;
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
+            display: block !important;
             border: none !important;
             page-break-after: always !important;
             break-after: page !important;
+          }
+
+          .page-footer,
+          .sign-stamp-wrapper,
+          .verification-statement {
+            margin-top: 10px !important;
           }
 
           .print-page:last-child {
@@ -1092,7 +1099,7 @@ export default function ReportPrintDocument({
           justify-content: space-between;
           padding-top: 10px;
           border-top: 1.5px solid #e2e8f0;
-          margin-top: auto;
+          margin-top: 12px;
         }
 
         .stamp-container {

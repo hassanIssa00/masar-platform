@@ -458,7 +458,7 @@ export default function IEPPage() {
                 {/* Print-Only Official Header with Logo */}
                 <div className="hidden print:flex items-center justify-between border-b-2 border-emerald-950 pb-3 mb-2">
                   <div className="flex items-center gap-3">
-                    <img src="/brand/masar-logo.png" alt="شعار مسار" className="w-11 h-11 object-contain rounded-xl border border-amber-400 p-1 bg-white" />
+                    <img src="/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" className="w-11 h-11 object-contain rounded-xl border border-amber-400 p-1 bg-white" />
                     <div>
                       <h1 className="text-xl font-black text-emerald-950">منصة مَسَار للتأهيل والتعليم الذكي</h1>
                       <p className="text-xs font-bold text-slate-600">خطة التربية الفردية (IEP) — إشراف: د. إسماعيل عيسى للتأهيل والتعليم الحديث</p>

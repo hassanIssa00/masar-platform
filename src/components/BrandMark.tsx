@@ -14,23 +14,22 @@ const sizes = {
   lg: 58,
 };
 
-export default function BrandMark({ size = 'md', showText = true, dark = false, isEn = false, hideNexus = true }: BrandMarkProps) {
+export default function BrandMark({ size = 'md', showText = true, dark = false, isEn = false, hideNexus = false }: BrandMarkProps) {
   const markSize = sizes[size];
   const textSm = size === 'sm';
 
   return (
     <span className="inline-flex min-w-0 items-center gap-2 sm:gap-3">
-
-      {/* ── Masar Logo ── */}
+      {/* ── Nexus Logo (Primary Platform Brand) ── */}
       <span
-        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm"
+        className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-teal-500/10 via-white to-blue-500/10 ring-1 ring-teal-500/30 shadow-sm"
         style={{ width: markSize, height: markSize }}
       >
         <Image
-          src="/brand/masar-logo.png"
-          alt="شعار منصة مسار"
+          src="/brand/nexus-logo-new.webp"
+          alt="شعار منصة نكسس"
           fill
-          className="object-contain p-0.5"
+          className="object-contain p-1"
           sizes={`${markSize}px`}
           priority={size === 'lg'}
         />
@@ -38,50 +37,14 @@ export default function BrandMark({ size = 'md', showText = true, dark = false, 
 
       {showText && (
         <span className="min-w-0 block">
-          <span className={`block font-black leading-5 ${textSm ? 'text-sm' : 'text-base md:text-xl'} ${dark ? 'text-white' : 'text-slate-950'}`}>
-            {isEn ? 'MASAR PLATFORM' : 'منصة مسار'}
+          <span className={`block font-black leading-5 tracking-tight ${textSm ? 'text-sm' : 'text-base md:text-xl'} ${dark ? 'text-white' : 'text-slate-950'}`}>
+            {isEn ? 'NEXUS PLATFORM' : 'منصة نِكْسَس'}
           </span>
-          <span className={`block text-xs font-bold ${dark ? 'text-white/68' : 'text-slate-500'}`}>
-            {isEn ? 'Smart Rehabilitation & Interactive Learning' : 'التأهيل الذكي والتعلم التفاعلي'}
+          <span className={`block text-[11px] sm:text-xs font-bold ${dark ? 'text-teal-300' : 'text-teal-700'}`}>
+            {isEn ? 'Next-Gen Smart Education & Learning' : 'التعليم الذكي والتأهيل المتقدم'}
           </span>
         </span>
       )}
-
-      {!hideNexus && (
-        <>
-          {/* ── Divider ── */}
-          <span
-            className={`hidden sm:block shrink-0 self-stretch w-px ${dark ? 'bg-white/20' : 'bg-slate-200'}`}
-            aria-hidden="true"
-          />
-
-          {/* ── Nexus Logo ── */}
-          <span
-            className="relative inline-block shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm"
-            style={{ width: markSize, height: markSize }}
-          >
-            <Image
-              src="/brand/nexus-logo-new.webp"
-              alt="شعار منصة نكسس"
-              fill
-              className="object-contain p-0.5"
-              sizes={`${markSize}px`}
-            />
-          </span>
-
-          {showText && (
-            <span className="min-w-0 hidden sm:block">
-              <span className={`block font-black leading-5 ${textSm ? 'text-sm' : 'text-base md:text-xl'} ${dark ? 'text-white' : 'text-slate-950'}`}>
-                Nexus
-              </span>
-              <span className={`block text-xs font-bold ${dark ? 'text-white/68' : 'text-slate-500'}`}>
-                {isEn ? 'Smart Education Platform' : 'منصة نكسس للتعليم'}
-              </span>
-            </span>
-          )}
-        </>
-      )}
-
     </span>
   );
 }

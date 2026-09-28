@@ -3,11 +3,11 @@ import type { MetadataRoute } from 'next';
 /**
  * Dynamic Sitemap for Masar Platform (Google Search Console & SEO)
  * ─────────────────────────────────────────────────────────────────
- * Generates https://masarplatform.org/sitemap.xml automatically.
+ * Generates https://nexus-edu.com/sitemap.xml automatically.
  * Lists all public indexable pages with proper priority, changefreq, and lastmod.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://masarplatform.org';
+  const baseUrl = 'https://nexus-edu.com';
   const now = new Date();
 
   // Public pages that should be indexed by Google

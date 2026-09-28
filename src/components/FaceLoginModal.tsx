@@ -104,7 +104,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
       const account = {
         id: docId,
         name: docName,
-        email: foundAcc?.email || record.userEmail || 'doctor@masarplatform.org',
+        email: foundAcc?.email || record.userEmail || 'doctor@nexus-edu.com',
         role: 'doctor',
         schoolBranch: 'MASAR',
       } as AccountRecord;
@@ -127,7 +127,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
       const account = {
         id: spId,
         name: spName,
-        email: foundAcc?.email || record.userEmail || `${spId}@masarplatform.org`,
+        email: foundAcc?.email || record.userEmail || `${spId}@nexus-edu.com`,
         role: 'specialist',
         schoolBranch: 'MASAR',
       } as AccountRecord;
@@ -150,7 +150,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
       const account = {
         id: tId,
         name: tName,
-        email: foundAcc?.email || record.userEmail || `${tId}@masarplatform.org`,
+        email: foundAcc?.email || record.userEmail || `${tId}@nexus-edu.com`,
         role: 'teacher',
         schoolBranch: 'IKHLAS_JEDDAH',
       } as AccountRecord;
@@ -177,7 +177,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
       const account = {
         id: sid,
         name: studentName,
-        email: foundAcc?.email || record.userEmail || `${sid}@masarplatform.org`,
+        email: foundAcc?.email || record.userEmail || `${sid}@nexus-edu.com`,
         role: 'student',
         schoolBranch: branch,
         linkedStudentId: sid,
@@ -199,7 +199,7 @@ export default function FaceLoginModal({ onCancel, onFallback, initialRole = 'al
     // 5. Parent (ولي أمر)
     const pId = record.accountId || record.userId || foundAcc?.id || 'user';
     const pName = record.userName || foundAcc?.name || 'ولي أمر';
-    const pEmail = foundAcc?.email || record.userEmail || `${pId}@masarplatform.org`;
+    const pEmail = foundAcc?.email || record.userEmail || `${pId}@nexus-edu.com`;
     const pLinkedSid = record.studentId || foundAcc?.linkedStudentId || undefined;
     const isIkhlasParent = record.schoolBranch === 'IKHLAS_JEDDAH' || foundAcc?.schoolBranch === 'IKHLAS_JEDDAH';
     const pBranch = isIkhlasParent ? 'IKHLAS_JEDDAH' : 'MASAR';

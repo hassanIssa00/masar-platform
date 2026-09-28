@@ -602,7 +602,7 @@ export default function PlatformSettingsPage() {
       `البريد: ${generatedBundle.parentEmail}`,
       `كلمة المرور: ${generatedBundle.parentPassword}`,
       '--------------------------------',
-      'رابط تسجيل الدخول: https://masarplatform.org/login',
+      'رابط تسجيل الدخول: https://nexus-edu.com/login',
     ].join('\n');
     await navigator.clipboard.writeText(text);
     setCopiedState('all');

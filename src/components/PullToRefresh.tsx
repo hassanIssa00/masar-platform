@@ -114,7 +114,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
                 }}
               >
                 {/* eslint-disable-next-line @next/text/no-img-element */}
-                <img src="/brand/masar-logo.png" alt="" className="w-full h-full object-contain p-0.5" />
+                <img src="/brand/nexus-logo-new.webp" alt="" className="w-full h-full object-contain p-0.5" />
               </div>
             </div>
             {/* Label */}

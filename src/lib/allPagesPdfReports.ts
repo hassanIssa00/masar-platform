@@ -71,7 +71,7 @@ function generateReportSerial(categoryTag = ''): string {
   for (let i = 0; i < 6; i++) {
     res += chars[Math.floor(Math.random() * chars.length)];
   }
-  return `MASAR-${res}`;
+  return `NEXUS-${res}`;
 }
 
 const COMMON_PRINT_CSS = `
@@ -143,7 +143,7 @@ const COMMON_PRINT_CSS = `
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     border: none;
     box-shadow: 0 18px 45px rgba(15,23,42,0.18);
     page-break-after: always;
@@ -182,10 +182,11 @@ const COMMON_PRINT_CSS = `
       margin: 0 !important;
       box-shadow: none !important;
       width: 210mm !important;
-      min-height: 297mm !important;
+      min-height: auto !important;
       height: auto !important;
       max-height: none !important;
       overflow: visible !important;
+      display: block !important;
       border: none !important;
       page-break-after: always !important;
       break-after: page !important;
@@ -371,7 +372,7 @@ const COMMON_PRINT_CSS = `
 
   /* الجزء السفلي والتوقيع والختم - مطابق لمعايير المنصة */
   .bottom-container {
-    margin-top: auto;
+    margin-top: 14px;
     padding-top: 14px;
     break-inside: avoid;
     page-break-inside: avoid;
@@ -467,10 +468,11 @@ const COMMON_PRINT_CSS = `
     .report-frame {
       box-shadow: none !important;
       border: 2.2px solid #06392c !important;
-      min-height: calc(297mm - 14mm) !important;
+      min-height: auto !important;
       height: auto !important;
       max-height: none !important;
       overflow: visible !important;
+      display: block !important;
       padding: 16px 20px 14px 20px !important;
       page-break-after: auto;
     }
@@ -499,7 +501,7 @@ function renderOfficialTemplate(
       <!-- 1. الترويسة العلوية مع الشعار والسيريال -->
       <div class="doc-top-header">
         <div class="doc-brand-group">
-          <img src="${origin || ''}/brand/masar-logo.png" alt="شعار مسار" class="doc-logo-img" onerror="this.src='/brand/masar-logo.png';" />
+          <img src="${origin || ''}/brand/nexus-logo-new.webp" alt="شعار نِكْسَس" class="doc-logo-img" onerror="this.src='/brand/nexus-logo-new.webp';" />
           <div class="doc-brand-text">
             <span class="doc-brand-title">مَسَار</span>
             <span class="doc-brand-sub">منصة التأهيل الذكي والتعليم التفاعلي</span>
@@ -548,7 +550,7 @@ function renderOfficialTemplate(
               <image href="${origin}/dr-ismail-signature.png" x="22" y="62" width="116" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#sig-clip-${serialCode})" style="mix-blend-mode:multiply"/>
               <line x1="22" y1="100" x2="138" y2="100" stroke="#06392c" stroke-width="0.8"/>
               <text x="80" y="113" text-anchor="middle" font-family="Cairo,Arial" font-size="7" font-weight="900" fill="#06392c">${numericDate}</text>
-              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة مسار · التعليم الحديث</text>
+              <text x="80" y="125" text-anchor="middle" font-family="Cairo,Arial" font-size="5" font-weight="bold" fill="#06392c">منصة نِكْسَس · التعليم الحديث</text>
             </svg>
             <div class="stamp-under-label">الختم الرقمي</div>
           </div>
@@ -567,7 +569,7 @@ function renderOfficialTemplate(
 
         <!-- شريط الفوتر النهائي -->
         <div class="footer-bottom-line">
-          <div class="copy-text">منصة مسار للتأهيل والتعليم الذكي - جميع الحقوق محفوظة</div>
+          <div class="copy-text">منصة نِكْسَس للتعليم والتأهيل الذكي - جميع الحقوق محفوظة</div>
           <div class="page-num">صفحة 1 من 1</div>
         </div>
       </div>
@@ -589,7 +591,7 @@ function openPdfWindow(title: string, fullBodyHtml: string) {
   <base href="${origin}/" />
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${title} — منصة مسار</title>
+  <title>${title} — منصة نِكْسَس</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>${COMMON_PRINT_CSS}</style>
 </head>
@@ -771,7 +773,7 @@ export function exportFaceIdPdfReport(recordsList?: Record<string, unknown>[]) {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير سجلات Face ID والتحضير البيومتري', 'نظام التحقق الذكي من الهوية والحضور — منصة مسار', statsHtml, contentHtml, 'سجلات Face ID');
+  const full = renderOfficialTemplate('تقرير سجلات Face ID والتحضير البيومتري', 'نظام التحقق الذكي من الهوية والحضور — منصة نِكْسَس', statsHtml, contentHtml, 'سجلات Face ID');
   openPdfWindow('تقرير سجلات Face ID', full);
 }
 
@@ -864,7 +866,7 @@ export function exportAccountGeneratorPdfReport(accountsList?: AccountRecord[]) 
     </table>
   `;
 
-  const full = renderOfficialTemplate('كشف الحسابات وبطاقات الدخول المعتمدة', 'سجل الحسابات المولدة وإدارتها — منصة مسار', statsHtml, contentHtml, 'توليد الحسابات');
+  const full = renderOfficialTemplate('كشف الحسابات وبطاقات الدخول المعتمدة', 'سجل الحسابات المولدة وإدارتها — منصة نِكْسَس', statsHtml, contentHtml, 'توليد الحسابات');
   openPdfWindow('كشف الحسابات المولدة', full);
 }
 
@@ -914,7 +916,7 @@ export function exportParentsPdfReport(accountsList?: AccountRecord[], studentsL
     </table>
   `;
 
-  const full = renderOfficialTemplate('دليل أولياء الأمور وحالات المتابعة الأسرية', 'سجل أولياء الأمور والأطفال المرتبطين بهم — منصة مسار', statsHtml, contentHtml, 'أولياء الأمور');
+  const full = renderOfficialTemplate('دليل أولياء الأمور وحالات المتابعة الأسرية', 'سجل أولياء الأمور والأطفال المرتبطين بهم — منصة نِكْسَس', statsHtml, contentHtml, 'أولياء الأمور');
   openPdfWindow('دليل أولياء الأمور', full);
 }
 
@@ -957,7 +959,7 @@ export function exportMessagesPdfReport(messagesList?: MessageRecord[]) {
     </table>
   `;
 
-  const full = renderOfficialTemplate('سجل المراسلات والتواصل مع الأسر', 'توثيق المحادثات والاستفسارات التربوية — منصة مسار', statsHtml, contentHtml, 'الرسائل');
+  const full = renderOfficialTemplate('سجل المراسلات والتواصل مع الأسر', 'توثيق المحادثات والاستفسارات التربوية — منصة نِكْسَس', statsHtml, contentHtml, 'الرسائل');
   openPdfWindow('سجل المراسلات', full);
 }
 
@@ -1002,7 +1004,7 @@ export function exportPlacementAssessmentsPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('دليل اختبارات تحديد المستوى والقبول', 'البطاريات التشخيصية المعتمدة لجميع الصفوف — منصة مسار', statsHtml, contentHtml, 'اختبارات تحديد المستوى');
+  const full = renderOfficialTemplate('دليل اختبارات تحديد المستوى والقبول', 'البطاريات التشخيصية المعتمدة لجميع الصفوف — منصة نِكْسَس', statsHtml, contentHtml, 'اختبارات تحديد المستوى');
   openPdfWindow('دليل اختبارات تحديد المستوى', full);
 }
 
@@ -1047,7 +1049,7 @@ export function exportReportsCatalogPdfReport(reportsList?: ReportRecord[]) {
     </table>
   `;
 
-  const full = renderOfficialTemplate('سجل التقارير التأهيلية والتشخيصية المعتمدة', 'سجل التقارير الرسمية الصادرة للطلاب — منصة مسار', statsHtml, contentHtml, 'التقارير');
+  const full = renderOfficialTemplate('سجل التقارير التأهيلية والتشخيصية المعتمدة', 'سجل التقارير الرسمية الصادرة للطلاب — منصة نِكْسَس', statsHtml, contentHtml, 'التقارير');
   openPdfWindow('سجل التقارير التأهيلية', full);
 }
 
@@ -1088,7 +1090,7 @@ export function exportProgramsPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('دليل المسارات التأهيلية والعلاجية', 'المكتبة المعتمدة للمسارات والبرامج التدريبية — منصة مسار', statsHtml, contentHtml, 'المسارات العلاجية');
+  const full = renderOfficialTemplate('دليل المسارات التأهيلية والعلاجية', 'المكتبة المعتمدة للمسارات والبرامج التدريبية — منصة نِكْسَس', statsHtml, contentHtml, 'المسارات العلاجية');
   openPdfWindow('دليل المسارات التأهيلية', full);
 }
 
@@ -1131,7 +1133,7 @@ export function exportCurriculaPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير المناهج التعليمية التفاعلية', 'فهرس المقررات والوحدات التدريبية المعتمدة — منصة مسار', statsHtml, contentHtml, 'المناهج التعليمية');
+  const full = renderOfficialTemplate('تقرير المناهج التعليمية التفاعلية', 'فهرس المقررات والوحدات التدريبية المعتمدة — منصة نِكْسَس', statsHtml, contentHtml, 'المناهج التعليمية');
   openPdfWindow('تقرير المناهج التعليمية', full);
 }
 
@@ -1176,7 +1178,7 @@ export function exportIepPlansPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير الخطط التربوية الفردية (IEP)', 'سجل أهداف وخطط الطلاب الفردية المعتمدة — منصة مسار', statsHtml, contentHtml, 'خطط IEP الفردية');
+  const full = renderOfficialTemplate('تقرير الخطط التربوية الفردية (IEP)', 'سجل أهداف وخطط الطلاب الفردية المعتمدة — منصة نِكْسَس', statsHtml, contentHtml, 'خطط IEP الفردية');
   openPdfWindow('تقرير خطط IEP الفردية', full);
 }
 
@@ -1228,7 +1230,7 @@ export function exportResourcesPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('فهرس مكتبة الموارد والوسائل التأهيلية', 'المستودع الرقمي للأدوات وأوراق العمل — منصة مسار', statsHtml, contentHtml, 'مكتبة الموارد');
+  const full = renderOfficialTemplate('فهرس مكتبة الموارد والوسائل التأهيلية', 'المستودع الرقمي للأدوات وأوراق العمل — منصة نِكْسَس', statsHtml, contentHtml, 'مكتبة الموارد');
   openPdfWindow('فهرس مكتبة الموارد', full);
 }
 
@@ -1284,7 +1286,7 @@ export function exportCalendarPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('جدول الجلسات والمواعيد الأسبوعية', 'التقويم الشامل للجلسات الفردية والمتابعة — منصة مسار', statsHtml, contentHtml, 'جدول الجلسات');
+  const full = renderOfficialTemplate('جدول الجلسات والمواعيد الأسبوعية', 'التقويم الشامل للجلسات الفردية والمتابعة — منصة نِكْسَس', statsHtml, contentHtml, 'جدول الجلسات');
   openPdfWindow('جدول الجلسات والمواعيد', full);
 }
 
@@ -1333,7 +1335,7 @@ export function exportMeetingsPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('سجل اجتماعات Zoom والجلسات الافتراضية', 'سجل اللقاءات الاستشارية والجلسات عن بعد — منصة مسار', statsHtml, contentHtml, 'اجتماعات Zoom');
+  const full = renderOfficialTemplate('سجل اجتماعات Zoom والجلسات الافتراضية', 'سجل اللقاءات الاستشارية والجلسات عن بعد — منصة نِكْسَس', statsHtml, contentHtml, 'اجتماعات Zoom');
   openPdfWindow('سجل اجتماعات Zoom', full);
 }
 
@@ -1378,7 +1380,7 @@ export function exportBranchClassroomPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير أداء فصل د. إسماعيل عيسى', 'متابعة الحضور والأنشطة والواجبات الصفية — منصة مسار', statsHtml, contentHtml, 'فصل د. إسماعيل عيسى');
+  const full = renderOfficialTemplate('تقرير أداء فصل د. إسماعيل عيسى', 'متابعة الحضور والأنشطة والواجبات الصفية — منصة نِكْسَس', statsHtml, contentHtml, 'فصل د. إسماعيل عيسى');
   openPdfWindow('تقرير أداء فصل د. إسماعيل', full);
 }
 
@@ -1415,7 +1417,7 @@ export function exportPlatformSettingsPdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير إعدادات وتشغيل المنصة والمستخدمين', 'الحالة الفنية والأمنية للنظام وقواعد البيانات — منصة مسار', statsHtml, contentHtml, 'إعدادات المنصة');
+  const full = renderOfficialTemplate('تقرير إعدادات وتشغيل المنصة والمستخدمين', 'الحالة الفنية والأمنية للنظام وقواعد البيانات — منصة نِكْسَس', statsHtml, contentHtml, 'إعدادات المنصة');
   openPdfWindow('تقرير إعدادات المنصة', full);
 }
 
@@ -1456,7 +1458,7 @@ export function exportMasterArchivePdfReport() {
     </table>
   `;
 
-  const full = renderOfficialTemplate('تقرير الأرشيف الرقمي الموحد الشامل', 'سجل المحتويات والملفات المحفوظة في الأرشيف — منصة مسار', statsHtml, contentHtml, 'الأرشيف الشامل');
+  const full = renderOfficialTemplate('تقرير الأرشيف الرقمي الموحد الشامل', 'سجل المحتويات والملفات المحفوظة في الأرشيف — منصة نِكْسَس', statsHtml, contentHtml, 'الأرشيف الشامل');
   openPdfWindow('تقرير الأرشيف الرقمي الموحد', full);
 }
 
