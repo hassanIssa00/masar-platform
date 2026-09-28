@@ -15,7 +15,7 @@ function createId(prefix: string) {
 function createPlatformEmail(kind: 'student' | 'parent', branch: Branch) {
   const branchSlug = branch === 'MASAR' ? 'masar' : 'ikhlas';
   const token = crypto.randomUUID().slice(0, 8);
-  return `${kind}.${branchSlug}.${token}@nexus-edu.com`;
+  return `${kind}.${branchSlug}.${token}@masarplatform.org`;
 }
 
 function credentialLookupId(value: string) {
@@ -31,8 +31,8 @@ async function createFirebaseUserViaRest(email: string, password: string, displa
   if (!apiKey) return null;
 
   const referers = [
-    'https://nexus-edu.com/',
-    'https://nexus-edu.com',
+    'https://masarplatform.org/',
+    'https://masarplatform.org',
     'https://ismail-edu.vercel.app/',
   ];
 
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   // If user is accessing from the platform dashboard, allow generation
   const refererHeader = req.headers.get('referer') || '';
-  const isFromDashboard = refererHeader.includes('/platform-settings') || refererHeader.includes('/account-generator') || refererHeader.includes('localhost') || refererHeader.includes('nexus-edu.com');
+  const isFromDashboard = refererHeader.includes('/platform-settings') || refererHeader.includes('/account-generator') || refererHeader.includes('localhost') || refererHeader.includes('masarplatform.org');
   if (!isAuthorized && isFromDashboard) {
     isAuthorized = true;
   }

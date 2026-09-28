@@ -13,26 +13,26 @@ export default function JsonLdSchema() {
   const orgSchema = {
     '@context': 'https://schema.org',
     '@type': 'EducationalOrganization',
-    '@id': 'https://nexus-edu.com/#organization',
+    '@id': 'https://masarplatform.org/#organization',
     name: 'منصة مَسَار | د. إسماعيل عيسى',
     alternateName: ['Masar Platform', 'منصة مسار التعليمية', 'فصل د. إسماعيل عيسى'],
-    url: 'https://nexus-edu.com',
+    url: 'https://masarplatform.org',
     logo: {
       '@type': 'ImageObject',
-      url: 'https://nexus-edu.com/icon.png',
+      url: 'https://masarplatform.org/icon.png',
       width: 512,
       height: 512,
     },
-    image: 'https://nexus-edu.com/dr-ismail-student.jpg',
+    image: 'https://masarplatform.org/dr-ismail-student.jpg',
     description:
       'منصة مَسَار بإشراف د. إسماعيل عيسى — تشخيص علمي دقيق، خطة تدريب فردية، ومتابعة ذكية لتنمية مهارات الأطفال وعلاج صعوبات التعلم وتأسيس القراءة والرياضيات.',
     founder: {
       '@type': 'Person',
-      '@id': 'https://nexus-edu.com/#drismail',
+      '@id': 'https://masarplatform.org/#drismail',
       name: 'د. إسماعيل عيسى',
       jobTitle: 'استشاري وخبير صعوبات التعلم وتعديل سلوك الأطفال',
       worksFor: {
-        '@id': 'https://nexus-edu.com/#organization',
+        '@id': 'https://masarplatform.org/#organization',
       },
     },
     address: {
@@ -50,18 +50,18 @@ export default function JsonLdSchema() {
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    '@id': 'https://nexus-edu.com/#website',
-    url: 'https://nexus-edu.com',
+    '@id': 'https://masarplatform.org/#website',
+    url: 'https://masarplatform.org',
     name: 'منصة مَسَار',
     publisher: {
-      '@id': 'https://nexus-edu.com/#organization',
+      '@id': 'https://masarplatform.org/#organization',
     },
     inLanguage: 'ar-SA',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://nexus-edu.com/programs?q={search_term_string}',
+        urlTemplate: 'https://masarplatform.org/programs?q={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },
@@ -78,9 +78,9 @@ export default function JsonLdSchema() {
         name: 'برنامج تأسيس القراءة وعلاج صعوبات التعلم',
         description: 'برنامج علاجي وتأسيسي لعلاج عسر القراءة (الديسلكسيا) وتنمية الطلاقة والفهم القرائي.',
         provider: {
-          '@id': 'https://nexus-edu.com/#organization',
+          '@id': 'https://masarplatform.org/#organization',
         },
-        url: 'https://nexus-edu.com/programs/reading',
+        url: 'https://masarplatform.org/programs/reading',
       },
       {
         '@type': 'Course',
@@ -88,9 +88,9 @@ export default function JsonLdSchema() {
         name: 'برنامج الرياضيات والتفكير المنطقي المحسوس',
         description: 'تطوير المفاهيم الرياضية للأطفال وعلاج عسر الحساب (الديسكالكوليا) بالنماذج التفاعلية.',
         provider: {
-          '@id': 'https://nexus-edu.com/#organization',
+          '@id': 'https://masarplatform.org/#organization',
         },
-        url: 'https://nexus-edu.com/programs/math',
+        url: 'https://masarplatform.org/programs/math',
       },
       {
         '@type': 'Course',
@@ -98,9 +98,9 @@ export default function JsonLdSchema() {
         name: 'برنامج التقييم والتشخيص الشامل للطفل (IEP)',
         description: 'فحص إكلينيكي وتربوي شامل يحدد مكامن القوة والاحتياج ويبني خطة تربوية فردية متكاملة.',
         provider: {
-          '@id': 'https://nexus-edu.com/#organization',
+          '@id': 'https://masarplatform.org/#organization',
         },
-        url: 'https://nexus-edu.com/assessment',
+        url: 'https://masarplatform.org/assessment',
       },
     ],
   };

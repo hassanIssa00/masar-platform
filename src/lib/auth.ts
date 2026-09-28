@@ -218,7 +218,7 @@ async function mapFirebaseUserToAccount(
   fallbackName: string,
 ): Promise<GoogleSignInResult> {
   const email = normalize(user.email ?? '');
-  const fallbackEmail = createdVia === 'apple' && !email ? `${user.uid}@apple.nexus-edu.com` : '';
+  const fallbackEmail = createdVia === 'apple' && !email ? `${user.uid}@apple.masarplatform.org` : '';
   const resolvedEmail = email || fallbackEmail;
 
   if (!resolvedEmail) {
@@ -344,7 +344,7 @@ export async function sendPasswordReset(email: string): Promise<PasswordResetRes
 
   try {
     await sendPasswordResetEmail(auth, clean, {
-      url: 'https://nexus-edu.com/auth/login',
+      url: 'https://masarplatform.org/auth/login',
       handleCodeInApp: false,
     });
     return { ok: true, mode: 'firebase' };

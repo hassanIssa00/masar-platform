@@ -36,7 +36,7 @@ const years = Array.from({ length: 20 }, (_, index) => String(new Date().getFull
 function isGeneratedAlias(emailStr?: string): boolean {
   if (!emailStr) return false;
   const e = emailStr.toLowerCase().trim();
-  return e.includes('@nexus-edu.com') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
+  return e.includes('@masarplatform.org') || e.includes('@masar.com') || e.includes('@ikhlas.') || e.startsWith('student.') || e.startsWith('parent.');
 }
 
 /** Derive the father's name from student full name when parentName is missing or incorrectly set to student name */

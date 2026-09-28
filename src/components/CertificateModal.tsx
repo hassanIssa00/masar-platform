@@ -835,7 +835,7 @@ export default function CertificateModal({ data, onClose }: { data: CertificateD
 
               {/* LEFT: Real Scannable QR Code + text */}
               {(() => {
-                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
+                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
                 const verifyUrl = `${origin}/verify/${certNo}?name=${encodeURIComponent(displayName)}&prog=${encodeURIComponent(data.programTitle)}&score=${data.score}&date=${encodeURIComponent(data.completionDate)}`;
                 const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`;
 

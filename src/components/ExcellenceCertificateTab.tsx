@@ -192,7 +192,7 @@ export default function ExcellenceCertificateTab({ students }: Props) {
     const parentName = recipient ? recipient.parentName : 'ولي الأمر';
     const parentPhone = recipient?.phone ? recipient.phone.replace(/\+/g, '') : '';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
     const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
     
     const text =
@@ -821,7 +821,7 @@ export function OfficialMasarCertificateDesign({
   isPrintTarget?: boolean;
   customId?: string;
 }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
   const verifyUrl = `${origin}/verify/${form.certNumber}?name=${encodeURIComponent(form.studentName)}&prog=${encodeURIComponent(form.achievement)}&score=${form.score}&date=${encodeURIComponent(form.date)}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}`;
 

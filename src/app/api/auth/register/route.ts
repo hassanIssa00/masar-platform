@@ -33,8 +33,8 @@ async function createFirebaseUserViaRest(email: string, password: string, displa
   if (!apiKey) return null;
 
   const referers = [
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://nexus-edu.com/',
-    'https://nexus-edu.com',
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://masarplatform.org/',
+    'https://masarplatform.org',
     'https://ismail-edu.vercel.app/',
     '',
   ];

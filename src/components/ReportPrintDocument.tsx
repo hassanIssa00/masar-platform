@@ -24,7 +24,7 @@ export default function ReportPrintDocument({
 }) {
   const hijriDate = getTodayHijri();
   const fileNumber = `NEXUS-${(report.id || '').slice(-6).toUpperCase() || 'REPORT'}`;
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
 
   const reportScore = typeof report.score === 'number' ? report.score : 0;
   const domainsList = Array.isArray(report.domains) ? report.domains : [];

@@ -52,6 +52,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://nexus-edu.com/sitemap.xml',
+    sitemap: 'https://masarplatform.org/sitemap.xml',
   };
 }

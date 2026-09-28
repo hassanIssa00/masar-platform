@@ -195,7 +195,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
 
   /* ─ Generate share link ─ */
   const getShareLink = (roomId: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org';
     return `${origin}/live?room=${encodeURIComponent(roomId)}`;
   };
 
@@ -552,7 +552,7 @@ export default function LiveStreamTab({ isHost = true }: { isHost?: boolean }) {
               </button>
 
               <div className="text-xs font-bold text-slate-500">
-                🔒 رابط البث المباشر المخصص للفصل: <span className="font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded">nexus-edu.com/live</span>
+                🔒 رابط البث المباشر المخصص للفصل: <span className="font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded">masarplatform.org/live</span>
               </div>
             </div>
           </div>

@@ -627,8 +627,8 @@ export default function StudentReportsManagerTab({ students, homeworkCount, phot
     <div class="card card-blue" style="margin-bottom:0;">
       <div style="font-size:10.5px;font-weight:900;color:#1e40af;margin-bottom:6px;">🤝 شراكة مع منصة Nexus</div>
       <div style="font-size:10px;color:#64748b;font-weight:700;line-height:1.8;">
-        <div>🌐 nexus-edu.com</div>
-        <div>📧 info@nexus-edu.com</div>
+        <div>🌐 masarplatform.org</div>
+        <div>📧 info@masarplatform.org</div>
         <div>🔗 تكامل أكاديمي متكامل</div>
       </div>
     </div>

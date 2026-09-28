@@ -39,7 +39,7 @@ import {
 // ─── Firebase Project Configuration ──────────────────────────────────────────
 // These values are public client-side identifiers (not secrets).
 // Restrict the API key in GCP Console to HTTP referrers:
-//   nexus-edu.com/*, *.nexus-edu.com/*
+//   masarplatform.org/*, *.masarplatform.org/*
 // and limit to the APIs actually used:
 //   Identity Toolkit, Cloud Firestore, Firebase Installations, reCAPTCHA Enterprise
 function getFirebaseAuthDomain() {
@@ -94,7 +94,7 @@ microsoftProvider.setCustomParameters({ prompt: 'select_account', mkt: 'ar' });
 // Required environment variables:
 //   NEXT_PUBLIC_RECAPTCHA_SITE_KEY  — reCAPTCHA v3 site key from
 //                                     https://www.google.com/recaptcha/admin
-//                                     Register nexus-edu.com as a v3 site.
+//                                     Register masarplatform.org as a v3 site.
 //   NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN (optional) — debug token for local dev.
 //                                     Generate from Firebase Console → App Check → Apps.
 //                                     Never commit this value to version control.

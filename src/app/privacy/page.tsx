@@ -47,7 +47,7 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-base font-black text-slate-900">مقدمة والجهة المسؤولة عن معالجة البيانات</h2>
             </div>
             <p>
-              توضح هذه السياسة كيفية جمع واستخدام وتخزين وحماية البيانات الشخصية التي يقدمها أولياء الأمور والطلاب عند استخدام منصة مسار (nexus-edu.com) وبوابات التعليم وفصول التأهيل تحت إشراف د. إسماعيل عيسى.
+              توضح هذه السياسة كيفية جمع واستخدام وتخزين وحماية البيانات الشخصية التي يقدمها أولياء الأمور والطلاب عند استخدام منصة مسار (masarplatform.org) وبوابات التعليم وفصول التأهيل تحت إشراف د. إسماعيل عيسى.
             </p>
             <p>
               يُعتبر المشرف الأكاديمي والإداري للمنصة (د. إسماعيل عيسى وفريق العمل المصرح له) هو المتحكم في البيانات (Data Controller)، ومسؤولاً عن معالجتها حصرياً للأغراض التعليمية والتأهيلية المصرّح بها.
@@ -175,7 +175,7 @@ export default function PrivacyPolicyPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={16} className="text-teal-700" />
-                <span>البريد المخصص للخصوصية: <a href="mailto:privacy@nexus-edu.com" className="underline font-mono">privacy@nexus-edu.com</a></span>
+                <span>البريد المخصص للخصوصية: <a href="mailto:privacy@masarplatform.org" className="underline font-mono">privacy@masarplatform.org</a></span>
               </div>
             </div>
           </section>

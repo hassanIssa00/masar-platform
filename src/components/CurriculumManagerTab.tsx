@@ -384,7 +384,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
 📚 *المادة:* ${curriculum.title}
 📖 *الصفحات المطلوبة:* من صفحة ${cleanFrom} إلى صفحة ${cleanTo}
 
-يرجى فتح المنهج التفاعلي والحل بالقلم الرقمي عبر منصة مسار: https://nexus-edu.com/programs/curricula/${curriculum.slug}`;
+يرجى فتح المنهج التفاعلي والحل بالقلم الرقمي عبر منصة مسار: https://masarplatform.org/programs/curricula/${curriculum.slug}`;
     }
   };
 
@@ -417,7 +417,7 @@ export default function CurriculumManagerTab({ students = [], onNavigateToCorrec
         studentId: s.id,
         from: 'doctor',
         to: 'parent',
-        body: `📚 واجب جديد من د. إسماعيل لمادة (${curriculum.title}):\nيرجى حل الصفحات من (${cleanFrom}) إلى (${cleanTo}) في الكتاب التفاعلي.\nرابط المنهاج: https://nexus-edu.com/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
+        body: `📚 واجب جديد من د. إسماعيل لمادة (${curriculum.title}):\nيرجى حل الصفحات من (${cleanFrom}) إلى (${cleanTo}) في الكتاب التفاعلي.\nرابط المنهاج: https://masarplatform.org/programs/curricula/${curriculum.slug}?page=${cleanFrom}`,
         read: false,
       });
 

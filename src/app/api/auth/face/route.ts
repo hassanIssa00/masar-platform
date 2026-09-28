@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
       studentId:    meta.studentId || null,
       userName:     meta.userName || (isParent ? 'ولي أمر' : 'طالب'),
       userRole:     meta.userRole || (isParent ? 'parent' : 'student'),
-      userEmail:    meta.userEmail || `${userId}@nexus-edu.com`,
+      userEmail:    meta.userEmail || `${userId}@masarplatform.org`,
       parentName:   meta.parentName || null,
       schoolBranch: meta.schoolBranch || 'MASAR',
       embedding:    emb,
@@ -418,7 +418,7 @@ export async function POST(req: NextRequest) {
     account = {
       id:           studentId,
       name:         studentName,
-      email:        String(accData?.email || best.record?.userEmail || `${studentId}@nexus-edu.com`).trim().toLowerCase(),
+      email:        String(accData?.email || best.record?.userEmail || `${studentId}@masarplatform.org`).trim().toLowerCase(),
       role:         'student',
       schoolBranch: branch,
       phone:        accData?.phone || sData?.parentPhone || csData?.parentPhone,
@@ -448,7 +448,7 @@ export async function POST(req: NextRequest) {
     account = {
       id:           parentId,
       name:         best.record?.userName || accData?.name || (role === 'parent' ? 'ولي أمر' : 'مستخدم مسار'),
-      email:        String(accData?.email || best.record?.userEmail || `${parentId}@nexus-edu.com`).trim().toLowerCase(),
+      email:        String(accData?.email || best.record?.userEmail || `${parentId}@masarplatform.org`).trim().toLowerCase(),
       role:         role,
       schoolBranch: branch,
       phone:        accData?.phone,

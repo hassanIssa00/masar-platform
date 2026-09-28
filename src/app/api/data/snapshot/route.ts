@@ -114,7 +114,7 @@ function sameText(a?: unknown, b?: unknown): boolean {
 
 function isGeneratedEmail(email: string): boolean {
   return email.includes('@masar.local') ||
-    email.includes('@nexus-edu.com') ||
+    email.includes('@masarplatform.org') ||
     email.startsWith('generated_') ||
     email.startsWith('parent.') ||
     email.startsWith('student.');

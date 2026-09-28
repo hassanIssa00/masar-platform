@@ -134,7 +134,7 @@ export default function ParentDashboard() {
       }
 
       // TIER 4: Parent email match (skip generated/alias emails)
-      if (myStudents.length === 0 && parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@nexus-edu.com') && !parentEmail.startsWith('parent.')) {
+      if (myStudents.length === 0 && parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org') && !parentEmail.startsWith('parent.')) {
         const byEmail = allKnown.filter((s) => {
           const fields = [(s as any).parentEmail, (s as any).email, (s as any).recoveryEmail].map((e) => (e || '').trim().toLowerCase());
           return fields.some((e) => e && e === parentEmail);
@@ -188,7 +188,7 @@ export default function ParentDashboard() {
               return sp.length >= 8 && sp.slice(-8) === parentPhoneSuffix;
             })
           : null;
-        const byEmail = parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@nexus-edu.com')
+        const byEmail = parentEmail && !parentEmail.includes('@masar.local') && !parentEmail.includes('@masarplatform.org')
           ? realCandidates.find((s) => {
               const ems = [(s as any).parentEmail, (s as any).email].map((e) => (e || '').trim().toLowerCase());
               return ems.includes(parentEmail);

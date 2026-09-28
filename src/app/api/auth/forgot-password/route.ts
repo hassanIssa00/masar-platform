@@ -205,8 +205,8 @@ export async function POST(req: NextRequest) {
         'AIzaSyAP2z3lctzFGPQfRKNEKc_Sv-JOG-m0_Vk';
 
       const referers = [
-        'https://nexus-edu.com/',
-        'https://nexus-edu.com',
+        'https://masarplatform.org/',
+        'https://masarplatform.org',
         process.env.NEXT_PUBLIC_SITE_URL || '',
       ].filter(Boolean);
 
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
       const adminAuth = await getAdminAuth();
       if (adminAuth) {
         adminAuth.generatePasswordResetLink(email, {
-          url: 'https://nexus-edu.com/auth/login',
+          url: 'https://masarplatform.org/auth/login',
         }).catch(() => null);
       }
     } catch {}

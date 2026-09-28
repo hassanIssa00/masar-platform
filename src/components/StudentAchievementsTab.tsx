@@ -388,7 +388,7 @@ export default function StudentAchievementsTab({
             <div className="space-y-8">
               {certificates.map((cert) => {
                 const certData = toCertData(cert);
-                const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://nexus-edu.com'}/verify/${certData.certNumber}?name=${encodeURIComponent(certData.studentName)}&prog=${encodeURIComponent(certData.achievement)}&score=${certData.score}&date=${encodeURIComponent(certData.date)}`;
+                const verifyUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://masarplatform.org'}/verify/${certData.certNumber}?name=${encodeURIComponent(certData.studentName)}&prog=${encodeURIComponent(certData.achievement)}&score=${certData.score}&date=${encodeURIComponent(certData.date)}`;
 
                 return (
                   <div
