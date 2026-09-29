@@ -176,10 +176,24 @@ const faqs = [
   }
 ];
 
+// Nexus gallery images
+const nexusGalleryImages = [
+  { src: '/brand/nexus-hero-student-laptop.webp', alt: 'تعلم ممتع .. إنجاز بلا حدود - نكسس التعليمية' },
+  { src: '/brand/nexus-hero-school-future.webp', alt: 'مستقبل التعليم يبدأ من هنا - مدارس الإخلاص الأهلية بجدة' },
+  { src: '/brand/nexus-hero-smart-tablet.webp', alt: 'نحو تعليم أكثر ذكاءً - نكسس التعليمية' },
+  { src: '/brand/nexus-hero-ai-student.webp', alt: 'نصنع مستقبل التعليم بالتكنولوجيا - الذكاء الاصطناعي' },
+  { src: '/brand/nexus-hero-vision2030.webp', alt: 'نصنع مستقبل التعليم بالتكنولوجيا - رؤية 2030' },
+  { src: '/brand/nexus-hero-teacher-class.webp', alt: 'بالمعلم يبدأ التغيير - نكسس التعليمية' },
+  { src: '/brand/nexus-hero-management.webp', alt: 'إدارة واعية تصنع فرقاً حقيقياً - نكسس التعليمية' },
+];
+
 export default function Home() {
   const [selectedLevel, setSelectedLevel] = useState(placementLevels[0]);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [activeStoryIdx, setActiveStoryIdx] = useState(0);
+
+  // Nexus Gallery Carousel State
+  const [nexusSlide, setNexusSlide] = useState(0);
 
   // Interactive Quiz Demo State
   const [quizStep, setQuizStep] = useState(0);
@@ -212,6 +226,14 @@ export default function Home() {
     setSelectedOption(null);
     setQuizStep((prev) => (prev + 1) % sampleInteractiveQuestions.length);
   };
+
+  // Auto-advance nexus gallery every 4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNexusSlide((prev) => (prev + 1) % nexusGalleryImages.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-teal-600 selection:text-white" dir="rtl">
@@ -655,30 +677,73 @@ export default function Home() {
 
             </div>
 
-            {/* Nexus Mockup Image Section (Light Frame with Real Official Image) */}
-            <div className="relative rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden group">
-              <div className="relative h-[360px] sm:h-[480px] w-full overflow-hidden bg-slate-900">
-                <Image 
-                  src="/brand/nexus-school-hero.webp" 
-                  alt="نظام نكسس للمدارس والمسابقات" 
-                  fill 
-                  className="object-cover object-center group-hover:scale-102 transition duration-700" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-                
-                <div className="absolute bottom-6 right-6 left-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Nexus Gallery Carousel - 7 Official Marketing Images */}
+            <div className="relative rounded-3xl border border-slate-200 bg-slate-900 shadow-xl overflow-hidden">
+              {/* Images */}
+              <div className="relative h-[360px] sm:h-[500px] w-full overflow-hidden">
+                {nexusGalleryImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="absolute inset-0 transition-opacity duration-700"
+                    style={{ opacity: nexusSlide === idx ? 1 : 0 }}
+                  >
+                    <Image
+                      src={img.src}
+                      alt={img.alt}
+                      fill
+                      className="object-cover object-center"
+                      priority={idx === 0}
+                    />
+                  </div>
+                ))}
+
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
+
+                {/* Prev / Next arrows */}
+                <button
+                  onClick={() => setNexusSlide((prev) => (prev - 1 + nexusGalleryImages.length) % nexusGalleryImages.length)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/20 hover:bg-white/40 text-white backdrop-blur-sm transition cursor-pointer border border-white/30"
+                  aria-label="السابق"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={() => setNexusSlide((prev) => (prev + 1) % nexusGalleryImages.length)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/20 hover:bg-white/40 text-white backdrop-blur-sm transition cursor-pointer border border-white/30"
+                  aria-label="التالي"
+                >
+                  <ChevronLeft size={20} className="rotate-180" />
+                </button>
+
+                {/* Bottom bar */}
+                <div className="absolute bottom-5 right-6 left-6 z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h4 className="text-xl font-black text-white">بوابة نكسس التعليمية للمدارس والمسابقات</h4>
+                    <h4 className="text-lg font-black text-white drop-shadow">بوابة نكسس التعليمية للمدارس والمسابقات</h4>
                     <p className="text-xs font-bold text-slate-300 mt-1">منظومة متكاملة لجميع أدوار المدرسة: طالب، معلم، ولي أمر، مدير، وموجه</p>
                   </div>
                   <Link
                     href="https://nexus.masarplatform.org"
-                    className="group/portal px-6 py-3.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs transition hover:bg-amber-300 shrink-0 shadow-md flex items-center gap-2"
+                    className="group/portal px-5 py-3 rounded-xl bg-amber-400 text-slate-950 font-black text-xs transition hover:bg-amber-300 shrink-0 shadow-md flex items-center gap-2"
                   >
                     <span>الانتقال للبوابة 🚀</span>
                     <MoveLeft size={16} className="transition-transform duration-300 group-hover/portal:-translate-x-1" />
                   </Link>
                 </div>
+              </div>
+
+              {/* Dot indicators */}
+              <div className="flex items-center justify-center gap-2 py-3 bg-slate-950/80">
+                {nexusGalleryImages.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setNexusSlide(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                      nexusSlide === idx ? 'w-6 bg-amber-400' : 'w-2 bg-white/40 hover:bg-white/70'
+                    }`}
+                    aria-label={`الصورة ${idx + 1}`}
+                  />
+                ))}
               </div>
             </div>
 
